@@ -616,10 +616,10 @@ with digest_cols[1]:
                 last_digest = json.load(f)
             score = last_digest.get('system_health_score', {}).get('overall')
             if score is not None:
-                st.metric("Health Score", f"{score:.2f}")
+                st.metric("Health Score", f"{score:.2f}", help="Overall health score of the system.")
             opps = last_digest.get('improvement_opportunities', [])
             high_count = sum(1 for o in opps if o.get('priority') == 'HIGH')
-            st.metric("Issues", f"{high_count} HIGH / {len(opps)} total")
+            st.metric("Issues", f"{high_count} HIGH / {len(opps)} total", help="Count of detected issues, indicating severity.")
         else:
             st.caption("No previous digest found")
     except Exception:
@@ -752,13 +752,13 @@ if run_validation:
                         total = summary.get('total', 0)
                         passed = summary.get('passed', 0)
                         health = (passed / total * 100) if total > 0 else 0
-                        st.metric("Health", f"{health:.1f}%")
+                        st.metric("Health", f"{health:.1f}%", help="Percentage of passed system checks.")
                     with metric_cols[1]:
-                        st.metric("Passed", summary.get('passed', 0), delta=None)
+                        st.metric("Passed", summary.get('passed', 0), delta=None, help="Number of system checks that passed.")
                     with metric_cols[2]:
-                        st.metric("Warnings", summary.get('warnings', 0), delta=None, delta_color="off")
+                        st.metric("Warnings", summary.get('warnings', 0), delta=None, delta_color="off", help="Number of system checks with warnings.")
                     with metric_cols[3]:
-                        st.metric("Failures", summary.get('failed', 0), delta=None, delta_color="inverse")
+                        st.metric("Failures", summary.get('failed', 0), delta=None, delta_color="inverse", help="Number of system checks that failed.")
 
                     # Results table
                     if data.get('checks'):

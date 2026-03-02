@@ -177,7 +177,7 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                     delta_color="normal",
                 )
             else:
-                st.metric("Unrealized P&L", "N/A")
+                st.metric("Unrealized P&L", "N/A", help="Total unrealized profit or loss from open positions.")
 
         with cols[2]:
             stop_help = "Calculated from invalidation triggers"
@@ -243,7 +243,7 @@ def render_portfolio_risk_summary(live_data: dict):
                 help="Percentage of Net Liquidation currently used for maintenance margin"
             )
         else:
-            st.metric("Margin Util", "N/A")
+            st.metric("Margin Util", "N/A", help="Percentage of Net Liquidation currently used for maintenance margin.")
 
     with cols[2]:
         import math
@@ -942,13 +942,13 @@ if config:
             st.caption(f"Portfolio VaR (:{stale_color}[{stale_label}])")
             var_cols = st.columns(4)
             with var_cols[0]:
-                st.metric("VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}")
+                st.metric("VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}", help="Estimated maximum loss over one day with 95% confidence.")
             with var_cols[1]:
-                st.metric("VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}")
+                st.metric("VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}", help="Estimated maximum loss over one day with 99% confidence.")
             with var_cols[2]:
-                st.metric("Utilization", f":{util_color}[{util:.0%}]")
+                st.metric("Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
             with var_cols[3]:
-                st.metric("Positions", f"{pos_count} ({', '.join(commodities)})")
+                st.metric("Positions", f"{pos_count} ({', '.join(commodities)})", help="Total number of open positions across all active commodities.")
 
             # Failure indicator
             if status == "FAILED":
@@ -995,7 +995,7 @@ if config:
     st.caption("Market Benchmarks")
     bench_cols = st.columns(min(1 + len(_all_commodities), 6))
     with bench_cols[0]:
-        st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%")
+        st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%", help="Daily performance of the S&P 500 benchmark.")
     for _bi, _bt in enumerate(_all_commodities):
         if _bi + 1 >= len(bench_cols):
             break
@@ -1003,7 +1003,7 @@ if config:
             _pct = benchmarks.get(_bt, 0)
             # Highlight selected commodity
             _label = f"**{_bt}**" if _bt == ticker else _bt
-            st.metric(_label, f"{_pct:+.2f}%")
+            st.metric(_label, f"{_pct:+.2f}%", help="Daily performance of the commodity benchmark.")
 
     # Rolling Win Rate Sparkline
     st.markdown("---")
