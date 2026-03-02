@@ -1266,6 +1266,8 @@ class XSentimentSentinel(Sentinel):
         self._cycle_grok_prompt_tokens = 0
         self._cycle_grok_completion_tokens = 0
 
+        self._last_open_market_check = None
+
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
 
     def _load_volume_state(self):
@@ -1454,7 +1456,6 @@ class XSentimentSentinel(Sentinel):
         query_with_filters = f"{query} -is:retweet lang:en"
         since_datetime = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
         # --- since_id: skip tweets we've already seen ---
-        import hashlib
         sid_key = hashlib.md5(
             (since_id_key or query).encode()
         ).hexdigest()[:16]
@@ -1830,8 +1831,6 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
             _sentinel_diag.info("XSentimentSentinel: running closed-market check")
         else:
             # --- Throttle open-market checks ---
-            if not hasattr(self, '_last_open_market_check'):
-                self._last_open_market_check = None
             now = datetime.now(timezone.utc)
             if self._last_open_market_check:
                 minutes_since_last = (
