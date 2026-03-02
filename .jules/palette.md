@@ -41,3 +41,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-24 - Human-Readable Temporal Context
 **Learning:** In dashboards where decisions are historical (like trade logs or agent councils), absolute timestamps (e.g., "2025-02-24 10:00") are harder to process than relative durations (e.g., "2h ago"). Combining both—absolute for precision and relative for quick context—in selection dropdowns and page headers drastically improves the "time-to-insight".
 **Action:** Use a centralized `_relative_time` utility to append human-readable durations to all high-impact timestamps in dropdowns and headers.
+
+## 2026-02-27 - Semantic Engine Health Metrics
+**Learning:** Refactoring technical status lists into `st.metric` cards provides a higher-density, more professional look. Using the `delta` parameter for relative pulse time ("Pulse: 2m ago") and the `help` parameter for secondary metadata (cycle counts, absolute timestamps) creates a clear information hierarchy.
+**Action:** When displaying system or agent health, prioritize semantic metrics with relative temporal context in the delta field to improve immediate situational awareness.

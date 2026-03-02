@@ -91,9 +91,10 @@ def _resolve_data_path_for(filename: str, ticker: str) -> str:
 def _relative_time(ts) -> str:
     """Format a timestamp as a human-readable relative time string."""
     try:
-        if ts is None:
+        if ts is None or ts == "unknown" or ts == "Never":
             return "Never"
         if isinstance(ts, str):
+            # pd.Timestamp can handle many formats but 'unknown' raises ValueError
             ts = pd.Timestamp(ts)
 
         # Standardize to UTC-aware datetime

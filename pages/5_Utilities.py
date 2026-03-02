@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import get_config, _resolve_data_path
+from dashboard_utils import get_config, _resolve_data_path, _relative_time
 from trading_bot.weighted_voting import TriggerType
 
 # Load config at module level
@@ -641,7 +641,8 @@ with state_cols[0]:
             state_path = _resolve_data_path("state.json")
             if os.path.exists(state_path):
                 mtime = os.path.getmtime(state_path)
-                st.caption(f"🕒 Last updated: {datetime.fromtimestamp(mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                last_upd = datetime.fromtimestamp(mtime, tz=timezone.utc)
+                st.caption(f"🕒 Last updated: {last_upd.strftime('%Y-%m-%d %H:%M:%S UTC')} ({_relative_time(last_upd)})")
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
                     st.json(state_data)
