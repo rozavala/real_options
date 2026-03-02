@@ -120,9 +120,9 @@ if enhanced_data:
     pending = total - resolved
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Predictions", total)
-    col2.metric("Resolved", resolved)
-    col3.metric("Pending", pending)
+    col1.metric("Total Predictions", total, help="Total number of agent predictions recorded.")
+    col2.metric("Resolved", resolved, help="Number of predictions with a known market outcome.")
+    col3.metric("Pending", pending, help="Predictions waiting for market resolution (T+1).")
     col4.metric(
         "Resolution Rate",
         f"{resolved / total * 100:.0f}%" if total > 0 else "N/A"
@@ -135,9 +135,9 @@ elif not struct_df.empty:
     resolved = total - pending - orphaned
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Predictions", total)
-    col2.metric("Resolved", resolved)
-    col3.metric("Pending", pending)
+    col1.metric("Total Predictions", total, help="Total number of agent predictions recorded.")
+    col2.metric("Resolved", resolved, help="Number of predictions with a known market outcome.")
+    col3.metric("Pending", pending, help="Predictions waiting for market resolution (T+1).")
     st.info("Enhanced Brier tracker has no data yet. Showing legacy CSV metrics.")
 else:
     st.info("No prediction data available yet.")

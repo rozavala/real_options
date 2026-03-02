@@ -998,13 +998,13 @@ if price_df is not None and not price_df.empty:
 
         summary_cols = st.columns(4)
         with summary_cols[0]:
-            st.metric("Period Change", f"{pct_change:+.2f}%")
+            st.metric("Period Change", f"{pct_change:+.2f}%", help="Percentage change in price over the selected period.")
         with summary_cols[1]:
-            st.metric("High", f"${high:{_price_fmt}}")
+            st.metric("High", f"${high:{_price_fmt}}", help="Highest price observed in the selected period.")
         with summary_cols[2]:
-            st.metric("Low", f"${low:{_price_fmt}}")
+            st.metric("Low", f"${low:{_price_fmt}}", help="Lowest price observed in the selected period.")
         with summary_cols[3]:
-            st.metric("Range", f"${high - low:{_price_fmt}}")
+            st.metric("Range", f"${high - low:{_price_fmt}}", help="Difference between High and Low prices in the selected period.")
 
     st.caption(f"Data source: {get_data_source_label()}")
 
@@ -1341,15 +1341,15 @@ if price_df is not None and not price_df.empty:
         neutral = total_signals - bullish - bearish - vol_trades
 
         with stat_cols[0]:
-            st.metric("Total Signals", total_signals)
+            st.metric("Total Signals", total_signals, help="Total number of agent signals generated.")
         with stat_cols[1]:
-            st.metric("🟢 Bullish", int(bullish))
+            st.metric("🟢 Bullish", int(bullish), help="Number of bullish signals.")
         with stat_cols[2]:
-            st.metric("🔴 Bearish", int(bearish))
+            st.metric("🔴 Bearish", int(bearish), help="Number of bearish signals.")
         with stat_cols[3]:
-            st.metric("🟣 Volatility", int(vol_trades))
+            st.metric("🟣 Volatility", int(vol_trades), help="Number of volatility expansion signals.")
         with stat_cols[4]:
-            st.metric("⚪ Neutral", int(neutral))
+            st.metric("⚪ Neutral", int(neutral), help="Number of neutral or conflicting signals.")
 
         if 'outcome' in plot_df.columns:
             wins = (plot_df['outcome'] == 'WIN').sum()
