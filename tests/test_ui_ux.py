@@ -237,8 +237,8 @@ class TestCouncilUX(unittest.TestCase):
             tree = ast.parse(f.read())
 
         target_metrics = [
-            "Dominant Agent", "Weighted Score", "Active Voters", "Trigger",
-            "Confidence", "Compliance", "Consensus", "Market Move", "Exit Price", "P&L"
+            "👑 Dominant Agent", "⚖️ Weighted Score", "🗳️ Active Voters", "⚡ Trigger",
+            "🎯 Confidence", "🛡️ Compliance", "🤝 Consensus", "📉 Market Move", "🚪 Exit Price", "💰 P&L"
         ]
         found_metrics = {m: False for m in target_metrics}
 
