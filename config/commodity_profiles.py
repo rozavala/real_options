@@ -429,14 +429,10 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
     ],
 
     sentiment_search_queries=[
-        "coffee futures",
-        "arabica coffee market",
-        "KC futures",
-        "robusta market",
-        "coffee supply",
-        "Brazil coffee harvest",
-        "coffee supply chain",
-        "US coffee tariffs",
+        '"KC futures" OR "arabica futures" OR "coffee futures" lang:en',
+        'Brazil (harvest OR drought OR frost) (coffee OR arabica)',
+        'Vietnam (robusta OR coffee) (harvest OR export OR production)',
+        'ICCO OR "coffee organization" (stock OR inventory OR supply)',
     ],
 
     legitimate_data_sources=[
@@ -605,14 +601,10 @@ COCOA_PROFILE = CommodityProfile(
     ],
 
     sentiment_search_queries=[
-        "cocoa futures",
-        "cocoa prices",
-        "CC futures",
-        "chocolate demand",
-        "ivory coast cocoa",
-        "ghana cocoa",
-        "cocoa supply chain",
-        "ICCO cocoa",
+        '"cocoa futures" OR "CC futures"',
+        '(Ivory OR Ghana) (cocoa OR farmgate OR "price cut")',
+        'cocoa (stock OR inventory OR grind OR "supply glut")',
+        'cocoa (farmer OR protest OR ICCO)',
     ],
 
     volatility_high_iv_rank=0.65,
