@@ -3016,7 +3016,15 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         if kept_positions_details:
             unique_kept = sorted(list(set(kept_positions_details)))
-            message_parts.append(f"\n<b> Positions held ({len(unique_kept)} unique legs/combos):</b>")
+            # Group legs by position_id for clearer reporting
+            kept_by_pos = {}
+            for detail in unique_kept:
+                # Format: "pos_id (symbol) - Age: N days"
+                pos_id = detail.split(' (')[0] if ' (' in detail else detail
+                kept_by_pos.setdefault(pos_id, []).append(detail)
+            num_positions = len(kept_by_pos)
+            num_legs = len(unique_kept)
+            message_parts.append(f"\n<b>Positions held ({num_positions} positions, {num_legs} legs):</b>")
             message_parts.extend([f"  - {reason}" for reason in unique_kept])
 
         if orphaned_positions:
