@@ -1205,7 +1205,16 @@ class XSentimentSentinel(Sentinel):
 
         self.sentiment_threshold = self.sentinel_config.get('sentiment_threshold', 6.5)
         self.min_engagement = self.sentinel_config.get('min_engagement', 5)
+        # Default 20; `or 20` guards against explicit None in config
+        self.max_search_limit = self.sentinel_config.get('max_search_limit', 20) or 20
         self.volume_spike_multiplier = self.sentinel_config.get('volume_spike_multiplier', 2.0)
+
+        # --- Gate broad fallback (default OFF to save costs) ---
+        self.use_broad_fallback = self.sentinel_config.get('use_broad_fallback', False)
+
+        # --- Configurable polling intervals ---
+        self.open_market_interval_min = self.sentinel_config.get('open_market_interval_min', 45)
+        self.closed_market_interval_hours = self.sentinel_config.get('closed_market_interval_hours', 6)
 
         api_key = config.get('xai', {}).get('api_key')
         if not api_key or api_key == "LOADED_FROM_ENV":
@@ -1237,11 +1246,25 @@ class XSentimentSentinel(Sentinel):
         self.degraded_until: Optional[datetime] = None
         self.sensor_status = "ONLINE"
 
+        # --- Spend cap circuit breaker (v4.0 — three-level) ---
+        self._spend_cap_until: Optional[datetime] = None
+        self._spend_cap_state_file = Path(self.CACHE_DIR) / "x_spend_cap.json"
+        self._load_spend_cap_state()
+
         self._request_interval = 1.5
         self._last_request_time = 0
 
-        self._volume_state_file = Path(self.CACHE_DIR) / "XSentimentSentinel_volume.json"
+        self._volume_state_file = Path(self.CACHE_DIR) / f"XSentimentSentinel_volume_{ticker}.json"
         self._load_volume_state()
+
+        # --- Track last seen tweet ID per query to avoid re-fetching ---
+        self._since_ids: dict = {}  # {md5_hash_of_profile_query: newest_tweet_id}
+        self._since_ids_file = Path(self.CACHE_DIR) / f"x_since_ids_{ticker}.json"
+        self._load_since_ids()
+
+        # --- Per-cycle Grok token tracking ---
+        self._cycle_grok_prompt_tokens = 0
+        self._cycle_grok_completion_tokens = 0
 
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
 
@@ -1268,21 +1291,140 @@ class XSentimentSentinel(Sentinel):
         except Exception as e:
             logger.warning(f"Failed to save X volume state: {e}")
 
+    def _load_spend_cap_state(self):
+        """Load persisted spend cap lockout (survives restarts)."""
+        try:
+            if self._spend_cap_state_file.exists():
+                with open(self._spend_cap_state_file, 'r') as f:
+                    data = json.load(f)
+                    reset_iso = data.get('reset_date')
+                    if reset_iso:
+                        reset_dt = datetime.fromisoformat(reset_iso)
+                        if reset_dt.tzinfo is None:
+                            reset_dt = reset_dt.replace(tzinfo=timezone.utc)
+                        if datetime.now(timezone.utc) < reset_dt:
+                            self._spend_cap_until = reset_dt
+                            self.sensor_status = "SPEND_CAP"
+                            logger.warning(
+                                f"XSentimentSentinel: Spend cap active until "
+                                f"{reset_dt.isoformat()}"
+                            )
+                        else:
+                            # Cap expired, clean up
+                            self._spend_cap_state_file.unlink(missing_ok=True)
+                            logger.info(
+                                "XSentimentSentinel: Spend cap expired, resuming"
+                            )
+        except Exception as e:
+            logger.warning(f"Failed to load spend cap state: {e}")
+        # --- Housekeeping: clean up orphaned pre-ticker volume file (one-time) ---
+        try:
+            orphan = Path(self.CACHE_DIR) / "XSentimentSentinel_volume.json"
+            if orphan.exists():
+                orphan.unlink()
+                logger.info(
+                    "XSentimentSentinel: Deleted orphaned volume file "
+                    "(replaced by per-ticker version)"
+                )
+        except Exception:
+            pass  # Non-critical cleanup
+
+    def _activate_spend_cap(self, reset_dt: datetime):
+        """Activate spend cap lockout and persist to disk."""
+        try:
+            if reset_dt.tzinfo is None:
+                reset_dt = reset_dt.replace(tzinfo=timezone.utc)
+            self._spend_cap_until = reset_dt
+            self.sensor_status = "SPEND_CAP"
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            with open(self._spend_cap_state_file, 'w') as f:
+                json.dump({'reset_date': reset_dt.isoformat()}, f)
+            logger.error(
+                f"X SPEND CAP REACHED — all X API calls suspended until "
+                f"{reset_dt.isoformat()}"
+            )
+            StateManager.save_state(
+                {"x_sentiment": self.get_sensor_status()}, namespace="sensors"
+            )
+        except Exception as e:
+            logger.error(f"Failed to persist spend cap state: {e}")
+            # Fail-safe: set a conservative 30-day lockout even if persistence fails
+            self._spend_cap_until = datetime.now(timezone.utc) + timedelta(days=30)
+            self.sensor_status = "SPEND_CAP"
+
+    def _load_since_ids(self):
+        """Load per-query since_id state from disk."""
+        try:
+            if self._since_ids_file.exists():
+                with open(self._since_ids_file, 'r') as f:
+                    self._since_ids = json.load(f)
+                logger.info(
+                    f"XSentimentSentinel: Loaded {len(self._since_ids)} since_ids"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to load since_ids: {e}")
+            self._since_ids = {}
+
+    def _save_since_ids(self):
+        """Persist since_id state to disk with size cap."""
+        try:
+            # Housekeeping: cap at 50 entries to prevent unbounded growth
+            if len(self._since_ids) > 50:
+                keys = list(self._since_ids.keys())
+                self._since_ids = {k: self._since_ids[k] for k in keys[-50:]}
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            with open(self._since_ids_file, 'w') as f:
+                json.dump(self._since_ids, f)
+        except Exception as e:
+            logger.warning(f"Failed to save since_ids: {e}")
+
     def get_sensor_status(self) -> dict:
         return {
             "sentiment_sensor_status": self.sensor_status,
             "consecutive_failures": self.consecutive_failures,
-            "degraded_until": self.degraded_until.isoformat() if self.degraded_until else None
+            "degraded_until": self.degraded_until.isoformat() if self.degraded_until else None,
+            "spend_cap_until": (
+                self._spend_cap_until.isoformat()
+                if self._spend_cap_until else None
+            ),
         }
 
     def _build_search_query(self, base_query: str) -> str:
+        """Build curated search query with from: handles and exclusions.
+
+        If the combined query exceeds 480 chars (X API v2 limit is 512,
+        _fetch_x_posts appends ~20 chars for -is:retweet lang:en),
+        gracefully degrade by dropping from: handles rather than
+        truncating mid-string which produces malformed queries.
+        """
+        MAX_QUERY_LEN = 480  # Safety margin under 512
         query_parts = [base_query]
         if self.from_handles:
-            handle_filter = " OR ".join([f"from:{h.lstrip('@')}" for h in self.from_handles])
+            handle_filter = " OR ".join(
+                [f"from:{h.lstrip('@')}" for h in self.from_handles]
+            )
             query_parts.append(f"({handle_filter})")
         for keyword in self.exclude_keywords:
             query_parts.append(f"-{keyword}")
-        return " ".join(query_parts)
+        full_query = " ".join(query_parts)
+        # Graceful degradation: if too long, drop handles (largest component)
+        if len(full_query) > MAX_QUERY_LEN:
+            logger.warning(
+                f"Curated query too long ({len(full_query)} chars) — "
+                f"dropping from: handles to stay under {MAX_QUERY_LEN}"
+            )
+            query_parts_no_handles = [base_query]
+            for keyword in self.exclude_keywords:
+                query_parts_no_handles.append(f"-{keyword}")
+            full_query = " ".join(query_parts_no_handles)
+            # If STILL too long (base_query itself is huge), hard truncate
+            if len(full_query) > MAX_QUERY_LEN:
+                logger.error(
+                    f"Base query alone too long ({len(full_query)} chars) — "
+                    f"truncating to {MAX_QUERY_LEN}"
+                )
+                full_query = full_query[:MAX_QUERY_LEN]
+        return full_query
 
     def _build_broad_search_query(self, base_query: str) -> str:
         query_parts = [base_query]
@@ -1294,8 +1436,16 @@ class XSentimentSentinel(Sentinel):
             full_query = base_query
         return full_query
 
-    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str, min_likes: int = None) -> list:
+    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str,
+                             min_likes: int = None,
+                             since_id_key: str = None) -> list:
         from datetime import timedelta
+        # --- Level 3 backstop: prevent X API calls during spend cap ---
+        if self._spend_cap_until and datetime.now(timezone.utc) < self._spend_cap_until:
+            _sentinel_diag.debug(
+                "XSentimentSentinel._fetch_x_posts: spend cap active — skipping"
+            )
+            return []
         _sentinel_diag.info(f"XSentimentSentinel._fetch_x_posts: calling X API (query='{query[:60]}', limit={limit})")
         headers = {
             "Authorization": f"Bearer {self.x_bearer_token}",
@@ -1303,15 +1453,25 @@ class XSentimentSentinel(Sentinel):
         }
         query_with_filters = f"{query} -is:retweet lang:en"
         since_datetime = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # --- since_id: skip tweets we've already seen ---
+        import hashlib
+        sid_key = hashlib.md5(
+            (since_id_key or query).encode()
+        ).hexdigest()[:16]
+        since_id = self._since_ids.get(sid_key)
+        # Enforce max limit (default 20, stored in __init__)
         params = {
             "query": query_with_filters,
             "start_time": since_datetime,
-            "max_results": max(10, min(limit, 100)),
+            "max_results": max(10, min(limit, self.max_search_limit)),
             "tweet.fields": "text,created_at,public_metrics,author_id",
             "expansions": "author_id",
             "user.fields": "username",
             "sort_order": sort_order
         }
+        # Only add since_id if we have one (skip on first run per query)
+        if since_id:
+            params["since_id"] = since_id
         try:
             session = await self._get_session()
             async with session.get(
@@ -1329,6 +1489,38 @@ class XSentimentSentinel(Sentinel):
                     error_text = await response.text()
                     logger.error(f"X API error {response.status}: {error_text}")
                     _sentinel_diag.error(f"  X API error {response.status}: {error_text[:200]}")
+                    # --- Detect SpendCapReached and activate circuit breaker ---
+                    if response.status == 403 and "SpendCapReached" in error_text:
+                        try:
+                            error_data = json.loads(error_text)
+                            reset_str = (
+                                error_data.get("reset_date")
+                                or error_data.get("reset")
+                            )
+                            if reset_str:
+                                if "T" in reset_str:
+                                    reset_dt = datetime.fromisoformat(
+                                        reset_str.replace("Z", "+00:00")
+                                    )
+                                else:
+                                    reset_dt = datetime.strptime(
+                                        reset_str, "%Y-%m-%d"
+                                    ).replace(tzinfo=timezone.utc)
+                                self._activate_spend_cap(reset_dt)
+                            else:
+                                logger.error(
+                                    "SpendCapReached but no reset_date in response"
+                                )
+                                self._activate_spend_cap(
+                                    datetime.now(timezone.utc) + timedelta(days=30)
+                                )
+                        except Exception as e:
+                            logger.error(
+                                f"SpendCap parse failed: {e} — 30-day fallback"
+                            )
+                            self._activate_spend_cap(
+                                datetime.now(timezone.utc) + timedelta(days=30)
+                            )
                     return []
                 # Track X API usage (separate from LLM spend)
                 try:
@@ -1359,6 +1551,12 @@ class XSentimentSentinel(Sentinel):
                 _sentinel_diag.info(
                     f"  X API: {raw_count} raw tweets, {len(posts)} after engagement filter (>={likes_threshold} likes)"
                 )
+                # --- Track newest tweet ID for incremental fetching ---
+                if data.get("data"):
+                    newest_id = data["data"][0].get("id")
+                    if newest_id:
+                        self._since_ids[sid_key] = newest_id
+                        self._save_since_ids()
                 if posts:
                     logger.debug(f"Top post: {posts[0]['text'][:50]}...")
                 return posts
@@ -1417,6 +1615,20 @@ class XSentimentSentinel(Sentinel):
 
     @with_retry(max_attempts=3)
     async def _search_x_and_analyze(self, query: str) -> Optional[dict]:
+        # --- Level 2: Defense-in-depth — prevent Grok calls during spend cap ---
+        if self._spend_cap_until and datetime.now(timezone.utc) < self._spend_cap_until:
+            _sentinel_diag.debug(
+                "XSentimentSentinel._search_x_and_analyze: "
+                "spend cap active — returning neutral (no Grok call)"
+            )
+            return {
+                "sentiment_score": 5.0,
+                "confidence": 0.0,
+                "post_volume": 0,
+                "summary": "spend cap active — no data",
+                "key_themes": [],
+                "notable_posts": [],
+            }
         if not self.client:
             logger.error("XAI Client not initialized (missing API key)")
             return None
@@ -1484,6 +1696,12 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                         response.usage.completion_tokens or 0,
                         source="sentinel/XSentimentSentinel(grok)",
                     )
+                    self._cycle_grok_prompt_tokens += (
+                        response.usage.prompt_tokens or 0
+                    )
+                    self._cycle_grok_completion_tokens += (
+                        response.usage.completion_tokens or 0
+                    )
                 message = response.choices[0].message
                 if message.content and message.content.strip():
                     _sentinel_diag.info(f"  Grok returned content (iteration {iteration}), parsing JSON...")
@@ -1525,7 +1743,9 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                         args = {"query": query}
                     _sentinel_diag.info(f"  Tool args: {args}")
                     if function_name == "x_search":
-                        tool_result = await self._execute_x_search(args)
+                        tool_result = await self._execute_x_search(
+                            args, original_query=query
+                        )
                         _sentinel_diag.info(
                             f"  x_search result: {tool_result.get('post_volume', 0)} posts, "
                             f"stage={tool_result.get('search_stage')}, quality={tool_result.get('data_quality')}"
@@ -1553,7 +1773,7 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
             _sentinel_diag.error(f"  X search EXCEPTION for query '{query}': {type(e).__name__}: {e}")
             return None
 
-    async def _execute_x_search(self, args: dict) -> dict:
+    async def _execute_x_search(self, args: dict, original_query: str = None) -> dict:
         if not self.x_bearer_token:
             return {"error": "X API not configured", "posts": [], "post_volume": 0, "data_quality": "unavailable"}
         commodity_name = self.config.get('commodity', {}).get('name', 'coffee')
@@ -1567,14 +1787,25 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         sanitized_query = re.sub(r'\(from:[^)]+\)', '', sanitized_query)
         sanitized_query = re.sub(r'from:\w+', '', sanitized_query)
         sanitized_query = ' '.join(sanitized_query.split()).strip()
-        search_stage = "strict"
+        # Fallback: if original_query wasn't threaded, use sanitized version
+        if not original_query:
+            original_query = sanitized_query
+        search_stage = "curated"
         strict_query = self._build_search_query(sanitized_query)
-        posts = await self._fetch_x_posts(strict_query, limit, sort_order)
-        if not posts:
+        posts = await self._fetch_x_posts(
+            strict_query, limit, sort_order,
+            since_id_key=original_query,
+        )
+        # Broad fallback: gated by config (default OFF)
+        if not posts and self.use_broad_fallback:
             search_stage = "broad"
             broad_query = self._build_broad_search_query(sanitized_query)
             broad_threshold = self.sentinel_config.get('broad_min_faves', 3)
-            posts = await self._fetch_x_posts(broad_query, limit, sort_order, min_likes=broad_threshold)
+            posts = await self._fetch_x_posts(
+                broad_query, limit, sort_order,
+                min_likes=broad_threshold,
+                since_id_key=original_query,
+            )
         data_quality = "high" if len(posts) >= 5 else ("low" if len(posts) < 3 else "medium")
         return {"posts": posts, "post_volume": len(posts), "query": query, "search_stage": search_stage, "data_quality": data_quality}
 
@@ -1588,17 +1819,46 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
             now = datetime.now(timezone.utc)
             if self._last_closed_market_check:
                 hours_since_last = (now - self._last_closed_market_check).total_seconds() / 3600
-                if hours_since_last < 4:
-                    _sentinel_diag.debug(f"XSentimentSentinel: skipped (market closed, {hours_since_last:.1f}h since last closed-market check < 4h)")
+                if hours_since_last < self.closed_market_interval_hours:
+                    _sentinel_diag.debug(
+                        f"XSentimentSentinel: skipped (market closed, "
+                        f"{hours_since_last:.1f}h since last closed-market check "
+                        f"< {self.closed_market_interval_hours}h)"
+                    )
                     return None
             self._last_closed_market_check = now
-            _sentinel_diag.info("XSentimentSentinel: running closed-market check (4h+ since last)")
+            _sentinel_diag.info("XSentimentSentinel: running closed-market check")
         else:
+            # --- Throttle open-market checks ---
+            if not hasattr(self, '_last_open_market_check'):
+                self._last_open_market_check = None
+            now = datetime.now(timezone.utc)
+            if self._last_open_market_check:
+                minutes_since_last = (
+                    now - self._last_open_market_check
+                ).total_seconds() / 60
+                if minutes_since_last < self.open_market_interval_min:
+                    _sentinel_diag.debug(
+                        f"XSentimentSentinel: skipped "
+                        f"({minutes_since_last:.0f}min since last "
+                        f"< {self.open_market_interval_min}min)"
+                    )
+                    return None
+            self._last_open_market_check = now
             _sentinel_diag.info("XSentimentSentinel: running (market open)")
         if self.degraded_until and datetime.now(timezone.utc) < self.degraded_until:
             self.sensor_status = "OFFLINE"
             StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
             _sentinel_diag.warning(f"XSentimentSentinel: DEGRADED until {self.degraded_until.isoformat()}")
+            return None
+        # --- Level 1: Skip entire cycle including ALL Grok calls (v4.0) ---
+        if self._spend_cap_until and datetime.now(timezone.utc) < self._spend_cap_until:
+            _sentinel_diag.info(
+                f"XSentimentSentinel: spend cap active until "
+                f"{self._spend_cap_until.isoformat()} — skipping entire cycle "
+                f"(saves Grok + X API tokens)"
+            )
+            self.sensor_status = "SPEND_CAP"
             return None
         _sentinel_diag.info(f"XSentimentSentinel: querying {len(self.search_queries)} queries: {self.search_queries}")
         tasks = [self._sem_bound_search(query) for query in self.search_queries]
@@ -1637,6 +1897,17 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         self.consecutive_failures = 0
         self.sensor_status = "ONLINE"
         StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
+        # --- Log cycle cost summary ---
+        _sentinel_diag.info(
+            f"XSentimentSentinel [{self.profile.ticker}]: cycle complete — "
+            f"{len(valid_results)}/{len(all_results)} queries valid, "
+            f"grok_tokens={self._cycle_grok_prompt_tokens}p/"
+            f"{self._cycle_grok_completion_tokens}c, "
+            f"broad_fallback={'ON' if self.use_broad_fallback else 'OFF'}, "
+            f"spend_cap={'ACTIVE' if self._spend_cap_until else 'clear'}"
+        )
+        self._cycle_grok_prompt_tokens = 0
+        self._cycle_grok_completion_tokens = 0
         total_weight = 0.0
         weighted_sentiment = 0.0
         for r in valid_results:
