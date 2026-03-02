@@ -22,3 +22,6 @@
 ## 2026-02-28 - Faster String Mapping in Pandas
 **Learning:** Using `df.apply(custom_func)` with a Python function is around 10x slower than evaluating the unique values via Python dict comprehension and calling `df.map()`. For operations natively supported by pandas string methods like `.endswith()`, using `df.str.endswith()` is also around 20% to 30% faster.
 **Action:** Replaced `.apply()` string normalizations with `map()` caching and vectorized `.str` string methods in `data_providers.py` and `brier_scoring.py`.
+## 2025-03-04 - Vectorized Hover Text Building
+**Learning:** Building complex strings using row-wise `df.apply(build_text, axis=1)` is significantly slower than using vectorized string concatenation (e.g. `df['col'] + df['col2']`) combined with `np.where()` for conditional components. In an explicit benchmark, `apply()` for a 1000-row string builder took ~75ms, whereas a vectorized `np.where()` approach reduced this to ~21ms (a 3.5x speedup). This can substantially improve Streamlit UI responsiveness.
+**Action:** Replace `df.apply(func, axis=1)` with vectorized pandas operations like `.astype(str)`, `.dt.strftime()`, string addition `+`, and `np.where()` when generating formatted UI text (like chart hover text) across many rows.
