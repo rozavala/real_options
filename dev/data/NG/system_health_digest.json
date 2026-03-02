@@ -1,0 +1,189 @@
+{
+  "schema_version": "1.1",
+  "generated_at": "2026-03-01T21:30:36.781683+00:00",
+  "active_tickers": [
+    "KC",
+    "CC",
+    "NG"
+  ],
+  "commodities": {
+    "KC": {
+      "status": "no_data_directory"
+    },
+    "CC": {
+      "status": "no_data_directory"
+    },
+    "NG": {
+      "status": "no_data_directory"
+    }
+  },
+  "portfolio": {
+    "status": "no_data"
+  },
+  "changes": {
+    "changes": [],
+    "note": "No previous digest for comparison"
+  },
+  "rolling_trends": {
+    "status": "no_data"
+  },
+  "improvement_opportunities": [],
+  "config_snapshot": {
+    "agent_base_weights_scheduled": {
+      "agronomist": 1.5,
+      "macro": 1.5,
+      "geopolitical": 1.5,
+      "supply_chain": 1.5,
+      "sentiment": 1.5,
+      "technical": 1.5,
+      "volatility": 1.5,
+      "inventory": 1.5
+    },
+    "risk": {
+      "max_holding_days": 2,
+      "min_holding_hours": 6.0,
+      "friday_min_holding_hours": 2.0,
+      "check_interval_seconds": 600,
+      "min_confidence_threshold": 0.5,
+      "monitoring_grace_period_seconds": 300,
+      "take_profit_capture_pct": 0.8,
+      "stop_loss_max_risk_pct": 0.5,
+      "hard_freshness_limit_hours": 24,
+      "soft_freshness_limit_hours": 4,
+      "max_total_positions": 30,
+      "max_commodity_concentration_pct": 0.5,
+      "max_correlated_exposure_pct": 0.7,
+      "max_open_positions": 3
+    },
+    "drawdown": {
+      "enabled": true,
+      "warning_pct": 1.5,
+      "halt_pct": 2.5,
+      "panic_pct": 4.0,
+      "recovery_pct": 3.0,
+      "recovery_hold_minutes": 30
+    },
+    "execution": {
+      "base": {
+        "spread_width_percentage": 0.01425,
+        "adaptive_step_interval_seconds": 15,
+        "adaptive_step_percentage": 0.04,
+        "ceiling_aggression_factor": 0.75,
+        "adaptive_target_steps": 10,
+        "cap_timeout_seconds": 900,
+        "iron_condor_short_strikes_from_atm": 2,
+        "iron_condor_wing_strikes_apart": 2,
+        "slippage_spread_percentage": 0.5,
+        "max_liquidity_spread_percentage": 0.35,
+        "fixed_slippage_cents": 0.5,
+        "monitoring_duration_seconds": 1800
+      },
+      "KC": {
+        "max_liquidity_spread_percentage": 1.25,
+        "cap_timeout_seconds": 1800,
+        "monitoring_duration_seconds": 2400
+      },
+      "CC": {
+        "max_liquidity_spread_percentage": 0.5,
+        "cap_timeout_seconds": 900,
+        "monitoring_duration_seconds": 1800
+      },
+      "NG": {
+        "max_liquidity_spread_percentage": 0.35,
+        "cap_timeout_seconds": 900,
+        "monitoring_duration_seconds": 1800
+      }
+    },
+    "iron_condor": {
+      "short_strikes_from_atm": 2,
+      "wing_strikes_apart": 2
+    },
+    "sentinel_thresholds": {
+      "weather_frost_temp_c": 4.0,
+      "price_pct_change_threshold": 1.5,
+      "microstructure_spread_std_threshold": 3.0
+    },
+    "semantic_cache": {
+      "enabled": true,
+      "similarity_threshold": 0.92,
+      "ttl_minutes": 60,
+      "max_entries": 100,
+      "severity_bypass_threshold": 8
+    },
+    "strategy": {
+      "quantity": 1,
+      "signal_threshold": 0.005,
+      "min_underlying_volume": 20,
+      "max_days_to_expiry": 180,
+      "min_voter_quorum": 3,
+      "reflexion_agents": [
+        "agronomist",
+        "macro",
+        "geopolitical",
+        "sentiment",
+        "technical",
+        "volatility",
+        "inventory",
+        "supply_chain"
+      ]
+    },
+    "brier": {
+      "enhanced_weight": 0.3,
+      "note": "decay HALF_LIFE_DAYS=14 is hardcoded in brier_scoring.py"
+    },
+    "llm_budget_daily_usd": 15.0
+  },
+  "error_telemetry": {
+    "totals": {
+      "liquidity_reject": 0,
+      "margin_reject": 0,
+      "order_timeout": 0,
+      "order_error": 0,
+      "trading_execution": 0
+    },
+    "per_commodity": {
+      "KC": {
+        "liquidity_reject": 0,
+        "margin_reject": 0,
+        "order_timeout": 0,
+        "order_error": 0,
+        "trading_execution": 0
+      },
+      "CC": {
+        "liquidity_reject": 0,
+        "margin_reject": 0,
+        "order_timeout": 0,
+        "order_error": 0,
+        "trading_execution": 0
+      },
+      "NG": {
+        "liquidity_reject": 0,
+        "margin_reject": 0,
+        "order_timeout": 0,
+        "order_error": 0,
+        "trading_execution": 0
+      }
+    },
+    "total_errors_today": 0,
+    "high_impact": false,
+    "error_reporter": null
+  },
+  "digest_id": "2026-03-01_dae280475d33",
+  "system_health_score": {
+    "overall": 0.625,
+    "components": {
+      "feedback_health": 0.5,
+      "prediction_accuracy": 0.5,
+      "execution_quality": 1.0,
+      "sentinel_efficiency": 0.5
+    },
+    "weights": {
+      "feedback_health": 0.35,
+      "prediction_accuracy": 0.25,
+      "execution_quality": 0.25,
+      "sentinel_efficiency": 0.15
+    },
+    "formula": "overall = 0.35*feedback + 0.25*(1-brier) + 0.25*exec_quality + 0.15*sentinel_snr"
+  },
+  "executive_summary": "KC: 0 decisions, regime=UNKNOWN | CC: 0 decisions, regime=UNKNOWN | NG: 0 decisions, regime=UNKNOWN | No high-priority issues | System health score: 0.62/1.00"
+}
