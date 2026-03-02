@@ -910,6 +910,7 @@ def main() -> int:
                     title="Error Reporter: Issues Created",
                     message=f"Created {issues_created} GitHub issue(s) from log errors.",
                     priority=0,
+                    ticker="ALL",
                 )
             except Exception as e:
                 logger.warning(f"Pushover notification failed: {e}")

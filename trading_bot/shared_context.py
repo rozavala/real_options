@@ -362,7 +362,8 @@ class PortfolioRiskGuard:
                                     send_pushover_notification(
                                         self.config.get('notifications', {}),
                                         f"📈 Portfolio Recovery: {prev} → WARNING",
-                                        f"Portfolio drawdown improved to {drawdown_pct:.2f}%. Trading resumed with caution."
+                                        f"Portfolio drawdown improved to {drawdown_pct:.2f}%. Trading resumed with caution.",
+                                        ticker="ALL"
                                     )
                                 except Exception:
                                     pass

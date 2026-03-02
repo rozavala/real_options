@@ -341,6 +341,7 @@ async def main() -> int:
             message=body,
             monospace=True,
             priority=priority,
+            ticker="ALL",
         )
     except Exception as e:
         logger.warning(f"Pushover notification failed: {e}")

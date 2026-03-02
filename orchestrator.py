@@ -2182,7 +2182,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     "Portfolio VaR Alert",
                     f"VaR(95%) = {var_result.var_95_pct:.1%} of equity "
                     f"(${var_result.var_95:,.0f}) — limit is "
-                    f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}"
+                    f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}",
+                    ticker="ALL"
                 )
         except asyncio.TimeoutError:
             logger.warning("Post-audit VaR computation timed out after 30s (non-fatal)")
@@ -2523,6 +2524,7 @@ async def generate_system_digest_task(config: dict):
                     config.get('notifications', {}),
                     "System Digest: Action Required",
                     "\n".join(f"[{o['component']}] {o['observation']}" for o in high[:3]),
+                    ticker="ALL"
                 )
     except Exception as e:
         logger.error(f"System Digest failed (non-fatal): {e}", exc_info=True)
@@ -5237,7 +5239,8 @@ async def main(commodity_ticker: str = None):
         send_pushover_notification(
             config.get('notifications', {}),
             "Orchestrator Started (OFF Mode)",
-            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed."
+            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed.",
+            ticker="ALL"
         )
 
     # Remote Gateway indicator
@@ -5260,7 +5263,8 @@ async def main(commodity_ticker: str = None):
                 "REMOTE GW + LIVE MODE",
                 f"Orchestrator on remote GW ({ib_host}) with TRADING_MODE=LIVE. "
                 "Likely a misconfiguration — set TRADING_MODE=OFF or IB_PAPER=true.",
-                priority=1
+                priority=1,
+                ticker="ALL"
             )
 
     # Update deduplicator with config values
