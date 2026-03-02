@@ -1267,20 +1267,92 @@ async def _reconcile_orphaned_theses(
             logger.debug("Reconciliation: No active theses to reconcile")
             return 0
 
-        # 2. Build set of position_ids with live IB exposure
+        # 2. Build actual IB aggregate: {local_symbol: net_qty}
         try:
             live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
-            logger.error("Reconciliation: reqPositionsAsync timed out (30s), treating as empty")
-            live_positions = []
+            logger.error("Reconciliation: reqPositionsAsync timed out (30s), skipping")
+            return 0  # Fail closed: don't orphan anything on timeout
+
+        commodity_symbol = config.get('symbol', 'KC')
+        ib_aggregate = {}
+        for pos in live_positions:
+            if pos.position == 0 or pos.contract.symbol != commodity_symbol:
+                continue
+            sym = pos.contract.localSymbol
+            ib_aggregate[sym] = ib_aggregate.get(sym, 0) + pos.position
+
+        # 2b. Build expected quantities per thesis from trade ledger
+        thesis_expected = {}  # tid -> {local_symbol: net_qty}
+        for tid in active_thesis_ids:
+            if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+                continue
+            tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+            if tid_rows.empty:
+                continue
+            leg_map = {}
+            for _, row in tid_rows.iterrows():
+                sym = row.get('local_symbol', '')
+                if not sym:
+                    continue
+                qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+                leg_map[sym] = leg_map.get(sym, 0) + qty
+            leg_map = {s: q for s, q in leg_map.items() if q != 0}
+            if leg_map:
+                thesis_expected[tid] = leg_map
+
+        # 2c. Greedy FIFO allocation — oldest theses claim IB qty first
+        thesis_order = []
+        for tid in active_thesis_ids:
+            if tid in thesis_expected:
+                tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                entry_time = tid_rows['timestamp'].min() if not tid_rows.empty else ''
+                thesis_order.append((tid, entry_time))
+        thesis_order.sort(key=lambda x: x[1])
+
+        remaining_ib = dict(ib_aggregate)
         live_position_ids = set()
 
-        for pos in live_positions:
-            if pos.position == 0:
-                continue
-            pos_id = _find_position_id_for_contract(pos, trade_ledger)
-            if pos_id:
-                live_position_ids.add(pos_id)
+        for tid, _ in thesis_order:
+            expected_legs = thesis_expected[tid]
+            all_covered = True
+            for sym, exp_qty in expected_legs.items():
+                avail = remaining_ib.get(sym, 0)
+                if exp_qty > 0 and avail < exp_qty:
+                    all_covered = False
+                    break
+                if exp_qty < 0 and avail > exp_qty:
+                    all_covered = False
+                    break
+
+            if all_covered:
+                for sym, exp_qty in expected_legs.items():
+                    remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
+                live_position_ids.add(tid)
+            else:
+                # Fail closed: if ANY leg still has IB backing, don't orphan
+                any_present = any(
+                    (exp > 0 and remaining_ib.get(s, 0) > 0) or
+                    (exp < 0 and remaining_ib.get(s, 0) < 0)
+                    for s, exp in expected_legs.items()
+                )
+                if any_present:
+                    live_position_ids.add(tid)
+                    logger.warning(
+                        f"Reconciliation: Thesis {tid} partially covered "
+                        f"(expected={expected_legs}, remaining={remaining_ib}). "
+                        f"Keeping alive (fail-closed)."
+                    )
+
+        # Theses with no ledger entries but IB has positions: fail closed
+        for tid in active_thesis_ids:
+            if tid not in thesis_expected and tid not in live_position_ids:
+                if ib_aggregate:
+                    logger.warning(
+                        f"Reconciliation: Thesis {tid} has no ledger entries "
+                        f"but IB has positions. Skipping invalidation (fail-closed)."
+                    )
+                    live_position_ids.add(tid)
 
         # 3. Identify orphans: active in TMS but not in IB
         orphaned_ids = [
