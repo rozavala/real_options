@@ -25,6 +25,7 @@ from trading_bot.strategy import validate_iron_condor_risk
 from orchestrator import (
     _validate_thesis,
     _find_position_id_for_contract,
+    _reconcile_orphaned_theses,
     run_position_audit_cycle
 )
 from trading_bot.sentinels import SentinelTrigger
@@ -448,6 +449,237 @@ class TestPositionIdEdgeCases(unittest.TestCase):
         result = _find_position_id_for_contract(mock_position, trade_ledger, tms=tms)
         # Should still find POS_001 via direction/FIFO matching (Strategy 2)
         self.assertEqual(result, 'POS_001')
+
+
+class TestReconcileOrphanedThesesAggregation(unittest.IsolatedAsyncioTestCase):
+    """
+    Tests for aggregate-quantity reconciliation in _reconcile_orphaned_theses.
+    Validates that identical contracts across multiple theses are handled correctly
+    when IBKR aggregates them into a single position with combined qty.
+    """
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.tms = TransactiveMemory(persist_path=self.temp_dir)
+        self.config = {'symbol': 'KC', 'exchange': 'NYBOT'}
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _make_ib_position(self, local_symbol, qty, symbol='KC'):
+        """Helper to create a mock IB Position."""
+        pos = MagicMock()
+        pos.contract.localSymbol = local_symbol
+        pos.contract.symbol = symbol
+        pos.position = qty
+        return pos
+
+    def _record_thesis(self, tid):
+        """Helper to register an active thesis in TMS."""
+        self.tms.record_trade_thesis(tid, {
+            'strategy_type': 'BEAR_PUT_SPREAD',
+            'guardian_agent': 'Master',
+            'primary_rationale': 'Test thesis',
+            'invalidation_triggers': ['test'],
+            'entry_timestamp': datetime.now(timezone.utc).isoformat(),
+            'entry_regime': 'TRENDING',
+            'supporting_data': {}
+        })
+
+    async def test_two_identical_spreads_both_live(self):
+        """
+        IB shows qty=2 on each leg. Two theses each expect qty=1.
+        Both theses should survive — neither is orphaned.
+        """
+        tid1, tid2 = 'thesis_older', 'thesis_newer'
+        self._record_thesis(tid1)
+        self._record_thesis(tid2)
+
+        # Trade ledger: two bear put spreads on identical contracts
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1, tid1, tid2, tid2],
+            'local_symbol': ['KCN6 P275', 'KCN6 P270', 'KCN6 P275', 'KCN6 P270'],
+            'action': ['BUY', 'SELL', 'BUY', 'SELL'],
+            'quantity': [1, 1, 1, 1],
+            'timestamp': [
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+            ]
+        })
+
+        # IB aggregates: 2 long P275, 2 short P270
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            self._make_ib_position('KCN6 P275', 2),
+            self._make_ib_position('KCN6 P270', -2),
+        ])
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 0, "No theses should be orphaned when IB qty covers both")
+
+        # Verify both theses remain active
+        active = self.tms.collection.get(where={"active": "true"}, include=['metadatas'])
+        active_ids = {m['trade_id'] for m in active['metadatas']}
+        self.assertIn(tid1, active_ids)
+        self.assertIn(tid2, active_ids)
+
+    async def test_one_of_two_identical_closed(self):
+        """
+        IB shows qty=1 on each leg. Two theses each expect qty=1.
+        Oldest (FIFO) should survive, newer should be orphaned.
+        """
+        tid1, tid2 = 'thesis_older', 'thesis_newer'
+        self._record_thesis(tid1)
+        self._record_thesis(tid2)
+
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1, tid1, tid2, tid2],
+            'local_symbol': ['KCN6 P275', 'KCN6 P270', 'KCN6 P275', 'KCN6 P270'],
+            'action': ['BUY', 'SELL', 'BUY', 'SELL'],
+            'quantity': [1, 1, 1, 1],
+            'timestamp': [
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+            ]
+        })
+
+        # IB only has qty=1 — one spread was closed externally
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            self._make_ib_position('KCN6 P275', 1),
+            self._make_ib_position('KCN6 P270', -1),
+        ])
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 1, "Newer thesis should be orphaned")
+
+        # Verify older survived, newer invalidated
+        active = self.tms.collection.get(where={"active": "true"}, include=['metadatas'])
+        active_ids = {m['trade_id'] for m in active['metadatas']}
+        self.assertIn(tid1, active_ids, "Older thesis should survive (FIFO)")
+        self.assertNotIn(tid2, active_ids, "Newer thesis should be orphaned")
+
+    async def test_different_spreads_unaffected(self):
+        """
+        Two theses on different contracts — standard mapping should work fine.
+        """
+        tid1, tid2 = 'thesis_jul', 'thesis_may'
+        self._record_thesis(tid1)
+        self._record_thesis(tid2)
+
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1, tid1, tid2, tid2],
+            'local_symbol': ['KCN6 P275', 'KCN6 P270', 'KCK6 P285', 'KCK6 P280'],
+            'action': ['BUY', 'SELL', 'BUY', 'SELL'],
+            'quantity': [1, 1, 1, 1],
+            'timestamp': [
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+            ]
+        })
+
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            self._make_ib_position('KCN6 P275', 1),
+            self._make_ib_position('KCN6 P270', -1),
+            self._make_ib_position('KCK6 P285', 1),
+            self._make_ib_position('KCK6 P280', -1),
+        ])
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 0, "Both distinct spreads should be matched")
+
+    async def test_no_ib_positions_all_orphaned(self):
+        """
+        IB has no positions. All active theses should be orphaned.
+        """
+        tid1, tid2 = 'thesis_a', 'thesis_b'
+        self._record_thesis(tid1)
+        self._record_thesis(tid2)
+
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1, tid1, tid2, tid2],
+            'local_symbol': ['KCN6 P275', 'KCN6 P270', 'KCN6 P275', 'KCN6 P270'],
+            'action': ['BUY', 'SELL', 'BUY', 'SELL'],
+            'quantity': [1, 1, 1, 1],
+            'timestamp': [
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+                datetime(2026, 3, 1, 10, 0),
+            ]
+        })
+
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[])
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 2, "Both theses should be orphaned")
+
+    async def test_partial_coverage_fail_closed(self):
+        """
+        IB has one leg but not the other for a thesis. Thesis should be kept alive
+        (fail-closed) because partial IB backing suggests something is still live.
+        """
+        tid1 = 'thesis_partial'
+        self._record_thesis(tid1)
+
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1, tid1],
+            'local_symbol': ['KCN6 P275', 'KCN6 P270'],
+            'action': ['BUY', 'SELL'],
+            'quantity': [1, 1],
+            'timestamp': [
+                datetime(2026, 2, 28, 10, 0),
+                datetime(2026, 2, 28, 10, 0),
+            ]
+        })
+
+        # IB has the long leg but NOT the short leg
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            self._make_ib_position('KCN6 P275', 1),
+        ])
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 0, "Partially covered thesis should NOT be orphaned (fail-closed)")
+
+        # Verify thesis remains active
+        active = self.tms.collection.get(where={"active": "true"}, include=['metadatas'])
+        active_ids = {m['trade_id'] for m in active['metadatas']}
+        self.assertIn(tid1, active_ids)
+
+    async def test_timeout_fail_closed(self):
+        """
+        reqPositionsAsync times out. Should return 0, not orphan everything.
+        """
+        tid1 = 'thesis_timeout'
+        self._record_thesis(tid1)
+
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1],
+            'local_symbol': ['KCN6 P275'],
+            'action': ['BUY'],
+            'quantity': [1],
+            'timestamp': [datetime(2026, 2, 28, 10, 0)],
+        })
+
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(side_effect=asyncio.TimeoutError())
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 0, "Timeout should fail closed, not orphan anything")
+
+        # Thesis should still be active
+        active = self.tms.collection.get(where={"active": "true"}, include=['metadatas'])
+        active_ids = {m['trade_id'] for m in active['metadatas']}
+        self.assertIn(tid1, active_ids)
 
 
 if __name__ == '__main__':
