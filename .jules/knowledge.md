@@ -12,7 +12,7 @@ Sentinels are lightweight monitors that observe external data sources and trigge
 - **WeatherSentinel:** Tracks weather patterns in key commodity regions (e.g., Brazil for Coffee (KC) or Cocoa (CC)).
 - **LogisticsSentinel:** Monitors RSS feeds for strikes, port closures, or canal disruptions.
 - **NewsSentinel:** Scans news feeds for fundamental shifts.
-- **XSentimentSentinel:** Analyzes social media sentiment on X (via xAI).
+- **XSentimentSentinel:** Analyzes social media sentiment on X (via xAI) and incorporates a multi-level spend-cap circuit breaker to throttle API calls during inactive market regimes or upon hitting budget limits.
 - **PredictionMarketSentinel:** Monitors Polymarket odds for geopolitical or macro events.
 - **TopicDiscoveryAgent:** Dynamically scans Polymarket for new, relevant topics using Claude Haiku to auto-configure the PredictionMarketSentinel.
 - **MacroContagionSentinel:** Detects cross-asset contagion (e.g., DXY, Gold correlation).
