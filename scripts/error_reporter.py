@@ -137,6 +137,8 @@ TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"connection failed.*Next retry backoff", re.IGNORECASE),
     re.compile(r"Thesis cleanup failed", re.IGNORECASE),
     re.compile(r"client id.*already in use", re.IGNORECASE),
+    re.compile(r"Connectivity between IBKR and Trader Workstation has been lost", re.IGNORECASE),
+    re.compile(r"Connectivity between IBKR and Trader Workstation has been restored", re.IGNORECASE),
     # LLM provider transient errors (429 quota, 503 overloaded, 529)
     re.compile(r"RESOURCE_EXHAUSTED", re.IGNORECASE),
     re.compile(r"429.*quota exceeded", re.IGNORECASE),
