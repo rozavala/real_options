@@ -20,6 +20,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Status-aware trimming: cap on resolved predictions kept on disk/memory.
+# Pending predictions are NEVER trimmed (orphaning handles their lifecycle).
+MAX_RESOLVED_PREDICTIONS = 2000
+
+# After this date, legacy CSV is frozen — Pass 2 backfill only re-creates
+# historical duplicates and should be skipped to prevent restart inflation.
+_BACKFILL_PASS2_CUTOFF = datetime(2026, 3, 1, tzinfo=timezone.utc)
+
 
 class MarketRegime(Enum):
     """Market regime classification for performance tracking."""
@@ -283,12 +291,19 @@ class EnhancedBrierTracker:
 
         self.predictions.append(pred)
 
-        # FIX (MECE 1.4): Trim to prevent unbounded memory growth
-        # Keep 50% buffer over save limit to reduce trim frequency
-        MAX_IN_MEMORY = 1500
+        # Status-aware trim: prevent unbounded growth while protecting pending predictions.
+        # Pending predictions must survive until resolved or orphaned (7-day lifecycle).
+        MAX_IN_MEMORY = 3000
         if len(self.predictions) > MAX_IN_MEMORY:
-            self.predictions = self.predictions[-1000:]
-            logger.debug(f"Brier tracker trimmed to {len(self.predictions)} predictions")
+            pending = [p for p in self.predictions if p.actual_outcome is None]
+            resolved = [p for p in self.predictions if p.actual_outcome is not None]
+            if len(resolved) > MAX_RESOLVED_PREDICTIONS:
+                resolved = resolved[-MAX_RESOLVED_PREDICTIONS:]
+            self.predictions = sorted(pending + resolved, key=lambda p: p.timestamp)
+            logger.debug(
+                f"Brier tracker trimmed to {len(self.predictions)} predictions "
+                f"({len(pending)} pending, {len(resolved)} resolved)"
+            )
 
         pred_id = f"{agent}_{pred.timestamp.isoformat()}"
 
@@ -423,58 +438,69 @@ class EnhancedBrierTracker:
                     f"Brier={brier_str}"
                 )
 
-        # Pass 2: Create predictions that exist in CSV but not in JSON
-        json_keys = {(p.cycle_id, p.agent) for p in self.predictions}
-        created = 0
-
-        for _, row in csv_df.iterrows():
-            cycle_id = str(row.get('cycle_id', '')).strip()
-            agent = str(row.get('agent', '')).strip()
-            if not cycle_id or not agent or cycle_id in ("nan", "None", "null"):
-                continue
-            if (cycle_id, agent) in json_keys:
-                continue
-
-            # Reconstruct probability distribution from CSV direction + confidence
-            direction = str(row.get('direction', 'NEUTRAL')).strip().upper()
-            confidence = float(row.get('confidence', 0.5)) if pd.notna(row.get('confidence')) else 0.5
-            confidence = max(0.0, min(1.0, confidence))
-
-            from trading_bot.brier_bridge import _confidence_to_probs
-            prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(direction, confidence)
-
-            # Parse timestamp
-            ts = datetime.now(timezone.utc)
-            if pd.notna(row.get('timestamp')):
-                try:
-                    ts = pd.to_datetime(row['timestamp'], utc=True).to_pydatetime()
-                except Exception:
-                    pass
-
-            pred = ProbabilisticPrediction(
-                timestamp=ts,
-                agent=agent,
-                prob_bullish=prob_bullish,
-                prob_neutral=prob_neutral,
-                prob_bearish=prob_bearish,
-                regime=MarketRegime.NORMAL,
-                contract=str(row.get('contract', '')) if pd.notna(row.get('contract')) else '',
-                cycle_id=cycle_id,
+        # Pass 2: Create predictions from CSV that are missing in JSON.
+        # After legacy deprecation, CSV is frozen — no new rows are written.
+        # Re-creating historical CSV entries on every restart inflates the list
+        # and causes trimming to drop recent JSON-only predictions (the KC bug).
+        skip_pass2 = datetime.now(timezone.utc) >= _BACKFILL_PASS2_CUTOFF
+        if skip_pass2:
+            logger.info(
+                "Backfill Pass 2 skipped (legacy CSV deprecated %s, no new rows to import)",
+                _BACKFILL_PASS2_CUTOFF.date()
             )
 
-            # Resolve immediately if CSV has an outcome
-            actual = str(row.get('actual', 'PENDING')).strip()
-            if actual not in ('PENDING', 'ORPHANED', ''):
-                pred.actual_outcome = actual
-                pred.resolved_at = datetime.now(timezone.utc)
-                brier = pred.calc_brier_score()
-                if brier is not None:
-                    self._update_agent_score(pred.agent, pred.regime.value, brier)
-                    self._update_calibration(pred)
+        created = 0
+        if not skip_pass2:
+            json_keys = {(p.cycle_id, p.agent) for p in self.predictions}
 
-            self.predictions.append(pred)
-            json_keys.add((cycle_id, agent))
-            created += 1
+            for _, row in csv_df.iterrows():
+                cycle_id = str(row.get('cycle_id', '')).strip()
+                agent = str(row.get('agent', '')).strip()
+                if not cycle_id or not agent or cycle_id in ("nan", "None", "null"):
+                    continue
+                if (cycle_id, agent) in json_keys:
+                    continue
+
+                # Reconstruct probability distribution from CSV direction + confidence
+                direction = str(row.get('direction', 'NEUTRAL')).strip().upper()
+                confidence = float(row.get('confidence', 0.5)) if pd.notna(row.get('confidence')) else 0.5
+                confidence = max(0.0, min(1.0, confidence))
+
+                from trading_bot.brier_bridge import _confidence_to_probs
+                prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(direction, confidence)
+
+                # Parse timestamp
+                ts = datetime.now(timezone.utc)
+                if pd.notna(row.get('timestamp')):
+                    try:
+                        ts = pd.to_datetime(row['timestamp'], utc=True).to_pydatetime()
+                    except Exception:
+                        pass
+
+                pred = ProbabilisticPrediction(
+                    timestamp=ts,
+                    agent=agent,
+                    prob_bullish=prob_bullish,
+                    prob_neutral=prob_neutral,
+                    prob_bearish=prob_bearish,
+                    regime=MarketRegime.NORMAL,
+                    contract=str(row.get('contract', '')) if pd.notna(row.get('contract')) else '',
+                    cycle_id=cycle_id,
+                )
+
+                # Resolve immediately if CSV has an outcome
+                actual = str(row.get('actual', 'PENDING')).strip()
+                if actual not in ('PENDING', 'ORPHANED', ''):
+                    pred.actual_outcome = actual
+                    pred.resolved_at = datetime.now(timezone.utc)
+                    brier = pred.calc_brier_score()
+                    if brier is not None:
+                        self._update_agent_score(pred.agent, pred.regime.value, brier)
+                        self._update_calibration(pred)
+
+                self.predictions.append(pred)
+                json_keys.add((cycle_id, agent))
+                created += 1
 
         # Pass 3: Resolve still-pending predictions from council_history outcomes
         council_path = os.path.join(os.path.dirname(structured_csv_path), "council_history.csv")
@@ -687,6 +713,13 @@ class EnhancedBrierTracker:
 
     def _save(self) -> None:
         """Persist data to disk."""
+        # Status-aware retention: keep ALL pending, trim only resolved
+        pending = [p for p in self.predictions if p.actual_outcome is None]
+        resolved = [p for p in self.predictions if p.actual_outcome is not None]
+        if len(resolved) > MAX_RESOLVED_PREDICTIONS:
+            resolved = resolved[-MAX_RESOLVED_PREDICTIONS:]
+        retained = sorted(pending + resolved, key=lambda p: p.timestamp)
+
         data = {
             # FIX (MECE 3.3): Add schema version for forward compatibility
             'schema_version': self.SCHEMA_VERSION,
@@ -700,11 +733,11 @@ class EnhancedBrierTracker:
                     'prob_bearish': p.prob_bearish,
                     'regime': p.regime.value,
                     'contract': p.contract,
-                    'cycle_id': p.cycle_id,  # NEW
+                    'cycle_id': p.cycle_id,
                     'actual_outcome': p.actual_outcome,
                     'resolved_at': p.resolved_at.isoformat() if p.resolved_at else None
                 }
-                for p in self.predictions[-1000:]  # Keep last 1000
+                for p in retained
             ],
             'agent_scores': {
                 agent: {
