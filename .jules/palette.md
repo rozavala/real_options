@@ -45,3 +45,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-27 - Semantic Engine Health Metrics
 **Learning:** Refactoring technical status lists into `st.metric` cards provides a higher-density, more professional look. Using the `delta` parameter for relative pulse time ("Pulse: 2m ago") and the `help` parameter for secondary metadata (cycle counts, absolute timestamps) creates a clear information hierarchy.
 **Action:** When displaying system or agent health, prioritize semantic metrics with relative temporal context in the delta field to improve immediate situational awareness.
+
+## 2026-03-03 - Enhancing File Tables & Safety Interlocks
+**Learning:** Standard file tables can be significantly improved by adding semantic icons (🤖 for services, 📊 for logs) and a 'Relative Age' column, which provides faster time-to-insight than absolute timestamps alone. Safety interlock checkboxes are more effective when their 'help' tooltip explicitly states the expected duration (e.g., "~2-5 minutes") to manage user expectations for long-running tasks.
+**Action:** Always include relative time durations and semantic icons in administrative tables; ensure safety interlocks carry descriptive tooltips about task impact and duration.

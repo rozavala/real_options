@@ -890,7 +890,11 @@ for i, (key, label) in enumerate(recon_names.items()):
         st.caption(f"**{label}**")
         st.text(_format_last_run(key))
 
-confirm_recon = st.checkbox("Unlock reconciliation tools", key="confirm_recon")
+confirm_recon = st.checkbox(
+    "Unlock reconciliation tools",
+    key="confirm_recon",
+    help="Safety interlock to prevent accidental execution of long-running data reconciliation tasks (~2-5 minutes)."
+)
 
 # Create a 2x2 grid for reconciliation buttons
 recon_row1 = st.columns(2)
@@ -1171,15 +1175,32 @@ if os.path.exists(logs_dir):
         filepath = os.path.join(logs_dir, f)
         if os.path.isfile(filepath):
             stat = os.stat(filepath)
+            mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+
+            # Semantic icons for scannability
+            icon = "🤖 " if "orchestrator" in f.lower() else "📊 "
+
             log_files.append({
-                "File": f,
-                "Size": f"{stat.st_size / 1024:.1f} KB",
-                "Modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+                "File": f"{icon}{f}",
+                "Size (KB)": round(stat.st_size / 1024, 1),
+                "Modified": mtime,
+                "Relative Age": _relative_time(mtime)
             })
 
     if log_files:
         import pandas as pd
-        st.dataframe(pd.DataFrame(log_files), hide_index=True)
+        df_logs = pd.DataFrame(log_files).sort_values("Modified", ascending=False)
+        st.dataframe(
+            df_logs,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "File": st.column_config.TextColumn("File", width="medium", help="Log filename with semantic icon."),
+                "Size (KB)": st.column_config.NumberColumn("Size", format="%.1f KB", width="small", help="File size in Kilobytes."),
+                "Modified": st.column_config.DatetimeColumn("Modified", format="YYYY-MM-DD HH:mm", width="medium", help="Absolute modification timestamp (UTC)."),
+                "Relative Age": st.column_config.TextColumn("Relative Age", width="small", help="Human-readable duration since last modification."),
+            }
+        )
     else:
         st.info("No log files found.")
 else:
