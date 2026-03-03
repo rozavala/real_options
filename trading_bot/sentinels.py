@@ -2001,6 +2001,7 @@ class PredictionMarketSentinel(Sentinel):
         self.min_liquidity = self.sentinel_config.get('min_liquidity_usd', 50000)
         self.min_volume = self.sentinel_config.get('min_volume_usd', 10000)
         self.hwm_decay_hours = self.sentinel_config.get('hwm_decay_hours', 24)
+        self._topic_failure_counts: Dict[str, int] = {}
         self.state_cache: Dict[str, Dict[str, Any]] = {}
         self._load_state_cache()
         self._cleanup_misaligned_cache()
@@ -2021,7 +2022,6 @@ class PredictionMarketSentinel(Sentinel):
             '20_to_30_pct': 7,
             '30_plus_pct': 9
         })
-        self._topic_failure_counts: Dict[str, int] = {}
         self._last_slug_check = datetime.now(timezone.utc)
         logger.info(f"PredictionMarketSentinel v2.0 initialized: {len(self.topics)} topics")
 
