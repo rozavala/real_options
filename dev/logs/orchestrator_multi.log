@@ -3957,3 +3957,134 @@
 2026-03-03 13:56:11,977 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=350, market_open=True, trading_day=True
 2026-03-03 13:57:06,276 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=360, market_open=False, trading_day=True
 2026-03-03 13:59:47,558 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=355, market_open=True, trading_day=True
+2026-03-03 14:00:20,821 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-03-03 14:00:20,821 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1220 [REMOTE/PAPER]...
+2026-03-03 14:00:20,987 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1220
+2026-03-03 14:00:20,995 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:00:20,996 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-03-03 14:00:20,996 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
+2026-03-03 14:00:20,999 - Orchestrator - INFO - --- Processing Deferred Triggers ---
+2026-03-03 14:00:21,002 - Orchestrator - INFO - Processing 5 deferred triggers from overnight
+2026-03-03 14:00:21,003 - trading_bot.connection_pool - INFO - Connecting IB (NG_deferred) ID: 1299 [REMOTE/PAPER]...
+2026-03-03 14:00:21,164 - trading_bot.connection_pool - INFO - IB (NG_deferred) connected successfully with ID 1299
+2026-03-03 14:00:21,204 - trading_bot.state_manager - INFO - Logged sentinel event from NewsSentinel to history.
+2026-03-03 14:00:21,264 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized. Starting Equity: $35,621.52
+2026-03-03 14:00:21,265 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by NewsSentinel: Extreme Sentiment Detected (Score: 9/10): Headlines reflect extreme market panic and bullish sentiment driven by an escalating conflict with Iran, characterized as an 'Energy Crisis' with potential disruptions to global supply causing prices to surge. (Cycle: NG-d283dab8)
+2026-03-03 14:00:21,464 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-03 14:00:21,563 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-03 14:00:21,563 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-03 14:00:21,563 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-03-03 14:00:21,570 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-03 14:00:21,576 - trading_bot.enhanced_brier - INFO - Loaded 496 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-03 14:00:21,597 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-03 14:00:21,623 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-03-03 14:00:21,623 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-03-03 14:00:21,623 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-03-03 14:00:21,623 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-03 14:00:21,624 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-03 14:00:21,624 - root - INFO - Fetching 2 active futures contracts for NG on NYMEX...
+2026-03-03 14:00:21,627 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 14:00:22,012 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-03 14:00:22,015 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-03 14:00:22,015 - Orchestrator - INFO - Targeting contract: NGK26 (202604)
+2026-03-03 14:00:28,459 - trading_bot.market_data_provider - INFO - Building market context for NGK26 (202604)...
+2026-03-03 14:00:28,841 - trading_bot.market_data_provider - INFO - Market context for NGK26 (202604): price=3.15, sma_200=3.555055, regime=RANGE_BOUND, vol_5d=0.0256
+2026-03-03 14:00:28,842 - Orchestrator - INFO - Emergency market context: price=3.154, regime=RANGE_BOUND
+2026-03-03 14:00:28,842 - trading_bot.agents - INFO - Running Specialized Cycle triggered by NewsSentinel...
+2026-03-03 14:00:28,844 - trading_bot.agents - INFO - Routing to sentiment (Reason: Default routing)
+2026-03-03 14:00:28,845 - trading_bot.agents - INFO - Waking up sentiment...
+2026-03-03 14:00:29,259 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-03-03 14:00:29,259 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-03-03 14:01:06,780 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:01:35,135 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=355, market_open=True, trading_day=True
+2026-03-03 14:01:49,221 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-03-03 14:01:49,227 - trading_bot.enhanced_brier - INFO - Loaded 496 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-03 14:01:49,245 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-03 14:01:49,270 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"sentiment": "domain=3.0 \u00d7 reliability=1.1 = 3.18", "agronomist": "domain=1.0 \u00d7 reliability=1.3 = 0.23", "macro": "domain=2.0 \u00d7 reliability=1.0 = 0.37", "geopolitical": "domain=2.0 \u00d7 reliability=0.8 = 0.30", "supply_chain": "domain=1.5 \u00d7 reliability=0.8 = 0.21", "inventory": "domain=1.0 \u00d7 reliability=0.9 = 0.16", "technical": "domain=2.2 \u00d7 reliability=1.0 = 0.40", "volatility": "domain=1.0 \u00d7 reliability=0.9 = 0.17"}
+2026-03-03 14:01:49,271 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.514, dominant=sentiment)
+2026-03-03 14:01:49,271 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "sentiment",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 3.0,\n    "reliability_mult": 1.06,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 3.18,\n    "contribution": 2.068\n  },\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.27,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.23,\n    "contribution": -0.15\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.8,\n    "domain_weight": 2.0,\n    "reliability_mult": 1.03,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.37,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 2.0,\n    "reliability_mult": 0.82,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.3,\n    "contribution": 0.193\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.76,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.21,\n    "contribution": 0.167\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.91,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.16,\n    "contribution": -0.091\n  },\n  {\n    "agent": "technical",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 2.25,\n    "reliability_mult": 0.98,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.4,\n    "contribution": 0.259\n  },\n  {\n    "agent": "volatility",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0499999999999998,\n    "reliability_mult": 0.87,\n    "staleness_weight": 0.18,\n    "age_hours": 20.5,\n    "final_weight": 0.17,\n    "contribution": 0.132\n  }\n]
+2026-03-03 14:03:00,608 - trading_bot.heterogeneous_router - INFO - CIRCUIT BREAKER: openai cooldown expired, re-enabling
+2026-03-03 14:03:01,654 - openai._base_client - INFO - Retrying request to /chat/completions in 0.412001 seconds
+2026-03-03 14:03:03,234 - openai._base_client - INFO - Retrying request to /chat/completions in 0.768936 seconds
+2026-03-03 14:03:04,097 - trading_bot.heterogeneous_router - ERROR - CIRCUIT BREAKER: openai tripped for 1.0h — Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/doc
+2026-03-03 14:03:04,098 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-03-03 14:03:54,772 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-03-03 14:03:54,772 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2026-03-03 14:03:54,772 - trading_bot.agents - INFO - Master Decision: BULLISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: QatarEnergy's halt of LNG production at Ras Laffan (represen
+2026-03-03 14:04:32,626 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The pre-mortem analysis reveals three structurally distinct failure paths, each independently capable of producing catastrophic loss at this entry price ($3.154 on NGK26). The core problem is that the bull thesis is simultaneously (1) dependent on a single geopolitical catalyst of unknown duration, (2) structurally impaired in its domestic transmission mechanism by the very evidence cited by bull agents, and (3) entered at a price elevated by a sentiment spike in a RANGE_BOUND regime with CVOL at 64.35 — meaning volatility decay works against long options positions and the risk-reward on directional futures exposure is asymmetric to the downside. The 5-agent vs 2-agent count that anchors the bull confidence is methodologically suspect: all five bull agents fundamentally reference the same Qatar catalyst filtered through different analytical frameworks, violating the independence assumption that makes evidence-counting valid. This is a crowded-trade disguised as multi-source confirmation. The $46/ton shipping fee creates a structural ceiling on the LNG export demand-pull that is not resolved by any of the bull arguments. The 141 Bcf year-on-year storage surplus is a slow-moving structural headwind entering injection season that will reassert as the dominant narrative once the Qatar headline fades. With VaR at 0% utilized and existing 5-position concentration in KC (coffee), adding a correlated commodity long in a high-IV, RANGE_BOUND, geopolitically-driven spike environment adds regime correlation risk that is not reflected in the 0.8 confidence rating. If participation is required, maximum position sizing at 25% of normal allocation with hard stop at $2.99 (the 50-day EMA) is the only defensible approach — but the base recommendation is NO ENTRY.
+2026-03-03 14:04:32,628 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-03-03 14:04:32,629 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-03-03 14:04:32,630 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-03-03 14:04:32,630 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-03 14:04:32,632 - root - INFO - Logged council decision for NGK26 (202604)
+2026-03-03 14:04:32,635 - trading_bot.decision_signals - INFO - Decision signal logged: NGK26 (202604) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-03-03 14:04:32,762 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (VOLATILITY)
+2026-03-03 14:04:32,766 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-03 14:04:32,766 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-03-03 14:09:32.762375. Skipping WeatherSentinel
+2026-03-03 14:04:32,766 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): WeatherSentinel
+2026-03-03 14:04:32,767 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-03-03 14:09:32.762375. Skipping PredictionMarketSentinel
+2026-03-03 14:04:32,767 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): PredictionMarketSentinel
+2026-03-03 14:04:32,767 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-03-03 14:09:32.762375. Skipping NewsSentinel
+2026-03-03 14:04:32,767 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): NewsSentinel
+2026-03-03 14:04:32,767 - Orchestrator - INFO - POST_CYCLE debounce active until 2026-03-03 14:09:32.762375. Skipping PredictionMarketSentinel
+2026-03-03 14:04:32,768 - Orchestrator - INFO - Skipping deferred trigger (deduplicated): PredictionMarketSentinel
+2026-03-03 14:04:32,768 - Orchestrator - INFO - Deferred triggers complete: 1 processed, 4 skipped, 0 rejected (contaminated)
+2026-03-03 14:04:32,768 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_deferred)...
+2026-03-03 14:04:35,769 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-03 14:04:35,774 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 14:04:35,985 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-03 14:04:35,988 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-03 14:04:35,989 - Orchestrator - INFO - Refreshed contract cache: NGK26
+2026-03-03 14:04:35,989 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-03-03 14:04:35,990 - trading_bot.connection_pool - INFO - Connecting IB (NG_microstructure) ID: 1255 [REMOTE/PAPER]...
+2026-03-03 14:04:36,150 - trading_bot.connection_pool - INFO - IB (NG_microstructure) connected successfully with ID 1255
+2026-03-03 14:04:36,156 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:05:03,300 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=360, market_open=True, trading_day=True
+2026-03-03 14:05:57,518 - Orchestrator - INFO - 2026-03-03 14:05:57,517 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-03 14:05:57,518 - Orchestrator - INFO - 2026-03-03 14:05:57,518 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-186.93 | Capture: -4.6% | Risk Used: -9.2%
+2026-03-03 14:05:57,518 - Orchestrator - INFO - 2026-03-03 14:05:57,518 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$403.39 | Capture: 8.6% | Risk Used: 17.2%
+2026-03-03 14:05:57,518 - Orchestrator - INFO - 2026-03-03 14:05:57,518 - root - INFO - Running Iron Condor thesis validation check...
+2026-03-03 14:05:57,527 - Orchestrator - INFO - 2026-03-03 14:05:57,526 - trading_bot.tms - INFO - TMS initialized at ./data/KC/tms
+2026-03-03 14:06:07,356 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:06:39,032 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=360, market_open=True, trading_day=True
+2026-03-03 14:06:42,558 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=True, trading_day=True
+2026-03-03 14:07:00,001 - Engine.CC - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-03-03 14:07:00,006 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-03-03 14:07:00,007 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 466 [REMOTE/PAPER]...
+2026-03-03 14:07:00,168 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 466
+2026-03-03 14:07:00,176 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:07:00,287 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-03 14:07:00,336 - Orchestrator - INFO - State stores reconciled: 0 thesis groups (0 legs) across all stores
+2026-03-03 14:07:00,381 - Orchestrator - INFO - No open positions to audit.
+2026-03-03 14:07:00,383 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-03-03 14:07:03,389 - Engine.CC - INFO - Next task 'signal_early' (Signal: Early) scheduled for 2026-03-03 15:10:00 UTC. Waiting for 1.05 hours.
+2026-03-03 14:10:06,153 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=True, trading_day=True
+2026-03-03 14:11:07,926 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:11:41,504 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_open=True, trading_day=True
+2026-03-03 14:11:47,291 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
+2026-03-03 14:15:09,209 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
+2026-03-03 14:15:57,554 - Orchestrator - INFO - 2026-03-03 14:15:57,553 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-03 14:15:57,555 - Orchestrator - INFO - 2026-03-03 14:15:57,554 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-134.86 | Capture: -3.3% | Risk Used: -6.6%
+2026-03-03 14:15:57,555 - Orchestrator - INFO - 2026-03-03 14:15:57,554 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$451.27 | Capture: 9.6% | Risk Used: 19.2%
+2026-03-03 14:16:08,463 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:16:43,434 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_open=True, trading_day=True
+2026-03-03 14:16:52,082 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-03-03 14:17:44,832 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 45% of average (Sev: 5)
+2026-03-03 14:17:44,836 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 14:20:11,948 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-03-03 14:21:08,997 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:21:45,540 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_open=True, trading_day=True
+2026-03-03 14:21:57,531 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-03-03 14:21:57,761 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 23% of average
+2026-03-03 14:21:57,772 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 14:21:58,114 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-03 14:25:14,298 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-03-03 14:25:57,658 - Orchestrator - INFO - 2026-03-03 14:25:57,658 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-03 14:25:57,658 - Orchestrator - INFO - 2026-03-03 14:25:57,658 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-154.58 | Capture: -3.8% | Risk Used: -7.6%
+2026-03-03 14:25:57,658 - Orchestrator - INFO - 2026-03-03 14:25:57,658 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$425.41 | Capture: 9.1% | Risk Used: 18.1%
+2026-03-03 14:26:09,531 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 14:26:47,631 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_open=True, trading_day=True
+2026-03-03 14:26:48,517 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-03 14:27:03,391 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=385, market_open=True, trading_day=True
+2026-03-03 14:27:03,617 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 49% of average (Sev: 5)
+2026-03-03 14:27:03,622 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
