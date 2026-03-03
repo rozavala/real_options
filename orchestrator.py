@@ -4555,6 +4555,9 @@ async def emergency_hard_close(config: dict):
 
         for pos in open_positions:
             contract = pos.contract
+            # reqPositionsAsync may return contracts without exchange — fill from config
+            if not contract.exchange:
+                contract.exchange = config.get('exchange', 'SMART')
             close_action = 'SELL' if pos.position > 0 else 'BUY'
             qty = abs(pos.position)
 

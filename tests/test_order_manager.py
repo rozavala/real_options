@@ -117,11 +117,11 @@ class TestPositionClosing(unittest.TestCase):
 
             # Mock Positions
             mock_positions = [
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT'), position=-1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT'), position=1, avgCost=1.0),
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'), position=-1, avgCost=1.0),
+                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
             ]
             mock_ib_instance.reqPositionsAsync.return_value = mock_positions
 
@@ -235,6 +235,163 @@ class TestPositionClosing(unittest.TestCase):
         asyncio.run(run_test())
 
 import pytest
+
+
+class TestStaleCloseContractFormat:
+    """Verify close_stale_positions uses pre-qualified contracts from reqPositionsAsync
+    to avoid Error 478 strike format mismatch (e.g., strike=270.0 vs 2.7 for KC coffee)."""
+
+    @pytest.fixture
+    def ledger_path(self, tmp_path):
+        """Create a temp ledger with a single old position."""
+        path = tmp_path / "trade_ledger.csv"
+        ten_days_ago = datetime(2023, 10, 13, 10, 0)
+        data = {
+            'timestamp': [ten_days_ago.strftime('%Y-%m-%d %H:%M:%S')],
+            'position_id': ['TEST_POS'],
+            'combo_id': [100],
+            'local_symbol': ['KON6 P2.7'],
+            'action': ['BUY'],
+            'quantity': [1],
+            'avg_fill_price': [0.50],
+            'strike': [270],
+            'right': ['P'],
+            'total_value_usd': [-1875],
+            'reason': ['Strategy Execution'],
+        }
+        pd.DataFrame(data).to_csv(path, index=False)
+        return str(path)
+
+    @pytest.mark.asyncio
+    @patch('trading_bot.order_manager.place_order', new_callable=MagicMock)
+    @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    async def test_single_leg_uses_ib_contract_not_requalify(
+        self, mock_pool, mock_log_trade, mock_place_order, ledger_path
+    ):
+        """Single-leg close must use pos.contract from reqPositionsAsync, not re-qualify.
+
+        The IB contract from reqPositionsAsync has strike=2.7 (correct exchange format).
+        Re-qualifying via qualifyContractsAsync would return strike=270.0 → Error 478.
+        """
+        mock_ib = AsyncMock()
+        mock_pool.get_connection = AsyncMock(return_value=mock_ib)
+        mock_ib.isConnected = MagicMock(return_value=True)
+
+        # Contract from reqPositionsAsync has the correct exchange format (strike=2.7)
+        ib_contract = Contract(
+            localSymbol='KON6 P2.7', symbol='KC', conId=999,
+            exchange='NYBOT', secType='FOP', strike=2.7, right='P',
+            multiplier='37500', currency='USD'
+        )
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            Position(account='test', contract=ib_contract, position=1, avgCost=1875.0)
+        ])
+
+        # If qualifyContractsAsync is called, it returns WRONG strike format
+        bad_contract = Contract(conId=999, strike=270.0, secType='FOP', symbol='KC')
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[bad_contract])
+
+        mock_ticker = MagicMock()
+        mock_ticker.bid = 0.50
+        mock_ticker.ask = 0.55
+        mock_ticker.last = 0.52
+        mock_ib.reqMktData = MagicMock(return_value=mock_ticker)
+        mock_ib.cancelMktData = MagicMock()
+
+        mock_trade = MagicMock()
+        mock_trade.orderStatus.status = 'Filled'
+        mock_trade.orderStatus.avgFillPrice = 0.52
+        mock_fill = MagicMock()
+        mock_fill.commissionReport.realizedPNL = -50.0
+        mock_trade.fills = [mock_fill]
+        mock_trade.order.orderId = 1
+        mock_place_order.return_value = mock_trade
+
+        config = {'symbol': 'KC', 'exchange': 'NYBOT'}
+
+        with patch('trading_bot.order_manager.get_trade_ledger_df') as mock_ledger, \
+             patch('trading_bot.order_manager.datetime') as mock_dt:
+            mock_dt.now.return_value = datetime(2023, 10, 23, 17, 20)  # Monday
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            mock_ledger.return_value = pd.read_csv(ledger_path, parse_dates=['timestamp'])
+
+            await close_stale_positions(config)
+
+        # Verify place_order was called
+        assert mock_place_order.call_count == 1
+
+        # The contract passed to place_order must be the IB contract (strike=2.7),
+        # NOT the re-qualified one (strike=270.0)
+        call_args = mock_place_order.call_args[0]
+        placed_contract = call_args[1]
+        assert placed_contract.strike == 2.7, (
+            f"Expected strike=2.7 from reqPositionsAsync, got {placed_contract.strike}. "
+            "Error 478 would occur with strike=270.0"
+        )
+        # qualifyContractsAsync should NOT have been called for the close order
+        mock_ib.qualifyContractsAsync.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch('trading_bot.order_manager.place_order', new_callable=MagicMock)
+    @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    async def test_missing_exchange_falls_back_to_config(
+        self, mock_pool, mock_log_trade, mock_place_order, ledger_path
+    ):
+        """When pos.contract has no exchange, the config exchange should be used.
+
+        reqPositionsAsync can return contracts without exchange field,
+        causing Error 321 (Missing order exchange). The fix fills in from config.
+        """
+        mock_ib = AsyncMock()
+        mock_pool.get_connection = AsyncMock(return_value=mock_ib)
+        mock_ib.isConnected = MagicMock(return_value=True)
+
+        # Contract from reqPositionsAsync WITHOUT exchange (reproduces Error 321)
+        ib_contract = Contract(
+            localSymbol='KON6 P2.7', symbol='KC', conId=999,
+            exchange='', secType='FOP', strike=2.7, right='P',
+            multiplier='37500', currency='USD'
+        )
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            Position(account='test', contract=ib_contract, position=1, avgCost=1875.0)
+        ])
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[])
+
+        mock_ticker = MagicMock()
+        mock_ticker.bid = 0.50
+        mock_ticker.ask = 0.55
+        mock_ticker.last = 0.52
+        mock_ib.reqMktData = MagicMock(return_value=mock_ticker)
+        mock_ib.cancelMktData = MagicMock()
+
+        mock_trade = MagicMock()
+        mock_trade.orderStatus.status = 'Filled'
+        mock_trade.orderStatus.avgFillPrice = 0.52
+        mock_fill = MagicMock()
+        mock_fill.commissionReport.realizedPNL = -50.0
+        mock_trade.fills = [mock_fill]
+        mock_trade.order.orderId = 1
+        mock_place_order.return_value = mock_trade
+
+        config = {'symbol': 'KC', 'exchange': 'NYBOT'}
+
+        with patch('trading_bot.order_manager.get_trade_ledger_df') as mock_ledger, \
+             patch('trading_bot.order_manager.datetime') as mock_dt:
+            mock_dt.now.return_value = datetime(2023, 10, 23, 17, 20)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            mock_ledger.return_value = pd.read_csv(ledger_path, parse_dates=['timestamp'])
+
+            await close_stale_positions(config)
+
+        assert mock_place_order.call_count == 1
+        placed_contract = mock_place_order.call_args[0][1]
+        assert placed_contract.exchange == 'NYBOT', (
+            f"Expected exchange='NYBOT' from config fallback, got '{placed_contract.exchange}'. "
+            "Error 321 would occur with empty exchange."
+        )
+
 
 class TestHoldingTimeGate:
     """Tests for the Friday-specific holding-time threshold in generate_and_execute_orders."""
