@@ -10,6 +10,7 @@ from trading_bot.ib_interface import (
     build_option_chain,
     create_combo_order_object,
     place_order,
+    _check_combo_liquidity,
 )
 
 
@@ -355,6 +356,99 @@ class TestIbInterface(unittest.TestCase):
             self.assertEqual(futures[1].localSymbol, 'KC_NextYear')
 
         asyncio.run(run_test())
+
+
+class TestCheckComboLiquidity(unittest.TestCase):
+    """Direct unit tests for _check_combo_liquidity helper."""
+
+    def test_tick_floor_passes_cheap_otm(self):
+        """Cheap OTM: high ratio but tick floor saves it."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=0.50, net_theoretical_price=0.10, tick_size=0.05,
+            max_spread_pct=0.75, max_spread_ticks=80,
+            contract_sym='KON6', expiry='202609'
+        )
+        self.assertTrue(passed)
+        self.assertEqual(meta['binding'], 'TICK_FLOOR')
+        self.assertAlmostEqual(meta['tick_allow'], 4.00)
+
+    def test_pct_ceiling_blocks_predatory_spread(self):
+        """Expensive ITM: tick floor is too loose, pct ceiling catches it."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=150.0, net_theoretical_price=50.0, tick_size=1.0,
+            max_spread_pct=0.75, max_spread_ticks=30,
+            contract_sym='COK6', expiry='202605'
+        )
+        self.assertFalse(passed)
+        self.assertEqual(meta['binding'], 'PCT_CEILING')
+        self.assertAlmostEqual(meta['pct_allow'], 37.50)
+
+    def test_credit_spread_uses_abs_theo(self):
+        """Credit spread (negative theo) should use abs() for pct allowance."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=2.80, net_theoretical_price=-3.50, tick_size=0.05,
+            max_spread_pct=0.75, max_spread_ticks=80,
+            contract_sym='KON6', expiry='202609'
+        )
+        self.assertTrue(passed)
+        self.assertAlmostEqual(meta['pct_allow'], 2.625, places=3)
+
+    def test_credit_spread_blocked_when_toxic(self):
+        """Expensive credit spread with predatory widening should be blocked."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=45.0, net_theoretical_price=-50.0, tick_size=1.0,
+            max_spread_pct=0.75, max_spread_ticks=30,
+            contract_sym='COK6', expiry='202605'
+        )
+        # allowed = max(30, abs(-50)*0.75=37.50) = 37.50
+        # 45.0 > 37.50 -> FAIL
+        self.assertFalse(passed)
+        self.assertEqual(meta['binding'], 'PCT_CEILING')
+
+    def test_zero_theo_uses_tick_floor_only(self):
+        """Zero theoretical (edge case) should default to tick floor."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=0.10, net_theoretical_price=0.0, tick_size=0.05,
+            max_spread_pct=0.75, max_spread_ticks=80,
+            contract_sym='KON6', expiry='202609'
+        )
+        self.assertTrue(passed)  # 0.10 < 4.00 tick floor
+        self.assertEqual(meta['binding'], 'TICK_FLOOR')
+        self.assertAlmostEqual(meta['pct_allow'], 0.0)
+
+    def test_ng_cheap_otm_passes(self):
+        """NG deep OTM: tiny theo, normal spread, tick floor saves it."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=0.015, net_theoretical_price=0.005, tick_size=0.001,
+            max_spread_pct=0.75, max_spread_ticks=80,
+            contract_sym='LNE', expiry='202607'
+        )
+        self.assertTrue(passed)
+        self.assertEqual(meta['binding'], 'TICK_FLOOR')
+        self.assertAlmostEqual(meta['tick_allow'], 0.08)
+
+    def test_kc_observed_case_passes(self):
+        """Reproduces the exact KC case from 2026-02-05 logs."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=2.95, net_theoretical_price=2.42, tick_size=0.05,
+            max_spread_pct=0.75, max_spread_ticks=80,
+            contract_sym='KON6', expiry='202609'
+        )
+        self.assertTrue(passed)
+        self.assertAlmostEqual(meta['allowed'], 4.00)
+
+    def test_zero_tick_size_falls_back_to_pure_pct(self):
+        """tick_size=0 should not crash; falls back to pure percentage filter."""
+        passed, meta = _check_combo_liquidity(
+            market_spread=0.50, net_theoretical_price=1.00, tick_size=0.0,
+            max_spread_pct=0.75, max_spread_ticks=80,
+            contract_sym='TEST', expiry='202612'
+        )
+        # tick_allowance ~ 0 (80 * ~1e-9), pct_allowance = 0.75
+        # allowed = max(~0, 0.75) = 0.75 -> 0.50 < 0.75 -> PASS
+        self.assertTrue(passed)
+        self.assertEqual(meta['binding'], 'PCT_CEILING')
+        self.assertAlmostEqual(meta['pct_allow'], 0.75)
 
 
 if __name__ == '__main__':
