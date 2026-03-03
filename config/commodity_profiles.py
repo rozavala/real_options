@@ -147,6 +147,13 @@ class CommodityProfile:
     price_move_alert_pct: float = 2.0
     straddle_risk_threshold: float = 10000.0  # Max straddle risk per contract (v3.1)
 
+    # Liquidity filter: hybrid tick/percentage model
+    # Spread must be ≤ max(tick_allowance, pct_allowance)
+    # Tick floor protects cheap OTM options from ratio inflation
+    # Percentage ceiling caps slippage on expensive ITM options
+    max_liquidity_spread_pct: float = 0.75       # 75% of abs(theoretical price)
+    max_liquidity_spread_ticks: int = 60          # Absolute floor in tick units
+
     # M1, M3, M7, E4 FIXES:
     fallback_iv: float = 0.35  # Default 35% (commodity-specific)
     risk_free_rate: float = 0.04  # M3 fix
@@ -448,6 +455,8 @@ COFFEE_ARABICA_PROFILE = CommodityProfile(
     volatility_low_iv_rank=0.30,
     price_move_alert_pct=2.0,
     straddle_risk_threshold=10000.0,
+    max_liquidity_spread_pct=0.75,
+    max_liquidity_spread_ticks=80,   # 80 × 0.05 = 4.00 c/lb floor
     fallback_iv=0.35,
     risk_free_rate=0.04,
     default_starting_capital=50000.0,
@@ -611,6 +620,8 @@ COCOA_PROFILE = CommodityProfile(
     volatility_low_iv_rank=0.25,
     price_move_alert_pct=3.0,
     straddle_risk_threshold=8000.0,
+    max_liquidity_spread_pct=0.75,
+    max_liquidity_spread_ticks=30,   # 30 × 1.0 = 30 $/ton floor
 
     research_prompts={
         "agronomist": "Search for 'Côte d Ivoire cocoa harvest forecast' and 'Ghana cocoa rainfall anomaly'. Analyze if conditions favor or threaten the main crop.",
@@ -788,6 +799,8 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         }),
         # Risk/pricing fields (must match dataclass — JSON profiles need these)
         straddle_risk_threshold=data.get('straddle_risk_threshold', 10000.0),
+        max_liquidity_spread_pct=data.get('max_liquidity_spread_pct', 0.75),
+        max_liquidity_spread_ticks=data.get('max_liquidity_spread_ticks', 60),
         fallback_iv=data.get('fallback_iv', 0.35),
         risk_free_rate=data.get('risk_free_rate', 0.04),
         default_starting_capital=data.get('default_starting_capital', 50000.0),

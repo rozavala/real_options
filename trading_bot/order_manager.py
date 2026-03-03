@@ -1263,8 +1263,16 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
         logger.exception(f"Error processing and logging fill for order {trade.order.orderId}: {e}")
 
 
-async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple[bool, str]:
-    """Check if liquidity conditions are safe for execution."""
+async def check_liquidity_conditions(ib: IB, contract, order_size: int, config: dict = None) -> tuple[bool, str]:
+    """Check if liquidity conditions are safe for execution.
+
+    Args:
+        ib: Connected IB instance
+        contract: Contract to check
+        order_size: Intended order quantity
+        config: Optional config dict for parameterized thresholds.
+            If None, uses hardcoded defaults (backward-compatible).
+    """
     try:
         # --- PATCH: Bypass Depth Check for Combos (BAG) ---
         # IBKR returns 0 depth for synthetic combos even when legs have liquidity.
@@ -1290,9 +1298,11 @@ async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple
 
         ib.cancelMktDepth(contract)
 
-        # Safety checks
-        min_depth = order_size * 3  # Want 3x our order size in book
-        max_spread_pct = 0.5  # Max 0.5% spread
+        # Safety checks (parameterized — commodity-agnostic)
+        _tuning = (config or {}).get('strategy_tuning', {})
+        min_depth_multiplier = _tuning.get('min_book_depth_multiplier', 3)
+        min_depth = order_size * min_depth_multiplier
+        max_spread_pct = _tuning.get('max_single_leg_spread_pct', 0.5)
 
         if total_depth < min_depth:
             return False, f"Insufficient depth: {total_depth} (need {min_depth})"

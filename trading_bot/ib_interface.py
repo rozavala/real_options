@@ -20,6 +20,75 @@ from trading_bot.utils import (
 )
 
 
+def _check_combo_liquidity(
+    market_spread: float,
+    net_theoretical_price: float,
+    tick_size: float,
+    max_spread_pct: float,
+    max_spread_ticks: int,
+    contract_sym: str,
+    expiry: str,
+) -> tuple[bool, dict]:
+    """
+    Hybrid Tick/Percentage Liquidity Filter.
+
+    Determines if a combo order's market spread is acceptable using:
+        allowed = max(tick_allowance, pct_allowance)
+
+    - Tick floor protects cheap OTM options from ratio inflation.
+    - Percentage ceiling (using abs(theo)) caps slippage on expensive options.
+    - abs() handles both debit spreads (theo > 0) and credit spreads (theo < 0).
+
+    Credit spreads (SELL, theo < 0) were previously UNFILTERED (the old
+    ``if theo > 0 and ...`` skipped them entirely). They are now subject to
+    the hybrid filter using abs(theo) for the percentage term.
+
+    Returns:
+        (passed, metadata) -- metadata includes all fields for enriched
+        logging and calibration.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+
+    # Domain safety: prevent division by zero on tick_size
+    safe_tick = max(tick_size, 1e-9)
+
+    # Hybrid allowance: max(absolute_tick_floor, percentage_of_abs_theoretical)
+    absolute_tick_allowance = max_spread_ticks * safe_tick
+
+    # Use abs() to correctly handle credit spreads (negative theo).
+    # Market spread is always positive (ask - bid), so the allowance must be too.
+    # The inverted-spread guard upstream catches broken sign mismatches.
+    percentage_allowance = abs(net_theoretical_price) * max_spread_pct
+
+    allowed_spread = max(absolute_tick_allowance, percentage_allowance)
+
+    # Compute metadata (used in both PASS and FAIL logging)
+    abs_theo = abs(net_theoretical_price) if net_theoretical_price != 0 else 0.0
+    spread_pct_raw = (market_spread / abs_theo) if abs_theo > 0 else float('inf')
+    spread_ticks = (market_spread / safe_tick) if safe_tick > 0 else float('inf')
+    hour_utc = _dt.now(_tz.utc).hour
+    binding = 'TICK_FLOOR' if absolute_tick_allowance >= percentage_allowance else 'PCT_CEILING'
+
+    passed = market_spread <= allowed_spread
+
+    metadata = {
+        'contract': contract_sym,
+        'expiry': expiry,
+        'spread_pct': round(spread_pct_raw, 3),
+        'spread_ticks': round(spread_ticks, 1),
+        'abs_spread': round(market_spread, 4),
+        'theo': round(net_theoretical_price, 4),
+        'allowed': round(allowed_spread, 4),
+        'binding': binding,
+        'tick_allow': round(absolute_tick_allowance, 4),
+        'pct_allow': round(percentage_allowance, 4),
+        'hour_utc': hour_utc,
+        'passed': passed,
+    }
+
+    return passed, metadata
+
+
 async def get_option_market_data(ib: IB, contract: Contract, underlying_future: Contract) -> dict | None:
     """
     Fetches live market data for a single option contract, including bid, ask,
@@ -408,40 +477,67 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     # 5. Add Liquidity Filter and Calculate Limit Price (Ceiling/Floor) and Initial Price (Start)
     tuning_params = config.get('strategy_tuning', {})
-    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.25)
     fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
-    # NEW: Configurable ceiling aggression (0.0 = mid, 1.0 = full ask/bid)
     ceiling_aggression = tuning_params.get('ceiling_aggression_factor', 0.75)
 
-    # Inverted spread guard: BUY spread should be a debit (positive theoretical),
-    # SELL spread should be a credit (negative theoretical). When the sign is wrong,
-    # it typically means IV mismatch between legs (e.g., one leg used fallback IV).
-    # IB will reject these as "riskless combination orders."
-    if action == 'BUY' and net_theoretical_price < 0:
+    # --- Load hybrid liquidity filter parameters ---
+    # Priority: config.json override > commodity profile > hardcoded fallback
+    from config import get_active_profile
+    _liq_profile = get_active_profile(config)
+    _profile_spread_pct = getattr(_liq_profile, 'max_liquidity_spread_pct', 0.75)
+    _profile_spread_ticks = getattr(_liq_profile, 'max_liquidity_spread_ticks', 60)
+
+    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', _profile_spread_pct)
+    max_spread_ticks = tuning_params.get('max_liquidity_spread_ticks', _profile_spread_ticks)
+
+    # --- Symmetric Inverted Spread Guard ---
+    # BUY spread should be a debit (positive theoretical).
+    # SELL spread should be a credit (negative theoretical).
+    # When the sign contradicts the action, it means IV mismatch between legs
+    # (e.g., one leg used fallback IV). IB will reject these as "riskless
+    # combination orders."
+    if (action == 'BUY' and net_theoretical_price < 0) or \
+       (action == 'SELL' and net_theoretical_price > 0):
         logging.warning(
-            f"INVERTED SPREAD FILTER: BUY spread has negative net theoretical "
-            f"({net_theoretical_price:.2f}). Likely IV mismatch between legs. Skipping."
+            f"INVERTED SPREAD FILTER: Pricing mismatch (Action '{action}' contradicts "
+            f"net theoretical {net_theoretical_price:.2f}). Likely IV mismatch between "
+            f"legs. Skipping."
         )
         return None
 
     market_spread = combo_ask_price - combo_bid_price
 
-    # Liquidity Filter: Check if the market spread is too wide relative to the theoretical price
-    if net_theoretical_price > 0 and (market_spread / net_theoretical_price) > max_spread_pct:
-        from datetime import datetime, timezone
-        _spread_pct = market_spread / net_theoretical_price
-        _hour_utc = datetime.now(timezone.utc).hour
-        _contract_sym = chain.get('tradingClass', config.get('symbol', '?'))
+    # --- Hybrid Tick/Percentage Liquidity Filter ---
+    _contract_sym = chain.get('tradingClass', config.get('symbol', '?'))
+    liq_passed, liq_meta = _check_combo_liquidity(
+        market_spread=market_spread,
+        net_theoretical_price=net_theoretical_price,
+        tick_size=tick_size,
+        max_spread_pct=max_spread_pct,
+        max_spread_ticks=max_spread_ticks,
+        contract_sym=_contract_sym,
+        expiry=exp_details.get('exp_date', '?'),
+    )
+
+    # Structured log tag — grep-friendly for calibration script
+    _liq_tag = '[liquidity_metric: ' + ', '.join(
+        f"{k}={v}" for k, v in liq_meta.items() if k != 'passed'
+    ) + ']'
+
+    if not liq_passed:
         logging.warning(
-            f"LIQUIDITY FILTER FAILED: Market spread ({market_spread:.2f}) is "
-            f"{_spread_pct:.1%} of theoretical price ({net_theoretical_price:.2f}), "
-            f"which exceeds the max of {max_spread_pct:.1%}. Aborting order. "
-            f"[liquidity_metric: contract={_contract_sym}, expiry={exp_details.get('exp_date', '?')}, "
-            f"spread_pct={_spread_pct:.3f}, hour_utc={_hour_utc}]"
+            f"LIQUIDITY FILTER FAILED: Market spread ({market_spread:.2f}) exceeds "
+            f"allowed ({liq_meta['allowed']:.2f}, binding={liq_meta['binding']}). "
+            f"Aborting order. {_liq_tag}"
         )
         return None
+    else:
+        logging.info(
+            f"LIQUIDITY FILTER PASSED: Market spread ({market_spread:.2f}) within "
+            f"allowed ({liq_meta['allowed']:.2f}, binding={liq_meta['binding']}). "
+            f"{_liq_tag}"
+        )
 
-    tick_size = get_tick_size(config)  # Commodity-agnostic tick size
     market_mid = (combo_bid_price + combo_ask_price) / 2
 
     # ================================================================
