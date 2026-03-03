@@ -1587,6 +1587,10 @@ def _group_positions_by_thesis(
         }
 
     Design: Commodity-agnostic — works for any multi-leg strategy.
+
+    v3.2: After initial FIFO grouping, discovers active TMS theses that
+    share contracts with existing groups due to IBKR position aggregation
+    (e.g., two bear put spreads on the same strikes → qty=2 in IBKR).
     """
     groups = {}  # position_id → {thesis, legs}
     unmapped = []  # Legs we couldn't map
@@ -1616,6 +1620,53 @@ def _group_positions_by_thesis(
             f"Position audit: {len(unmapped)} legs could not be mapped to a thesis: "
             f"{[p.contract.localSymbol for p in unmapped]}"
         )
+
+    # v3.2: Find active TMS theses not yet grouped that share contracts with
+    # existing groups (IBKR aggregates identical contracts across theses).
+    try:
+        active_theses = tms.collection.get(
+            where={"active": "true"}, include=['metadatas']
+        )
+        active_ids = {
+            m['trade_id'] for m in active_theses.get('metadatas', [])
+            if 'trade_id' in m
+        }
+        ungrouped = active_ids - set(groups.keys())
+
+        if ungrouped and not trade_ledger.empty and 'position_id' in trade_ledger.columns:
+            # Build set of contract symbols already in groups
+            grouped_symbols = {
+                leg.contract.localSymbol
+                for g in groups.values() for leg in g['legs']
+            }
+
+            for tid in ungrouped:
+                tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                if tid_rows.empty:
+                    continue
+                tid_symbols = set(tid_rows['local_symbol'].unique())
+                # If this thesis's contracts overlap with grouped legs,
+                # it's part of an IBKR aggregate position
+                if tid_symbols & grouped_symbols:
+                    thesis = tms.retrieve_thesis(tid)
+                    # Find the matching grouped legs (shared contracts)
+                    shared_legs = [
+                        leg for g in groups.values() for leg in g['legs']
+                        if leg.contract.localSymbol in tid_symbols
+                    ]
+                    groups[tid] = {
+                        'thesis': thesis,
+                        'legs': shared_legs,
+                        'position_id': tid,
+                        '_aggregate': True,  # Mark as aggregate-discovered
+                    }
+                    logger.info(
+                        f"Aggregate grouping: thesis {tid[:8]} shares "
+                        f"IBKR legs with existing group (contracts: "
+                        f"{tid_symbols & grouped_symbols})"
+                    )
+    except Exception as e:
+        logger.warning(f"Aggregate thesis discovery failed (non-fatal): {e}")
 
     return groups
 
