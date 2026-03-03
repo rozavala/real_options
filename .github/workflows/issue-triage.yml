@@ -348,6 +348,14 @@ jobs:
               return;
             }
 
+            // Only auto-fix critical/high priority issues to avoid wasting
+            // CI minutes on routine errors that are often already fixed.
+            const priority = triage.priority || '${{ steps.triage.outputs.priority }}';
+            if (priority !== 'critical' && priority !== 'high') {
+              console.log(`Skipping claude-fix for priority: ${priority} (only critical/high auto-fixed)`);
+              return;
+            }
+
             // Ensure label exists
             try {
               await github.rest.issues.getLabel({
