@@ -2083,6 +2083,10 @@ class PredictionMarketSentinel(Sentinel):
         """Reload topics from config + discovered topics, pruning orphaned cache entries."""
         logger.info("Reloading prediction market topics...")
         static_topics = self.sentinel_config.get('topics_to_watch', [])
+
+        # Prune stale discovered topics before merging
+        self._prune_stale_discovered_topics()
+
         self.topics = self._merge_discovered_topics(static_topics)
 
         # Prune orphaned cache entries for topics no longer active
@@ -2094,9 +2098,43 @@ class PredictionMarketSentinel(Sentinel):
 
         if orphaned:
             self._save_state_cache()
-            logger.info(f"Pruned {len(orphaned)} orphaned cache entries")
+            # Also delete from StateManager (save_state merges, won't remove keys)
+            StateManager.delete_state_keys("prediction_market_state", orphaned)
+            logger.info(f"Pruned {len(orphaned)} orphaned cache entries from state")
 
         logger.info(f"Topics reloaded: {len(self.topics)}")
+
+    def _prune_stale_discovered_topics(self):
+        """Remove discovered topics older than max_topic_age_hours."""
+        max_age_hours = self.sentinel_config.get('max_topic_age_hours', 240)  # 10 days default
+        data_dir = self.config.get('data_dir', 'data')
+        discovered_file = os.path.join(data_dir, "discovered_topics.json")
+        if not os.path.exists(discovered_file):
+            return
+        try:
+            with open(discovered_file, 'r') as f:
+                topics = json.load(f)
+            now = datetime.now(timezone.utc)
+            kept = []
+            pruned = []
+            for topic in topics:
+                discovered_at = topic.get('_discovery', {}).get('discovered_at')
+                if discovered_at:
+                    try:
+                        dt = datetime.fromisoformat(discovered_at)
+                        age_hours = (now - dt).total_seconds() / 3600
+                        if age_hours > max_age_hours:
+                            pruned.append(topic.get('display_name', topic.get('query', '?')))
+                            continue
+                    except (ValueError, TypeError):
+                        pass
+                kept.append(topic)
+            if pruned:
+                with open(discovered_file, 'w') as f:
+                    json.dump(kept, f, indent=2)
+                logger.info(f"Pruned {len(pruned)} stale discovered topics (>{max_age_hours}h): {pruned}")
+        except Exception as e:
+            logger.warning(f"Failed to prune stale discovered topics: {e}")
 
     def _load_state_cache(self):
         try:
@@ -2106,6 +2144,11 @@ class PredictionMarketSentinel(Sentinel):
                 for key, value in cached.items():
                     if isinstance(value, dict): validated[key] = value
                 self.state_cache = validated
+                # Restore persisted failure counts
+                for key, value in self.state_cache.items():
+                    fc = value.get('failure_count', 0)
+                    if fc > 0:
+                        self._topic_failure_counts[key] = fc
                 logger.info(f"Loaded state for {len(self.state_cache)} prediction market topics")
         except Exception as e:
             logger.warning(f"Failed to load prediction market state: {e}")
@@ -2398,11 +2441,24 @@ class PredictionMarketSentinel(Sentinel):
                 if not market_data:
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
                     fail_count = self._topic_failure_counts[query]
-                    _sentinel_diag.warning(f"  PredictionMarket: no data for '{display_name}' (failures={fail_count})")
-                    MAX_CONSECUTIVE_FAILURES = 50
-                    if fail_count >= MAX_CONSECUTIVE_FAILURES:
+                    max_failures = self.sentinel_config.get('max_consecutive_failures', 50)
+                    _sentinel_diag.warning(f"  PredictionMarket: no data for '{display_name}' (failures={fail_count}/{max_failures})")
+                    if fail_count >= max_failures:
                         topic['enabled'] = False
-                        continue
+                        logger.warning(
+                            f"PredictionMarket: topic '{display_name}' disabled after "
+                            f"{fail_count} consecutive failures (no active market found)"
+                        )
+                        try:
+                            send_pushover_notification(
+                                self.config.get('notifications', {}),
+                                f"Prediction Market Topic Disabled",
+                                f"'{display_name}' disabled after {fail_count} failures. "
+                                f"No active Polymarket market found.",
+                                priority=-1
+                            )
+                        except Exception:
+                            pass
                     continue
                 self._topic_failure_counts[query] = 0
                 current_slug = market_data['slug']
@@ -2462,6 +2518,10 @@ class PredictionMarketSentinel(Sentinel):
             except Exception as topic_error:
                 logger.warning(f"Error processing prediction market topic '{query}': {topic_error}")
                 continue
+        # Persist failure counts alongside state cache
+        for query_key, fail_count in self._topic_failure_counts.items():
+            if query_key in self.state_cache:
+                self.state_cache[query_key]['failure_count'] = fail_count
         self._save_state_cache()
         if triggers:
             triggers.sort(key=lambda t: t.severity, reverse=True)
