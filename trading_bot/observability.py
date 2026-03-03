@@ -31,7 +31,7 @@ __all__ = [
 ]
 
 BULLISH_WORDS = {'increase', 'rise', 'surge', 'shortage', 'deficit', 'drought', 'frost', 'bullish', 'strong', 'growth', 'up', 'rose', 'gained', 'rally', 'congestion', 'bottleneck', 'backwardation', 'tightness', 'disruption', 'delay', 'restricted', 'drawdown', 'depletion', 'thinning', 'rationing', 'hawkish', 'hoarding', 'scarcity'}
-BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied', 'liquidation', 'selloff', 'selling', 'overproduction', 'ample', 'easing', 'normalizing', 'weakening', 'buildup', 'accumulation', 'stockpile', 'plentiful', 'resolved', 'resolution', 'deleverage'}
+BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied', 'liquidation', 'selloff', 'selling', 'overproduction', 'ample', 'easing', 'normalizing', 'weakening', 'buildup', 'accumulation', 'stockpile', 'plentiful', 'resolved', 'resolution', 'deleverage', 'building', 'inflows', 'arrivals', 'replenishment', 'restocking'}
 NEGATION_WORDS = {'not', 'no', 'never', 'neither', 'nor', 'rejected', 'failed',
                   'despite', 'unlikely', 'against', 'overcame', 'ignored', 'dismissed',
                   'without', 'lack', 'absence', 'declining', 'decreased'}

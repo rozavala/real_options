@@ -435,6 +435,39 @@ class TradingCouncil:
             except (ValueError, ZeroDivisionError):
                 pass  # If parsing fails, keep original check
 
+        # Whitelist derived arithmetic for inventory/supply_chain agents.
+        # These agents sum/diff ICE certified stock figures (e.g., regional totals)
+        # producing numbers that are valid derivations but not in the raw source.
+        if agent_name in ('inventory', 'supply_chain'):
+            try:
+                src_nums = [float(n) for n in source_numbers]
+                if src_nums:
+                    derived = set()
+                    for n in fabricated:
+                        n_val = float(n)
+                        if n_val == 0:
+                            continue
+                        # Check proximity: within 5% of any source number (rounding diffs)
+                        if any(abs(s - n_val) / n_val < 0.05 for s in src_nums):
+                            derived.add(n)
+                            continue
+                        # Check if n is a plausible sum or difference of 2 source numbers
+                        found = False
+                        for i, a in enumerate(src_nums):
+                            for b in src_nums[i:]:
+                                if abs(a + b - n_val) / n_val < 0.01:
+                                    found = True
+                                    break
+                                if abs(abs(a - b) - n_val) / n_val < 0.01:
+                                    found = True
+                                    break
+                            if found:
+                                derived.add(n)
+                                break
+                    fabricated -= derived
+            except (ValueError, ZeroDivisionError):
+                pass
+
         # Agents with web search capability get a higher threshold
         # (their LLM retrieved numbers via AFC that aren't in our local data)
         if agent_name in ('sentiment', 'geopolitical'):
