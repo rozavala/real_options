@@ -1333,3 +1333,56 @@
 2026-03-03 15:53:24,683 - Orchestrator - INFO - Emergency Cycle concluded with no action: BEARISH (DIRECTIONAL)
 2026-03-03 15:53:24,691 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
 2026-03-03 15:57:30,166 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_open=True, trading_day=True
+2026-03-03 16:02:33,465 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_open=True, trading_day=True
+2026-03-03 16:04:34,844 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 29% of average
+2026-03-03 16:04:34,851 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 16:04:35,101 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-03 16:07:35,349 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_open=True, trading_day=True
+2026-03-03 16:12:36,726 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_open=True, trading_day=True
+2026-03-03 16:17:38,326 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_open=True, trading_day=True
+2026-03-03 16:22:39,700 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_open=True, trading_day=True
+2026-03-03 16:24:40,763 - Orchestrator - INFO - PriceSentinel detected 1.7% move - triggering position audit
+2026-03-03 16:24:40,784 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (1.7% move)) ---
+2026-03-03 16:24:40,787 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 468 [REMOTE/PAPER]...
+2026-03-03 16:24:40,820 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-03-03 16:24:40,821 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Price moved 1.67% in last hour (Threshold: 1.5%) (Cycle: CC-3d0b4bb8)
+2026-03-03 16:24:41,304 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-03 16:24:41,460 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-03 16:24:41,461 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-03 16:24:41,461 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-03-03 16:24:41,484 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-03 16:24:41,512 - trading_bot.enhanced_brier - INFO - Loaded 1120 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-03-03 16:24:41,597 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-03 16:24:41,742 - trading_bot.enhanced_brier - INFO - Auto-orphaned 144 Enhanced Brier predictions older than 168h
+2026-03-03 16:24:41,742 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-03-03 16:24:41,743 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-03-03 16:24:41,743 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-03-03 16:24:41,743 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-03 16:24:41,743 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-03 16:24:41,743 - root - INFO - Fetching 2 active futures contracts for CC on NYBOT...
+2026-03-03 16:24:41,750 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 16:24:41,816 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-03-03 16:24:41,816 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-03 16:24:41,816 - Orchestrator - INFO - Targeting contract: CCK6 (202605)
+2026-03-03 16:24:42,106 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 468
+2026-03-03 16:24:42,115 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-03 16:24:42,138 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-03 16:24:42,201 - Orchestrator - INFO - State stores reconciled: 0 thesis groups (0 legs) across all stores
+2026-03-03 16:24:42,207 - Orchestrator - INFO - No open positions to audit.
+2026-03-03 16:24:42,215 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-03-03 16:24:46,074 - trading_bot.market_data_provider - INFO - Building market context for CCK6 (202605)...
+2026-03-03 16:24:46,548 - trading_bot.market_data_provider - INFO - Market context for CCK6 (202605): price=2984.00, sma_200=6343.24, regime=HIGH_VOLATILITY, vol_5d=0.0335
+2026-03-03 16:24:46,549 - Orchestrator - INFO - Emergency market context: price=2984.0, regime=HIGH_VOLATILITY
+2026-03-03 16:24:46,550 - trading_bot.semantic_cache - INFO - CACHE HIT (CCK6 (202605)|PriceSentinel|HIGH_VOLATILITY): similarity=0.9999, age=31min
+2026-03-03 16:24:46,550 - Orchestrator - INFO - SEMANTIC CACHE HIT: Reusing decision for CCK6 (202605)/PriceSentinel
+2026-03-03 16:24:46,551 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-03-03 16:24:46,552 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-03 16:24:46,553 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-03 16:24:46,553 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-03 16:24:46,557 - root - INFO - Logged council decision for CCK6 (202605)
+2026-03-03 16:24:46,563 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-03-03 16:24:46,709 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-03-03 16:24:46,717 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-03 16:25:40,792 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 47% of average (Sev: 5)
+2026-03-03 16:25:40,799 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 16:27:40,830 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_open=True, trading_day=True

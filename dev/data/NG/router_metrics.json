@@ -5,11 +5,11 @@
       "failure": 28
     },
     "permabear:anthropic": {
-      "success": 367,
+      "success": 370,
       "failure": 21
     },
     "permabull:xai": {
-      "success": 247,
+      "success": 248,
       "failure": 6
     },
     "master:openai": {
@@ -81,7 +81,7 @@
       "failure": 5
     },
     "agronomist:anthropic": {
-      "success": 30,
+      "success": 32,
       "failure": 12
     },
     "inventory:anthropic": {
@@ -105,7 +105,7 @@
       "failure": 5
     },
     "technical:xai": {
-      "success": 31,
+      "success": 33,
       "failure": 10
     },
     "technical:gemini": {
@@ -130,7 +130,7 @@
     },
     "master:anthropic": {
       "success": 34,
-      "failure": 7
+      "failure": 8
     },
     "master:gemini": {
       "success": 1,
@@ -171,12 +171,16 @@
     "macro:xai": {
       "success": 20,
       "failure": 0
+    },
+    "master:xai": {
+      "success": 1,
+      "failure": 0
     }
   },
   "fallbacks": {
     "agronomist": {
       "gemini->openai": 40,
-      "gemini->anthropic": 72,
+      "gemini->anthropic": 76,
       "gemini->gemini": 2
     },
     "volatility": {
@@ -213,7 +217,7 @@
       "gemini->openai": 1
     },
     "technical": {
-      "openai->xai": 72,
+      "openai->xai": 76,
       "openai->gemini": 36
     },
     "permabull": {
@@ -221,8 +225,9 @@
       "xai->anthropic": 8
     },
     "master": {
-      "openai->anthropic": 75,
-      "openai->gemini": 9
+      "openai->anthropic": 76,
+      "openai->gemini": 9,
+      "openai->xai": 2
     },
     "compliance": {
       "anthropic->openai": 23,
@@ -637,18 +642,6 @@
     ],
     "permabear:anthropic": [
       {
-        "ms": 9646.259069442749,
-        "timestamp": "2026-02-12T19:14:20.809626+00:00"
-      },
-      {
-        "ms": 34563.71259689331,
-        "timestamp": "2026-02-17T09:46:25.258840+00:00"
-      },
-      {
-        "ms": 43556.63275718689,
-        "timestamp": "2026-02-17T09:53:16.076113+00:00"
-      },
-      {
         "ms": 35757.93743133545,
         "timestamp": "2026-02-17T09:59:33.322917+00:00"
       },
@@ -1035,13 +1028,21 @@
       {
         "ms": 33290.480852127075,
         "timestamp": "2026-03-03T15:16:57.026857+00:00"
+      },
+      {
+        "ms": 68319.43273544312,
+        "timestamp": "2026-03-03T15:49:25.012098+00:00"
+      },
+      {
+        "ms": 142041.53060913086,
+        "timestamp": "2026-03-03T15:53:24.437783+00:00"
+      },
+      {
+        "ms": 55137.38393783569,
+        "timestamp": "2026-03-03T16:00:26.230837+00:00"
       }
     ],
     "permabull:xai": [
-      {
-        "ms": 17950.578927993774,
-        "timestamp": "2026-02-09T17:46:23.282394+00:00"
-      },
       {
         "ms": 25314.838409423828,
         "timestamp": "2026-02-09T18:03:13.950969+00:00"
@@ -1437,6 +1438,10 @@
       {
         "ms": 30122.25842475891,
         "timestamp": "2026-03-03T15:17:27.151059+00:00"
+      },
+      {
+        "ms": 31842.578887939453,
+        "timestamp": "2026-03-03T15:49:56.858818+00:00"
       }
     ],
     "master:openai": [
@@ -5757,6 +5762,14 @@
       {
         "ms": 26934.659957885742,
         "timestamp": "2026-03-03T15:16:06.496126+00:00"
+      },
+      {
+        "ms": 45654.89935874939,
+        "timestamp": "2026-03-03T15:58:52.339759+00:00"
+      },
+      {
+        "ms": 38015.342473983765,
+        "timestamp": "2026-03-03T15:59:30.938248+00:00"
       }
     ],
     "inventory:anthropic": [
@@ -6461,6 +6474,14 @@
       {
         "ms": 16105.802536010742,
         "timestamp": "2026-03-03T15:16:23.620694+00:00"
+      },
+      {
+        "ms": 14519.028902053833,
+        "timestamp": "2026-03-03T15:48:03.918571+00:00"
+      },
+      {
+        "ms": 12010.9281539917,
+        "timestamp": "2026-03-03T15:48:16.553461+00:00"
       }
     ],
     "technical:gemini": [
@@ -6841,6 +6862,10 @@
       {
         "ms": 44195.98698616028,
         "timestamp": "2026-03-03T15:18:11.348897+00:00"
+      },
+      {
+        "ms": 38365.121603012085,
+        "timestamp": "2026-03-03T15:50:35.227335+00:00"
       }
     ],
     "master:gemini": [
@@ -7854,6 +7879,12 @@
         "ms": 12728.610754013062,
         "timestamp": "2026-03-03T15:13:26.039992+00:00"
       }
+    ],
+    "master:xai": [
+      {
+        "ms": 27160.34770011902,
+        "timestamp": "2026-03-03T15:51:02.389968+00:00"
+      }
     ]
   },
   "error_types": {
@@ -7903,6 +7934,9 @@
     },
     "geopolitical:gemini": {
       "service_unavailable": 1
+    },
+    "master:anthropic": {
+      "api_error": 1
     }
   },
   "last_reset": "2026-01-19T10:33:15.674720+00:00"

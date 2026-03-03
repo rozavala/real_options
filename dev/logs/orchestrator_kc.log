@@ -3616,3 +3616,83 @@
 2026-03-03 15:59:31,076 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=3.0 \u00d7 reliability=1.0 = 3.07", "macro": "domain=1.0 \u00d7 reliability=0.6 = 0.63", "geopolitical": "domain=0.5 \u00d7 reliability=0.8 = 0.42", "supply_chain": "domain=1.5 \u00d7 reliability=0.7 = 1.04", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 1.28", "sentiment": "domain=1.0 \u00d7 reliability=1.2 = 1.18", "technical": "domain=2.2 \u00d7 reliability=1.1 = 2.49", "volatility": "domain=1.4 \u00d7 reliability=0.9 = 1.24"}
 2026-03-03 15:59:31,077 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.043, dominant=agronomist)
 2026-03-03 15:59:31,078 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 3.0,\n    "reliability_mult": 1.02,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 3.07,\n    "contribution": -1.688\n  },\n  {\n    "agent": "macro",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.63,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 0.63,\n    "contribution": -0.41\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.85,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 0.42,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.69,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 1.04,\n    "contribution": 0.833\n  },\n  {\n    "agent": "inventory",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.85,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 1.28,\n    "contribution": 0.0\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.18,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 1.18,\n    "contribution": 0.768\n  },\n  {\n    "agent": "technical",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 2.25,\n    "reliability_mult": 1.11,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 2.49,\n    "contribution": 0.0\n  },\n  {\n    "agent": "volatility",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.4,\n    "reliability_mult": 0.88,\n    "staleness_weight": 1.0,\n    "age_hours": 0.8,\n    "final_weight": 1.24,\n    "contribution": 0.991\n  }\n]
+2026-03-03 16:00:59,088 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.473778 seconds
+2026-03-03 16:01:03,943 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.941928 seconds
+2026-03-03 16:01:08,934 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYgRgjR2LhoTQNPLhjfoN'}
+2026-03-03 16:01:13,303 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.456750 seconds
+2026-03-03 16:01:16,922 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.866352 seconds
+2026-03-03 16:01:21,353 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYgRhgbPKQRr7usXRyG52'}
+2026-03-03 16:01:27,357 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.447586 seconds
+2026-03-03 16:01:30,773 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.981232 seconds
+2026-03-03 16:01:40,633 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_open=True, trading_day=True
+2026-03-03 16:02:08,624 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-03-03 16:02:08,624 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: openai quota exhausted (circuit breaker)
+2026-03-03 16:02:08,625 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: SPECULATIVE (conf=0.45) | Catalyst: Conflicting signals between structural bearish macro fundame
+2026-03-03 16:02:08,626 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.45)
+2026-03-03 16:02:08,630 - Orchestrator - INFO - EMERGENCY STRATEGY: IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-03-03 16:02:08,632 - trading_bot.strategy_router - INFO - STRATEGY SELECTED (emergency): IRON_CONDOR | regime=RANGE_BOUND, vol=BEARISH
+2026-03-03 16:02:08,633 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-03 16:02:08,636 - root - INFO - Logged council decision for KCK6 (202605)
+2026-03-03 16:02:08,655 - trading_bot.decision_signals - INFO - Decision signal logged: KCK6 (202605) → NEUTRAL (VOLATILITY/IRON_CONDOR)
+2026-03-03 16:02:08,657 - Orchestrator - INFO - Emergency Cycle ACTION: VOLATILITY (VOLATILITY)
+2026-03-03 16:02:08,658 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-03 16:02:08,658 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-03 16:02:12,663 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.396208 seconds
+2026-03-03 16:02:16,585 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.791600 seconds
+2026-03-03 16:02:20,835 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYgRn5NhpE2EGWrNEQgW9'}
+2026-03-03 16:02:26,099 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.491860 seconds
+2026-03-03 16:02:29,392 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.869020 seconds
+2026-03-03 16:02:33,063 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 2.0s: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CYgRo2SsaQhmUt73k62Hw'}
+2026-03-03 16:02:48,490 - Orchestrator - INFO - Decision is actionable. Generating order...
+2026-03-03 16:02:48,494 - trading_bot.position_sizer - WARNING - Portfolio Heat 135.3% > 25.0%. Reducing size.
+2026-03-03 16:02:48,494 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.72) * Vol(1.0) * Heat(0.5) * Conviction(1.0) = 1 (raw: 0.362)
+2026-03-03 16:02:48,495 - root - INFO - Fetching option chain for future KCK6...
+2026-03-03 16:02:48,500 - root - INFO - --- Defining LOW Volatility Strategy for KCK6 ---
+2026-03-03 16:02:48,501 - root - WARNING - No strikes near 281.3 meet min OI threshold (10). Using closest strike 282.5 anyway.
+2026-03-03 16:02:48,501 - root - INFO - Using index-based Iron Condor (no Greeks available or delta logic failed)
+2026-03-03 16:02:48,502 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-03-03 16:02:48,939 - root - INFO - Fetching market data for option: KOK6 P2.725
+2026-03-03 16:02:50,941 - root - INFO - Using IBKR Model Greeks IV: 35.95%
+2026-03-03 16:02:50,946 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 16:02:50,956 - root - INFO - Theoretical price calculated for P @ 272.5: {'price': np.float64(8.4208), 'delta': np.float64(-0.3565), 'gamma': np.float64(0.0114), 'vega': np.float64(33.8399), 'theta': np.float64(-0.172)}
+2026-03-03 16:02:50,956 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 P2.725 @ 8.42
+2026-03-03 16:02:50,957 - root - INFO - Fetching market data for option: KOK6 P2.775
+2026-03-03 16:02:52,957 - root - INFO - Using IBKR Model Greeks IV: 35.72%
+2026-03-03 16:02:52,961 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 16:02:52,963 - root - INFO - Theoretical price calculated for P @ 277.5: {'price': np.float64(10.4884), 'delta': np.float64(-0.4161), 'gamma': np.float64(0.012), 'vega': np.float64(35.4069), 'theta': np.float64(-0.1804)}
+2026-03-03 16:02:52,963 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 P2.775 @ 10.49
+2026-03-03 16:02:52,963 - root - INFO - Fetching market data for option: KOK6 C2.875
+2026-03-03 16:02:54,965 - root - INFO - Using IBKR Model Greeks IV: 35.41%
+2026-03-03 16:02:54,969 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 16:02:54,971 - root - INFO - Theoretical price calculated for C @ 287.5: {'price': np.float64(10.5811), 'delta': np.float64(0.4613), 'gamma': np.float64(0.0124), 'vega': np.float64(36.039), 'theta': np.float64(-0.181)}
+2026-03-03 16:02:54,971 - root - INFO -   -> Leg Theoretical Price (SELL): KOK6 C2.875 @ 10.58
+2026-03-03 16:02:54,971 - root - INFO - Fetching market data for option: KOK6 C2.925
+2026-03-03 16:02:56,973 - root - INFO - Using IBKR Model Greeks IV: 35.33%
+2026-03-03 16:02:56,978 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-03 16:02:56,980 - root - INFO - Theoretical price calculated for C @ 292.5: {'price': np.float64(8.6258), 'delta': np.float64(0.4017), 'gamma': np.float64(0.0121), 'vega': np.float64(35.1051), 'theta': np.float64(-0.1747)}
+2026-03-03 16:02:56,980 - root - INFO -   -> Leg Theoretical Price (BUY): KOK6 C2.925 @ 8.63
+2026-03-03 16:02:56,981 - root - INFO - SELL Floor Calc: Theoretical=-4.50, MarketAggressive=-4.40 (aggression=0.75), Mid=-3.96, Bid=-4.59, Final Floor=-4.50
+2026-03-03 16:02:56,981 - root - INFO - Net Theoretical: -4.02, Market Spread: 1.27
+2026-03-03 16:02:56,982 - root - INFO - Adaptive Strategy: Start @ -3.35, Cap/Floor @ -4.50
+2026-03-03 16:02:56,982 - root - WARNING - RISKLESS COMBO FILTER: SELL spread has zero/negative floor price (-4.50). IB would reject as riskless. Skipping.
+2026-03-03 16:02:57,142 - Orchestrator - INFO - Post-cycle debounce: 1800s (actionable trade)
+2026-03-03 16:05:58,836 - Orchestrator - INFO - 2026-03-03 16:05:58,836 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-03 16:05:58,837 - Orchestrator - INFO - 2026-03-03 16:05:58,836 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-88.52 | Capture: -2.2% | Risk Used: -4.3%
+2026-03-03 16:05:58,837 - Orchestrator - INFO - 2026-03-03 16:05:58,836 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$491.81 | Capture: 10.5% | Risk Used: 21.0%
+2026-03-03 16:06:42,699 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_open=True, trading_day=True
+2026-03-03 16:09:44,726 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 38% of average (Sev: 6)
+2026-03-03 16:09:44,759 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 16:11:44,997 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_open=True, trading_day=True
+2026-03-03 16:15:58,854 - Orchestrator - INFO - 2026-03-03 16:15:58,853 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-03 16:15:58,855 - Orchestrator - INFO - 2026-03-03 16:15:58,854 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-165.26 | Capture: -4.1% | Risk Used: -8.1%
+2026-03-03 16:15:58,855 - Orchestrator - INFO - 2026-03-03 16:15:58,854 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$415.08 | Capture: 8.8% | Risk Used: 17.7%
+2026-03-03 16:16:48,620 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_open=True, trading_day=True
+2026-03-03 16:16:50,953 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 38% of average (Sev: 6)
+2026-03-03 16:16:50,960 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 16:21:51,888 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_open=True, trading_day=True
+2026-03-03 16:21:54,530 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 39% of average (Sev: 6)
+2026-03-03 16:21:54,535 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-03 16:25:58,972 - Orchestrator - INFO - 2026-03-03 16:25:58,971 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-03 16:25:58,972 - Orchestrator - INFO - 2026-03-03 16:25:58,971 - root - INFO - Combo 2 Legs on KOK6 P2.85: PnL=$-212.44 | Capture: -5.2% | Risk Used: -10.4%
+2026-03-03 16:25:58,973 - Orchestrator - INFO - 2026-03-03 16:25:58,971 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$381.53 | Capture: 8.1% | Risk Used: 16.3%
+2026-03-03 16:26:55,484 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_open=True, trading_day=True
