@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
-from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, SentinelTrigger
+from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, SentinelTrigger
 from datetime import datetime, timezone
 import time
 
@@ -361,3 +361,69 @@ class TestWeatherSentinelEnergyStages:
         assert result['type'] == 'DROUGHT'
         # Stage depends on current month — just verify it's NOT INFRASTRUCTURE
         assert result['stage'] != 'INFRASTRUCTURE'
+
+
+# --- X Sentiment Sentinel Tests ---
+class TestXSentimentSinceIdFix:
+    """Test that since_id and start_time are never sent together to Twitter API."""
+
+    def _make_sentinel(self):
+        config = {
+            'sentinels': {'x_sentiment': {'search_queries': ['coffee']}},
+            'commodity': {'ticker': 'KC'},
+            'xai': {'api_key': 'test-xai-key'},
+            'x_api': {'bearer_token': 'test-bearer-token'},
+        }
+        sentinel = XSentimentSentinel(config)
+        sentinel._since_ids = {}
+        return sentinel
+
+    @pytest.mark.asyncio
+    async def test_since_id_removes_start_time(self):
+        """When since_id is present, start_time must be removed from params."""
+        sentinel = self._make_sentinel()
+        # Pre-populate a since_id for the query hash
+        import hashlib
+        sid_key = hashlib.md5(b"coffee").hexdigest()[:16]
+        sentinel._since_ids[sid_key] = "123456789"
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={"data": [], "meta": {"result_count": 0}})
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.get = MagicMock(return_value=mock_response)
+        sentinel._get_session = AsyncMock(return_value=mock_session)
+
+        await sentinel._fetch_x_posts("coffee", limit=10, sort_order="recency")
+
+        # Verify the params sent to the API
+        call_args = mock_session.get.call_args
+        params = call_args.kwargs.get('params') or call_args[1].get('params')
+        assert "since_id" in params, "since_id should be in params"
+        assert "start_time" not in params, "start_time must be removed when since_id is present"
+
+    @pytest.mark.asyncio
+    async def test_no_since_id_keeps_start_time(self):
+        """When no since_id exists, start_time should be present."""
+        sentinel = self._make_sentinel()
+        # No since_ids set — first run
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={"data": [], "meta": {"result_count": 0}})
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = AsyncMock()
+        mock_session.get = MagicMock(return_value=mock_response)
+        sentinel._get_session = AsyncMock(return_value=mock_session)
+
+        await sentinel._fetch_x_posts("coffee", limit=10, sort_order="recency")
+
+        call_args = mock_session.get.call_args
+        params = call_args.kwargs.get('params') or call_args[1].get('params')
+        assert "start_time" in params, "start_time should be present on first run"
+        assert "since_id" not in params, "since_id should not be present on first run"
