@@ -2585,6 +2585,10 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             qualified = None
                         contract = qualified[0] if qualified and qualified[0].conId != 0 else minimal
 
+                    # reqPositionsAsync may return contracts without exchange (Error 321)
+                    if not contract.exchange:
+                        contract.exchange = leg.get('exchange') or config.get('exchange', 'SMART')
+
                     order_size = leg['quantity']
                     logger.info(f"Constructed SINGLE order for Pos ID {pos_id}: {leg['action']} {order_size} {leg['symbol']}")
 
@@ -2890,6 +2894,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             # Use pos.contract directly — already has correct strike format
                             # from reqPositionsAsync (avoids Error 478 strike mismatch)
                             close_contract = pos.contract
+                            if not close_contract.exchange:
+                                close_contract.exchange = config.get('exchange', 'SMART')
 
                             trade = ib.placeOrder(close_contract, order)
                             logger.warning(

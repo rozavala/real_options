@@ -332,6 +332,66 @@ class TestStaleCloseContractFormat:
         # qualifyContractsAsync should NOT have been called for the close order
         mock_ib.qualifyContractsAsync.assert_not_called()
 
+    @pytest.mark.asyncio
+    @patch('trading_bot.order_manager.place_order', new_callable=MagicMock)
+    @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
+    @patch('trading_bot.order_manager.IBConnectionPool')
+    async def test_missing_exchange_falls_back_to_config(
+        self, mock_pool, mock_log_trade, mock_place_order, ledger_path
+    ):
+        """When pos.contract has no exchange, the config exchange should be used.
+
+        reqPositionsAsync can return contracts without exchange field,
+        causing Error 321 (Missing order exchange). The fix fills in from config.
+        """
+        mock_ib = AsyncMock()
+        mock_pool.get_connection = AsyncMock(return_value=mock_ib)
+        mock_ib.isConnected = MagicMock(return_value=True)
+
+        # Contract from reqPositionsAsync WITHOUT exchange (reproduces Error 321)
+        ib_contract = Contract(
+            localSymbol='KON6 P2.7', symbol='KC', conId=999,
+            exchange='', secType='FOP', strike=2.7, right='P',
+            multiplier='37500', currency='USD'
+        )
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            Position(account='test', contract=ib_contract, position=1, avgCost=1875.0)
+        ])
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[])
+
+        mock_ticker = MagicMock()
+        mock_ticker.bid = 0.50
+        mock_ticker.ask = 0.55
+        mock_ticker.last = 0.52
+        mock_ib.reqMktData = MagicMock(return_value=mock_ticker)
+        mock_ib.cancelMktData = MagicMock()
+
+        mock_trade = MagicMock()
+        mock_trade.orderStatus.status = 'Filled'
+        mock_trade.orderStatus.avgFillPrice = 0.52
+        mock_fill = MagicMock()
+        mock_fill.commissionReport.realizedPNL = -50.0
+        mock_trade.fills = [mock_fill]
+        mock_trade.order.orderId = 1
+        mock_place_order.return_value = mock_trade
+
+        config = {'symbol': 'KC', 'exchange': 'NYBOT'}
+
+        with patch('trading_bot.order_manager.get_trade_ledger_df') as mock_ledger, \
+             patch('trading_bot.order_manager.datetime') as mock_dt:
+            mock_dt.now.return_value = datetime(2023, 10, 23, 17, 20)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            mock_ledger.return_value = pd.read_csv(ledger_path, parse_dates=['timestamp'])
+
+            await close_stale_positions(config)
+
+        assert mock_place_order.call_count == 1
+        placed_contract = mock_place_order.call_args[0][1]
+        assert placed_contract.exchange == 'NYBOT', (
+            f"Expected exchange='NYBOT' from config fallback, got '{placed_contract.exchange}'. "
+            "Error 321 would occur with empty exchange."
+        )
+
 
 class TestHoldingTimeGate:
     """Tests for the Friday-specific holding-time threshold in generate_and_execute_orders."""
