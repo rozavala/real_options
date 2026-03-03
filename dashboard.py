@@ -30,7 +30,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 import calendar
-from datetime import datetime, timezone
 from dashboard_utils import (
     discover_active_commodities,
     get_system_heartbeat_for_commodity,
@@ -329,7 +328,10 @@ if not equity_df.empty:
     monthly = monthly.reset_index()
     monthly['year'] = monthly['month'].dt.year
     monthly['month_num'] = monthly['month'].dt.month
-    monthly['month_name'] = monthly['month_num'].apply(lambda x: calendar.month_abbr[x])
+
+    # Vectorized mapping for month names
+    month_map = {i: calendar.month_abbr[i] for i in range(1, 13)}
+    monthly['month_name'] = monthly['month_num'].map(month_map)
 
     if len(monthly) > 1:
         pivot = monthly.pivot(index='year', columns='month_name', values='return')
@@ -476,7 +478,10 @@ try:
 
         display_cols = []
         if "timestamp" in graded_merged.columns:
-            graded_merged["Time"] = graded_merged["timestamp"].apply(_relative_time)
+            # Vectorized alternative to apply() for performance: map unique timestamps
+            unique_ts = graded_merged["timestamp"].dropna().unique()
+            ts_map = {ts: _relative_time(ts) for ts in unique_ts}
+            graded_merged["Time"] = graded_merged["timestamp"].map(ts_map)
             display_cols.append("Time")
 
         if "commodity" in graded_merged.columns:
@@ -504,9 +509,9 @@ try:
 
         # Format outcome with visual indicators
         if "Outcome" in graded_merged.columns:
-            graded_merged["Outcome"] = graded_merged["Outcome"].apply(
-                lambda x: "✅ WIN" if x == "WIN" else "❌ LOSS" if x == "LOSS" else "—"
-            )
+            # Vectorized outcome formatting
+            outcome_map = {"WIN": "✅ WIN", "LOSS": "❌ LOSS"}
+            graded_merged["Outcome"] = graded_merged["Outcome"].map(outcome_map).fillna("—")
 
         # Ensure P&L is numeric for professional formatting
         if "P&L" in graded_merged.columns:

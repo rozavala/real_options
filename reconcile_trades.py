@@ -7,13 +7,10 @@ trades to a `missing_trades.csv` file.
 """
 
 import asyncio
-import csv
 import io
 import logging
 import os
-import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
 
 import httpx  # Added for HTTP requests
 import pandas as pd

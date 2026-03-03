@@ -15,7 +15,6 @@ import sys
 import json
 import math
 import plotly.graph_objects as go
-from datetime import datetime, timezone, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import _resolve_data_path_for

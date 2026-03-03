@@ -8,14 +8,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 import sys
 import os
 import html
-from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import load_council_history, get_status_color, load_trade_journal, find_journal_entry, load_prompt_traces, _relative_time
+from dashboard_utils import load_council_history, load_trade_journal, find_journal_entry, load_prompt_traces, _relative_time
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
 

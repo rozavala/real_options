@@ -79,7 +79,7 @@ if st.button(
                 with st.expander("View Output"):
                     st.code(result.stdout)
             else:
-                st.error(f"❌ Log collection failed")
+                st.error("❌ Log collection failed")
                 with st.expander("View Error"):
                     st.code(result.stderr or result.stdout)
 
@@ -146,7 +146,7 @@ with error_cols[0]:
 
 with error_cols[1]:
     st.markdown("&nbsp;")  # Spacer
-    if st.button(f"🚨 Show Errors", width='stretch', help=f"Filter logs for errors in the last {hours_option} hours."):
+    if st.button("🚨 Show Errors", width='stretch', help=f"Filter logs for errors in the last {hours_option} hours."):
         with st.spinner(f"Finding errors from last {hours_option} hours..."):
             try:
                 result = subprocess.run(
@@ -169,7 +169,7 @@ st.markdown("##### 📈 Performance & Health")
 perf_cols = st.columns(2)
 
 with perf_cols[0]:
-    if st.button(f"📈 Trading Performance", width='stretch', help="Show trading performance metrics from recent logs."):
+    if st.button("📈 Trading Performance", width='stretch', help="Show trading performance metrics from recent logs."):
         with st.spinner("Loading performance data..."):
             try:
                 result = subprocess.run(
@@ -184,7 +184,7 @@ with perf_cols[0]:
                 st.error(f"Error: {e}")
 
 with perf_cols[1]:
-    if st.button(f"🏥 System Health", width='stretch', help="Check system health: memory, disk, processes, and service status."):
+    if st.button("🏥 System Health", width='stretch', help="Check system health: memory, disk, processes, and service status."):
         with st.spinner("Checking system health..."):
             try:
                 result = subprocess.run(
@@ -284,7 +284,7 @@ with manual_cols[0]:
                             else:
                                 st.success(f"✅ Order generation completed! {queued_count} orders queued.")
 
-                        except Exception as diag_e:
+                        except Exception:
                             st.success("✅ Order generation and execution completed!")
                             # Diagnostic failure should not prevent success message
 

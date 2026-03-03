@@ -6,7 +6,6 @@ import sys
 from datetime import datetime, timedelta, time, timezone
 import pandas as pd
 from ib_insync import IB
-import httpx
 
 # Use absolute imports if running as a script within the package
 if __name__ == "__main__":
@@ -17,10 +16,10 @@ if __name__ == "__main__":
     # We can't easily import from reconcile_trades if it's a script in the same dir
     # unless we treat the dir as a package or add it to path.
     # We already added '.' to path.
-    from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
+    from reconcile_trades import fetch_flex_query_report
 else:
     from config_loader import load_config
-    from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
+    from reconcile_trades import fetch_flex_query_report
     from trading_bot.utils import configure_market_data_type
 
 # Setup logging

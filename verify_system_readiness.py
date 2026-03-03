@@ -26,10 +26,9 @@ import sys
 import json
 import time
 import argparse
-import socket
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from enum import Enum
 
 # Setup logging
@@ -191,7 +190,7 @@ async def check_environment() -> CheckResult:
     elif missing_optional:
         return CheckResult("Environment Variables", CheckStatus.WARN, f"All required present, {len(missing_optional)} optional missing", f"Optional: {', '.join([k.split(' ')[0] for k in missing_optional])}")
     else:
-        return CheckResult("Environment Variables", CheckStatus.PASS, f"All keys present")
+        return CheckResult("Environment Variables", CheckStatus.PASS, "All keys present")
 
 # ============================================================================
 # CHECK 2: CONFIGURATION FILE
@@ -653,7 +652,7 @@ async def check_prediction_market_sentinel(config: dict) -> CheckResult:
 async def check_microstructure_sentinel(config: dict) -> CheckResult:
     try:
         micro_config = config.get('sentinels', {}).get('microstructure', {})
-        return CheckResult("Microstructure Sentinel", CheckStatus.PASS, f"Config loaded")
+        return CheckResult("Microstructure Sentinel", CheckStatus.PASS, "Config loaded")
     except Exception as e:
         return CheckResult("Microstructure Sentinel", CheckStatus.FAIL, str(e))
 
@@ -712,7 +711,7 @@ async def check_trading_council(config: dict) -> CheckResult:
     try:
         from trading_bot.agents import TradingCouncil
         council = TradingCouncil(config)
-        return CheckResult("Trading Council", CheckStatus.PASS, f"Initialized")
+        return CheckResult("Trading Council", CheckStatus.PASS, "Initialized")
     except Exception as e:
         return CheckResult("Trading Council", CheckStatus.FAIL, str(e))
 
@@ -722,7 +721,7 @@ async def check_tms() -> CheckResult:
         from trading_bot.tms import TransactiveMemory
         tms = TransactiveMemory()
         if tms.collection:
-            return CheckResult("TMS (ChromaDB)", CheckStatus.PASS, f"Collection OK")
+            return CheckResult("TMS (ChromaDB)", CheckStatus.PASS, "Collection OK")
         return CheckResult("TMS (ChromaDB)", CheckStatus.FAIL, "Collection failed")
     except Exception as e:
         return CheckResult("TMS (ChromaDB)", CheckStatus.FAIL, str(e))
@@ -772,7 +771,6 @@ async def check_llm_health(config: dict) -> CheckResult:
 @timed_check
 async def check_strategy_definitions() -> CheckResult:
     try:
-        from trading_bot.strategy import define_directional_strategy
         return CheckResult("Strategy Definitions", CheckStatus.PASS, "Import OK")
     except Exception as e:
         return CheckResult("Strategy Definitions", CheckStatus.FAIL, str(e))
@@ -840,7 +838,7 @@ async def check_council_history() -> CheckResult:
 async def check_chronometer() -> CheckResult:
     try:
         import pytz
-        from trading_bot.utils import is_market_open, is_trading_day
+        from trading_bot.utils import is_market_open
         utc_now = datetime.now(timezone.utc)
         ny_now = utc_now.astimezone(pytz.timezone('America/New_York'))
         market_open = is_market_open()

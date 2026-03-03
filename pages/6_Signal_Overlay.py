@@ -232,7 +232,7 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
         ticker = profile.contract.symbol  # e.g., 'KC'
 
         # Generate candidate contracts for the next ~2 years
-        from datetime import datetime, timedelta
+        from datetime import datetime
         today = datetime.now()
 
         # Month code to calendar month mapping
@@ -255,7 +255,6 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
                 # (exact date varies by exchange, but 20th is a safe approximation
                 # for determining DTE eligibility — the real filter happens in IB)
                 try:
-                    from calendar import monthrange
                     # Use 3rd Friday as rough expiry estimate for ICE coffee
                     approx_expiry = datetime(year, month_num, 19)
                 except ValueError:
@@ -554,7 +553,7 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m",
 
         return df
 
-    except Exception as e:
+    except Exception:
         # Silent fail - we'll fall back to front month
         return None
 
@@ -663,7 +662,10 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
     # === NEW: CONTRACT FILTERING (With Regex Cleaning) ===
     # Clean the 'contract' column in the DataFrame for reliable filtering
     if 'contract' in df.columns:
-        df['contract_clean'] = df['contract'].apply(clean_contract_symbol)
+        # Vectorized string cleaning instead of apply
+        unique_contracts = df['contract'].dropna().unique()
+        clean_map = {c: clean_contract_symbol(c) for c in unique_contracts}
+        df['contract_clean'] = df['contract'].map(clean_map)
     else:
         df['contract_clean'] = None
 
@@ -723,9 +725,13 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
 
     # Override colors if show_all is True to distinguish contracts
     if show_all:
-        df['marker_color'] = df['signal_contract'].apply(lambda c: get_contract_color(c, '#888888'))
+        # Vectorized alternative to apply() for performance: map unique agents
+        unique_contracts_sc = df['signal_contract'].dropna().unique()
+        color_map = {c: get_contract_color(c, '#888888') for c in unique_contracts_sc}
+        df['marker_color'] = df['signal_contract'].map(color_map).fillna('#888888')
 
-    df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
+    # Vectorized marker size
+    df['marker_size'] = (14 * (0.7 + (df['plot_confidence'] * 0.6))).astype(int)
 
     return df
 
@@ -746,7 +752,8 @@ def vectorized_hover(df):
 
     if 'plot_confidence' in df.columns:
         # ⚡ Bolt: Vectorized percentage formatting is 10x faster than row-wise apply
-        conf_str = (df['plot_confidence'].fillna(0.5) * 100).apply(lambda x: f"{x:.0f}%")
+        conf_vals = (df['plot_confidence'].fillna(0.5) * 100).round(0).astype(int)
+        conf_str = conf_vals.astype(str) + "%"
         base = base + "<br>Confidence: " + conf_str
     else:
         base = base + "<br>Confidence: 50%"
@@ -764,8 +771,10 @@ def vectorized_hover(df):
         # Convert numeric mask to prevent nan checks failing
         pnl_num = pd.to_numeric(df['pnl_realized'], errors='coerce')
         pnl_mask = pd.notna(pnl_num) & (pnl_num != 0)
-        pnl_str = pnl_num.apply(lambda x: f"{x:+.4f}" if pd.notna(x) else "")
-        base = np.where(pnl_mask, base + "<br>P&L: " + pnl_str, base)
+
+        # Fast vectorized string formatting using string formatting trick
+        pnl_str_mapped = pnl_num.map(lambda x: f"{x:+.4f}" if pd.notna(x) else "")
+        base = np.where(pnl_mask, base + "<br>P&L: " + pnl_str_mapped, base)
 
     rat_col = df.get('master_reasoning', df.get('rationale'))
     if rat_col is not None:
