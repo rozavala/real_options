@@ -264,6 +264,8 @@
         "auto_apply": true,
         "notify_on_change": true
       },
+      "max_topic_age_hours": 240,
+      "max_consecutive_failures": 50,
       "interest_areas": [
         {
           "name": "US Monetary Policy",
@@ -319,12 +321,16 @@
             },
             {
               "type": "query",
+              "q": "trade deal"
+            },
+            {
+              "type": "query",
               "q": "SCOTUS tariff"
             }
           ],
           "relevance_keywords": "[REDACTED]",
           "exclude_keywords": "[REDACTED]",
-          "min_relevance_score": 2,
+          "min_relevance_score": 1,
           "max_topics": 2,
           "default_threshold_pct": 8.0,
           "importance": "macro",
@@ -346,19 +352,30 @@
             {
               "type": "query",
               "q": "US economy"
+            },
+            {
+              "type": "query",
+              "q": "GDP growth"
+            },
+            {
+              "type": "query",
+              "q": "inflation 2026"
             }
           ],
           "relevance_keywords": "[REDACTED]",
           "exclude_keywords": "[REDACTED]",
-          "min_relevance_score": 2,
+          "min_relevance_score": 1,
           "max_topics": 2,
           "default_threshold_pct": 5.0,
           "importance": "macro",
-          "commodity_impact_template": "Economic contraction reduces coffee demand; recession fears drive USD safe-haven flows"
+          "commodity_impact_template": "Economic contraction reduces commodity demand; recession fears drive USD safe-haven flows"
         },
         {
           "name": "Brazil Economy",
           "enabled": true,
+          "commodities": [
+            "KC"
+          ],
           "discovery_methods": [
             {
               "type": "query",
@@ -388,6 +405,9 @@
         {
           "name": "LatAm Geopolitics",
           "enabled": true,
+          "commodities": [
+            "KC"
+          ],
           "llm_validation_required": true,
           "discovery_methods": [
             {
@@ -415,6 +435,42 @@
           "default_threshold_pct": 5.0,
           "importance": "supply_chain",
           "commodity_impact_template": "LatAm geopolitical instability threatens commodity supply chains from origin countries"
+        },
+        {
+          "name": "Energy Geopolitics",
+          "enabled": true,
+          "commodities": [
+            "NG"
+          ],
+          "discovery_methods": [
+            {
+              "type": "query",
+              "q": "Russia Ukraine ceasefire"
+            },
+            {
+              "type": "query",
+              "q": "Iran sanctions"
+            },
+            {
+              "type": "query",
+              "q": "Strait of Hormuz"
+            },
+            {
+              "type": "query",
+              "q": "natural gas pipeline"
+            },
+            {
+              "type": "query",
+              "q": "OPEC production"
+            }
+          ],
+          "relevance_keywords": "[REDACTED]",
+          "exclude_keywords": "[REDACTED]",
+          "min_relevance_score": 1,
+          "max_topics": 3,
+          "default_threshold_pct": 8.0,
+          "importance": "supply_chain",
+          "commodity_impact_template": "Energy geopolitics affect natural gas supply routes, sanctions on producers, and global energy pricing"
         },
         {
           "name": "Fed Leadership",
