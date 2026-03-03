@@ -2468,7 +2468,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         'action': close_action,
                         'quantity': live_qty,
                         'multiplier': pos.contract.multiplier,
-                        'currency': pos.contract.currency
+                        'currency': pos.contract.currency,
+                        'ib_contract': pos.contract,  # Pre-qualified from reqPositionsAsync
                     })
                     logger.warning(
                         f"WEEKLY CLOSE OVERRIDE: Closing orphaned position {symbol} "
@@ -2510,7 +2511,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         'action': close_action,
                         'quantity': qty_to_attribute,
                         'multiplier': pos.contract.multiplier,
-                        'currency': pos.contract.currency
+                        'currency': pos.contract.currency,
+                        'ib_contract': pos.contract,  # Pre-qualified from reqPositionsAsync
                     })
                 else:
                     kept_positions_details.append(f"{trade['position_id']} ({symbol}) - Age: {age_in_trading_days} days")
@@ -2570,26 +2572,18 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     logger.info(f"Constructed BAG order for Pos ID {pos_id}: {[l.action + ' ' + str(l.ratio) + ' x ' + str(l.conId) for l in combo_legs]}")
 
                 else:
-                    # Single Leg Order
+                    # Single Leg Order — use pre-qualified contract from reqPositionsAsync
+                    # to avoid Error 478 strike format mismatch (e.g., 270.0 vs 2.7 for KC coffee)
                     leg = final_legs_list[0]
-
-                    # CRITICAL FIX: Re-qualify by conId only to get correct strike format
-                    minimal = Contract(conId=leg['conId'])
-                    try:
-                        qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
-                    except asyncio.TimeoutError:
-                        logger.error(f"qualifyContractsAsync timed out (10s) for conId {leg['conId']}")
-                        qualified = None
-                    if qualified and qualified[0].conId != 0:
-                        contract = qualified[0]
-                    else:
-                        logger.error(f"Could not re-qualify conId {leg['conId']} for close order")
-                        # Fallback to manual construction (risky)
-                        contract = Contract()
-                        contract.conId = leg['conId']
-                        contract.symbol = config.get('symbol', 'KC')
-                        contract.secType = leg.get('secType', 'FOP')
-                        contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
+                    contract = leg.get('ib_contract')
+                    if contract is None:
+                        logger.warning(f"No pre-qualified contract for conId {leg['conId']}, falling back to re-qualify")
+                        minimal = Contract(conId=leg['conId'])
+                        try:
+                            qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
+                        except asyncio.TimeoutError:
+                            qualified = None
+                        contract = qualified[0] if qualified and qualified[0].conId != 0 else minimal
 
                     order_size = leg['quantity']
                     logger.info(f"Constructed SINGLE order for Pos ID {pos_id}: {leg['action']} {order_size} {leg['symbol']}")
@@ -2893,10 +2887,9 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             qty = abs(pos.position)
                             order = MarketOrder(close_action, qty)
 
-                            # Re-qualify to get correct strike format
-                            minimal = Contract(conId=pos.contract.conId)
-                            requalified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
-                            close_contract = requalified[0] if requalified and requalified[0].conId != 0 else pos.contract
+                            # Use pos.contract directly — already has correct strike format
+                            # from reqPositionsAsync (avoids Error 478 strike mismatch)
+                            close_contract = pos.contract
 
                             trade = ib.placeOrder(close_contract, order)
                             logger.warning(
