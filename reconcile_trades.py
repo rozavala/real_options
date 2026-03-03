@@ -568,16 +568,30 @@ def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
         return pd.DataFrame()
 
     # --- Column Name Normalization ---
-    # Standardize column names from different reports
+    # Standardize column names from different Flex Query report formats.
+    # IBKR uses different column names depending on the query type
+    # (Trade Confirmations vs Trades vs Executions).
     column_mappings = {
         'Price': 'TradePrice',
+        'TradeMoney': 'TradePrice',
         'Date/Time': 'DateTime',
+        'TradeDate': 'DateTime',
         'TradeID': 'TransactionID',
         'IBOrderID': 'SharedOrderID',
         'OrderID': 'SharedOrderID',
         'OrderReference': 'OrderReference'
     }
     df.rename(columns=column_mappings, inplace=True)
+
+    # Validate required columns exist before processing
+    required_cols = {'TradePrice', 'Quantity', 'DateTime', 'Symbol'}
+    missing = required_cols - set(df.columns)
+    if missing:
+        logger.warning(
+            f"Flex Query report missing required columns: {missing}. "
+            f"Available columns: {list(df.columns)}"
+        )
+        return pd.DataFrame()
         
     # --- Commodity profile info for multiplier/cents detection ---
     from trading_bot.utils import get_active_ticker, CENTS_INDICATORS
@@ -615,7 +629,7 @@ def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
         df['timestamp_utc'] = df['parsed_datetime'].dt.tz_localize('America/New_York').dt.tz_convert('UTC')
 
     except KeyError as e:
-        logger.error(f"Missing expected column in Flex Query report: {e}", exc_info=True)
+        logger.error(f"Missing column in Flex Query report: {e}. Columns: {list(df.columns)}", exc_info=True)
         return pd.DataFrame()
     except Exception as e:
         logger.error(f"Error during data type conversion: {e}", exc_info=True)
@@ -765,7 +779,7 @@ async def main(lookback_days: int = None, config: dict = None):
     # --- 5. Filter trades to the last 33 days for comparison ---
     # v3.1: Configurable lookback with environment override
     if lookback_days is None:
-        lookback_days = int(os.getenv('RECONCILIATION_LOOKBACK_DAYS', '90'))
+        lookback_days = int(os.getenv('RECONCILIATION_LOOKBACK_DAYS', '30'))
 
     cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=lookback_days)
 
