@@ -90,12 +90,12 @@ graph TD
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
 *   **PriceSentinel:** Monitors for rapid price shocks or liquidity gaps.
-*   **WeatherSentinel:** Tracks precipitation/temp in key growing regions (via Open-Meteo).
+*   **WeatherSentinel:** Tracks precipitation/temp in key growing regions (via Open-Meteo) using energy-aware stages for non-agricultural commodities.
 *   **LogisticsSentinel:** Monitors supply chain disruptions via RSS & Gemini Flash.
 *   **NewsSentinel:** Scans global news for fundamental shifts.
 *   **XSentimentSentinel:** Analyzes real-time social sentiment on X (via xAI) with automated multi-level circuit breakers for API cost control.
 *   **PredictionMarketSentinel:** Monitors Polymarket odds for geopolitical/macro events via Gamma API.
-*   **TopicDiscoveryAgent (`trading_bot/topic_discovery.py`):** Dynamically scans Polymarket for new, relevant topics using Claude Haiku and auto-configures the PredictionMarketSentinel.
+*   **TopicDiscoveryAgent (`trading_bot/topic_discovery.py`):** Dynamically scans Polymarket for new, relevant topics using Claude Haiku (with bulk fetch, commodity filtering, and state pruning) and auto-configures the PredictionMarketSentinel.
 *   **MacroContagionSentinel:** Detects cross-asset contagion (DXY shocks, Fed policy shifts, gold/silver correlation).
 *   **FundamentalRegimeSentinel:** Determines long-term surplus/deficit regimes.
 *   **MicrostructureSentinel:** Monitors order book depth and flow toxicity.
@@ -132,7 +132,7 @@ Specialized LLM personas that analyze grounded data.
 7.  **Compliance & Risk:**
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration.
-8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py`. Emergency closures execute as concurrent market orders.
+8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
 9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
