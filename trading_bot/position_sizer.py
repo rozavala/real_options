@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from ib_insync import IB
 import asyncio
 import logging
@@ -71,12 +73,17 @@ class DynamicPositionSizer:
         except asyncio.TimeoutError:
             logger.error("reqPositionsAsync timed out (15s) in position sizer. Using base quantity.")
             return max(1, self.base_qty)
-        current_exposure = sum(
-            abs(p.position * p.avgCost)
-            for p in positions
-            if p.contract.symbol == _active_symbol  # Exact match, not substring
-            and getattr(p.contract, 'secType', '') in ('OPT', 'FOP')  # Options only
-        )
+        # Net exposure by contract expiry — spread legs on the same
+        # expiry cancel naturally, preventing double-counting.
+        # e.g. BUY 285P ($8100) + SELL 280P (-$7000) = $1100 net debit,
+        # not $15100 from summing absolutes per leg.
+        by_expiry = defaultdict(float)
+        for p in positions:
+            if (p.contract.symbol == _active_symbol
+                    and getattr(p.contract, 'secType', '') in ('OPT', 'FOP')):
+                expiry = getattr(p.contract, 'lastTradeDateOrExpiry', 'unknown')
+                by_expiry[expiry] += p.position * p.avgCost
+        current_exposure = sum(abs(v) for v in by_expiry.values())
 
         heat_ratio = current_exposure / account_value if account_value > 0 else 0
 
