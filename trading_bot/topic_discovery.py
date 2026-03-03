@@ -434,7 +434,7 @@ class TopicDiscoveryAgent:
         return {
             'event_id': str(event.get('id', '')),  # AMENDMENT B: Stable identifier
             'slug': event.get('slug', ''),
-            'title': event.get('title', ''),
+            'title': event.get('title', '').strip(),
             'price': price,
             'liquidity': liquidity,
             'volume': volume,
@@ -652,9 +652,9 @@ Answer ONLY with a JSON object: {{"relevant": true/false, "score": 0-5, "reasoni
         from the interest area so the sentinel can filter at resolution time.
         """
         return {
-            "query": cand['title'], # Using title as query for Sentinel is safe as it will resolve it
+            "query": cand['title'].strip(), # Using title as query for Sentinel is safe as it will resolve it
             "tag": cand['tag'],
-            "display_name": cand['title'][:50], # Truncate for display
+            "display_name": cand['title'].strip()[:50], # Truncate for display
             "trigger_threshold_pct": cand['default_threshold_pct'],
             "importance": cand['importance'],
             "commodity_impact": cand['commodity_impact_template'],
