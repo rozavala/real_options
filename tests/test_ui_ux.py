@@ -105,6 +105,35 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_utc, "Could not find 'UTC Time' metric call")
         self.assertTrue(found_ny, "Could not find 'New York Time (Market)' metric call")
 
+    def test_cockpit_metric_tooltips(self):
+        """Verify that key metrics in pages/1_Cockpit.py have help tooltips."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '1_Cockpit.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = [
+            "Unrealized P&L", "Margin Util", "VaR(95%)", "VaR(99%)",
+            "Utilization", "Positions", "Since Reset"
+        ]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'metric':
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == 'help' for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' in Cockpit is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in pages/1_Cockpit.py")
+
 
 class TestDashboardUX(unittest.TestCase):
     def test_dashboard_metric_tooltips(self):
