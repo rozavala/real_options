@@ -6,9 +6,8 @@ import os
 import logging
 import asyncio
 import random
-import math
 import functools
-from ib_insync import IB, PortfolioItem
+from ib_insync import IB
 
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification

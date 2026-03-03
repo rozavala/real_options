@@ -24,9 +24,7 @@ from dashboard_utils import (
     calculate_confidence_calibration,
     fetch_live_dashboard_data,
     get_config,
-    _resolve_data_path,
-    _resolve_data_path_for,
-    STRATEGY_ABBREVIATIONS
+    _resolve_data_path_for
 )
 import numpy as np
 
@@ -886,7 +884,10 @@ if not graded_df.empty:
         cols_to_show.insert(2, 'strategy_type')
 
     display_df = graded_df[cols_to_show].copy()
-    display_df['master_confidence'] = display_df['master_confidence'].apply(lambda x: f"{x:.1%}")
+    # Vectorized alternative to apply() for performance: map unique confidence values
+    unique_conf = display_df['master_confidence'].dropna().unique()
+    conf_map = {v: f"{v:.1%}" for v in unique_conf}
+    display_df['master_confidence'] = display_df['master_confidence'].map(conf_map)
 
     # Color code outcomes
     def style_outcome(val):

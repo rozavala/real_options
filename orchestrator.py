@@ -20,7 +20,7 @@ import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
 import pandas as pd
-from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, Order, Future
+from ib_insync import IB, util, Contract, MarketOrder, Future
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
@@ -37,7 +37,7 @@ from trading_bot.order_manager import (
     place_queued_orders,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match, hours_until_weekly_close
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, word_boundary_match, hours_until_weekly_close
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger, _sentinel_diag
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -54,7 +54,7 @@ from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.weighted_voting import RegimeDetector
 from trading_bot.tms import TransactiveMemory
-from trading_bot.budget_guard import BudgetGuard, get_budget_guard
+from trading_bot.budget_guard import get_budget_guard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
@@ -1185,7 +1185,6 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     """
     from equity_logger import sync_equity_from_flex
     from pathlib import Path
-    import shutil
 
     # Non-primary engines don't own equity data (account-wide metric).
     # Skip staleness check to avoid spurious warnings.
@@ -5423,7 +5422,7 @@ async def main(commodity_ticker: str = None):
         gw_label = "REMOTE/PAPER" if is_paper else "REMOTE"
         logger.warning("=" * 60)
         logger.warning(f"  IB GATEWAY: {gw_label} ({ib_host})")
-        logger.warning(f"  Client IDs: DEV range (10-79)")
+        logger.warning("  Client IDs: DEV range (10-79)")
         logger.warning(f"  Trading Mode: {config.get('trading_mode', 'LIVE')}")
         logger.warning("=" * 60)
         if not is_trading_off() and not is_paper:

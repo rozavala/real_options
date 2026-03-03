@@ -2,7 +2,7 @@ import asyncio
 import logging
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
-from trading_bot.order_manager import generate_and_queue_orders, generate_and_execute_orders
+from trading_bot.order_manager import generate_and_queue_orders
 
 # Initialize logging so you can see the output in your console/file
 setup_logging(log_file="logs/manual_test.log")
