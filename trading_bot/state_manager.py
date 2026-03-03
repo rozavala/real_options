@@ -240,6 +240,21 @@ class StateManager:
         cls._with_state_lock(_do_save)
 
     @classmethod
+    def delete_state_keys(cls, namespace: str, keys: list):
+        """Delete specific keys from a namespace. Uses global lock."""
+        if not keys:
+            return
+
+        def _do_delete():
+            state = cls._load_raw_sync()
+            ns = state.get(namespace, {})
+            for key in keys:
+                ns.pop(key, None)
+            cls._save_raw_sync(state)
+
+        cls._with_state_lock(_do_delete)
+
+    @classmethod
     async def save_state_async(cls, updates: Dict[str, Any], namespace: str = "reports"):
         """Async save wrapper."""
         async with cls._async_lock:

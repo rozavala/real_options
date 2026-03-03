@@ -38,6 +38,9 @@ class TopicDiscoveryAgent:
         self.discovery_config = self.sentinel_config.get('discovery_agent', {})
         self.interest_areas = self.sentinel_config.get('interest_areas', [])
 
+        # Active commodity ticker for filtering commodity-specific interest areas
+        self._commodity_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+
         self.enabled = self.discovery_config.get('enabled', False)
         self.api_url = self.sentinel_config.get('providers', {}).get('polymarket', {}).get('api_url', "https://gamma-api.polymarket.com/events")
 
@@ -61,6 +64,9 @@ class TopicDiscoveryAgent:
 
         # Budget Guard (Dependency Injection)
         self._budget_guard = budget_guard
+
+        # Per-scan bulk event cache (reset in run_scan)
+        self._bulk_events_cache = None
 
         # Anthropic Client
         api_key = config.get('anthropic', {}).get('api_key')
@@ -89,15 +95,30 @@ class TopicDiscoveryAgent:
         logger.info("Starting Topic Discovery Scan...")
         self._llm_calls_this_scan = 0
         self._llm_consecutive_failures = 0  # Reset circuit breaker each scan
+        self._bulk_events_cache = None  # Reset per-scan cache
         discovered_raw = []
 
         # 1. Discover Candidates
+        area_results = []
         for area in self.interest_areas:
             if not area.get('enabled', True):
+                logger.info(f"  Area '{area.get('name', '?')}': DISABLED, skipping")
+                continue
+
+            # Commodity filter: skip areas not relevant to the active commodity
+            applicable = area.get('commodities')
+            if applicable and self._commodity_ticker not in applicable:
+                logger.info(f"  Area '{area.get('name', '?')}': not applicable to {self._commodity_ticker}, skipping")
                 continue
 
             area_candidates = await self._scan_area(area)
             discovered_raw.extend(area_candidates)
+            area_results.append((area.get('name', '?'), len(area_candidates)))
+            if area_candidates:
+                titles = [c.get('title', '?')[:60] for c in area_candidates]
+                logger.info(f"  Area '{area.get('name', '?')}': {len(area_candidates)} candidates — {titles}")
+            else:
+                logger.info(f"  Area '{area.get('name', '?')}': 0 candidates (no markets matched filters)")
 
         # 2. Global Deduplication (by slug)
         # Keep the one with highest relevance score, or merge?
@@ -157,6 +178,14 @@ class TopicDiscoveryAgent:
             if self.discovery_config.get('notify_on_change', True):
                 self._notify_changes(changes)
 
+        # 8. Summary log
+        area_summary = ", ".join(f"{name}={count}" for name, count in area_results)
+        logger.info(
+            f"Topic Discovery complete: {len(sentinel_topics)} topics from "
+            f"{len(discovered_raw)} raw candidates. "
+            f"Areas: [{area_summary}]. LLM calls: {self._llm_calls_this_scan}"
+        )
+
         return {
             'status': 'success',
             'changes': changes,
@@ -170,20 +199,28 @@ class TopicDiscoveryAgent:
         """Scan a specific interest area using defined methods."""
         candidates = []
         methods = area.get('discovery_methods', [])
+        area_name = area.get('name', '?')
 
         for method in methods:
             try:
+                method_desc = f"{method['type']}:{method.get('tag_id', method.get('q', '?'))}"
                 if method['type'] == 'tag_scan':
                     events = await self._fetch_events(tag_id=method.get('tag_id'), limit=method.get('limit', 10))
                 elif method['type'] == 'query':
-                    events = await self._fetch_events(query=method.get('q'), limit=20) # Limit query results
+                    events = await self._fetch_events(query=method.get('q'), limit=20)
                 else:
                     continue
+
+                events_fetched = len(events)
+                filtered_liquidity = 0
+                filtered_excluded = 0
+                filtered_relevance = 0
 
                 for event in events:
                     # === AMENDMENT D & B: Extract Best Market + Event ID ===
                     market_data = self._extract_market_data(event)
                     if not market_data:
+                        filtered_liquidity += 1
                         continue
 
                     # Filter by Keywords (Layer 1)
@@ -191,6 +228,7 @@ class TopicDiscoveryAgent:
 
                     # Filter by Exclude Keywords (now includes global excludes)
                     if self._check_exclusions(market_data['title'], area):
+                        filtered_excluded += 1
                         continue
 
                     # LLM Assessment (Layer 2)
@@ -235,35 +273,104 @@ class TopicDiscoveryAgent:
                         )
 
                         candidates.append(market_data)
+                    else:
+                        filtered_relevance += 1
+
+                # Per-method summary
+                accepted = len(candidates)  # cumulative, but gives visibility
+                logger.debug(
+                    f"    [{area_name}] {method_desc}: "
+                    f"{events_fetched} events, "
+                    f"{filtered_liquidity} low-liquidity, "
+                    f"{filtered_excluded} excluded, "
+                    f"{filtered_relevance} low-relevance"
+                )
 
             except Exception as e:
-                logger.error(f"Error scanning area '{area['name']}' method '{method}': {e}")
+                logger.error(f"Error scanning area '{area_name}' method '{method}': {e}")
 
         return candidates
 
-    async def _fetch_events(self, tag_id: int = None, query: str = None, limit: int = 10) -> List[Dict]:
-        """Fetch events from Gamma API."""
-        params = {
-            'limit': limit,
-            'closed': 'false',
-            'active': 'true'
-        }
-        if tag_id:
-            params['tag_id'] = tag_id
-        if query:
-            params['q'] = query
+    async def _fetch_all_active_events(self) -> List[Dict]:
+        """Fetch active events via pagination, cached per scan.
 
+        The Gamma API 'q' parameter is unreliable for text search (returns
+        unrelated events regardless of query). Instead, we bulk-fetch active
+        events once per scan and filter client-side by keywords.
+
+        3 pages (600 events) captures all relevant targets based on empirical
+        testing. Pages 4-5 add zero new targets — those markets are already
+        covered by tag_scan discovery methods.
+        """
+        if self._bulk_events_cache is not None:
+            return self._bulk_events_cache
+
+        all_events = []
+        max_pages = self.discovery_config.get('bulk_fetch_pages', 3)
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(self.api_url, params=params) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    else:
-                        logger.warning(f"Gamma API error: {response.status}")
-                        return []
+                for page in range(max_pages):
+                    params = {
+                        'limit': 200,
+                        'offset': page * 200,
+                        'closed': 'false',
+                        'active': 'true'
+                    }
+                    async with session.get(self.api_url, params=params) as response:
+                        if response.status != 200:
+                            logger.warning(f"Gamma API bulk fetch page {page+1}: HTTP {response.status}")
+                            break
+                        events = await response.json()
+                        if not events:
+                            break
+                        all_events.extend(events)
+                        if len(events) < 200:
+                            break
+            logger.info(f"Bulk fetched {len(all_events)} active events from Polymarket ({max_pages} pages)")
         except Exception as e:
-            logger.error(f"Gamma API fetch failed: {e}")
-            return []
+            logger.error(f"Gamma API bulk fetch failed: {e}")
+
+        self._bulk_events_cache = all_events
+        return all_events
+
+    async def _fetch_events(self, tag_id: int = None, query: str = None, limit: int = 10) -> List[Dict]:
+        """Fetch events from Gamma API.
+
+        For tag_id: uses the API tag filter (reliable).
+        For query: filters bulk-cached events client-side (the API 'q'
+        parameter is unreliable — returns unrelated results).
+        """
+        if tag_id:
+            params = {
+                'limit': limit,
+                'closed': 'false',
+                'active': 'true',
+                'tag_id': tag_id
+            }
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(self.api_url, params=params) as response:
+                        if response.status == 200:
+                            return await response.json()
+                        else:
+                            logger.warning(f"Gamma API error: {response.status}")
+                            return []
+            except Exception as e:
+                logger.error(f"Gamma API fetch failed: {e}")
+                return []
+
+        if query:
+            # Client-side filtering from bulk cache
+            all_events = await self._fetch_all_active_events()
+            query_words = [w.lower() for w in query.split() if len(w) > 2]
+            matched = []
+            for event in all_events:
+                title = event.get('title', '').lower()
+                if any(word_boundary_match(w, title) for w in query_words):
+                    matched.append(event)
+            return matched[:limit]
+
+        return []
 
     def _extract_market_data(self, event: Dict[str, Any]) -> Optional[Dict]:
         """

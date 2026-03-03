@@ -1,8 +1,12 @@
 import pytest
 import asyncio
+import json
+import os
+import tempfile
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone, timedelta
 from trading_bot.sentinels import PredictionMarketSentinel, SentinelTrigger
+from trading_bot.state_manager import StateManager
 
 
 @pytest.fixture(autouse=True)
@@ -363,3 +367,152 @@ async def test_hwm_decay_check():
 
     # None - should not decay
     assert sentinel._should_decay_hwm(None) is False
+
+
+# === Tests for state pruning, failure persistence, and topic staleness ===
+
+
+@pytest.mark.asyncio
+async def test_state_pruning_calls_delete_state_keys(mock_config):
+    """Orphaned state entries trigger StateManager.delete_state_keys."""
+    sentinel = PredictionMarketSentinel(mock_config)
+
+    # Inject orphaned entry into state_cache
+    sentinel.state_cache["Stale Tariff Topic"] = {
+        "slug": "tariff-old", "price": 0.1,
+        "timestamp": "2025-01-01T00:00:00+00:00"
+    }
+
+    with patch.object(StateManager, 'delete_state_keys') as mock_delete, \
+         patch.object(sentinel, '_save_state_cache'):
+        sentinel.reload_topics()
+
+    # Should have called delete_state_keys with the orphaned key
+    mock_delete.assert_called_once_with(
+        "prediction_market_state", ["Stale Tariff Topic"]
+    )
+    assert "Stale Tariff Topic" not in sentinel.state_cache
+
+
+@pytest.mark.asyncio
+async def test_failure_count_persisted_across_restarts(mock_config):
+    """Failure counts survive sentinel restarts via state_cache."""
+    sentinel = PredictionMarketSentinel(mock_config)
+    query = 'Federal Reserve Interest Rate'
+
+    # Mock StateManager returning persisted state with failure_count
+    persisted_state = {
+        query: {
+            'slug': 'fed-test', 'price': 0.5,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'severity_hwm': 0, 'hwm_timestamp': None,
+            'failure_count': 10
+        }
+    }
+
+    sentinel._topic_failure_counts = {}
+    with patch.object(StateManager, 'load_state_raw', return_value=persisted_state):
+        sentinel._load_state_cache()
+
+    assert sentinel._topic_failure_counts.get(query) == 10
+
+
+@pytest.mark.asyncio
+async def test_failure_threshold_sends_notification(mock_config):
+    """When topic hits max failures, notification is sent."""
+    mock_config['sentinels']['prediction_markets']['max_consecutive_failures'] = 3
+    sentinel = PredictionMarketSentinel(mock_config)
+    query = 'Federal Reserve Interest Rate'
+
+    # Pre-set failure count just below threshold
+    sentinel._topic_failure_counts[query] = 2
+
+    # Mock API returning no results
+    with patch('aiohttp.ClientSession.get') as mock_get:
+        mock_ctx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=[])  # No events
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_ctx.__aexit__ = AsyncMock(return_value=None)
+        mock_get.return_value = mock_ctx
+
+        with patch('trading_bot.sentinels.send_pushover_notification') as mock_notify, \
+             patch('trading_bot.utils.is_trading_day', return_value=True), \
+             patch('trading_bot.utils.is_market_open', return_value=True):
+            await sentinel.check()
+
+    # Should have sent notification about topic disablement
+    assert mock_notify.called
+    call_args = mock_notify.call_args
+    assert 'disabled' in call_args[0][1].lower() or 'Disabled' in call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_stale_discovered_topics_pruned(mock_config, tmp_path):
+    """Discovered topics older than max_topic_age_hours are pruned."""
+    mock_config['sentinels']['prediction_markets']['max_topic_age_hours'] = 48
+    mock_config['data_dir'] = str(tmp_path)
+
+    # Create discovered topics file with one fresh and one stale
+    discovered = [
+        {
+            "query": "Fresh Topic",
+            "tag": "D_FRESH",
+            "display_name": "Fresh Topic",
+            "_discovery": {
+                "discovered_at": datetime.now(timezone.utc).isoformat(),
+                "slug": "fresh-topic"
+            }
+        },
+        {
+            "query": "Stale Topic",
+            "tag": "D_STALE",
+            "display_name": "Stale Topic",
+            "_discovery": {
+                "discovered_at": (datetime.now(timezone.utc) - timedelta(hours=100)).isoformat(),
+                "slug": "stale-topic"
+            }
+        }
+    ]
+    discovered_file = tmp_path / "discovered_topics.json"
+    discovered_file.write_text(json.dumps(discovered))
+
+    sentinel = PredictionMarketSentinel(mock_config)
+    sentinel._prune_stale_discovered_topics()
+
+    with open(discovered_file) as f:
+        remaining = json.load(f)
+
+    assert len(remaining) == 1
+    assert remaining[0]['query'] == "Fresh Topic"
+
+
+def test_delete_state_keys(tmp_path):
+    """StateManager.delete_state_keys removes keys from namespace."""
+    # Use set_data_dir to point StateManager at tmp_path
+    StateManager.set_data_dir(str(tmp_path))
+    try:
+        state_file = tmp_path / "state.json"
+        initial = {
+            "test_ns": {
+                "keep_me": {"data": {"val": 1}, "timestamp": 100},
+                "delete_me": {"data": {"val": 2}, "timestamp": 200},
+                "also_delete": {"data": {"val": 3}, "timestamp": 300}
+            }
+        }
+        state_file.write_text(json.dumps(initial))
+
+        StateManager.delete_state_keys("test_ns", ["delete_me", "also_delete"])
+
+        with open(state_file) as f:
+            result = json.load(f)
+
+        assert "keep_me" in result["test_ns"]
+        assert "delete_me" not in result["test_ns"]
+        assert "also_delete" not in result["test_ns"]
+    finally:
+        # Reset to default
+        StateManager.set_data_dir(os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 'data', 'KC'
+        ))
