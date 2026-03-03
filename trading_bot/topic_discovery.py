@@ -80,6 +80,17 @@ class TopicDiscoveryAgent:
             if self.discovery_config.get('novel_market_llm_assessment', False):
                 logger.warning("TopicDiscoveryAgent: Anthropic not available. LLM assessment disabled.")
 
+    def _topics_are_fresh(self, max_age_hours: int = 12) -> bool:
+        """Check if discovered_topics.json exists and was updated recently."""
+        try:
+            if not os.path.exists(self.DISCOVERED_TOPICS_FILE):
+                return False
+            mtime = os.path.getmtime(self.DISCOVERED_TOPICS_FILE)
+            age_hours = (datetime.now(timezone.utc).timestamp() - mtime) / 3600
+            return age_hours < max_age_hours
+        except OSError:
+            return False
+
     async def run_scan(self) -> Dict[str, Any]:
         """
         Main execution method.
@@ -91,6 +102,23 @@ class TopicDiscoveryAgent:
         """
         if not self.enabled:
             return {'status': 'disabled', 'changes': {}, 'metadata': {}}
+
+        # Skip full scan if topics were discovered recently (saves ~15 LLM calls)
+        if self._topics_are_fresh():
+            try:
+                with open(self.DISCOVERED_TOPICS_FILE, 'r') as f:
+                    existing = json.load(f)
+                logger.info(
+                    f"Topic Discovery skipped — {len(existing)} topics still fresh "
+                    f"(file < 12h old). Use force_scan=True to override."
+                )
+                return {
+                    'status': 'skipped_fresh',
+                    'changes': {'has_changes': False, 'summary': 'Topics still fresh'},
+                    'metadata': {'topics_discovered': len(existing), 'llm_calls': 0}
+                }
+            except (json.JSONDecodeError, OSError):
+                pass  # Fall through to full scan
 
         logger.info("Starting Topic Discovery Scan...")
         self._llm_calls_this_scan = 0

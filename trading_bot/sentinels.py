@@ -634,7 +634,13 @@ class WeatherSentinel(Sentinel):
                         "severity": "CRITICAL"
                      }
 
-            if current_month in region.flowering_months:
+            # Determine if this is an energy commodity (no agricultural calendar)
+            is_energy = not (region.flowering_months or region.harvest_months
+                            or region.bean_filling_months)
+
+            if is_energy:
+                stage = "INFRASTRUCTURE"
+            elif current_month in region.flowering_months:
                 stage = "FLOWERING"
             elif current_month in region.harvest_months:
                 stage = "HARVEST"
@@ -652,7 +658,7 @@ class WeatherSentinel(Sentinel):
                     "threshold": region.drought_threshold_mm,
                     "stage": stage,
                     "direction": self._determine_drought_direction(stage),
-                    "severity": "CRITICAL" if stage == "FLOWERING" else "HIGH"
+                    "severity": "HIGH" if is_energy else ("CRITICAL" if stage == "FLOWERING" else "HIGH")
                 }
 
             # Flood Detection (NEW)
@@ -664,7 +670,7 @@ class WeatherSentinel(Sentinel):
                     "threshold": region.flood_threshold_mm,
                     "stage": stage,
                     "direction": self._determine_flood_direction(stage),
-                    "severity": "CRITICAL" if stage == "HARVEST" else "MODERATE"
+                    "severity": "HIGH" if is_energy else ("CRITICAL" if stage == "HARVEST" else "MODERATE")
                 }
 
             # Goldilocks Detection (>150% of historical = relief from prior drought)
@@ -687,11 +693,14 @@ class WeatherSentinel(Sentinel):
 
     def _determine_drought_direction(self, stage: str) -> str:
         """
-        Determine if drought is BULLISH or BEARISH based on agronomic stage.
+        Determine if drought is BULLISH or BEARISH based on stage.
 
-        Flight Director: "Correct implementation" ✓
+        Agricultural: stage-dependent impact on crop yields.
+        Energy (INFRASTRUCTURE): drought is NEUTRAL — no direct supply impact.
         """
-        if stage == "FLOWERING":
+        if stage == "INFRASTRUCTURE":
+            return "NEUTRAL"  # Drought doesn't directly affect gas/energy production
+        elif stage == "FLOWERING":
             return "BULLISH"  # Drought during flowering = yield loss
         elif stage == "BEAN_FILLING":
             return "BULLISH"  # Drought during bean-filling = smaller beans
@@ -702,9 +711,15 @@ class WeatherSentinel(Sentinel):
 
     def _determine_flood_direction(self, stage: str) -> str:
         """
-        Determine if heavy rain is BULLISH or BEARISH based on agronomic stage.
+        Determine if heavy rain/flooding is BULLISH or BEARISH based on stage.
+
+        Agricultural: stage-dependent impact on crop quality.
+        Energy (INFRASTRUCTURE): flooding disrupts pipelines, terminals, production
+        facilities — BULLISH for commodity price.
         """
-        if stage == "HARVEST":
+        if stage == "INFRASTRUCTURE":
+            return "BULLISH"  # Flooding disrupts pipelines, LNG terminals, wellheads
+        elif stage == "HARVEST":
             return "BULLISH"  # Rain during harvest = delays, quality loss
         elif stage == "FLOWERING":
             return "BEARISH"  # Excessive rain during flowering = too much water

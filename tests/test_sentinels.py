@@ -276,3 +276,88 @@ async def test_macro_contagion_skips_missing_tickers():
         # Should complete without error (coal skipped, 3 tickers remain)
         # Result is None because KC isn't correlating with gold > 0.7
         assert result is None
+
+
+# --- Weather Sentinel Energy Stage Tests ---
+class TestWeatherSentinelEnergyStages:
+    """Test that energy commodity regions use INFRASTRUCTURE stage, not crop stages."""
+
+    def _make_sentinel(self):
+        config = {
+            'sentinels': {'weather': {'api_url': 'http://test.com'}},
+            'commodity': {'ticker': 'NG'}
+        }
+        sentinel = WeatherSentinel(config)
+        sentinel._active_alerts = {}
+        return sentinel
+
+    def test_drought_direction_infrastructure(self):
+        sentinel = self._make_sentinel()
+        assert sentinel._determine_drought_direction("INFRASTRUCTURE") == "NEUTRAL"
+
+    def test_flood_direction_infrastructure(self):
+        sentinel = self._make_sentinel()
+        assert sentinel._determine_flood_direction("INFRASTRUCTURE") == "BULLISH"
+
+    def test_drought_direction_flowering_unchanged(self):
+        sentinel = self._make_sentinel()
+        assert sentinel._determine_drought_direction("FLOWERING") == "BULLISH"
+
+    def test_flood_direction_harvest_unchanged(self):
+        sentinel = self._make_sentinel()
+        assert sentinel._determine_flood_direction("HARVEST") == "BULLISH"
+
+    @pytest.mark.asyncio
+    async def test_energy_region_gets_infrastructure_stage(self):
+        """Energy regions (no agricultural months) should use INFRASTRUCTURE stage."""
+        from config.commodity_profiles import GrowingRegion
+        sentinel = self._make_sentinel()
+
+        region = GrowingRegion(
+            name="Permian Basin", country="US",
+            latitude_range=(31.0, 32.0), longitude_range=(-103.0, -101.0),
+            production_share=0.30,
+            drought_threshold_mm=10.0, flood_threshold_mm=200.0,
+            frost_threshold_celsius=-5.0,
+            flowering_months=[], harvest_months=[], bean_filling_months=[],
+        )
+
+        # Mock weather data: drought conditions (very low precip)
+        weather_data = [
+            {'min_temp_c': 20.0, 'precipitation_mm': 1.0} for _ in range(7)
+        ]
+        with patch.object(sentinel, '_fetch_weather', new_callable=AsyncMock,
+                          return_value=weather_data):
+            result = await sentinel.async_check_region_weather(region)
+
+        assert result is not None
+        assert result['type'] == 'DROUGHT'
+        assert result['stage'] == 'INFRASTRUCTURE'
+        assert result['direction'] == 'NEUTRAL'
+
+    @pytest.mark.asyncio
+    async def test_agricultural_region_keeps_crop_stages(self):
+        """Agricultural regions should still use FLOWERING/HARVEST/etc stages."""
+        from config.commodity_profiles import GrowingRegion
+        sentinel = self._make_sentinel()
+
+        region = GrowingRegion(
+            name="Minas Gerais", country="Brazil",
+            latitude_range=(-22.0, -18.0), longitude_range=(-48.0, -44.0),
+            production_share=0.30,
+            drought_threshold_mm=30.0, flood_threshold_mm=150.0,
+            flowering_months=[9, 10, 11], harvest_months=[5, 6, 7],
+            bean_filling_months=[12, 1, 2, 3],
+        )
+
+        weather_data = [
+            {'min_temp_c': 20.0, 'precipitation_mm': 1.0} for _ in range(7)
+        ]
+        with patch.object(sentinel, '_fetch_weather', new_callable=AsyncMock,
+                          return_value=weather_data):
+            result = await sentinel.async_check_region_weather(region)
+
+        assert result is not None
+        assert result['type'] == 'DROUGHT'
+        # Stage depends on current month — just verify it's NOT INFRASTRUCTURE
+        assert result['stage'] != 'INFRASTRUCTURE'
