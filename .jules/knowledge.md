@@ -9,12 +9,12 @@ The system is organized into a tiered architecture:
 ### Tier 1: Always-On Sentinels
 Sentinels are lightweight monitors that observe external data sources and trigger the decision pipeline when significant events occur.
 - **PriceSentinel:** Monitors for rapid price movements or liquidity gaps.
-- **WeatherSentinel:** Tracks weather patterns in key commodity regions (e.g., Brazil for Coffee (KC) or Cocoa (CC)).
+- **WeatherSentinel:** Tracks weather patterns in key commodity regions (e.g., Brazil for Coffee (KC) or Cocoa (CC)) using energy-aware stages for non-agricultural commodities.
 - **LogisticsSentinel:** Monitors RSS feeds for strikes, port closures, or canal disruptions.
 - **NewsSentinel:** Scans news feeds for fundamental shifts.
 - **XSentimentSentinel:** Analyzes social media sentiment on X (via xAI) and incorporates a multi-level spend-cap circuit breaker to throttle API calls during inactive market regimes or upon hitting budget limits.
 - **PredictionMarketSentinel:** Monitors Polymarket odds for geopolitical or macro events.
-- **TopicDiscoveryAgent:** Dynamically scans Polymarket for new, relevant topics using Claude Haiku to auto-configure the PredictionMarketSentinel.
+- **TopicDiscoveryAgent:** Dynamically scans Polymarket for new, relevant topics using Claude Haiku (with bulk fetch, commodity filtering, and state pruning) to auto-configure the PredictionMarketSentinel.
 - **MacroContagionSentinel:** Detects cross-asset contagion (e.g., DXY, Gold correlation).
 - **FundamentalRegimeSentinel:** Determines long-term surplus/deficit regimes.
 - **MicrostructureSentinel:** Monitors order book depth and flow toxicity.
@@ -41,7 +41,7 @@ A set of agents that synthesize the analysts' reports.
 ### Tier 4: Execution & Risk Management
 - **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.).
 - **Dynamic Position Sizer:** Calculates optimal trade size.
-- **Order Manager:** Queues and executes orders via Interactive Brokers.
+- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders.
 
 ## Infrastructure
 
