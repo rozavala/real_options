@@ -1485,9 +1485,11 @@ class XSentimentSentinel(Sentinel):
             "user.fields": "username",
             "sort_order": sort_order
         }
-        # Only add since_id if we have one (skip on first run per query)
+        # Only add since_id if we have one (skip on first run per query).
+        # Twitter API forbids since_id + start_time together.
         if since_id:
             params["since_id"] = since_id
+            params.pop("start_time", None)
         try:
             session = await self._get_session()
             async with session.get(
