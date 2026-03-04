@@ -83,6 +83,9 @@ def _reinit_data_dirs(ticker: str):
     from trading_bot.task_tracker import set_data_dir as set_tracker_dir
     set_tracker_dir(data_dir)
 
+    from trading_bot.tms import set_data_dir as set_tms_dir
+    set_tms_dir(data_dir)
+
 
 def selected_commodity() -> str:
     """Render commodity selector in sidebar and return the active ticker.

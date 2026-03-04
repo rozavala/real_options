@@ -218,7 +218,7 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 st.write(str(triggers) if triggers else "None defined")
 
 
-def render_portfolio_risk_summary(live_data: dict):
+def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
     """Portfolio risk using margin/P&L proxies (not live Greeks)."""
     st.subheader("📊 Portfolio Risk")
 
@@ -265,12 +265,22 @@ def render_portfolio_risk_summary(live_data: dict):
         positions = [p for p in live_data.get('open_positions', []) if p.position != 0]
         leg_count = len(positions)
 
-        # Count positions (spreads), not individual legs
-        active_theses = get_active_theses()
-        pos_count = len(active_theses) if active_theses else leg_count
+        # Count positions (spreads) from TMS theses
+        if active_theses:
+            pos_count = len(active_theses)
+            pos_label = "Open Positions"
+            pos_help = (
+                f"{pos_count} spread positions (from TMS theses), "
+                f"{leg_count} individual legs visible in IB."
+            )
+        else:
+            pos_count = leg_count
+            pos_label = "Open Legs"
+            pos_help = (
+                f"{leg_count} individual option legs in IB. "
+                "TMS theses unavailable — showing raw leg count."
+            )
 
-        # Build tooltip with breakdown
-        pos_help = f"Positions (spreads), not individual legs. {leg_count} legs across {pos_count} positions."
         if positions:
             sorted_pos = sorted(
                 positions,
@@ -282,14 +292,14 @@ def render_portfolio_risk_summary(live_data: dict):
                 contract = p.contract
                 symbol = getattr(contract, 'localSymbol', getattr(contract, 'symbol', 'Unknown'))
                 qty = p.position
-                details.append(f"• {symbol}: {qty:g}")
+                details.append(f"\u2022 {symbol}: {qty:g}")
 
             if len(positions) > 10:
                 details.append(f"...and {len(positions) - 10} more")
 
             pos_help += "\n\n" + "\n".join(details)
 
-        st.metric("Open Positions", pos_count, help=pos_help)
+        st.metric(pos_label, pos_count, help=pos_help)
 
 
 def render_prediction_markets():
@@ -891,13 +901,16 @@ else:
 st.markdown("---")
 
 # === SECTION 2: Financial HUD ===
+# Load active theses once for all sections (Portfolio Risk + Active Theses)
+_active_theses = get_active_theses(ticker=ticker)
+
 if config:
     live_data = fetch_all_live_data(config)
     _all_commodities = tuple(discover_active_commodities())
     benchmarks = fetch_todays_benchmark_data(commodity_tickers=_all_commodities)
 
     # Render Portfolio Risk
-    render_portfolio_risk_summary(live_data)
+    render_portfolio_risk_summary(live_data, _active_theses)
 
     # === E.1: Portfolio VaR Display ===
     try:
@@ -951,7 +964,7 @@ if config:
             with var_cols[2]:
                 st.metric("Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
             with var_cols[3]:
-                st.metric("Positions", f"{pos_count} ({', '.join(commodities)})", help="Total number of open positions and active commodities.")
+                st.metric("Legs", f"{pos_count} ({', '.join(commodities)})", help="Individual option contract legs held in IB across all active commodities.")
 
             # Failure indicator
             if status == "FAILED":
@@ -1128,8 +1141,8 @@ st.write(f"{icon} Current Market Regime: **{label}**")
 
 st.markdown("")
 
-# Active Theses Table
-active_theses = get_active_theses()
+# Active Theses Table (reuse precomputed from Financial HUD section)
+active_theses = _active_theses
 
 if active_theses:
     # Summary metrics
