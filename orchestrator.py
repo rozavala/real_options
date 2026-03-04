@@ -1693,46 +1693,23 @@ async def _close_spread_position(
         f"({len(legs)} legs): {reason}"
     )
 
-    # --- Step 1: Re-qualify ALL contracts by conId ---
-    # CRITICAL FIX (2026-02-03): IBKR returns KC option positions with strikes
-    # in cents (307.5), but the order API expects dollars (3.075). We MUST
-    # re-qualify every contract using ONLY the conId so IB populates the
-    # correct strike format. Previous code skipped this for contracts that
-    # already had an exchange set, which was always the case for positions.
+    # --- Step 1: Use pos.contract directly (no re-qualification) ---
+    # CRITICAL FIX (2026-03-04): qualifyContractsAsync(Contract(conId=...))
+    # can return strike=285.0 for KC coffee, while the exchange expects 2.85.
+    # pos.contract from reqPositionsAsync() already has the correct conId,
+    # strike format, and exchange details. This matches the pattern used in
+    # emergency_hard_close() (L4548-4567).
     qualified_legs = []
     for leg in legs:
-        original_contract = leg.contract
-        try:
-            # Build a minimal contract with ONLY the conId.
-            # This forces IB to populate all fields from its database,
-            # including the correctly-formatted strike price.
-            minimal = Contract(conId=original_contract.conId)
-            qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=15)
-            if qualified and qualified[0].conId != 0:
-                qualified_legs.append(type(leg)(
-                    account=leg.account,
-                    contract=qualified[0],
-                    position=leg.position,
-                    avgCost=leg.avgCost
-                ))
-                logger.debug(
-                    f"Re-qualified {original_contract.localSymbol}: "
-                    f"strike {original_contract.strike} -> {qualified[0].strike}, "
-                    f"exchange={qualified[0].exchange}"
-                )
-            else:
-                logger.error(
-                    f"Contract re-qualification returned invalid result for "
-                    f"{original_contract.localSymbol} (conId={original_contract.conId}) "
-                    f"— using original (may fail with Error 478)"
-                )
-                qualified_legs.append(leg)
-        except Exception as e:
-            logger.error(
-                f"Contract re-qualification failed for "
-                f"{original_contract.localSymbol}: {e} — using original"
-            )
-            qualified_legs.append(leg)
+        contract = leg.contract
+        # reqPositionsAsync may return contracts without exchange — fill from config
+        if not contract.exchange:
+            contract.exchange = config.get('exchange', 'SMART')
+        qualified_legs.append(leg)
+        logger.debug(
+            f"Using pos.contract for {contract.localSymbol}: "
+            f"strike={contract.strike}, exchange={contract.exchange}"
+        )
 
     # --- Step 2: Close each leg individually ---
     # (BAG orders require additional combo definition logic; individual

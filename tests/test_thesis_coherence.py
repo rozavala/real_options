@@ -574,5 +574,164 @@ class TestAutoCloseSuperseded(unittest.TestCase):
         ib.reqPositionsAsync.assert_not_called()
 
 
+class TestDedupPreventsSecondAutoClose(unittest.TestCase):
+    """Verify _processed_supersedes prevents duplicate deferred invalidation."""
+
+    @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
+    @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
+    @patch('trading_bot.order_manager._auto_close_superseded', new_callable=AsyncMock)
+    @patch('trading_bot.tms.TransactiveMemory')
+    async def test_second_fill_skips_invalidation(
+        self, mock_tms_cls, mock_auto_close, mock_log, mock_record
+    ):
+        """Two leg fills with same supersedes_trade_ids → only one invalidation + auto-close."""
+        from trading_bot.order_manager import (
+            _handle_and_log_fill, _recorded_thesis_positions, _processed_supersedes
+        )
+
+        mock_tms = MagicMock()
+        mock_tms.collection = True
+        mock_tms_cls.return_value = mock_tms
+
+        ib = MagicMock()
+        ib.isConnected.return_value = True
+        ib.qualifyContractsAsync = AsyncMock(return_value=[MagicMock()])
+
+        decision_data = {
+            'prediction_type': 'DIRECTIONAL',
+            'direction': 'BULLISH',
+            'contract_month': '202607',
+            'supersedes_trade_ids': ['old-bear-dedup'],
+            'supersedes_reason': 'CONTRADICT',
+        }
+
+        config = {'symbol': 'KC', 'exchange': 'NYBOT', 'notifications': {}}
+
+        # --- First leg fill ---
+        trade1 = MagicMock()
+        trade1.order.orderId = 200
+        trade1.order.orderRef = 'dedup-uuid'
+        trade1.contract = MagicMock(spec=['comboLegs', 'localSymbol'])
+        trade1.contract.localSymbol = 'COMBO'
+
+        fill1 = MagicMock()
+        fill1.contract = MagicMock()
+        fill1.contract.conId = 1001
+        fill1.execution.avgPrice = 2.00
+
+        _recorded_thesis_positions.discard('dedup-uuid')
+        _processed_supersedes.discard('old-bear-dedup')
+
+        await _handle_and_log_fill(ib, trade1, fill1, 500, 'dedup-uuid', decision_data, config)
+
+        self.assertEqual(mock_tms.invalidate_thesis.call_count, 1)
+        self.assertEqual(mock_auto_close.call_count, 1)
+
+        # --- Second leg fill (same decision_data ref) ---
+        trade2 = MagicMock()
+        trade2.order.orderId = 201
+        trade2.order.orderRef = 'dedup-uuid'
+        trade2.contract = MagicMock(spec=['comboLegs', 'localSymbol'])
+        trade2.contract.localSymbol = 'COMBO'
+
+        fill2 = MagicMock()
+        fill2.contract = MagicMock()
+        fill2.contract.conId = 1002
+        fill2.execution.avgPrice = 1.80
+
+        await _handle_and_log_fill(ib, trade2, fill2, 501, 'dedup-uuid', decision_data, config)
+
+        # Invalidation + auto-close should NOT have been called a second time
+        self.assertEqual(mock_tms.invalidate_thesis.call_count, 1,
+                         "invalidate_thesis called more than once — dedup failed")
+        self.assertEqual(mock_auto_close.call_count, 1,
+                         "_auto_close_superseded called more than once — dedup failed")
+
+
+class TestCloseSpreadPositionUsesPosContract(unittest.TestCase):
+    """Verify _close_spread_position uses pos.contract directly, not re-qualification."""
+
+    async def test_no_requalification(self):
+        """qualifyContractsAsync should never be called during spread close."""
+        import sys
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        # Lazy import to get the function from orchestrator
+        from orchestrator import _close_spread_position
+
+        ib = MagicMock()
+        ib.qualifyContractsAsync = AsyncMock(
+            side_effect=AssertionError("qualifyContractsAsync should NOT be called"))
+        ib.isConnected.return_value = True
+
+        # Build fake position legs with correct contracts
+        leg1 = MagicMock()
+        leg1.contract = MagicMock()
+        leg1.contract.localSymbol = 'KCN6 C310'
+        leg1.contract.strike = 3.10
+        leg1.contract.exchange = 'NYBOT'
+        leg1.contract.conId = 12345
+        leg1.position = 1
+        leg1.account = 'DU12345'
+        leg1.avgCost = 100.0
+
+        leg2 = MagicMock()
+        leg2.contract = MagicMock()
+        leg2.contract.localSymbol = 'KCN6 C320'
+        leg2.contract.strike = 3.20
+        leg2.contract.exchange = 'NYBOT'
+        leg2.contract.conId = 12346
+        leg2.position = -1
+        leg2.account = 'DU12345'
+        leg2.avgCost = 50.0
+
+        legs = [leg1, leg2]
+        config = {'exchange': 'NYBOT', 'notifications': {}}
+
+        # Mock place_order to return a filled trade
+        with patch('orchestrator.place_order') as mock_place:
+            mock_trade = MagicMock()
+            mock_trade.orderStatus.status = 'Filled'
+            mock_trade.orderStatus.remaining = 0
+            mock_place.return_value = mock_trade
+
+            result = await _close_spread_position(
+                ib, legs, 'test-pos-123', 'unit test close', config)
+
+        # qualifyContractsAsync was NOT called (would raise AssertionError if it was)
+        ib.qualifyContractsAsync.assert_not_called()
+
+    async def test_fills_missing_exchange_from_config(self):
+        """If pos.contract has no exchange, fill from config."""
+        from orchestrator import _close_spread_position
+
+        ib = MagicMock()
+        ib.isConnected.return_value = True
+
+        leg = MagicMock()
+        leg.contract = MagicMock()
+        leg.contract.localSymbol = 'KCN6 P270'
+        leg.contract.strike = 2.70
+        leg.contract.exchange = ''  # Missing exchange
+        leg.contract.conId = 54321
+        leg.position = -1
+        leg.account = 'DU12345'
+        leg.avgCost = 80.0
+
+        config = {'exchange': 'NYBOT', 'notifications': {}}
+
+        with patch('orchestrator.place_order') as mock_place:
+            mock_trade = MagicMock()
+            mock_trade.orderStatus.status = 'Filled'
+            mock_trade.orderStatus.remaining = 0
+            mock_place.return_value = mock_trade
+
+            await _close_spread_position(
+                ib, [leg], 'test-pos-456', 'unit test close', config)
+
+        # Exchange should have been filled from config
+        self.assertEqual(leg.contract.exchange, 'NYBOT')
+
+
 if __name__ == '__main__':
     unittest.main()

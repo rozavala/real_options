@@ -594,6 +594,11 @@ async def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str,
 # Module-level set for TMS thesis deduplication
 _recorded_thesis_positions = set()
 
+# Module-level set to prevent duplicate deferred invalidation + auto-close
+# when multiple leg fills trigger _handle_and_log_fill with the same
+# supersedes_trade_ids (same dict ref from decision_data).
+_processed_supersedes = set()
+
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("OrderManager")
@@ -1456,6 +1461,15 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
                         "Deferred invalidation skipped; audit cycle will catch it.")
                 else:
                     for old_tid in superseded_ids:
+                        # Dedup: each leg fill triggers this block independently.
+                        # Only process each superseded trade ID once.
+                        if old_tid in _processed_supersedes:
+                            logger.debug(
+                                f"TMS: Deferred invalidation of {old_tid} already "
+                                f"processed, skipping duplicate.")
+                            continue
+                        _processed_supersedes.add(old_tid)
+
                         # 1. Invalidate thesis in TMS
                         tms_inv.invalidate_thesis(
                             old_tid,
@@ -1641,6 +1655,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     # Clear thesis tracking at START of run (not in finally) to avoid racing
     # with fire-and-forget _handle_and_log_fill tasks still inflight
     _recorded_thesis_positions.clear()
+    _processed_supersedes.clear()
 
     # === D3 FIX: Explicit sequential processing ===
     # Use pop_all to atomically get and clear, preventing any race
