@@ -2035,16 +2035,27 @@ def build_thesis_display_name(thesis: dict) -> str:
 
 # === THESIS STATUS FUNCTIONS ===
 
-def get_active_theses() -> list[dict]:
+def get_active_theses(ticker: str = None) -> list[dict]:
     """
     Retrieves all active trade theses from TMS.
     Returns a list of thesis dictionaries with computed fields.
+
+    Args:
+        ticker: Optional commodity ticker to resolve TMS path explicitly.
+                Falls back to COMMODITY_TICKER env var or module default.
     """
     try:
         from trading_bot.tms import TransactiveMemory
-        tms = TransactiveMemory()
+
+        # Use explicit path when ticker is provided to avoid stale module globals
+        if ticker:
+            persist_path = os.path.join("data", ticker, "tms")
+            tms = TransactiveMemory(persist_path=persist_path)
+        else:
+            tms = TransactiveMemory()
 
         if not tms.collection:
+            logger.warning("TMS collection not available — cannot load active theses")
             return []
 
         # Query all active theses

@@ -113,7 +113,7 @@ class TestCockpitUX(unittest.TestCase):
 
         target_metrics = [
             "Unrealized P&L", "Margin Util", "VaR(95%)", "VaR(99%)",
-            "Utilization", "Positions", "Since Reset"
+            "Utilization", "Legs", "Since Reset"
         ]
         found_metrics = {m: False for m in target_metrics}
 
