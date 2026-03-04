@@ -584,11 +584,11 @@ else:
 
 clock_cols = st.columns(3)
 with clock_cols[0]:
-    st.metric("UTC Time", utc_now.strftime("%H:%M:%S"), help=utc_now.strftime("%A, %Y-%m-%d"))
+    st.metric("🕒 UTC Time", utc_now.strftime("%H:%M:%S"), help=utc_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[1]:
-    st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"), help=ny_now.strftime("%A, %Y-%m-%d"))
+    st.metric("🗽 New York Time", ny_now.strftime("%H:%M:%S"), help=ny_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[2]:
-    st.metric("Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
+    st.metric("🚦 Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
               help=f"Trading Hours (ET): {_hours_label} (Mon-Fri)")
 
 st.markdown("---")
@@ -652,11 +652,19 @@ with hb_cols[3]:
     ib_color = "🟢" if ib_status == "ONLINE" else "🔴"
 
     ib_help = "Connection status to Interactive Brokers Gateway"
+    last_conn = ib_health.get('last_successful_connection')
     if ib_status != "ONLINE":
-        last_conn = ib_health.get('last_successful_connection') or 'Never'
-        ib_help += f"\n\nLast successful: {last_conn}"
+        ib_help += f"\n\nLast successful: {last_conn or 'Never'}"
 
-    st.metric("IB Gateway", f"{ib_color} {ib_status}", help=ib_help)
+    ib_delta = f"Last: {_relative_time(last_conn)}" if last_conn else "No connection"
+
+    st.metric(
+        "IB Gateway",
+        f"{ib_color} {ib_status}",
+        delta=ib_delta,
+        delta_color="off",
+        help=ib_help
+    )
 
     if ib_health.get("reconnect_backoff", 0) > 0:
         st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
@@ -835,21 +843,21 @@ if task_data['available']:
         # Summary metrics
         ts_cols = st.columns(5)
         with ts_cols[0]:
-            st.metric("Total Tasks", total, help="Total number of tasks scheduled for today.")
+            st.metric("📋 Total Tasks", total, help="Total number of tasks scheduled for today.")
         with ts_cols[1]:
-            st.metric("Completed", f"✅ {completed}", help="Tasks successfully executed today.")
+            st.metric("✅ Completed", completed, help="Tasks successfully executed today.")
         with ts_cols[2]:
-            if overdue > 0:
-                st.metric("Overdue", f"⚠️ {overdue}", help="Tasks that missed their scheduled time window.")
-            else:
-                st.metric("Overdue", "0", help="Tasks that missed their scheduled time window.")
+            st.metric(
+                "⚠️ Overdue",
+                overdue,
+                delta=overdue if overdue > 0 else None,
+                delta_color="inverse",
+                help="Tasks that missed their scheduled time window."
+            )
         with ts_cols[3]:
-            if skipped > 0:
-                st.metric("Skipped", f"⏭️ {skipped}", help="Tasks skipped (e.g., due to market conditions or system state).")
-            else:
-                st.metric("Skipped", "0", help="Tasks skipped (e.g., due to market conditions or system state).")
+            st.metric("⏭️ Skipped", skipped, help="Tasks skipped (e.g., due to market conditions or system state).")
         with ts_cols[4]:
-            st.metric("Upcoming", f"⏳ {upcoming}", help="Tasks yet to be executed today.")
+            st.metric("⏳ Upcoming", upcoming, help="Tasks yet to be executed today.")
 
         # Task timeline table
         STATUS_ICONS = {
@@ -883,7 +891,17 @@ if task_data['available']:
 
         import pandas as pd
         df = pd.DataFrame(table_rows)
-        st.dataframe(df, hide_index=True, width="stretch")
+        st.dataframe(
+            df,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Status": st.column_config.TextColumn("Status", width="medium", help="Current operational status of the task."),
+                "Scheduled (ET)": st.column_config.TextColumn("Scheduled (ET)", width="small", help="Planned execution time in New York (Eastern) time."),
+                "Task": st.column_config.TextColumn("Task Description", width="large", help="The semantic name or purpose of the scheduled task."),
+                "Completed At": st.column_config.TextColumn("Completed At", width="medium", help="The actual time the task finished execution."),
+            }
+        )
 
         # Environment badge
         env = task_data['schedule_env']

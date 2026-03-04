@@ -45,3 +45,11 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-02-27 - Semantic Engine Health Metrics
 **Learning:** Refactoring technical status lists into `st.metric` cards provides a higher-density, more professional look. Using the `delta` parameter for relative pulse time ("Pulse: 2m ago") and the `help` parameter for secondary metadata (cycle counts, absolute timestamps) creates a clear information hierarchy.
 **Action:** When displaying system or agent health, prioritize semantic metrics with relative temporal context in the delta field to improve immediate situational awareness.
+
+## 2026-03-04 - Visual Context for Time and Status
+**Learning:** In dashboards with multiple time zones (UTC vs local) and system heartbeats, adding semantic emojis (🕒, 🗽, 🚦) to labels and relative deltas ("Last: 2m ago") to status metrics drastically reduces the cognitive effort to verify system synchronicity and health.
+**Action:** Prepend semantic emojis to Market Clock labels and use the `delta` parameter in `st.metric` for all system health heartbeats (IB Gateway, State Manager, etc.) to provide immediate situational awareness.
+
+## 2026-03-04 - Semantic Highlighting for Task Failures
+**Learning:** Using `delta_color="inverse"` for failure-prone counts (like Overdue Tasks) ensures that non-zero values are highlighted in red (Streamlit default for inverse delta), making operational issues stand out even when the primary metric is numeric.
+**Action:** Apply the inverse delta pattern to metrics where "up" is "bad" to ensure consistent visual signaling of system friction.

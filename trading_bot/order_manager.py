@@ -1370,9 +1370,30 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
             else:
                 logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
 
-        # This now calls the async version of the function, passing the unique position ID
-        await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
-        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
+        # Log fill to ledger with retry — a single failure here silently drops the record
+        _ledger_logged = False
+        for _attempt in range(3):
+            try:
+                await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
+                _ledger_logged = True
+                break
+            except Exception as _ledger_err:
+                if _attempt < 2:
+                    logger.warning(f"Ledger write attempt {_attempt + 1}/3 failed: {_ledger_err}, retrying in 2s...")
+                    await asyncio.sleep(2)
+                else:
+                    logger.error(f"LEDGER WRITE FAILED after 3 attempts for order {trade.order.orderId}: {_ledger_err}")
+                    try:
+                        send_pushover_notification(
+                            (config or {}).get('notifications', {}),
+                            "LEDGER WRITE FAILED",
+                            f"Fill for {detailed_contract.localSymbol} qty={corrected_fill.execution.shares if corrected_fill else 'N/A'} "
+                            f"NOT recorded after 3 attempts. Manual reconciliation required."
+                        )
+                    except Exception:
+                        pass
+        if _ledger_logged:
+            logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
 
         # --- NEW: Record Trade Thesis to TMS (DEDUPLICATED) ---
         if decision_data and position_uuid:

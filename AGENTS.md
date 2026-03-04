@@ -20,6 +20,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **Council (`trading_bot/agents.py`):** Specialized agents that debate and decide on trades.
 -   **Compliance (`trading_bot/compliance.py`):** Enforces risk limits and "dead checks".
 -   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide VaR (95%/99%) and runs the **AI Risk Agent** for narrative analysis and stress testing.
+-   **Drawdown Circuit Breaker (`trading_bot/drawdown_circuit_breaker.py`):** Monitors intraday P&L drops from the previous day's close and enforces configurable halt/panic thresholds.
 -   **TMS (`trading_bot/tms.py`):** Transactive Memory System for institutional memory.
 
 ## Infrastructure Agents

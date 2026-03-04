@@ -120,25 +120,20 @@ class TestCockpitUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label == "UTC Time":
+                if label and "UTC Time" in label:
                     found_utc = True
                     # Check for help keyword argument
                     has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help, "UTC Time metric is missing 'help' tooltip with date"
-                    )
+                    self.assertTrue(has_help, f"{label} metric is missing 'help' tooltip with date")
 
-                if label == "New York Time (Market)":
+                if label and "New York Time" in label:
                     found_ny = True
                     # Check for help keyword argument
                     has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        "New York Time metric is missing 'help' tooltip with date",
-                    )
+                    self.assertTrue(has_help, f"{label} metric is missing 'help' tooltip with date")
 
         self.assertTrue(found_utc, "Could not find 'UTC Time' metric call")
-        self.assertTrue(found_ny, "Could not find 'New York Time (Market)' metric call")
+        self.assertTrue(found_ny, "Could not find 'New York Time' metric call")
 
     def test_cockpit_metric_tooltips(self):
         """Verify that key metrics in pages/1_Cockpit.py have help tooltips."""
@@ -156,6 +151,11 @@ class TestCockpitUX(unittest.TestCase):
             "Utilization",
             "Legs",
             "Since Reset",
+            "📋 Total Tasks",
+            "✅ Completed",
+            "⚠️ Overdue",
+            "⏭️ Skipped",
+            "⏳ Upcoming",
         ]
         found_metrics = {m: False for m in target_metrics}
 
@@ -184,6 +184,24 @@ class TestCockpitUX(unittest.TestCase):
             self.assertTrue(
                 found, f"Could not find metric '{metric}' in pages/1_Cockpit.py"
             )
+
+    def test_cockpit_task_dataframe_config(self):
+        """Verify that the Task Schedule dataframe in Cockpit uses column_config."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '1_Cockpit.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'dataframe':
+                for kw in node.keywords:
+                    if kw.arg == 'column_config':
+                        # Check if it has "Task Description" which is unique to our change
+                        config_str = ast.dump(kw.value)
+                        if "Task Description" in config_str:
+                            found_config = True
+                            break
+        self.assertTrue(found_config, "Task Schedule dataframe is missing 'column_config' with 'Task Description'")
 
 
 class TestDashboardUX(unittest.TestCase):
