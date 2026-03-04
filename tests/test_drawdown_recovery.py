@@ -10,6 +10,7 @@ Covers:
 6. Daily reset clears recovery timer
 7. Backward-compatible state loading (no recovery_start key)
 8. PortfolioRiskGuard mirrors DrawdownGuard recovery behavior
+9. Starting equity from previous close (daily_equity.csv)
 """
 
 import asyncio
@@ -445,3 +446,201 @@ class TestPortfolioRiskGuardRecovery:
         assert guard._status != "PANIC", "PANIC should not persist across day boundary"
         assert guard._recovery_start is None, "Recovery timer should clear on daily reset"
         assert guard._state_date == datetime.now(timezone.utc).date().isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Previous Close (daily_equity.csv) Tests
+# ---------------------------------------------------------------------------
+
+class TestDrawdownGuardPrevClose:
+    """Tests for starting_equity initialization from daily_equity.csv."""
+
+    def _mock_ib(self, net_liq):
+        ib = MagicMock()
+        summary_item = MagicMock()
+        summary_item.tag = 'NetLiquidation'
+        summary_item.currency = 'USD'
+        summary_item.value = str(net_liq)
+        ib.accountSummaryAsync = AsyncMock(return_value=[summary_item])
+        return ib
+
+    def _write_equity_csv(self, data_dir, rows):
+        """Write daily_equity.csv with given rows [(timestamp, value), ...]."""
+        equity_file = os.path.join(data_dir, 'daily_equity.csv')
+        with open(equity_file, 'w') as f:
+            for ts, val in rows:
+                f.write(f"{ts},{val}\n")
+
+    def _make_guard(self, data_dir):
+        from trading_bot.drawdown_circuit_breaker import DrawdownGuard
+        config = {
+            'drawdown_circuit_breaker': {
+                'enabled': True,
+                'warning_pct': 1.5,
+                'halt_pct': 2.5,
+                'panic_pct': 4.0,
+            },
+            'notifications': {'enabled': False},
+            'data_dir': str(data_dir),
+        }
+        return DrawdownGuard(config)
+
+    @pytest.mark.asyncio
+    async def test_starting_equity_from_prev_close(self, tmp_path):
+        """starting_equity should come from daily_equity.csv, not live NLV."""
+        self._write_equity_csv(tmp_path, [
+            ("2026-03-02 17:00:00", "35000.00"),
+            ("2026-03-03 17:00:00", "35145.06"),
+        ])
+        guard = self._make_guard(tmp_path)
+        ib = self._mock_ib(34000)  # Live NLV is lower
+
+        with patch('trading_bot.drawdown_circuit_breaker.send_pushover_notification'):
+            await guard.update_pnl(ib)
+
+        assert guard.state['starting_equity'] == 35145.06
+        # Should detect drawdown: (34000-35145)/35145 = -3.26% → HALT
+        assert guard.state['status'] == "HALT"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_live_nlv_when_csv_missing(self, tmp_path):
+        """If daily_equity.csv doesn't exist, fall back to live NLV."""
+        guard = self._make_guard(tmp_path)
+        ib = self._mock_ib(35000)
+
+        with patch('trading_bot.drawdown_circuit_breaker.send_pushover_notification'):
+            await guard.update_pnl(ib)
+
+        assert guard.state['starting_equity'] == 35000
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_live_nlv_when_csv_empty(self, tmp_path):
+        """If daily_equity.csv is empty, fall back to live NLV."""
+        equity_file = os.path.join(tmp_path, 'daily_equity.csv')
+        with open(equity_file, 'w') as f:
+            f.write("")
+        guard = self._make_guard(tmp_path)
+        ib = self._mock_ib(35000)
+
+        with patch('trading_bot.drawdown_circuit_breaker.send_pushover_notification'):
+            await guard.update_pnl(ib)
+
+        assert guard.state['starting_equity'] == 35000
+
+    @pytest.mark.asyncio
+    async def test_handles_corrupt_csv(self, tmp_path):
+        """Corrupt CSV should fall back to live NLV gracefully."""
+        equity_file = os.path.join(tmp_path, 'daily_equity.csv')
+        with open(equity_file, 'w') as f:
+            f.write("not,a,valid\ncsv,file,here\n")
+        guard = self._make_guard(tmp_path)
+        ib = self._mock_ib(35000)
+
+        with patch('trading_bot.drawdown_circuit_breaker.send_pushover_notification'):
+            await guard.update_pnl(ib)
+
+        # Should fall back gracefully (corrupt value raises ValueError)
+        assert guard.state['starting_equity'] == 35000
+
+    @pytest.mark.asyncio
+    async def test_all_engines_get_same_starting_equity(self, tmp_path):
+        """Multiple guards with same daily_equity.csv get identical starting_equity."""
+        self._write_equity_csv(tmp_path, [
+            ("2026-03-03 17:00:00", "35145.06"),
+        ])
+
+        guard1 = self._make_guard(tmp_path)
+        guard2 = self._make_guard(tmp_path)
+        guard3 = self._make_guard(tmp_path)
+
+        # Different live NLVs (simulating staggered startup)
+        ib1 = self._mock_ib(35100)
+        ib2 = self._mock_ib(34800)
+        ib3 = self._mock_ib(34500)
+
+        with patch('trading_bot.drawdown_circuit_breaker.send_pushover_notification'):
+            await guard1.update_pnl(ib1)
+            await guard2.update_pnl(ib2)
+            await guard3.update_pnl(ib3)
+
+        # All should use the same prev close, not their respective live NLVs
+        assert guard1.state['starting_equity'] == 35145.06
+        assert guard2.state['starting_equity'] == 35145.06
+        assert guard3.state['starting_equity'] == 35145.06
+
+    @pytest.mark.asyncio
+    async def test_first_call_evaluates_thresholds(self, tmp_path):
+        """First update_pnl should evaluate thresholds (not just return NORMAL)."""
+        self._write_equity_csv(tmp_path, [
+            ("2026-03-03 17:00:00", "35000.00"),
+        ])
+        guard = self._make_guard(tmp_path)
+        ib = self._mock_ib(33000)  # -5.7% drawdown
+
+        with patch('trading_bot.drawdown_circuit_breaker.send_pushover_notification'):
+            result = await guard.update_pnl(ib)
+
+        # Should detect PANIC immediately, not return NORMAL
+        assert result == "PANIC"
+
+
+class TestPortfolioRiskGuardPrevClose:
+    """Tests for PortfolioRiskGuard starting_equity from daily_equity.csv."""
+
+    def _make_guard(self, data_dir):
+        from trading_bot.shared_context import PortfolioRiskGuard
+        config = {
+            'data_dir_root': str(data_dir),
+            'drawdown_circuit_breaker': {
+                'enabled': True,
+                'warning_pct': 1.5,
+                'halt_pct': 2.5,
+                'panic_pct': 4.0,
+                'recovery_pct': 3.0,
+                'recovery_hold_minutes': 30,
+            },
+            'notifications': {'enabled': False},
+        }
+        return PortfolioRiskGuard(config=config)
+
+    @pytest.mark.asyncio
+    async def test_starting_equity_from_prev_close(self, tmp_path):
+        """PortfolioRiskGuard should use prev close from daily_equity.csv."""
+        # Create a commodity subdir with daily_equity.csv
+        kc_dir = tmp_path / "KC"
+        kc_dir.mkdir()
+        equity_file = kc_dir / "daily_equity.csv"
+        equity_file.write_text("2026-03-03 17:00:00,35145.06\n")
+
+        guard = self._make_guard(tmp_path)
+        await guard.update_equity(34000, -1145)
+
+        assert guard._starting_equity == 35145.06
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_live_equity(self, tmp_path):
+        """Without daily_equity.csv, should fall back to live equity."""
+        guard = self._make_guard(tmp_path)
+        await guard.update_equity(35000, 0)
+
+        assert guard._starting_equity == 35000
+
+    @pytest.mark.asyncio
+    async def test_daily_reset_uses_prev_close(self, tmp_path):
+        """On date rollover, _reset_daily should prefer prev close."""
+        kc_dir = tmp_path / "KC"
+        kc_dir.mkdir()
+        equity_file = kc_dir / "daily_equity.csv"
+        equity_file.write_text("2026-03-03 17:00:00,35145.06\n")
+
+        guard = self._make_guard(tmp_path)
+        guard._starting_equity = 34000
+        guard._current_equity = 34500
+        guard._peak_equity = 35000
+        guard._state_date = "2026-03-03"  # Yesterday
+        guard._status = "HALT"
+
+        await guard.update_equity(34200, -945)
+
+        # Should have reset and used prev close
+        assert guard._starting_equity == 35145.06

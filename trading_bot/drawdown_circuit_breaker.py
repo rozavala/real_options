@@ -5,11 +5,12 @@ Protects against aggregate portfolio losses that individual position stops miss.
 Halts trading for the day if intraday P&L drops below configurable thresholds.
 
 Thresholds (default):
-- WARNING: -1.5% intraday -> Pushover alert
-- HALT:    -2.5% intraday -> Block new trades
-- PANIC:   -4.0% intraday -> Close ALL positions
+- WARNING: -2.0% intraday -> Pushover alert
+- HALT:    -4.0% intraday -> Block new trades
+- PANIC:   -6.0% intraday -> Close ALL positions
 """
 
+import csv
 import logging
 import os
 import json
@@ -22,20 +23,48 @@ from notifications import send_pushover_notification
 
 logger = logging.getLogger(__name__)
 
+
+def load_prev_close(data_dir: str) -> Optional[float]:
+    """Load previous day's closing equity from daily_equity.csv.
+
+    Returns the most recent entry's total_value_usd, or None if the file
+    is missing, empty, or corrupt.  Used by DrawdownGuard and
+    PortfolioRiskGuard to set a consistent starting_equity baseline
+    independent of engine startup time.
+    """
+    equity_file = os.path.join(data_dir, 'daily_equity.csv')
+    if not os.path.exists(equity_file):
+        return None
+    try:
+        with open(equity_file, 'r') as f:
+            reader = csv.reader(f)
+            last_row = None
+            for row in reader:
+                if len(row) >= 2:
+                    last_row = row
+            if last_row is None:
+                return None
+            value = float(last_row[1])
+            return value if value > 0 else None
+    except Exception as e:
+        logger.warning(f"Failed to load prev close from {equity_file}: {e}")
+        return None
+
+
 class DrawdownGuard:
     def __init__(self, config: dict):
         self.config = config.get('drawdown_circuit_breaker', {})
         self.notification_config = config.get('notifications', {})
         self.enabled = self.config.get('enabled', False)
-        self.warning_pct = self.config.get('warning_pct', 1.5)
-        self.halt_pct = self.config.get('halt_pct', 2.5)
-        self.panic_pct = self.config.get('panic_pct', 4.0)
+        self.warning_pct = self.config.get('warning_pct', 2.0)
+        self.halt_pct = self.config.get('halt_pct', 4.0)
+        self.panic_pct = self.config.get('panic_pct', 6.0)
         self.recovery_pct = self.config.get('recovery_pct', 3.0)
         self.recovery_hold_minutes = self.config.get('recovery_hold_minutes', 30)
         self._recovery_start = None
-        data_dir = config.get('data_dir', 'data')
+        self._data_dir = config.get('data_dir', 'data')
         # Always use per-commodity data_dir; ignore any legacy state_file in sub-config
-        self.state_file = os.path.join(data_dir, 'drawdown_state.json')
+        self.state_file = os.path.join(self._data_dir, 'drawdown_state.json')
 
         self.state = {
             "status": "NORMAL", # NORMAL, WARNING, HALT, PANIC
@@ -120,26 +149,27 @@ class DrawdownGuard:
                 logger.warning("Could not fetch NetLiquidation for drawdown check.")
                 return self.state['status']
 
-            # 2. Set Starting Equity if first run
+            # 2. Set Starting Equity if first run — prefer previous close
             if self.state['starting_equity'] == 0.0:
-                self.state['starting_equity'] = net_liq
-                logger.info(f"DrawdownGuard initialized. Starting Equity: ${net_liq:,.2f}")
+                prev_close = load_prev_close(self._data_dir)
+                if prev_close is not None:
+                    self.state['starting_equity'] = prev_close
+                    logger.info(
+                        f"DrawdownGuard initialized from prev close: "
+                        f"${prev_close:,.2f} (live NLV: ${net_liq:,.2f})"
+                    )
+                else:
+                    self.state['starting_equity'] = net_liq
+                    logger.info(
+                        f"DrawdownGuard initialized from live NLV: "
+                        f"${net_liq:,.2f} (no daily_equity.csv available)"
+                    )
                 self._save_state()
-                return "NORMAL"
 
             # 3. Calculate Drawdown
             start_eq = self.state['starting_equity']
             pnl = net_liq - start_eq
             drawdown_pct = (pnl / start_eq) * 100
-
-            # Only track negative drawdown (if we are up, drawdown is 0 for this purpose,
-            # though technically we could track peak-to-trough if we updated starting_equity on highs.
-            # For simplicity/safety, we stick to "Daily Loss Limit" logic (vs open).)
-            # Wait, "Daily Drawdown" usually means from previous close.
-            # If we restart mid-day, starting_equity might be mid-day equity.
-            # To be robust, we should load yesterday's close from daily_equity.csv if starting_equity is 0.
-            # But for this MVP, initializing on first run of day is acceptable,
-            # assuming orchestrator runs before market open.
 
             self.state['current_drawdown_pct'] = drawdown_pct
 
