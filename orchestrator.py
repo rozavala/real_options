@@ -1353,6 +1353,20 @@ async def _reconcile_orphaned_theses(
                     )
                     live_position_ids.add(tid)
 
+        # D3: Alert on IB positions with no matching thesis after FIFO matching
+        unmatched_ib = {sym: qty for sym, qty in remaining_ib.items() if qty != 0}
+        if unmatched_ib:
+            logger.warning(f"Orphan IB positions with no thesis match: {unmatched_ib}")
+            try:
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "Orphan IB Positions Detected",
+                    f"{len(unmatched_ib)} positions in IB with no TMS thesis:\n"
+                    + "\n".join(f"  {sym}: {qty}" for sym, qty in unmatched_ib.items())
+                )
+            except Exception:
+                pass
+
         # 3. Identify orphans: active in TMS but not in IB
         orphaned_ids = [
             tid for tid in active_thesis_ids
@@ -4522,64 +4536,118 @@ async def emergency_hard_close(config: dict):
             f"Closing with MARKET orders. Slippage expected."
         )
 
-        # --- Submit all MARKET orders concurrently ---
-        # Use pos.contract directly from reqPositionsAsync — it has the correct
-        # conId and strike format. Re-qualifying via qualifyContractsAsync can
-        # return strike=285.0 vs exchange's 2.85, causing Error 478 rejections.
-        trades_pending = []  # (contract, trade, pos)
-        failed = 0
+        # --- B3: Register Error 201 handler for margin rejections ---
+        error_201_symbols = []
+        def on_emergency_error(reqId, errorCode, errorString, contract):
+            if errorCode == 201:
+                sym = getattr(contract, 'localSymbol', 'unknown') if contract else 'unknown'
+                error_201_symbols.append(sym)
+                logger.error(f"Emergency close Error 201 (margin): {sym}: {errorString}")
 
-        for pos in open_positions:
-            contract = pos.contract
-            # reqPositionsAsync may return contracts without exchange — fill from config
-            if not contract.exchange:
-                contract.exchange = config.get('exchange', 'SMART')
-            close_action = 'SELL' if pos.position > 0 else 'BUY'
-            qty = abs(pos.position)
+        # Safe: ib is per-commodity from IBConnectionPool, no cross-engine handler bleed
+        ib.errorEvent += on_emergency_error
 
-            order = MarketOrder(close_action, qty)
-            order.tif = 'GTC'
-            trade = ib.placeOrder(contract, order)
-            logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol} (MARKET)")
-            trades_pending.append((contract, trade, pos))
+        try:
+            # --- Submit all MARKET orders ---
+            # Use pos.contract directly from reqPositionsAsync — it has the correct
+            # conId and strike format. Re-qualifying via qualifyContractsAsync can
+            # return strike=285.0 vs exchange's 2.85, causing Error 478 rejections.
+            trades_pending = []  # (contract, trade, pos)
+            failed = 0
+            failed_symbols = []  # (localSymbol, status, error_detail)
 
-        # --- Phase 3: Wait for all fills concurrently ---
-        closed = 0
-        if trades_pending:
-            fill_timeout = 30  # seconds total for all fills
-            deadline = asyncio.get_event_loop().time() + fill_timeout
-            while trades_pending and asyncio.get_event_loop().time() < deadline:
-                await asyncio.sleep(0.5)
-                still_pending = []
-                for contract, trade, pos in trades_pending:
-                    if trade.isDone():
-                        if trade.orderStatus.status == 'Filled':
-                            closed += 1
-                            logger.info(
-                                f"Emergency fill: {contract.localSymbol} "
-                                f"@ {trade.orderStatus.avgFillPrice}"
-                            )
+            for pos in open_positions:
+                contract = pos.contract
+                # reqPositionsAsync may return contracts without exchange — fill from config
+                if not contract.exchange:
+                    contract.exchange = config.get('exchange', 'SMART')
+                close_action = 'SELL' if pos.position > 0 else 'BUY'
+                qty = abs(pos.position)
+
+                order = MarketOrder(close_action, qty)
+                order.tif = 'GTC'
+                trade = ib.placeOrder(contract, order)
+                logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol} (MARKET)")
+                trades_pending.append((contract, trade, pos))
+
+            # --- Phase 3: Wait for all fills ---
+            closed = 0
+            if trades_pending:
+                fill_timeout = 30  # seconds total for all fills
+                deadline = asyncio.get_event_loop().time() + fill_timeout
+                while trades_pending and asyncio.get_event_loop().time() < deadline:
+                    await asyncio.sleep(0.5)
+                    still_pending = []
+                    for contract, trade, pos in trades_pending:
+                        if trade.isDone():
+                            if trade.orderStatus.status == 'Filled':
+                                closed += 1
+                                logger.info(
+                                    f"Emergency fill: {contract.localSymbol} "
+                                    f"qty={trade.orderStatus.filled} "
+                                    f"@ {trade.orderStatus.avgFillPrice}"
+                                )
+                                # B1: Log to trade ledger
+                                try:
+                                    from trading_bot.utils import log_trade_to_ledger
+                                    import time as _time
+                                    await log_trade_to_ledger(
+                                        ib, trade,
+                                        reason="EMERGENCY_HARD_CLOSE",
+                                        position_id=f"EMERGENCY_{contract.localSymbol}_{today_date}_{int(_time.time())}"
+                                    )
+                                except Exception as ledger_err:
+                                    logger.error(f"Failed to log emergency fill to ledger: {ledger_err}")
+                            else:
+                                failed += 1
+                                # B2: Capture error details
+                                err_detail = "unknown"
+                                try:
+                                    if trade.log:
+                                        err_detail = trade.log[-1].message
+                                except Exception:
+                                    pass
+                                failed_symbols.append(
+                                    (contract.localSymbol, trade.orderStatus.status, err_detail)
+                                )
+                                logger.error(
+                                    f"Emergency close rejected/cancelled: "
+                                    f"{contract.localSymbol} status={trade.orderStatus.status} "
+                                    f"detail={err_detail}"
+                                )
                         else:
-                            failed += 1
-                            logger.error(
-                                f"Emergency close rejected/cancelled: "
-                                f"{contract.localSymbol} status={trade.orderStatus.status}"
-                            )
-                    else:
-                        still_pending.append((contract, trade, pos))
-                trades_pending = still_pending
+                            still_pending.append((contract, trade, pos))
+                    trades_pending = still_pending
 
-            # Anything still pending after timeout
-            for contract, trade, pos in trades_pending:
-                failed += 1
-                logger.error(
-                    f"Emergency close timed out ({fill_timeout}s): "
-                    f"{contract.localSymbol} status={trade.orderStatus.status}"
-                )
+                # Anything still pending after timeout
+                for contract, trade, pos in trades_pending:
+                    failed += 1
+                    err_detail = "timeout"
+                    try:
+                        if trade.log:
+                            err_detail = trade.log[-1].message
+                    except Exception:
+                        pass
+                    failed_symbols.append(
+                        (contract.localSymbol, trade.orderStatus.status, err_detail)
+                    )
+                    logger.error(
+                        f"Emergency close timed out ({fill_timeout}s): "
+                        f"{contract.localSymbol} status={trade.orderStatus.status}"
+                    )
 
-        summary = f"Emergency hard close: {closed} closed, {failed} failed"
-        logger.info(summary)
-        send_pushover_notification(config.get('notifications', {}), "Emergency Close Result", summary)
+            # B2: Include failed symbol details in notification
+            summary = f"Emergency hard close: {closed} closed, {failed} failed"
+            if failed_symbols:
+                detail = "\n".join(f"  {sym}: {status} — {err}" for sym, status, err in failed_symbols)
+                summary += f"\n{detail}"
+            if error_201_symbols:
+                summary += f"\nMargin rejections (Error 201): {', '.join(error_201_symbols)}"
+            logger.info(summary)
+            send_pushover_notification(config.get('notifications', {}), "Emergency Close Result", summary)
+
+        finally:
+            ib.errorEvent -= on_emergency_error
 
         # Sweep-invalidate active theses for positions we just closed.
         # Without this, ghost theses remain active until the 5AM cleanup job.

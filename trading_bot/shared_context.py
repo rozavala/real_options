@@ -110,6 +110,7 @@ class PortfolioRiskGuard:
         )
         self._recovery_start = None
         self._recovery_active = False
+        self._panic_is_live = False  # Only True after update_equity() freshly evaluates PANIC
         self._load_state()
 
     # --- Persistence ---
@@ -123,20 +124,35 @@ class PortfolioRiskGuard:
                 from datetime import datetime, timezone
                 current_date = datetime.now(timezone.utc).date().isoformat()
                 if saved.get('date') == current_date:
+                    # peak_equity preserved: tracks intraday high-water mark,
+                    # valid across same-day restarts.
                     self._peak_equity = saved.get('peak_equity', 0.0)
                     self._current_equity = saved.get('current_equity', 0.0)
-                    self._starting_equity = saved.get('starting_equity', 0.0)
+                    # Force starting_equity to 0.0 so update_equity() re-derives
+                    # from prev close (daily_equity.csv). Persisted value may have
+                    # been set from live NLV during an earlier startup.
+                    self._starting_equity = 0.0
                     self._daily_pnl = saved.get('daily_pnl', 0.0)
                     self._positions_by_commodity = saved.get('positions', {})
                     self._margin_by_commodity = saved.get('margin', {})
                     self._status = saved.get('status', 'NORMAL')
                     self._state_date = current_date
                     self._recovery_start = saved.get('recovery_start')
+                    # Discard stale recovery_start from previous day
                     if self._recovery_start:
-                        self._recovery_active = True
+                        try:
+                            rs_date = datetime.fromisoformat(self._recovery_start).date()
+                            if rs_date != datetime.now(timezone.utc).date():
+                                logger.info("Discarded stale recovery_start from previous day")
+                                self._recovery_start = None
+                            else:
+                                self._recovery_active = True
+                        except (ValueError, TypeError):
+                            self._recovery_start = None
                     logger.info(
                         f"PortfolioRiskGuard loaded: {self._status}, "
                         f"equity=${self._current_equity:,.0f}, "
+                        f"starting_equity=0 (will re-derive from prev close), "
                         f"positions={self._positions_by_commodity}"
                     )
                     return
@@ -315,6 +331,7 @@ class PortfolioRiskGuard:
             self._daily_pnl = 0.0
             self._recovery_start = None
             self._recovery_active = False
+            self._panic_is_live = False
             prev_close = self._load_prev_close()
             if prev_close is not None:
                 self._starting_equity = prev_close
@@ -391,7 +408,10 @@ class PortfolioRiskGuard:
                                 self._status = "WARNING"
                                 self._recovery_start = None
                                 self._recovery_active = True  # Allow de-escalation this cycle
-                                logger.warning(f"PortfolioRiskGuard recovery: {prev} -> WARNING after {elapsed:.0f}min")
+                                logger.warning(
+                                    f"PortfolioRiskGuard recovery: {prev} -> WARNING after "
+                                    f"{elapsed:.0f}min (drawdown at completion: {drawdown_pct:.2f}%)"
+                                )
                                 try:
                                     from notifications import send_pushover_notification
                                     send_pushover_notification(
@@ -404,12 +424,19 @@ class PortfolioRiskGuard:
                                     pass
                         if not self._recovery_active:
                             self._status = prev  # Hold during observation
+                    elif drawdown_pct <= dd_cfg.get('halt_pct', 2.5):
+                        # Between recovery_pct and halt_pct — hold status, keep timer.
+                        # Timer continues running (wall-clock) — elapsed time includes
+                        # danger-zone excursions. Recovery completion is only evaluated
+                        # when drawdown is actually below recovery_pct. Acceptable
+                        # tradeoff vs. oscillation (where noise restarted the countdown).
+                        self._status = prev
                     else:
-                        # Still in drawdown territory - reset recovery timer
+                        # Back above halt_pct — genuine re-escalation, reset timer
                         if self._recovery_start is not None:
                             self._recovery_start = None
                             self._recovery_active = False
-                            logger.info("PortfolioRiskGuard recovery timer reset (drawdown worsened)")
+                            logger.info(f"PortfolioRiskGuard recovery timer reset (drawdown worsened past halt to {drawdown_pct:.2f}%)")
                         self._status = prev
                 elif status_priority.get(self._status, 0) < status_priority.get(prev, 0):
                     if not self._recovery_active:
@@ -418,6 +445,9 @@ class PortfolioRiskGuard:
                 # Reset recovery_active flag after use
                 if self._recovery_active and self._status == "WARNING":
                     self._recovery_active = False
+
+                # Track whether PANIC was freshly evaluated (not loaded from disk)
+                self._panic_is_live = (self._status == "PANIC")
 
             self._persist()
 
@@ -431,7 +461,7 @@ class PortfolioRiskGuard:
         return self._status in ("NORMAL", "WARNING")
 
     def should_panic_close(self) -> bool:
-        return self._status == "PANIC"
+        return self._status == "PANIC" and self._panic_is_live
 
     async def get_snapshot(self) -> dict:
         async with self._lock:

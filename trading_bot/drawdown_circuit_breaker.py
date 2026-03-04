@@ -62,6 +62,7 @@ class DrawdownGuard:
         self.recovery_pct = self.config.get('recovery_pct', 3.0)
         self.recovery_hold_minutes = self.config.get('recovery_hold_minutes', 30)
         self._recovery_start = None
+        self._panic_is_live = False  # Only True after update_pnl() freshly evaluates PANIC
         self._data_dir = config.get('data_dir', 'data')
         # Always use per-commodity data_dir; ignore any legacy state_file in sub-config
         self.state_file = os.path.join(self._data_dir, 'drawdown_state.json')
@@ -87,8 +88,25 @@ class DrawdownGuard:
                     current_date = datetime.now(timezone.utc).date().isoformat()
                     if saved_date == current_date:
                         self.state = saved
+                        # Force starting_equity to 0.0 so update_pnl() re-derives
+                        # from prev close (daily_equity.csv). Persisted value may
+                        # have been set from live NLV during an earlier startup.
+                        self.state['starting_equity'] = 0.0
                         self._recovery_start = saved.get('recovery_start')
-                        logger.info(f"Loaded drawdown state: {self.state['status']} ({self.state['current_drawdown_pct']:.2f}%)")
+                        # Discard stale recovery_start from previous day
+                        if self._recovery_start:
+                            try:
+                                rs_date = datetime.fromisoformat(self._recovery_start).date()
+                                if rs_date != datetime.now(timezone.utc).date():
+                                    logger.info("Discarded stale recovery_start from previous day")
+                                    self._recovery_start = None
+                            except (ValueError, TypeError):
+                                self._recovery_start = None
+                        logger.info(
+                            f"Loaded drawdown state: {self.state['status']} "
+                            f"({self.state['current_drawdown_pct']:.2f}%), "
+                            f"starting_equity=0 (will re-derive from prev close)"
+                        )
                     else:
                         logger.info("Saved drawdown state is old. Starting fresh.")
             except Exception as e:
@@ -116,6 +134,7 @@ class DrawdownGuard:
         if self.state['date'] != current_date:
             logger.info("Resetting DrawdownGuard for new day.")
             self._recovery_start = None
+            self._panic_is_live = False
             self.state = {
                 "status": "NORMAL",
                 "current_drawdown_pct": 0.0,
@@ -168,6 +187,8 @@ class DrawdownGuard:
 
             # 3. Calculate Drawdown
             start_eq = self.state['starting_equity']
+            if start_eq <= 0:
+                return self.state['status']  # Can't calculate drawdown yet
             pnl = net_liq - start_eq
             drawdown_pct = (pnl / start_eq) * 100
 
@@ -203,7 +224,10 @@ class DrawdownGuard:
                         if elapsed_minutes >= self.recovery_hold_minutes:
                             new_status = "WARNING"
                             self._recovery_start = None
-                            logger.warning(f"Recovery complete: {prev_status} -> WARNING after {elapsed_minutes:.0f}min sustained improvement")
+                            logger.warning(
+                                f"Recovery complete: {prev_status} -> WARNING after "
+                                f"{elapsed_minutes:.0f}min (drawdown at completion: {drawdown_pct:.2f}%)"
+                            )
                             send_pushover_notification(
                                 self.notification_config,
                                 f"📈 Recovery: {prev_status} → WARNING",
@@ -213,12 +237,20 @@ class DrawdownGuard:
                         else:
                             logger.info(f"Recovery in progress: {elapsed_minutes:.0f}/{self.recovery_hold_minutes}min")
                             new_status = prev_status  # Hold during observation
+                elif abs(drawdown_pct) <= self.halt_pct:
+                    # Between recovery_pct and halt_pct — hold status, keep timer intact.
+                    # Timer continues running (wall-clock) — elapsed time includes
+                    # danger-zone excursions. Recovery completion is only evaluated
+                    # when drawdown is actually below recovery_pct at the moment of
+                    # the check. Acceptable tradeoff vs. oscillation problem where
+                    # any noise restarted the 30-min countdown indefinitely.
+                    new_status = prev_status
                 else:
-                    # Still in drawdown territory - reset recovery timer
+                    # Back above halt_pct — genuine re-escalation, reset timer
                     if self._recovery_start is not None:
-                        logger.info(f"Recovery timer reset (drawdown worsened to {drawdown_pct:.2f}%)")
+                        logger.info(f"Recovery timer reset (drawdown worsened past halt to {drawdown_pct:.2f}%)")
                         self._recovery_start = None
-                    new_status = prev_status  # Stick at current level
+                    new_status = prev_status
 
             if new_status != prev_status:
                 logger.warning(f"Drawdown Status Changed: {prev_status} -> {new_status} (PNL: {drawdown_pct:.2f}%)")
@@ -247,6 +279,9 @@ class DrawdownGuard:
                         ticker="ALL"
                     )
 
+            # Track whether PANIC was freshly evaluated (not loaded from disk)
+            self._panic_is_live = (new_status == "PANIC")
+
             self._save_state()
             return new_status
 
@@ -260,4 +295,4 @@ class DrawdownGuard:
 
     def should_panic_close(self) -> bool:
         """Check if we need to emergency close everything."""
-        return self.state['status'] == "PANIC"
+        return self.state['status'] == "PANIC" and self._panic_is_live

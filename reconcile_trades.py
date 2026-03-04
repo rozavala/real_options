@@ -150,6 +150,14 @@ async def reconcile_active_positions(config: dict):
         cutoff_time = now_utc - pd.Timedelta(hours=24)
 
         recent_trades = full_ledger[full_ledger['timestamp'] >= cutoff_time]
+        # Don't skip emergency/catastrophe symbols — these must be reconciled
+        # immediately since failed closes are exactly what we want to detect.
+        if 'reason' in recent_trades.columns:
+            recent_trades = recent_trades[
+                ~recent_trades['reason'].str.contains(
+                    'EMERGENCY_HARD_CLOSE|CATASTROPHE', na=False
+                )
+            ]
         skipped_symbols = set(recent_trades['local_symbol'].unique())
 
         if skipped_symbols:
