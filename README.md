@@ -53,6 +53,7 @@ graph TD
     subgraph "Execution & Risk"
         CG[🛡️ Compliance Guardian]
         VAR[📉 Portfolio Risk Guard]
+        DCB[🔌 Drawdown Circuit Breaker]
         DPS[⚖️ Dynamic Sizer]
         OM[⚡ Order Manager]
         IB[Interactive Brokers Gateway]
@@ -66,6 +67,7 @@ graph TD
     MS -->|Decision| DA
     DA -->|Approved| CG
     VAR -->|Risk Limits| CG
+    DCB -->|Drawdown Limits| CG
     CG -->|Validated| DPS
     DPS -->|Sized Order| OM
     OM -->|Execute| IB
@@ -118,6 +120,7 @@ Specialized LLM personas that analyze grounded data.
 *   **Devil's Advocate:** Runs a pre-mortem check.
 *   **Compliance Guardian (`trading_bot/compliance.py`):** Deterministic veto power based on risk limits.
 *   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide **Full Revaluation Historical Simulation VaR** (95%/99%) using Black-Scholes repricing. Captures gamma risk and non-linearities.
+*   **Drawdown Circuit Breaker (`trading_bot/drawdown_circuit_breaker.py`):** Monitors intraday P&L drops from the previous day's close and enforces configurable halt/panic thresholds to protect the portfolio.
 *   **AI Risk Agent:** Embedded in the Risk Guard. **L1 Interpreter** provides narrative risk analysis, and **L2 Scenario Architect** generates stress scenarios (e.g., "Commodity Crash", "IV Spike").
 *   **Dynamic Position Sizer (`trading_bot/position_sizer.py`):** Calculates trade size based on conviction (Kelly Criterion adjusted by Volatility).
 
