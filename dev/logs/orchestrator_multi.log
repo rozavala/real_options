@@ -4870,3 +4870,178 @@
 2026-03-04 14:29:35,908 - trading_bot.agents - INFO - Waking up technical...
 2026-03-04 14:29:36,223 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
 2026-03-04 14:29:36,223 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-03-04 14:30:32,941 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for technical after primary failure.
+2026-03-04 14:30:32,942 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-03-04 14:30:32,943 - trading_bot.agents - WARNING - [technical] Output validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-03-04 14:30:32,943 - trading_bot.agents - WARNING - [technical] Validation issues: ['Direction-evidence mismatch: BEARISH call but 5 bullish vs 2 bearish evidence words']
+2026-03-04 14:30:32,943 - trading_bot.agents - INFO - [technical] Confidence clamped: 0.85 → 0.30 (adjustment: 0.30)
+2026-03-04 14:31:03,595 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for technical after primary failure.
+2026-03-04 14:31:03,596 - trading_bot.router_metrics - WARNING - Fallback event: technical openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-03-04 14:31:03,712 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-03-04 14:31:03,713 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=1.5 \u00d7 reliability=1.2 = 1.76", "macro": "domain=1.5 \u00d7 reliability=1.2 = 1.79", "geopolitical": "domain=1.0 \u00d7 reliability=0.8 = 0.65", "supply_chain": "domain=1.0 \u00d7 reliability=1.4 = 1.15", "inventory": "domain=1.0 \u00d7 reliability=1.4 = 1.10", "sentiment": "domain=2.0 \u00d7 reliability=1.4 = 2.74", "technical": "domain=2.1 \u00d7 reliability=1.3 = 2.76", "volatility": "domain=3.8 \u00d7 reliability=1.2 = 4.53"}
+2026-03-04 14:31:03,714 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.185, dominant=agronomist)
+2026-03-04 14:31:03,714 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 1.18,\n    "staleness_weight": 1.0,\n    "age_hours": 0.5,\n    "final_weight": 1.76,\n    "contribution": -1.411\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 1.19,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 1.79,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.8,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "final_weight": 0.65,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.42,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "final_weight": 1.15,\n    "contribution": -0.923\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.36,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "final_weight": 1.1,\n    "contribution": -0.717\n  },\n  {\n    "agent": "sentiment",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 2.0,\n    "reliability_mult": 1.37,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 2.74,\n    "contribution": 0.0\n  },\n  {\n    "agent": "technical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 2.0999999999999996,\n    "reliability_mult": 1.32,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "final_weight": 2.76,\n    "contribution": 0.0\n  },\n  {\n    "agent": "volatility",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 3.75,\n    "reliability_mult": 1.21,\n    "staleness_weight": 1.0,\n    "age_hours": 0.4,\n    "final_weight": 4.53,\n    "contribution": 0.0\n  }\n]
+2026-03-04 14:31:20,399 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-04 14:31:27,506 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 46% of average (Sev: 5)
+2026-03-04 14:31:27,509 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-04 14:31:30,598 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 46% of average (Sev: 5)
+2026-03-04 14:31:30,602 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-04 14:32:27,516 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_open=True, trading_day=True
+2026-03-04 14:32:41,984 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used anthropic/claude-sonnet-4-6 for master after primary failure.
+2026-03-04 14:32:41,985 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: openai quota exhausted (circuit breaker)
+2026-03-04 14:32:41,985 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Structural global cocoa surplus confirmed by multiple indepe
+2026-03-04 14:33:21,948 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED in current form. The structural bearish thesis is analytically sound but the trade setup is catastrophically asymmetric at this specific price and time. Three fatal flaws disqualify execution: (1) CROWDED POSITIONING RISK — entering a bearish trade 51.4% below the 200-day SMA with 7 existing KC positions represents a portfolio already saturated with cocoa bear exposure; adding here concentrates catastrophic squeeze risk with no incremental edge. (2) BIAS IDENTIFICATION — the analysis succumbed to CONFIRMATION BIAS (four 'independent' bearish signals that all ultimately trace to the same ICCO surplus report) and ANCHORING BIAS (anchoring to the structural bear case while systematically dismissing every bullish signal as 'noise' or 'stress indicator'). The geopolitical neutral signals from two 0.65-confidence agents were reframed as bearish without sufficient justification. (3) IGNORED DATA — net speculative positioning (COT data) was never cited; without knowing whether the market is already max-short, the 'priced in' risk cannot be quantified. IV Rank was listed as N/A but never sourced from Barchart as the market context explicitly instructed — options pricing could reveal the market is already pricing in continued downside, eliminating edge. If the trade is to be taken at all, it requires: (a) confirmation that COT data shows non-commercial longs rebuilding rather than shorts at extremes, (b) a defined stop above the March 2 high with explicit max-loss sizing, (c) reduction of existing KC exposure before adding, and (d) waiting for a failed rally into resistance (3,200-3,300 range) rather than chasing at current depressed levels. At 3,073 with a crowded book and a max-squeeze setup, the confidence of 0.8 is dangerously overstated — true forward edge confidence adjusted for 'priced in' risk and positioning is closer to 0.45.
+2026-03-04 14:33:21,950 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-03-04 14:33:21,956 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-04 14:33:21,958 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-04 14:33:21,960 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-04 14:33:21,965 - root - INFO - Logged council decision for CCK6 (202605)
+2026-03-04 14:33:21,974 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-03-04 14:33:22,113 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-03-04 14:33:22,116 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-04 14:34:17,772 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_open=True, trading_day=True
+2026-03-04 14:34:32,639 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_open=True, trading_day=True
+2026-03-04 14:35:24,641 - Orchestrator - INFO - 2026-03-04 14:35:24,640 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-04 14:35:24,641 - Orchestrator - INFO - 2026-03-04 14:35:24,641 - root - INFO - Combo 4 Legs on KOK6 P2.85: PnL=$-448.98 | Capture: -11.3% | Risk Used: -22.6%
+2026-03-04 14:35:24,642 - Orchestrator - INFO - 2026-03-04 14:35:24,641 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$225.69 | Capture: 2.7% | Risk Used: 5.5%
+2026-03-04 14:36:24,576 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-03-04 14:36:24,576 - trading_bot.master_orchestrator - WARNING - Equity service poll failed (retry in 300s): 
+2026-03-04 14:37:31,248 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=515, market_open=True, trading_day=True
+2026-03-04 14:39:20,469 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=515, market_open=True, trading_day=True
+2026-03-04 14:39:34,465 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=515, market_open=True, trading_day=True
+2026-03-04 14:41:24,929 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-04 14:42:35,332 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=520, market_open=True, trading_day=True
+2026-03-04 14:42:35,448 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 45% of average (Sev: 5)
+2026-03-04 14:42:35,453 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-04 14:44:22,940 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=520, market_open=True, trading_day=True
+2026-03-04 14:44:36,448 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=520, market_open=True, trading_day=True
+2026-03-04 14:45:24,876 - Orchestrator - INFO - 2026-03-04 14:45:24,876 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-04 14:45:24,877 - Orchestrator - INFO - 2026-03-04 14:45:24,876 - root - INFO - Combo 4 Legs on KOK6 P2.85: PnL=$-390.29 | Capture: -9.8% | Risk Used: -19.6%
+2026-03-04 14:45:24,877 - Orchestrator - INFO - 2026-03-04 14:45:24,876 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$304.09 | Capture: 3.7% | Risk Used: 7.4%
+2026-03-04 14:45:36,470 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 31% of average (Sev: 6)
+2026-03-04 14:45:36,475 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-04 14:46:25,427 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-04 14:47:38,765 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=525, market_open=True, trading_day=True
+2026-03-04 14:49:25,397 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=525, market_open=True, trading_day=True
+2026-03-04 14:49:37,737 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=525, market_open=True, trading_day=True
+2026-03-04 14:51:25,817 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-04 14:52:43,010 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=530, market_open=True, trading_day=True
+2026-03-04 14:54:28,301 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=530, market_open=True, trading_day=True
+2026-03-04 14:54:38,532 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=530, market_open=True, trading_day=True
+2026-03-04 14:55:24,910 - Orchestrator - INFO - 2026-03-04 14:55:24,910 - root - INFO - --- Risk Monitor: Checking 2 combo position(s) ---
+2026-03-04 14:55:24,911 - Orchestrator - INFO - 2026-03-04 14:55:24,910 - root - INFO - Combo 4 Legs on KOK6 P2.85: PnL=$-315.15 | Capture: -7.9% | Risk Used: -15.9%
+2026-03-04 14:55:24,911 - Orchestrator - INFO - 2026-03-04 14:55:24,910 - root - INFO - Combo 3 Legs on KON6 P2.8: PnL=$371.92 | Capture: 4.5% | Risk Used: 9.1%
+2026-03-04 14:56:26,110 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-04 14:57:46,450 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=535, market_open=True, trading_day=True
+2026-03-04 14:59:00,003 - Engine.KC - INFO - --- Running scheduled task: signal_early [guarded_generate_orders] ---
+2026-03-04 14:59:00,103 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-04 14:59:00,104 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'xai', 'gemini', 'anthropic']
+2026-03-04 14:59:00,104 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'xai', 'gemini', 'anthropic'], 'diversity_score': 1.0}
+2026-03-04 14:59:00,113 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-04 14:59:00,126 - trading_bot.enhanced_brier - INFO - Loaded 1376 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-03-04 14:59:00,217 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-04 14:59:00,302 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-03-04 14:59:00,303 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-03-04 14:59:00,303 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-03-04 14:59:00,304 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-04 14:59:00,304 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-04 14:59:00,304 - trading_bot.connection_pool - INFO - Connecting IB (KC_drawdown_check) ID: 92 [REMOTE/PAPER]...
+2026-03-04 14:59:00,471 - trading_bot.connection_pool - INFO - IB (KC_drawdown_check) connected successfully with ID 92
+2026-03-04 14:59:00,539 - trading_bot.drawdown_circuit_breaker - WARNING - Drawdown Status Changed: NORMAL -> WARNING (PNL: -1.50%)
+2026-03-04 14:59:00,853 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-04 14:59:00,855 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_drawdown_check)...
+2026-03-04 14:59:03,879 - OrderManager - INFO - >>> Starting combined task: Generate and Execute Orders <<<
+2026-03-04 14:59:03,880 - OrderManager - INFO - --- Starting order generation and queuing process ---
+2026-03-04 14:59:03,881 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-03-04 14:59:04,196 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 34
+2026-03-04 14:59:04,202 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-04 14:59:04,203 - OrderManager - INFO - Connected to IB for signal generation (purpose: orchestrator_orders).
+2026-03-04 14:59:04,203 - OrderManager - INFO - Step 1: Generating structured signals via Council...
+2026-03-04 14:59:04,203 - trading_bot.signal_generator - INFO - --- Starting Multi-Agent Signal Generation (Council) ---
+2026-03-04 14:59:04,296 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-04 14:59:04,296 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'xai', 'gemini', 'anthropic']
+2026-03-04 14:59:04,296 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['openai', 'xai', 'gemini', 'anthropic'], 'diversity_score': 1.0}
+2026-03-04 14:59:04,303 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-04 14:59:04,316 - trading_bot.enhanced_brier - INFO - Loaded 1376 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-03-04 14:59:04,399 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-04 14:59:04,474 - trading_bot.agents - INFO - Loaded commodity profile: Coffee (Arabica)
+2026-03-04 14:59:04,475 - trading_bot.observability - INFO - HallucinationDetector initialized for Coffee (Arabica): 9 port tokens, 23 producer tokens
+2026-03-04 14:59:04,475 - trading_bot.observability - INFO - ObservabilityHub initialized for Coffee (Arabica)
+2026-03-04 14:59:04,475 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-04 14:59:04,475 - trading_bot.agents - INFO - Trading Council initialized for Coffee (Arabica). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-04 14:59:04,475 - trading_bot.agents - INFO - Grounded data cache invalidated (0 entries cleared). Next cycle will perform fresh searches.
+2026-03-04 14:59:04,475 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-04 14:59:04,475 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['openai', 'xai', 'gemini', 'anthropic']
+2026-03-04 14:59:04,476 - root - INFO - Fetching 5 active futures contracts for KC on NYBOT...
+2026-03-04 14:59:04,478 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-04 14:59:04,541 - root - INFO - Skipping contract KCH6 (Exp: 20260319): Expires < 45 days.
+2026-03-04 14:59:04,542 - root - INFO - Found 10 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-03-04 14:59:04,542 - trading_bot.market_data_provider - INFO - Building market context for 5 contracts...
+2026-03-04 14:59:04,542 - trading_bot.market_data_provider - INFO - Building market context for KCK6 (202605)...
+2026-03-04 14:59:04,543 - trading_bot.market_data_provider - INFO - Building market context for KCN6 (202607)...
+2026-03-04 14:59:04,543 - trading_bot.market_data_provider - INFO - Building market context for KCU6 (202609)...
+2026-03-04 14:59:05,357 - trading_bot.market_data_provider - INFO - Market context for KCK6 (202605): price=286.30, sma_200=328.86650000000003, regime=RANGE_BOUND, vol_5d=0.0095
+2026-03-04 14:59:05,358 - trading_bot.market_data_provider - INFO - Building market context for KCZ6 (202612)...
+2026-03-04 14:59:05,457 - trading_bot.market_data_provider - INFO - Market context for KCN6 (202607): price=281.15, sma_200=319.36525, regime=RANGE_BOUND, vol_5d=0.0092
+2026-03-04 14:59:05,457 - trading_bot.market_data_provider - INFO - Building market context for KCH7 (202703)...
+2026-03-04 14:59:05,556 - trading_bot.market_data_provider - INFO - Market context for KCU6 (202609): price=276.15, sma_200=309.802, regime=RANGE_BOUND, vol_5d=0.0090
+2026-03-04 14:59:06,271 - trading_bot.market_data_provider - INFO - Market context for KCZ6 (202612): price=270.90, sma_200=302.387, regime=RANGE_BOUND, vol_5d=0.0083
+2026-03-04 14:59:06,352 - trading_bot.market_data_provider - INFO - Market context for KCH7 (202703): price=268.00, sma_200=297.43174999999997, regime=RANGE_BOUND, vol_5d=0.0080
+2026-03-04 14:59:06,353 - trading_bot.market_data_provider - INFO - Market context complete: 5/5 contracts successful
+2026-03-04 14:59:06,353 - trading_bot.signal_generator - INFO - Market context built for 5 contracts
+2026-03-04 14:59:06,353 - trading_bot.signal_generator - INFO - Convening Council for KCK6 (202605) (Cycle: KC-924620d3)...
+2026-03-04 14:59:06,353 - trading_bot.signal_generator - INFO - Convening Council for KCN6 (202607) (Cycle: KC-95be5d3e)...
+2026-03-04 14:59:06,354 - trading_bot.signal_generator - INFO - Convening Council for KCU6 (202609) (Cycle: KC-f3f46d80)...
+2026-03-04 14:59:07,164 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-03-04 14:59:07,165 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-03-04 14:59:07,478 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-03-04 14:59:07,479 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-03-04 14:59:07,781 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-03-04 14:59:07,781 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-03-04 14:59:08,104 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-03-04 14:59:08,105 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-03-04 14:59:08,433 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-03-04 14:59:08,434 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-03-04 14:59:08,743 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-03-04 14:59:08,744 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-03-04 14:59:09,046 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-03-04 14:59:09,046 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-03-04 14:59:09,343 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-03-04 14:59:09,343 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-03-04 14:59:09,643 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-03-04 14:59:09,644 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-03-04 14:59:09,952 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-03-04 14:59:09,953 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-03-04 14:59:10,251 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-03-04 14:59:10,252 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-03-04 14:59:10,560 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-03-04 14:59:10,560 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-03-04 14:59:10,857 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-03-04 14:59:10,858 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-03-04 14:59:11,158 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-03-04 14:59:11,159 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-03-04 14:59:11,460 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-03-04 14:59:11,461 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-03-04 14:59:11,782 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-03-04 14:59:11,782 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-03-04 14:59:12,105 - trading_bot.agents - INFO - Retrieved 3 TMS insights for agronomist.
+2026-03-04 14:59:12,105 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-03-04 14:59:12,430 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-03-04 14:59:12,431 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-03-04 14:59:12,731 - trading_bot.agents - INFO - Retrieved 3 TMS insights for geopolitical.
+2026-03-04 14:59:12,732 - trading_bot.agents - INFO - [geopolitical] Phase 1: Gathering grounded data...
+2026-03-04 14:59:13,031 - trading_bot.agents - INFO - Retrieved 3 TMS insights for supply_chain.
+2026-03-04 14:59:13,031 - trading_bot.agents - INFO - [supply_chain] Phase 1: Gathering grounded data...
+2026-03-04 14:59:13,330 - trading_bot.agents - INFO - Retrieved 3 TMS insights for inventory.
+2026-03-04 14:59:13,331 - trading_bot.agents - INFO - [inventory] Phase 1: Gathering grounded data...
+2026-03-04 14:59:13,650 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-03-04 14:59:13,650 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-03-04 14:59:13,966 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-03-04 14:59:13,966 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-03-04 14:59:14,261 - trading_bot.agents - INFO - Retrieved 3 TMS insights for volatility.
+2026-03-04 14:59:14,261 - trading_bot.agents - INFO - [volatility] Phase 1: Gathering grounded data...
+2026-03-04 14:59:30,799 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=535, market_open=True, trading_day=True
+2026-03-04 14:59:39,306 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=535, market_open=True, trading_day=True
+2026-03-04 15:00:02,135 - trading_bot.heterogeneous_router - WARNING - FALLBACK SUCCESS: Used gemini/gemini-3.1-pro-preview for macro after primary failure.
+2026-03-04 15:00:02,136 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: openai quota exhausted (circuit breaker)
+2026-03-04 15:00:02,685 - trading_bot.tms - INFO - TMS: macro insight cues -> ['fundamentalist', 'geopolitical']
