@@ -13,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 import os
 import json
+import re
 from typing import List, Optional
 import math
 
@@ -60,6 +61,54 @@ def _get_default_tms_path() -> str:
         return os.path.join(get_engine_data_dir(), "tms")
     except LookupError:
         return _default_tms_path
+
+
+def _resolve_year(year: int) -> int:
+    """Convert 1-2 digit year to 4-digit using rolling window."""
+    if year >= 100:
+        return year
+    candidate = year + 2000
+    if candidate < datetime.now().year - 5:
+        candidate += 100
+    return candidate
+
+
+def normalize_contract_month(raw: str) -> str:
+    """Normalize contract month to YYYYMM format.
+
+    Handles: YYYYMM, YYYYMMDD, ticker-prefixed (KCN26), bare letters (N26),
+    and suffixed formats ("KCH6 (202603)").
+    """
+    if not raw:
+        return ''
+    raw = str(raw).strip().split()[0]  # Strip suffix noise
+
+    # Already YYYYMM or YYYYMMDD
+    if raw.isdigit() and len(raw) >= 6:
+        return raw[:6]
+
+    # Ticker-prefixed: KCN26, KCU25, CCZ25, KCH6 (1 or 2 digit year)
+    from config.databento_mappings import LETTER_TO_MONTH_NUM
+    ticker_re = re.match(r'^([A-Z]{2,4})([FGHJKMNQUVXZ])(\d{1,2})$', raw.upper())
+    if ticker_re:
+        letter, year_str = ticker_re.group(2), ticker_re.group(3)
+        month_num = LETTER_TO_MONTH_NUM.get(letter)
+        if month_num:
+            year = _resolve_year(int(year_str))
+            return f"{year}{month_num:02d}"
+
+    # Bare month letter + year: N26, U5, H6
+    bare = re.match(r'^([FGHJKMNQUVXZ])(\d{1,2})$', raw.upper())
+    if bare:
+        letter, year_str = bare.group(1), bare.group(2)
+        month_num = LETTER_TO_MONTH_NUM.get(letter)
+        if month_num:
+            year = _resolve_year(int(year_str))
+            return f"{year}{month_num:02d}"
+
+    # Fallback: extract digits
+    digits = ''.join(c for c in raw if c.isdigit())
+    return digits[:6] if len(digits) >= 6 else digits
 
 
 class TransactiveMemory:
@@ -533,7 +582,11 @@ class TransactiveMemory:
                     "strategy_type": thesis_data.get('strategy_type', 'UNKNOWN'),
                     "guardian_agent": thesis_data.get('guardian_agent', 'UNKNOWN'),
                     "entry_timestamp": thesis_data.get('entry_timestamp', datetime.now(timezone.utc).isoformat()),
-                    "active": "true"
+                    "active": "true",
+                    "symbol": thesis_data.get('supporting_data', {}).get('underlying_symbol', ''),
+                    "contract_month": normalize_contract_month(
+                        thesis_data.get('supporting_data', {}).get('contract_month', '')),
+                    "direction": thesis_data.get('direction', ''),
                 }],
                 ids=[doc_id]
             )
@@ -581,6 +634,53 @@ class TransactiveMemory:
         except Exception as e:
             logger.error(f"TMS get_active_theses failed: {e}")
             return []
+
+    def get_active_theses_by_contract(self, symbol: str, contract_month: str) -> list:
+        """Returns all active theses for a given commodity + contract month."""
+        if not self.collection:
+            return []
+        contract_month = normalize_contract_month(contract_month)
+        try:
+            results = self.collection.get(
+                where={"$and": [
+                    {"active": "true"},
+                    {"symbol": symbol},
+                    {"contract_month": contract_month}
+                ]},
+                include=['documents', 'metadatas']
+            )
+            theses = self._parse_thesis_results(results)
+
+            # Fallback: scan legacy theses without new metadata keys
+            if not theses:
+                all_active = self.collection.get(
+                    where={"$and": [{"active": "true"}, {"type": "entry_thesis"}]},
+                    include=['documents', 'metadatas']
+                )
+                for i, doc in enumerate(all_active.get('documents', [])):
+                    data = json.loads(doc) if doc else {}
+                    if not isinstance(data, dict):
+                        continue
+                    sd = data.get('supporting_data', {})
+                    doc_sym = sd.get('underlying_symbol', '')
+                    doc_month = normalize_contract_month(sd.get('contract_month', ''))
+                    if doc_sym == symbol and doc_month == contract_month:
+                        data['_metadata'] = all_active['metadatas'][i]
+                        theses.append(data)
+            return theses
+        except Exception as e:
+            logger.error(f"TMS get_active_theses_by_contract failed: {e}")
+            return []
+
+    def _parse_thesis_results(self, results) -> list:
+        """Parse ChromaDB results into thesis dicts with _metadata attached."""
+        theses = []
+        for i, doc in enumerate(results.get('documents', [])):
+            data = json.loads(doc) if doc else {}
+            if isinstance(data, dict):
+                data['_metadata'] = results['metadatas'][i]
+                theses.append(data)
+        return theses
 
     def invalidate_thesis(self, trade_id: str, reason: str):
         """Marks a thesis as invalidated (position closed)."""
@@ -692,4 +792,4 @@ class TransactiveMemory:
 # =============================================================================
 
 # Ensure existing code that imports TransactiveMemory continues to work
-__all__ = ['TransactiveMemory', 'CROSS_CUE_RULES']
+__all__ = ['TransactiveMemory', 'CROSS_CUE_RULES', 'normalize_contract_month']

@@ -698,6 +698,142 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     logger.info(">>> Combined task 'Generate and Execute Orders' complete <<<")
 
 
+# === THESIS COHERENCE GATE ===
+# Maps strategy types to directional stance for contradiction detection
+_STRATEGY_DIRECTION = {
+    'BULL_CALL_SPREAD': 'BULLISH',
+    'BEAR_PUT_SPREAD': 'BEARISH',
+    'IRON_CONDOR': 'NEUTRAL',
+    'LONG_STRADDLE': 'NEUTRAL',
+    'CATASTROPHE_HEDGE_FILL': 'UNKNOWN',
+}
+
+# Volatility axis: opposite vol stances contradict each other
+_STRATEGY_VOL_STANCE = {
+    'IRON_CONDOR': 'LOW_VOL',
+    'LONG_STRADDLE': 'HIGH_VOL',
+}
+_VOL_CONTRADICTIONS = {('LOW_VOL', 'HIGH_VOL'), ('HIGH_VOL', 'LOW_VOL')}
+
+
+def _check_thesis_coherence(
+    signal: dict, config: dict, approved_in_this_cycle: list
+) -> tuple:
+    """Check if a new signal conflicts with existing active theses.
+
+    Checks two axes:
+    1. Directional: BULLISH vs BEARISH → CONTRADICT
+    2. Volatility: IRON_CONDOR (low vol) vs LONG_STRADDLE (high vol) → CONTRADICT
+
+    Returns (action, conflicting_theses) where action is:
+        PROCEED / BLOCK_INTRA_CYCLE / CONTRADICT
+    """
+    contract_month = signal.get('contract_month', '')
+    direction = signal.get('direction', 'NEUTRAL')
+    symbol = config.get('symbol', 'KC')
+    pred_type = signal.get('prediction_type', 'DIRECTIONAL')
+
+    if not contract_month:
+        return "PROCEED", []
+
+    # Determine new strategy type for vol-axis check
+    if pred_type == 'DIRECTIONAL':
+        new_type = 'BULL_CALL_SPREAD' if direction == 'BULLISH' else 'BEAR_PUT_SPREAD'
+    else:
+        new_type = 'IRON_CONDOR' if signal.get('level') == 'LOW' else 'LONG_STRADDLE'
+
+    new_vol_stance = _STRATEGY_VOL_STANCE.get(new_type, '')
+
+    # Skip gate entirely only if NEUTRAL direction AND no vol stance
+    if direction == 'NEUTRAL' and not new_vol_stance:
+        return "PROCEED", []
+
+    from trading_bot.tms import normalize_contract_month
+    norm_month = normalize_contract_month(contract_month)
+
+    # Check 1: Intra-cycle duplicates (same direction in this batch)
+    for prev in approved_in_this_cycle:
+        prev_month = normalize_contract_month(prev.get('contract_month', ''))
+        prev_dir = prev.get('direction', '')
+        if prev_month == norm_month and prev_dir == direction:
+            # For vol strategies, also match on prediction_type to avoid
+            # blocking a directional + vol combo in the same batch
+            if direction != 'NEUTRAL' or pred_type == prev.get('prediction_type', ''):
+                return "BLOCK_INTRA_CYCLE", [{'strategy_type': 'in_batch',
+                    '_metadata': {'trade_id': 'in_this_cycle'}}]
+
+    # Check 1b: Intra-cycle contradictions (warning only, v1)
+    for prev in approved_in_this_cycle:
+        prev_month = normalize_contract_month(prev.get('contract_month', ''))
+        prev_dir = prev.get('direction', '')
+        if prev_month == norm_month:
+            # Directional contradiction
+            if (prev_dir in ('BULLISH', 'BEARISH')
+                    and direction in ('BULLISH', 'BEARISH')
+                    and prev_dir != direction):
+                logger.warning(
+                    f"INTRA-CYCLE CONTRADICTION: {direction} on {norm_month} "
+                    f"opposes {prev_dir} from earlier in this batch. "
+                    f"Both will proceed — second fill will trigger auto-close.")
+                break
+            # Vol contradiction
+            prev_type_inferred = ('IRON_CONDOR' if prev.get('level') == 'LOW'
+                                  else 'LONG_STRADDLE') if prev.get('prediction_type') == 'VOLATILITY' else ''
+            prev_vol = _STRATEGY_VOL_STANCE.get(prev_type_inferred, '')
+            if prev_vol and new_vol_stance and (prev_vol, new_vol_stance) in _VOL_CONTRADICTIONS:
+                logger.warning(
+                    f"INTRA-CYCLE VOL CONTRADICTION: {new_type} on {norm_month} "
+                    f"opposes {prev_type_inferred} from earlier in this batch. "
+                    f"Both will proceed — second fill will trigger auto-close.")
+                break
+
+    # Check 2: TMS active theses — look for directional + vol contradictions
+    try:
+        from trading_bot.tms import TransactiveMemory
+        tms = TransactiveMemory()
+        if not tms.collection:
+            logger.warning("Thesis coherence: TMS collection unavailable (FAIL OPEN)")
+            return "PROCEED", []
+        existing = tms.get_active_theses_by_contract(symbol, contract_month)
+    except Exception as e:
+        logger.warning(f"Thesis coherence check failed (FAIL OPEN): {e}")
+        return "PROCEED", []
+
+    if not existing:
+        return "PROCEED", []
+
+    contradictions = []
+    for thesis in existing:
+        meta = thesis.get('_metadata', {})
+        existing_dir = (meta.get('direction', '')
+                       or _STRATEGY_DIRECTION.get(thesis.get('strategy_type', ''), ''))
+        existing_type = thesis.get('strategy_type', 'UNKNOWN')
+
+        if not existing_dir or existing_dir == 'UNKNOWN':
+            logger.debug(
+                f"Thesis {meta.get('trade_id', '?')} has unmapped strategy_type "
+                f"'{existing_type}', treating as non-conflicting")
+            continue
+
+        # Axis 1: Directional contradiction (BULLISH vs BEARISH)
+        if (existing_dir in ('BULLISH', 'BEARISH')
+              and direction in ('BULLISH', 'BEARISH')
+              and existing_dir != direction):
+            contradictions.append(thesis)
+            continue
+
+        # Axis 2: Volatility contradiction (IRON_CONDOR vs LONG_STRADDLE)
+        existing_vol = _STRATEGY_VOL_STANCE.get(existing_type, '')
+        if (existing_vol and new_vol_stance
+                and (existing_vol, new_vol_stance) in _VOL_CONTRADICTIONS):
+            contradictions.append(thesis)
+
+    if contradictions:
+        return "CONTRADICT", contradictions
+
+    return "PROCEED", []
+
+
 async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None, schedule_id: str = None):
     """
     Generates trading strategies based on market data and API predictions,
@@ -871,6 +1007,9 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             # F.4.1: Confidence threshold gate — block low-confidence signals before processing
             min_confidence = config.get('risk_management', {}).get('min_confidence_threshold', 0.60)
 
+            # Thesis coherence: track signals approved in this batch
+            approved_in_this_cycle = []
+
             for signal in signals:
                 # === F.4.1: Confidence gate (before NEUTRAL skip so low-confidence gets logged) ===
                 sig_confidence = signal.get('confidence', 0.0)
@@ -899,6 +1038,43 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 # Also skip explicit NEUTRAL (legacy path)
                 if sig_direction == 'NEUTRAL':
                     continue
+
+                # === THESIS COHERENCE GATE ===
+                coherence_action, conflicting = _check_thesis_coherence(
+                    signal, config, approved_in_this_cycle)
+
+                if coherence_action == "BLOCK_INTRA_CYCLE":
+                    logger.info(
+                        f"BLOCKED (intra-cycle duplicate): {signal.get('contract_month')} "
+                        f"{signal.get('direction')} — already approved in this batch. Skipping."
+                    )
+                    continue
+
+                if coherence_action == "CONTRADICT":
+                    # DEFERRED: attach to signal, auto-close happens in fill callback
+                    superseded_ids = [t.get('_metadata', {}).get('trade_id', '')
+                                      for t in conflicting
+                                      if t.get('_metadata', {}).get('trade_id')]
+                    signal['supersedes_trade_ids'] = superseded_ids
+                    signal['supersedes_reason'] = 'CONTRADICT'
+                    for thesis in conflicting:
+                        tid = thesis.get('_metadata', {}).get('trade_id', '')
+                        logger.warning(
+                            f"THESIS CONTRADICT: {tid} ({thesis.get('strategy_type')}) "
+                            f"will be invalidated + auto-closed after new {signal.get('direction')} "
+                            f"order fills on {signal.get('contract_month')}."
+                        )
+                    try:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "Contradictory Thesis Detected",
+                            f"New {signal.get('direction')} on {signal.get('contract_month')} "
+                            f"contradicts {', '.join(s[:8] for s in superseded_ids)}. "
+                            f"Old position will be auto-closed after new order fills."
+                        )
+                    except Exception:
+                        pass
+                    # Proceed — old thesis stays active until fill
 
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
@@ -1035,6 +1211,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                             # Store signal data with the order
                             signal['strategy_def'] = strategy_def
                             await ORDER_QUEUE.add((contract, order, signal))
+                            approved_in_this_cycle.append(signal)
                             logger.info(f"Successfully queued order for {future.localSymbol}.")
         except Exception as e:
             logger.error(f"Error in order generation block: {e}")
@@ -1259,8 +1436,140 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
             else:
                 logger.debug(f"TMS: Thesis already recorded for {position_uuid}, skipping duplicate.")
 
+        # === DEFERRED THESIS INVALIDATION + AUTO-CLOSE ===
+        superseded_ids = (decision_data or {}).get('supersedes_trade_ids', [])
+        if superseded_ids:
+            _sup_reason = (decision_data or {}).get('supersedes_reason', 'CONTRADICT')
+            _sup_month = (decision_data or {}).get('contract_month', '?')
+            _sup_direction = (decision_data or {}).get('direction', '?')
+            logger.info(
+                f"Fill handler received supersedes_trade_ids: {superseded_ids} "
+                f"(reason: {_sup_reason})")
+
+            try:
+                from trading_bot.tms import TransactiveMemory
+                tms_inv = TransactiveMemory()
+                if not tms_inv.collection:
+                    logger.warning(
+                        "TMS collection unavailable in fill handler — "
+                        "ContextVar may not have propagated. "
+                        "Deferred invalidation skipped; audit cycle will catch it.")
+                else:
+                    for old_tid in superseded_ids:
+                        # 1. Invalidate thesis in TMS
+                        tms_inv.invalidate_thesis(
+                            old_tid,
+                            f"{_sup_reason}: replaced by {position_uuid} "
+                            f"({_sup_direction} on {_sup_month})")
+                        logger.info(
+                            f"TMS: Deferred invalidation of {old_tid} — "
+                            f"new thesis {position_uuid} filled.")
+
+                        # 2. Auto-close the old position (check connection first)
+                        try:
+                            if not ib.isConnected():
+                                logger.warning(
+                                    f"Auto-close {old_tid}: IB disconnected. "
+                                    f"Position audit will handle it.")
+                            else:
+                                await _auto_close_superseded(
+                                    ib, old_tid, _sup_reason, config or {}, tms_inv)
+                        except Exception as close_err:
+                            logger.error(
+                                f"Auto-close of {old_tid} failed: {close_err}. "
+                                f"Position audit cycle will retry.",
+                                exc_info=True)
+                            send_pushover_notification(
+                                (config or {}).get('notifications', {}),
+                                "Auto-Close Failed",
+                                f"Failed to close {old_tid[:8]}: {close_err}. "
+                                f"Manual review required.")
+            except Exception as e:
+                logger.error(f"Deferred invalidation failed: {e}", exc_info=True)
+
     except Exception as e:
         logger.exception(f"Error processing and logging fill for order {trade.order.orderId}: {e}")
+
+
+async def _auto_close_superseded(
+    ib: IB, old_trade_id: str, reason: str, config: dict,
+    tms: 'TransactiveMemory'
+):
+    """Close IB positions for a superseded thesis.
+
+    Called from _handle_and_log_fill() after deferred invalidation.
+    Uses _close_spread_position() from orchestrator (lazy import to avoid
+    circular dependency — orchestrator imports from order_manager at module level,
+    but at runtime orchestrator is fully loaded before any fill fires).
+    """
+    # 0. Check IB connection is still alive
+    if not ib.isConnected():
+        logger.warning(
+            f"Auto-close {old_trade_id}: IB connection no longer active. "
+            f"Deferring to position audit cycle.")
+        return
+
+    # 1. Get current IB positions
+    positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+
+    # 2. Find old trade's contracts from trade ledger
+    trade_ledger = get_trade_ledger_df(config.get('data_dir'))
+    if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+        logger.warning(f"Auto-close {old_trade_id}: trade ledger empty/missing position_id")
+        return
+
+    old_rows = trade_ledger[trade_ledger['position_id'] == old_trade_id]
+    if old_rows.empty:
+        logger.warning(f"Auto-close {old_trade_id}: no ledger entries found")
+        return
+
+    old_symbols = set(old_rows['local_symbol'].unique())
+
+    # 3. Calculate expected quantity per symbol for THIS thesis only
+    expected_qty = {}
+    for _, row in old_rows.iterrows():
+        sym = row.get('local_symbol', '')
+        qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+        expected_qty[sym] = expected_qty.get(sym, 0) + qty
+
+    # 4. Match IB positions to old trade's contracts
+    legs = [p for p in positions
+            if p.contract.localSymbol in old_symbols and p.position != 0]
+
+    if not legs:
+        logger.info(
+            f"Auto-close {old_trade_id}: no matching IB positions "
+            f"(may already be closed)")
+        return
+
+    # 5. SAFETY CHECK: Aggregated position detection
+    # If IB qty > thesis qty for any symbol, another thesis shares these
+    # legs. Bail out — position audit cycle uses quantity-aware matching.
+    for leg in legs:
+        sym = leg.contract.localSymbol
+        thesis_qty = abs(expected_qty.get(sym, 0))
+        ib_qty = abs(leg.position)
+        if ib_qty > thesis_qty:
+            logger.warning(
+                f"Auto-close {old_trade_id}: IB qty ({ib_qty}) > thesis qty "
+                f"({thesis_qty}) for {sym} — aggregated position detected. "
+                f"Deferring to position audit to avoid closing other theses' legs.")
+            return  # Bail out entirely
+
+    # 6. Close via battle-tested _close_spread_position
+    from orchestrator import _close_spread_position  # Lazy import
+
+    thesis = tms.retrieve_thesis(old_trade_id)
+    fully_closed = await _close_spread_position(
+        ib, legs, old_trade_id,
+        f"CONTRADICT: {reason}", config, thesis)
+
+    if not fully_closed:
+        logger.warning(
+            f"Auto-close {old_trade_id}: partial/failed close. "
+            f"Position audit will retry.")
+    else:
+        logger.info(f"Auto-close {old_trade_id}: successfully closed superseded position.")
 
 
 async def check_liquidity_conditions(ib: IB, contract, order_size: int, config: dict = None) -> tuple[bool, str]:
@@ -3114,6 +3423,7 @@ async def record_entry_thesis_for_trade(
 
     thesis_data = {
         'strategy_type': strategy_type,
+        'direction': decision.get('direction', 'UNKNOWN'),
         'guardian_agent': guardian,
         'primary_rationale': reason,
         'invalidation_triggers': invalidation_triggers,
