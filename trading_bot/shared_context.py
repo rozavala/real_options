@@ -103,8 +103,9 @@ class PortfolioRiskGuard:
     _state_date: str = ""    # ISO date of current state — triggers daily reset on mismatch
 
     def __post_init__(self):
+        self._data_dir_root = self.config.get('data_dir_root', 'data')
         self._state_file = os.path.join(
-            self.config.get('data_dir_root', 'data'),
+            self._data_dir_root,
             'portfolio_risk_state.json'
         )
         self._recovery_start = None
@@ -190,6 +191,23 @@ class PortfolioRiskGuard:
             )
         if total_starting > 0:
             self._starting_equity = total_starting
+
+    def _load_prev_close(self) -> Optional[float]:
+        """Load previous close from the primary commodity's daily_equity.csv.
+
+        Scans data_dir_root for any commodity subdirectory containing
+        daily_equity.csv and uses the most recent entry.
+        """
+        from trading_bot.drawdown_circuit_breaker import load_prev_close
+        if not os.path.isdir(self._data_dir_root):
+            return None
+        for ticker_dir in sorted(os.listdir(self._data_dir_root)):
+            subdir = os.path.join(self._data_dir_root, ticker_dir)
+            if os.path.isdir(subdir):
+                result = load_prev_close(subdir)
+                if result is not None:
+                    return result
+        return None
 
     def _persist(self):
         """Atomically save state to disk (tmp + fsync + rename)."""
@@ -286,7 +304,8 @@ class PortfolioRiskGuard:
 
         Called at the top of update_equity() inside the lock. Compares _state_date
         against current UTC date. On mismatch: resets status, PnL, recovery timer,
-        and sets _starting_equity from prior _current_equity.
+        and sets _starting_equity from previous close (daily_equity.csv), falling
+        back to prior _current_equity if unavailable.
         """
         from datetime import datetime as _dt, timezone as _tz
         today = _dt.now(_tz.utc).date().isoformat()
@@ -296,13 +315,18 @@ class PortfolioRiskGuard:
             self._daily_pnl = 0.0
             self._recovery_start = None
             self._recovery_active = False
-            if self._current_equity > 0:
+            prev_close = self._load_prev_close()
+            if prev_close is not None:
+                self._starting_equity = prev_close
+                self._peak_equity = prev_close
+            elif self._current_equity > 0:
                 self._starting_equity = self._current_equity
                 self._peak_equity = self._current_equity
             logger.info(
                 f"PortfolioRiskGuard daily reset: {prev_status} → NORMAL "
                 f"(date {self._state_date} → {today}), "
                 f"starting_equity=${self._starting_equity:,.2f}"
+                f"{' (from prev close)' if prev_close is not None else ''}"
             )
         self._state_date = today
 
@@ -315,8 +339,19 @@ class PortfolioRiskGuard:
             if equity > self._peak_equity:
                 self._peak_equity = equity
             if self._starting_equity == 0.0:
-                self._starting_equity = equity
-                logger.info(f"PortfolioRiskGuard starting equity: ${equity:,.2f}")
+                prev_close = self._load_prev_close()
+                if prev_close is not None:
+                    self._starting_equity = prev_close
+                    logger.info(
+                        f"PortfolioRiskGuard starting equity from prev close: "
+                        f"${prev_close:,.2f} (live NLV: ${equity:,.2f})"
+                    )
+                else:
+                    self._starting_equity = equity
+                    logger.info(
+                        f"PortfolioRiskGuard starting equity from live NLV: "
+                        f"${equity:,.2f} (no daily_equity.csv available)"
+                    )
 
             # Evaluate thresholds
             dd_cfg = self.config.get('drawdown_circuit_breaker', {})
