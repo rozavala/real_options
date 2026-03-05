@@ -310,7 +310,18 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                 # returns no data for long-expired contracts (Error 162),
                 # and retrying every cycle is futile.
                 try:
-                    expiry_date = datetime.strptime(last_trade_date, '%Y%m%d')
+                    if len(last_trade_date) == 6:
+                        # YYYYMM format — use last day of month
+                        expiry_date = datetime.strptime(last_trade_date, '%Y%m')
+                        # Advance to last day of that month
+                        if expiry_date.month == 12:
+                            expiry_date = expiry_date.replace(month=12, day=31)
+                        else:
+                            expiry_date = expiry_date.replace(
+                                month=expiry_date.month + 1, day=1
+                            ) - timedelta(days=1)
+                    else:
+                        expiry_date = datetime.strptime(last_trade_date, '%Y%m%d')
                     if (datetime.now() - expiry_date).days > 60:
                         logger.info(
                             f"Skipping reconciliation for expired contract "
