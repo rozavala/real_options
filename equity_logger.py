@@ -25,6 +25,9 @@ else:
 # Setup logging
 logger = logging.getLogger("EquityLogger")
 
+# Module-level lock to prevent concurrent Flex Query requests (rate-limit guard)
+_equity_sync_lock = asyncio.Lock()
+
 async def sync_equity_from_flex(config: dict):
     """
     Fetches the last 365 days of Net Asset Value from IBKR Flex Query (ID 1341111)
@@ -43,6 +46,17 @@ async def sync_equity_from_flex(config: dict):
         logger.info("Equity sync skipped (non-primary engine).")
         return
 
+    # Guard: skip if another sync is already in progress to avoid Flex Query rate limits
+    if _equity_sync_lock.locked():
+        logger.info("Equity sync already in progress, skipping duplicate request.")
+        return
+
+    async with _equity_sync_lock:
+        await _sync_equity_from_flex_inner(config)
+
+
+async def _sync_equity_from_flex_inner(config: dict):
+    """Inner implementation of equity sync, called under lock."""
     logger.info("--- Starting Equity Synchronization from Flex Query ---")
 
     # Get the ID from the config (loaded from .env), or fallback to os.getenv just in case
