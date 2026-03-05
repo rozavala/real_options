@@ -1038,13 +1038,15 @@ with recon_row3[0]:
     st.markdown("**🎯 Brier Score Reconciliation**")
     st.caption("Grade pending agent predictions against market outcomes")
 
-    # Show pending count
+    # Show pending count from enhanced Brier JSON
     try:
-        import pandas as pd
-        structured_path = _resolve_data_path("agent_accuracy_structured.csv")
-        if os.path.exists(structured_path):
-            structured_df = pd.read_csv(structured_path)
-            pending_count = (structured_df['actual'] == 'PENDING').sum() if 'actual' in structured_df.columns else 0
+        import json as _json
+        _brier_path = _resolve_data_path("enhanced_brier.json")
+        if os.path.exists(_brier_path):
+            with open(_brier_path, 'r') as _bf:
+                _brier_data = _json.load(_bf)
+            _preds = _brier_data.get('predictions', [])
+            pending_count = sum(1 for p in _preds if not p.get('resolved_at'))
             if pending_count > 0:
                 st.warning(f"**{pending_count}** predictions pending resolution")
             else:
@@ -1102,8 +1104,8 @@ with st.expander("ℹ️ About Reconciliation Processes"):
     to ensure `daily_equity.csv` matches broker records. Uses 17:00 NY time as the daily close.
 
     **Brier Scores**: Three-step process: (1) backfills `actual_trend_direction` in council history
-    via IB historical prices, (2) resolves pending predictions in `agent_accuracy_structured.csv`
-    by matching to reconciled council decisions, (3) syncs resolutions to `enhanced_brier.json`.
+    via IB historical prices, (2) resolves pending predictions in `enhanced_brier.json`
+    by matching to reconciled council decisions, (3) updates agent reliability multipliers.
     Grades predictions once their calculated exit time has passed (same-day on Fridays).
 
     ### When to Use
