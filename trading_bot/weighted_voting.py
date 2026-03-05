@@ -541,6 +541,15 @@ async def calculate_weighted_decision(
             logger.warning(f"Agent {agent_name}: Research failed - {report[:100]}")
             continue  # Skip failed agents entirely
 
+        # === Check for dict-wrapped error messages (Issue #1167) ===
+        # research_topic() wraps exceptions as {'data': 'Error conducting research: ...', 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
+        if isinstance(report, dict) and isinstance(report.get('data'), str):
+            data_str = report['data']
+            if 'Error conducting research' in data_str or 'All providers exhausted' in data_str:
+                is_failure = True
+                logger.warning(f"Agent {agent_name}: Research failed (dict-wrapped) - {data_str[:100]}")
+                continue  # Skip failed agents entirely
+
         # === PRIORITY 1: Use structured dict fields if available ===
         sentiment_tag = None
         confidence = 0.5
