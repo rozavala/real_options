@@ -74,8 +74,8 @@ def base_config(tmp_path):
         },
         'sentinels': {
             'weather': {'triggers': {'frost_temp_c': 4.0}},
-            'price': {'pct_change_threshold': 1.5},
-            'microstructure': {'spread_std_threshold': 3.0},
+            'price': {'pct_change_threshold': 2.5},
+            'microstructure': {'spread_std_threshold': 2.0},
         },
         'semantic_cache': {'enabled': True, 'max_entries': 100},
         'strategy': {'quantity': 1, 'min_voter_quorum': 3},
@@ -464,8 +464,8 @@ class TestBuildConfigSnapshot:
         result = _build_config_snapshot(base_config, ['KC'])
         thresholds = result['sentinel_thresholds']
         assert thresholds['weather_frost_temp_c'] == 4.0
-        assert thresholds['price_pct_change_threshold'] == 1.5
-        assert thresholds['microstructure_spread_std_threshold'] == 3.0
+        assert thresholds['price_pct_change_threshold'] == 2.5
+        assert thresholds['microstructure_spread_std_threshold'] == 2.0
 
 
 class TestBuildErrorTelemetry:
