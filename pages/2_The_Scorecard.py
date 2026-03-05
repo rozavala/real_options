@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import sys
 import os
+import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import (
@@ -1015,60 +1016,40 @@ st.markdown("---")
 # === FEEDBACK LOOP HEALTH ===
 st.subheader("🔄 Feedback Loop Health")
 
-structured_file = _resolve_data_path_for("agent_accuracy_structured.csv", ticker)
+_brier_path = _resolve_data_path_for("enhanced_brier.json", ticker)
+_brier_data = None
+if os.path.exists(_brier_path):
+    try:
+        with open(_brier_path, 'r') as _bf:
+            _brier_data = json.load(_bf)
+    except Exception:
+        pass
 
-if os.path.exists(structured_file):
-    struct_df = pd.read_csv(structured_file)
+if _brier_data and _brier_data.get('predictions'):
+    _all_preds = _brier_data['predictions']
+    total = len(_all_preds)
+    resolved = sum(1 for p in _all_preds if p.get('resolved_at'))
+    pending = total - resolved
+    rate = resolved / total * 100 if total > 0 else 0
 
-    if not struct_df.empty:
-        total = len(struct_df)
-        pending = (struct_df["actual"] == "PENDING").sum()
-        orphaned = (
-            (struct_df["actual"] == "ORPHANED").sum()
-            if "actual" in struct_df.columns
-            else 0
-        )
-        resolved = total - pending - orphaned
-        resolvable = total - orphaned
-        rate = resolved / resolvable * 100 if resolvable > 0 else 0
+    health_cols = st.columns(4)
+    health_cols[0].metric("Total Predictions", total)
+    health_cols[1].metric("Resolved", resolved)
+    health_cols[2].metric("Pending", pending)
+    health_cols[3].metric(
+        "Resolution Rate", f"{rate:.0f}%", help="Resolved / Total predictions"
+    )
 
-        health_cols = st.columns(5)
-        health_cols[0].metric("Total Predictions", total)
-        health_cols[1].metric("Resolved", resolved)
-        health_cols[2].metric("Pending", pending)
-        health_cols[3].metric(
-            "Orphaned",
-            orphaned,
-            help="Legacy predictions (Jan 19-27) with no matching council decision",
-        )
-        health_cols[4].metric(
-            "Resolution Rate", f"{rate:.0f}%", help="Excludes orphaned predictions"
-        )
-
-        # Color-coded status
-        if rate >= 80:
-            st.success(
-                f"✅ Feedback loop healthy — {rate:.0f}% resolution rate"
-                + (f" ({orphaned} legacy orphans excluded)" if orphaned > 0 else "")
-            )
-        elif rate >= 50:
-            st.warning(f"⚠️ Feedback loop degraded — {rate:.0f}% resolution rate")
-        else:
-            st.error(
-                f"🔴 Feedback loop broken — {rate:.0f}% resolution rate. Agent learning not occurring!"
-            )
-
-        # Show cycle_id coverage
-        if "cycle_id" in struct_df.columns:
-            has_cycle_id = struct_df["cycle_id"].notna() & (struct_df["cycle_id"] != "")
-            cycle_id_pct = has_cycle_id.sum() / total * 100
-            st.caption(
-                f"cycle_id coverage: {cycle_id_pct:.0f}% (new system) / {100 - cycle_id_pct:.0f}% (legacy)"
-            )
+    if rate >= 80:
+        st.success(f"✅ Feedback loop healthy — {rate:.0f}% resolution rate")
+    elif rate >= 50:
+        st.warning(f"⚠️ Feedback loop degraded — {rate:.0f}% resolution rate")
     else:
-        st.info("No prediction data yet.")
+        st.error(
+            f"🔴 Feedback loop broken — {rate:.0f}% resolution rate. Agent learning not occurring!"
+        )
 else:
-    st.info("Structured prediction file not found.")
+    st.info("No prediction data yet. Enhanced Brier tracker will populate after trading cycles run.")
 
 st.markdown("---")
 

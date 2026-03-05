@@ -44,33 +44,6 @@ def load_enhanced_brier(ticker: str = "KC"):
 
 
 @st.cache_data(ttl=120)
-def load_structured_predictions(ticker: str = "KC"):
-    """Load structured prediction CSV."""
-    path = _resolve_data_path_for("agent_accuracy_structured.csv", ticker)
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    try:
-        df = pd.read_csv(path)
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-        return df
-    except Exception:
-        return pd.DataFrame()
-
-
-@st.cache_data(ttl=120)
-def load_legacy_accuracy(ticker: str = "KC"):
-    """Load legacy accuracy CSV."""
-    path = _resolve_data_path_for("agent_accuracy.csv", ticker)
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    try:
-        return pd.read_csv(path)
-    except Exception:
-        return pd.DataFrame()
-
-
-@st.cache_data(ttl=120)
 def load_weight_evolution(ticker: str = "KC"):
     """Load weight evolution CSV."""
     path = _resolve_data_path_for('weight_evolution.csv', ticker)
@@ -78,21 +51,6 @@ def load_weight_evolution(ticker: str = "KC"):
         return pd.DataFrame()
     try:
         return pd.read_csv(path, parse_dates=['timestamp'])
-    except Exception:
-        return pd.DataFrame()
-
-
-@st.cache_data(ttl=120)
-def load_decision_signals(ticker: str = "KC"):
-    """Load decision signals CSV for regime context."""
-    path = _resolve_data_path_for('decision_signals.csv', ticker)
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    try:
-        df = pd.read_csv(path)
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-        return df
     except Exception:
         return pd.DataFrame()
 
@@ -108,8 +66,6 @@ except ImportError:
 st.subheader("📊 Feedback Loop Overview")
 
 enhanced_data = load_enhanced_brier(ticker)
-struct_df = load_structured_predictions(ticker)
-legacy_df = load_legacy_accuracy(ticker)
 
 # Primary metrics
 if enhanced_data:
@@ -127,17 +83,6 @@ if enhanced_data:
         f"{resolved / total * 100:.0f}%" if total > 0 else "N/A"
     )
 
-elif not struct_df.empty:
-    total = len(struct_df)
-    pending = (struct_df['actual'] == 'PENDING').sum()
-    orphaned = (struct_df['actual'] == 'ORPHANED').sum() if 'actual' in struct_df.columns else 0
-    resolved = total - pending - orphaned
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Predictions", total, help="Total number of agent predictions recorded.")
-    col2.metric("Resolved", resolved, help="Number of predictions with a known market outcome.")
-    col3.metric("Pending", pending, help="Predictions waiting for market resolution (T+1).")
-    st.info("Enhanced Brier tracker has no data yet. Showing legacy CSV metrics.")
 else:
     st.info("No prediction data available yet.")
 
@@ -483,112 +428,81 @@ st.markdown("---")
 st.subheader("🏆 Agent Accuracy by Market Regime")
 st.caption("Which agents perform best in each market condition?")
 
-try:
-    accuracy_df = load_legacy_accuracy(ticker)
-    signals_df = load_decision_signals(ticker)
+if enhanced_data and enhanced_data.get('agent_scores'):
+    agent_scores = enhanced_data['agent_scores']
 
-    _have_accuracy = not accuracy_df.empty and 'agent' in accuracy_df.columns and 'correct' in accuracy_df.columns
-    _have_signals = not signals_df.empty and 'regime' in signals_df.columns
+    rows = []
+    for agent, regimes in agent_scores.items():
+        for regime, scores in regimes.items():
+            if len(scores) >= 3:
+                rows.append({
+                    'agent': agent,
+                    'regime': regime,
+                    'avg_brier': np.mean(scores),
+                    'count': len(scores),
+                })
 
-    if _have_accuracy and _have_signals:
-        # Parse timestamps for date-based join
-        if 'timestamp' in accuracy_df.columns:
-            accuracy_df['timestamp'] = pd.to_datetime(accuracy_df['timestamp'], utc=True, errors='coerce')
-            accuracy_df['date'] = accuracy_df['timestamp'].dt.date
+    if rows:
+        regime_df = pd.DataFrame(rows)
 
-        if 'timestamp' in signals_df.columns:
-            signals_df['date'] = signals_df['timestamp'].dt.date
+        pivot = regime_df.pivot_table(index='agent', columns='regime', values='avg_brier')
+        counts = regime_df.pivot_table(index='agent', columns='regime', values='count')
 
-        # One regime per day (latest signal that day)
-        regime_by_date = signals_df.sort_values('timestamp').drop_duplicates(
-            subset='date', keep='last'
-        )[['date', 'regime']]
+        display_data = {}
+        for regime in pivot.columns:
+            col_vals = []
+            for agent in pivot.index:
+                brier = pivot.loc[agent, regime] if not pd.isna(pivot.loc[agent, regime]) else None
+                cnt = counts.loc[agent, regime] if not pd.isna(counts.loc[agent, regime]) else 0
+                if brier is None or cnt < 3:
+                    col_vals.append("---")
+                else:
+                    col_vals.append(f"{brier:.3f}")
+            display_data[regime] = col_vals
 
-        merged = accuracy_df.merge(regime_by_date, on='date', how='inner')
+        display_df = pd.DataFrame(display_data, index=[
+            _DISPLAY_NAMES.get(a, a.title()) for a in pivot.index
+        ])
+        display_df.index.name = 'Agent'
 
-        if not merged.empty:
-            # Group by (agent, regime) -> accuracy
-            regime_acc = merged.groupby(['agent', 'regime']).agg(
-                correct=('correct', 'sum'),
-                total=('correct', 'count'),
-            ).reset_index()
-            regime_acc['accuracy'] = regime_acc['correct'] / regime_acc['total']
+        def _color_brier(val):
+            if val == "---":
+                return 'color: gray'
+            try:
+                score = float(val)
+                if score <= 0.15:
+                    return 'background-color: rgba(44, 160, 44, 0.2); color: #2ca02c'
+                elif score <= 0.25:
+                    return 'background-color: rgba(255, 193, 7, 0.2); color: #856404'
+                else:
+                    return 'background-color: rgba(214, 39, 40, 0.2); color: #d62728'
+            except (ValueError, AttributeError):
+                return ''
 
-            # Build pivot table
-            pivot = regime_acc.pivot_table(index='agent', columns='regime', values='accuracy')
-            counts = regime_acc.pivot_table(index='agent', columns='regime', values='total')
+        styled_regime = display_df.style.map(_color_brier)
+        st.dataframe(styled_regime, width="stretch")
 
-            # Format cells: "---" for <3 samples
-            display_data = {}
-            for regime in pivot.columns:
-                col_vals = []
-                for agent in pivot.index:
-                    acc = pivot.loc[agent, regime] if not pd.isna(pivot.loc[agent, regime]) else None
-                    cnt = counts.loc[agent, regime] if not pd.isna(counts.loc[agent, regime]) else 0
-                    if cnt < 3 or acc is None:
-                        col_vals.append("---")
-                    else:
-                        col_vals.append(f"{acc * 100:.0f}%")
-                display_data[regime] = col_vals
-
-            display_df = pd.DataFrame(display_data, index=[
-                _DISPLAY_NAMES.get(a, a.title()) for a in pivot.index
-            ])
-            display_df.index.name = 'Agent'
-
-            def _color_accuracy(val):
-                if val == "---":
-                    return 'color: gray'
-                try:
-                    pct = int(val.replace('%', ''))
-                    if pct >= 60:
-                        return 'background-color: rgba(44, 160, 44, 0.2); color: #2ca02c'
-                    elif pct >= 40:
-                        return 'background-color: rgba(255, 193, 7, 0.2); color: #856404'
-                    else:
-                        return 'background-color: rgba(214, 39, 40, 0.2); color: #d62728'
-                except (ValueError, AttributeError):
-                    return ''
-
-            styled_regime = display_df.style.map(_color_accuracy)
-            st.dataframe(styled_regime, width="stretch")
-
-            # Best agent per regime
-            best_agents = []
-            for regime in pivot.columns:
-                valid = pivot[regime].dropna()
-                valid = valid[counts[regime].fillna(0) >= 3]
-                if not valid.empty:
-                    best = valid.idxmax()
-                    best_name = _DISPLAY_NAMES.get(best, best.title())
-                    best_acc = valid.max() * 100
-                    best_agents.append(f"**{regime}**: {best_name} ({best_acc:.0f}%)")
-
-            if best_agents:
-                st.markdown("**Top performer per regime:** " + " | ".join(best_agents))
-        else:
-            st.info("Could not match accuracy data with regime data. Timestamps may not overlap.")
-    elif _have_accuracy:
-        # No regime data -- show overall ranking
-        ranking = accuracy_df.groupby('agent').agg(
-            total=('correct', 'count'),
-            correct=('correct', 'sum'),
-        ).reset_index()
-        ranking['accuracy'] = (ranking['correct'] / ranking['total'] * 100).round(1)
-        ranking = ranking.sort_values('accuracy', ascending=False)
-        ranking['Agent'] = ranking['agent'].map(lambda a: _DISPLAY_NAMES.get(a, a.title()))
-        st.dataframe(
-            ranking[['Agent', 'total', 'correct', 'accuracy']].rename(
-                columns={'total': 'Predictions', 'correct': 'Correct', 'accuracy': 'Accuracy %'}
-            ),
-            hide_index=True, width="stretch",
+        st.caption(
+            "**Brier Score:** 0.0 = perfect, 0.25 = random, 0.5 = worst. "
+            "Lower is better. Minimum 3 samples per cell."
         )
-        st.caption("Regime-specific breakdown will appear when decision_signals.csv contains regime data.")
-    else:
-        st.info("Regime-specific data not available. Requires agent_accuracy.csv and decision_signals.csv.")
 
-except Exception as e:
-    st.warning(f"Could not compute regime-specific rankings: {e}")
+        best_agents = []
+        for regime in pivot.columns:
+            valid = pivot[regime].dropna()
+            valid = valid[counts[regime].fillna(0) >= 3]
+            if not valid.empty:
+                best = valid.idxmin()
+                best_name = _DISPLAY_NAMES.get(best, best.title())
+                best_score = valid.min()
+                best_agents.append(f"**{regime}**: {best_name} ({best_score:.3f})")
+
+        if best_agents:
+            st.markdown("**Top performer per regime:** " + " | ".join(best_agents))
+    else:
+        st.info("Not enough data for regime-specific ranking. Need at least 3 resolved predictions per agent per regime.")
+else:
+    st.info("Regime-specific Brier scores will appear after predictions are resolved via reconciliation.")
 
 
 # === TMS TEMPORAL DECAY VISUALIZATION ===
