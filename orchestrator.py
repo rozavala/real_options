@@ -4548,9 +4548,17 @@ async def emergency_hard_close(config: dict):
                 if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
                     sym_rows = trade_ledger[trade_ledger['local_symbol'] == sym]
                     if not sym_rows.empty:
-                        earliest = pd.Timestamp(sym_rows['timestamp'].min())
+                        # Use most recent opening entry (matching direction), not
+                        # earliest-ever.  Old closed positions for the same symbol
+                        # must not inflate the age of the current live position.
+                        action_dir = 'BUY' if pos.position > 0 else 'SELL'
+                        dir_rows = sym_rows[sym_rows['action'] == action_dir]
+                        ref_ts = pd.Timestamp(
+                            dir_rows['timestamp'].max() if not dir_rows.empty
+                            else sym_rows['timestamp'].max()
+                        )
                         trading_days = pd.date_range(
-                            start=earliest.date(), end=today_date, freq=custom_bday
+                            start=ref_ts.date(), end=today_date, freq=custom_bday
                         )
                         if len(trading_days) >= max_holding_days:
                             stale_symbols.add(sym)
