@@ -62,6 +62,7 @@ class AgentVote:
     age_hours: float = 0.0  # Populated from StateManager metadata
     is_stale: bool = False
     data_freshness_hours: float = 0.0
+    has_direction_mismatch: bool = False
 
 
 def calculate_staleness_weight(age_hours: float, max_useful_age: float = 24.0) -> float:
@@ -596,6 +597,8 @@ async def calculate_weighted_decision(
                           f"Report type: {type(report).__name__}, is_stale: {is_stale}, "
                           f"Report preview: {str(report)[:100]}...")
 
+        has_mismatch = report.get('has_direction_mismatch', False) if isinstance(report, dict) else False
+
         votes.append(AgentVote(
             agent_name=agent_name,
             direction=direction,
@@ -603,7 +606,8 @@ async def calculate_weighted_decision(
             sentiment_tag=sentiment_tag,
             age_hours=age_hours,
             is_stale=is_data_stale,
-            data_freshness_hours=data_freshness
+            data_freshness_hours=data_freshness,
+            has_direction_mismatch=has_mismatch,
         ))
 
     # Quorum Check
@@ -662,7 +666,13 @@ async def calculate_weighted_decision(
             freshness_penalty = decay_factor
             logger.debug(f"Agent {vote.agent_name}: Freshness penalty applied: {freshness:.1f}h -> factor {decay_factor:.2f}")
 
-        final_weight = base_domain_weight * reliability_multiplier * staleness_weight * freshness_penalty
+        # Apply direction-evidence mismatch discount (Issue #1170)
+        mismatch_discount = 1.0
+        if vote.has_direction_mismatch:
+            mismatch_discount = 0.5
+            logger.info(f"Agent {vote.agent_name}: Direction-evidence mismatch detected, applying 0.5x weight discount")
+
+        final_weight = base_domain_weight * reliability_multiplier * staleness_weight * freshness_penalty * mismatch_discount
 
         contribution = vote.direction.value * vote.confidence * final_weight
         total_weighted_score += contribution
@@ -676,6 +686,7 @@ async def calculate_weighted_decision(
             'reliability_mult': round(reliability_multiplier, 2),
             'staleness_weight': round(staleness_weight, 2),
             'age_hours': round(vote.age_hours, 1),
+            'mismatch_discount': round(mismatch_discount, 2),
             'final_weight': round(final_weight, 2),
             'contribution': round(contribution, 3),
         })
