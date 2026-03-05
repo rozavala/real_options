@@ -597,7 +597,11 @@ class TransactiveMemory:
             return None
 
     def retrieve_thesis(self, trade_id: str) -> dict | None:
-        """Retrieves the entry thesis for a specific trade."""
+        """Retrieves the entry thesis for a specific trade.
+
+        Returns the document JSON merged with ChromaDB metadata so callers
+        can check fields like ``active`` that live in metadata only.
+        """
         if not self.collection:
             return None
 
@@ -608,7 +612,17 @@ class TransactiveMemory:
             )
             if results and results['documents']:
                 data = json.loads(results['documents'][0])
-                return data if isinstance(data, dict) else None
+                if not isinstance(data, dict):
+                    return None
+                # Merge metadata (contains 'active', 'trade_id', etc.)
+                meta = (results.get('metadatas') or [None])[0]
+                if meta:
+                    for k, v in meta.items():
+                        if k == 'active':
+                            data['active'] = (v == 'true')
+                        elif k not in data:
+                            data[k] = v
+                return data
             return None
         except Exception as e:
             logger.error(f"TMS retrieve_thesis failed: {e}")
