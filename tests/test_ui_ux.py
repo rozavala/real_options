@@ -315,8 +315,9 @@ class TestPortfolioUX(unittest.TestCase):
             "Daily P&L",
             "Drawdown",
             "VaR (95%)",
-            "VaR Limit",
+            "VaR (99%)",
             "Utilization",
+            "Legs",
         ]
         found_metrics = {m: False for m in target_metrics}
 
