@@ -480,6 +480,19 @@ class TradingCouncil:
                                 derived.add(n)
                                 break
                     fabricated -= derived
+                else:
+                    # No source numbers at all — inventory agent has no grounding data.
+                    # Any numbers it cites are necessarily hallucinated (#1171).
+                    if fabricated:
+                        issues.append(
+                            f"Ungrounded inventory data: {len(fabricated)} numbers cited "
+                            f"with no source numbers in grounded data: {list(fabricated)[:5]}"
+                        )
+                        confidence_adjustment = min(confidence_adjustment, 0.3) if confidence_adjustment is not None else 0.3
+                        logger.warning(
+                            f"[{agent_name}] No source numbers in grounded data — "
+                            f"forcing LOW confidence. Fabricated: {list(fabricated)[:5]}"
+                        )
             except (ValueError, ZeroDivisionError):
                 pass
 

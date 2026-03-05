@@ -720,7 +720,13 @@ class PortfolioVaRCalculator:
         return result["price"]
 
     def _get_yf_ticker(self, symbol: str) -> str:
-        """Resolve yfinance ticker from CommodityProfile or fallback."""
+        """Resolve yfinance ticker dynamically to current front-month contract."""
+        try:
+            from dashboard_utils import resolve_yf_ticker
+            return resolve_yf_ticker(symbol)
+        except Exception:
+            pass
+        # Fallback: try static profile value
         try:
             profile = get_commodity_profile(symbol)
             if hasattr(profile, 'yfinance_ticker') and profile.yfinance_ticker:

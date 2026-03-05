@@ -1336,12 +1336,40 @@ async def _reconcile_orphaned_theses(
                     for s, exp in expected_legs.items()
                 )
                 if any_present:
-                    live_position_ids.add(tid)
-                    logger.warning(
-                        f"Reconciliation: Thesis {tid} partially covered "
-                        f"(expected={expected_legs}, remaining={remaining_ib}). "
-                        f"Keeping alive (fail-closed)."
-                    )
+                    # Check thesis age — stale partial theses (>48h) should be
+                    # invalidated rather than kept alive indefinitely (#1166)
+                    max_partial_hours = 48
+                    tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                    entry_time_str = tid_rows['timestamp'].min() if not tid_rows.empty else None
+                    thesis_age_hours = None
+                    if entry_time_str:
+                        try:
+                            entry_dt = pd.to_datetime(entry_time_str, utc=True)
+                            thesis_age_hours = (
+                                datetime.now(timezone.utc) - entry_dt
+                            ).total_seconds() / 3600
+                        except Exception:
+                            pass
+
+                    if thesis_age_hours and thesis_age_hours > max_partial_hours:
+                        logger.warning(
+                            f"Reconciliation: Thesis {tid} partially covered for "
+                            f"{thesis_age_hours:.0f}h (>{max_partial_hours}h). "
+                            f"Force-invalidating stale partial thesis. "
+                            f"expected={expected_legs}, remaining_ib={remaining_ib}"
+                        )
+                        # Don't add to live_position_ids — will be orphaned and invalidated
+                    else:
+                        live_position_ids.add(tid)
+                        logger.warning(
+                            f"Reconciliation: Thesis {tid} partially covered "
+                            f"(expected={expected_legs}, remaining={remaining_ib}). "
+                            f"Keeping alive (fail-closed, age={thesis_age_hours:.0f}h)."
+                            if thesis_age_hours else
+                            f"Reconciliation: Thesis {tid} partially covered "
+                            f"(expected={expected_legs}, remaining={remaining_ib}). "
+                            f"Keeping alive (fail-closed)."
+                        )
 
         # Theses with no ledger entries but IB has positions: fail closed
         for tid in active_thesis_ids:
@@ -2545,7 +2573,11 @@ async def sentinel_effectiveness_check(config: dict):
         weekly_change_pct = None
         try:
             import yfinance as yf
-            yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
+            try:
+                from dashboard_utils import resolve_yf_ticker
+                yf_ticker = resolve_yf_ticker(profile.contract.symbol)
+            except Exception:
+                yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
             data = yf.Ticker(yf_ticker).history(period="5d")
             if data is not None and len(data) >= 2:
                 weekly_change_pct = ((data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]) * 100
@@ -4638,6 +4670,117 @@ async def emergency_hard_close(config: dict):
                         f"Emergency close timed out ({fill_timeout}s): "
                         f"{contract.localSymbol} status={trade.orderStatus.status}"
                     )
+
+            # --- Phase 4: Retry margin-rejected orders (Error 201) ---
+            # After other legs close, margin may have freed up enough.
+            if error_201_symbols and failed_symbols:
+                retry_candidates = [
+                    (sym, status, err) for sym, status, err in failed_symbols
+                    if sym in error_201_symbols
+                ]
+                if retry_candidates:
+                    logger.info(
+                        f"Retrying {len(retry_candidates)} margin-rejected order(s) "
+                        f"after 5s margin release window..."
+                    )
+                    await asyncio.sleep(5)
+
+                    # Build symbol → position lookup from original positions
+                    pos_by_symbol = {
+                        pos.contract.localSymbol: pos for pos in open_positions
+                    }
+
+                    for sym, _status, _err in retry_candidates:
+                        pos = pos_by_symbol.get(sym)
+                        if not pos:
+                            continue
+                        contract = pos.contract
+                        if not contract.exchange:
+                            contract.exchange = config.get('exchange', 'SMART')
+                        close_action = 'SELL' if pos.position > 0 else 'BUY'
+                        qty = abs(pos.position)
+
+                        # Retry 1: same quantity
+                        order = MarketOrder(close_action, qty)
+                        order.tif = 'GTC'
+                        trade = ib.placeOrder(contract, order)
+                        logger.info(f"Emergency retry: {close_action} {qty} {sym} (MARKET)")
+
+                        retry_deadline = asyncio.get_event_loop().time() + 10
+                        while not trade.isDone() and asyncio.get_event_loop().time() < retry_deadline:
+                            await asyncio.sleep(0.5)
+
+                        if trade.isDone() and trade.orderStatus.status == 'Filled':
+                            closed += 1
+                            failed -= 1
+                            # Remove from failed lists
+                            failed_symbols = [(s, st, e) for s, st, e in failed_symbols if s != sym]
+                            error_201_symbols = [s for s in error_201_symbols if s != sym]
+                            logger.info(f"Emergency retry FILLED: {sym} qty={trade.orderStatus.filled}")
+                            try:
+                                from trading_bot.utils import log_trade_to_ledger
+                                import time as _time
+                                await log_trade_to_ledger(
+                                    ib, trade,
+                                    reason="EMERGENCY_HARD_CLOSE_RETRY",
+                                    position_id=f"EMERGENCY_{sym}_{today_date}_{int(_time.time())}"
+                                )
+                            except Exception as ledger_err:
+                                logger.error(f"Failed to log retry fill to ledger: {ledger_err}")
+                            continue
+
+                        # Retry 2: reduce quantity to 1 if original was > 1
+                        if qty > 1:
+                            logger.info(f"Emergency retry reduced qty: {close_action} 1 {sym} (MARKET)")
+                            try:
+                                ib.cancelOrder(trade.order)
+                            except Exception:
+                                pass
+                            await asyncio.sleep(1)
+
+                            order2 = MarketOrder(close_action, 1)
+                            order2.tif = 'GTC'
+                            trade2 = ib.placeOrder(contract, order2)
+
+                            retry2_deadline = asyncio.get_event_loop().time() + 10
+                            while not trade2.isDone() and asyncio.get_event_loop().time() < retry2_deadline:
+                                await asyncio.sleep(0.5)
+
+                            if trade2.isDone() and trade2.orderStatus.status == 'Filled':
+                                closed += 1
+                                logger.info(f"Emergency retry (reduced qty) FILLED: {sym} qty=1")
+                                try:
+                                    from trading_bot.utils import log_trade_to_ledger
+                                    import time as _time
+                                    await log_trade_to_ledger(
+                                        ib, trade2,
+                                        reason="EMERGENCY_HARD_CLOSE_RETRY_PARTIAL",
+                                        position_id=f"EMERGENCY_{sym}_{today_date}_{int(_time.time())}"
+                                    )
+                                except Exception as ledger_err:
+                                    logger.error(f"Failed to log partial retry fill: {ledger_err}")
+                                # Still have remaining qty unfilled
+                                remaining = qty - 1
+                                if remaining > 0:
+                                    logger.warning(
+                                        f"MANUAL CLOSE REQUIRED: {remaining} remaining "
+                                        f"{close_action} {sym}"
+                                    )
+                                continue
+
+                        # All retries exhausted
+                        logger.error(f"MANUAL CLOSE REQUIRED: {sym} — all retry attempts failed")
+
+                    # Send separate notification for manual close items
+                    manual_close_needed = [s for s in error_201_symbols]
+                    if manual_close_needed:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "🚨 MANUAL CLOSE REQUIRED",
+                            f"Emergency close retry exhausted for: "
+                            f"{', '.join(manual_close_needed)}\n"
+                            f"These positions remain OPEN. Close manually ASAP."
+                        )
 
             # B2: Include failed symbol details in notification
             summary = f"Emergency hard close: {closed} closed, {failed} failed"

@@ -37,8 +37,8 @@ class MicrostructureSentinel:
         self.ib = ib
 
         sentinel_config = config.get('sentinels', {}).get('microstructure', {})
-        self.spread_std_threshold = sentinel_config.get('spread_std_threshold', 3.0)
-        self.volume_spike_pct = sentinel_config.get('volume_spike_pct', 5.0)
+        self.spread_std_threshold = sentinel_config.get('spread_std_threshold', 2.0)
+        self.volume_spike_pct = sentinel_config.get('volume_spike_pct', 3.0)
         self.depth_drop_pct = sentinel_config.get('depth_drop_pct', 0.5)
 
         self.spread_history: deque = deque(maxlen=1440)
@@ -46,7 +46,7 @@ class MicrostructureSentinel:
         self.depth_history: deque = deque(maxlen=30)
 
         self.last_trigger_time: Optional[datetime] = None
-        self.cooldown_seconds = sentinel_config.get('cooldown_seconds', 300)
+        self.cooldown_seconds = sentinel_config.get('cooldown_seconds', 600)
         self.tickers = {}
 
         self._last_alert_pct = None

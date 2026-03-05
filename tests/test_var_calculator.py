@@ -566,10 +566,12 @@ def test_failure_tracking_in_state(calculator, tmp_data_dir):
 # --- Test 16: yfinance_ticker field resolution ---
 
 def test_yfinance_ticker_resolution(calculator):
-    """_get_yf_ticker should resolve from CommodityProfile."""
-    # KC has yfinance_ticker="KC=F" set in profile
-    assert calculator._get_yf_ticker("KC") == "KC=F"
-    assert calculator._get_yf_ticker("CC") == "CC=F"
+    """_get_yf_ticker should resolve dynamically to front-month contract."""
+    # KC should resolve to a specific front-month contract (e.g., KCK26.NYB)
+    kc_ticker = calculator._get_yf_ticker("KC")
+    assert kc_ticker.startswith("KC") and ".NYB" in kc_ticker, f"Expected KC front-month, got {kc_ticker}"
+    cc_ticker = calculator._get_yf_ticker("CC")
+    assert cc_ticker.startswith("CC"), f"Expected CC ticker, got {cc_ticker}"
 
     # Unknown ticker falls back to "{symbol}=F"
     assert calculator._get_yf_ticker("ZZZ") == "ZZZ=F"

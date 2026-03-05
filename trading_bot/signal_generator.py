@@ -90,6 +90,42 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         logger.error("No active futures found. Cannot generate signals.")
         return []
 
+    # 2b. Pre-filter: remove far-dated illiquid contracts before signal generation (#1173)
+    # This avoids wasting LLM spend on contracts that will always fail the liquidity filter.
+    try:
+        from config import get_active_profile
+        profile = get_active_profile(config)
+        max_days = profile.max_dte
+        pre_filter_count = len(sorted_contracts)
+        filtered = []
+        for c in sorted_contracts:
+            try:
+                d_str = c.lastTradeDateOrContractMonth
+                fmt = '%Y%m' if len(d_str) == 6 else '%Y%m%d'
+                exp_date = datetime.strptime(d_str, fmt)
+                days_out = (exp_date - datetime.now()).days
+                if days_out <= max_days:
+                    filtered.append(c)
+                else:
+                    logger.info(
+                        f"Pre-signal skip: {c.localSymbol} too deferred "
+                        f"({days_out}d > {max_days}d max). Saving LLM spend."
+                    )
+            except Exception:
+                filtered.append(c)  # Fail-safe: keep on parse error
+        sorted_contracts = filtered
+        if pre_filter_count > len(sorted_contracts):
+            logger.info(
+                f"Pre-signal filter: {len(sorted_contracts)}/{pre_filter_count} "
+                f"contracts within {max_days}d DTE"
+            )
+    except Exception as e:
+        logger.debug(f"Pre-signal DTE filter skipped: {e}")
+
+    if not sorted_contracts:
+        logger.warning("No contracts remaining after pre-signal DTE filter.")
+        return []
+
     # 3. Build Market Context for All Contracts (replaces ML inference)
     market_contexts = await build_all_market_contexts(ib, sorted_contracts, config)
 

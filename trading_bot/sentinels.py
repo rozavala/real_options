@@ -333,7 +333,7 @@ class PriceSentinel(Sentinel):
         super().__init__(config)
         self.ib = ib_instance
         self.sentinel_config = config.get('sentinels', {}).get('price', {})
-        self.pct_change_threshold = self.sentinel_config.get('pct_change_threshold', 1.5)
+        self.pct_change_threshold = self.sentinel_config.get('pct_change_threshold', 2.5)
         self.symbol = config.get('symbol', 'KC')
         self.exchange = config['exchange']
 
