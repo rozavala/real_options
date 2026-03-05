@@ -312,7 +312,7 @@ class TestCheckThesisCoherence(unittest.TestCase):
 # 3. Auto-close tests
 # ---------------------------------------------------------------------------
 
-class TestDeferredInvalidation(unittest.TestCase):
+class TestDeferredInvalidation(unittest.IsolatedAsyncioTestCase):
     """Tests for deferred invalidation + auto-close in fill handler."""
 
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
@@ -500,7 +500,7 @@ class TestDeferredInvalidation(unittest.TestCase):
         # But no auto-close attempt
 
 
-class TestAutoCloseSuperseded(unittest.TestCase):
+class TestAutoCloseSuperseded(unittest.IsolatedAsyncioTestCase):
     """Tests for _auto_close_superseded()."""
 
     @patch('trading_bot.order_manager.get_trade_ledger_df')
@@ -574,7 +574,7 @@ class TestAutoCloseSuperseded(unittest.TestCase):
         ib.reqPositionsAsync.assert_not_called()
 
 
-class TestDedupPreventsSecondAutoClose(unittest.TestCase):
+class TestDedupPreventsSecondAutoClose(unittest.IsolatedAsyncioTestCase):
     """Verify _processed_supersedes prevents duplicate deferred invalidation."""
 
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
@@ -648,7 +648,7 @@ class TestDedupPreventsSecondAutoClose(unittest.TestCase):
                          "_auto_close_superseded called more than once — dedup failed")
 
 
-class TestCloseSpreadPositionUsesPosContract(unittest.TestCase):
+class TestCloseSpreadPositionUsesPosContract(unittest.IsolatedAsyncioTestCase):
     """Verify _close_spread_position uses pos.contract directly, not re-qualification."""
 
     async def test_no_requalification(self):
@@ -663,6 +663,7 @@ class TestCloseSpreadPositionUsesPosContract(unittest.TestCase):
         ib.qualifyContractsAsync = AsyncMock(
             side_effect=AssertionError("qualifyContractsAsync should NOT be called"))
         ib.isConnected.return_value = True
+        ib.reqAllOpenOrdersAsync = AsyncMock(return_value=[])
 
         # Build fake position legs with correct contracts
         leg1 = MagicMock()
@@ -693,6 +694,9 @@ class TestCloseSpreadPositionUsesPosContract(unittest.TestCase):
             mock_trade = MagicMock()
             mock_trade.orderStatus.status = 'Filled'
             mock_trade.orderStatus.remaining = 0
+            mock_trade.orderStatus.avgFillPrice = 1.50
+            mock_trade.fills = []
+            mock_trade.log = []
             mock_place.return_value = mock_trade
 
             result = await _close_spread_position(
@@ -707,6 +711,7 @@ class TestCloseSpreadPositionUsesPosContract(unittest.TestCase):
 
         ib = MagicMock()
         ib.isConnected.return_value = True
+        ib.reqAllOpenOrdersAsync = AsyncMock(return_value=[])
 
         leg = MagicMock()
         leg.contract = MagicMock()
@@ -724,6 +729,9 @@ class TestCloseSpreadPositionUsesPosContract(unittest.TestCase):
             mock_trade = MagicMock()
             mock_trade.orderStatus.status = 'Filled'
             mock_trade.orderStatus.remaining = 0
+            mock_trade.orderStatus.avgFillPrice = 0.80
+            mock_trade.fills = []
+            mock_trade.log = []
             mock_place.return_value = mock_trade
 
             await _close_spread_position(
