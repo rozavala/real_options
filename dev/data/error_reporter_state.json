@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "last_run": "2026-03-05T18:00:01.586042+00:00",
+  "last_run": "2026-03-05T19:00:02.238583+00:00",
   "log_offsets": {
-    "/home/rodrigo/real_options/logs/dashboard.log": 17041,
+    "/home/rodrigo/real_options/logs/dashboard.log": 85,
     "/home/rodrigo/real_options/logs/dashboard_cc.log": 3301,
     "/home/rodrigo/real_options/logs/dashboard_kc.log": 23087,
     "/home/rodrigo/real_options/logs/equity_logger.log": 764,
-    "/home/rodrigo/real_options/logs/error_reporter.log": 141793,
+    "/home/rodrigo/real_options/logs/error_reporter.log": 142080,
     "/home/rodrigo/real_options/logs/manual_test.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator.log": 36249,
-    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 223982,
+    "/home/rodrigo/real_options/logs/orchestrator_cc.log": 21954,
     "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 4717,
-    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 5519518,
+    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 13260,
     "/home/rodrigo/real_options/logs/performance_analyzer.log": 0,
-    "/home/rodrigo/real_options/logs/sentinels.log": 1110146,
+    "/home/rodrigo/real_options/logs/sentinels.log": 81125,
     "/home/rodrigo/real_options/logs/dashboard_sb.log": 514,
-    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 7197449,
-    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 1426783
+    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 921348,
+    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 884222
   },
   "reported_signatures": {
     "615e68d761b3545c117a547f9da0a715": {
@@ -189,6 +189,15 @@
       "count": 2,
       "first_seen": "2026-03-05 15:10:46,872",
       "last_seen": "2026-03-05 15:10:46,872",
+      "level": "ERROR"
+    },
+    "fbdfe8920403f29ac170262f630845b9": {
+      "category": "uncategorized",
+      "fingerprint": "fbdfe8920403f29ac170262f630845b9",
+      "sample_message": "Position Audit Cycle failed:\nTraceback (most recent call last):\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py\", line 39, in connectAsync\n    self.transport, _ = await loop.create_connection(\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1104, in create_connection\n    sock = await self._connect_sock(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1007, in _connect_sock\n    await self.sock_connect(sock, address)\n  File \"/usr/lib/python3.12/asyncio/selector_events.py\", line 651, in sock_connect\n    return await fut\n           ^^^^^^^^^\nasyncio.exceptions.CancelledError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/orchestrator.py\", line 2007, in run_position_audit_cycle\n    ib = await IBConnectionPool.get_connection(\"audit\", config)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/trading_bot/connection_pool.py\", line 310, in get_connection\n    raise e\n  File \"/home/<USER>/real_options/trading_bot/connection_pool.py\", line 217, in get_connection\n    await ib.connectAsync(\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py\", line 1748, in connectAsync\n    await self.client.connectAsync(host, port, clientId, timeout)\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py\", line 211, in connectAsync",
+      "count": 2,
+      "first_seen": "2026-03-05 18:47:01,112",
+      "last_seen": "2026-03-05 18:47:01,112",
       "level": "ERROR"
     }
   }
