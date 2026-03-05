@@ -259,7 +259,7 @@ if not equity_df.empty:
     fig_eq.update_layout(height=600, showlegend=True, hovermode='x unified')
     fig_eq.update_yaxes(title_text="Equity ($)", row=1, col=1)
     fig_eq.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
-    st.plotly_chart(fig_eq, use_container_width=True)
+    st.plotly_chart(fig_eq, width='stretch')
 
     max_dd = equity_df['drawdown'].min()
     st.caption(f"Maximum Drawdown: {max_dd:.2f}%")
@@ -346,7 +346,7 @@ if not equity_df.empty:
             aspect='auto'
         )
         fig_hm.update_layout(height=300)
-        st.plotly_chart(fig_hm, use_container_width=True)
+        st.plotly_chart(fig_hm, width='stretch')
     else:
         st.info("Not enough monthly data for heatmap.")
 else:
@@ -409,7 +409,7 @@ if not equity_df.empty:
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig_bm, use_container_width=True)
+        st.plotly_chart(fig_bm, width='stretch')
     else:
         st.info("Could not fetch benchmark data.")
 else:

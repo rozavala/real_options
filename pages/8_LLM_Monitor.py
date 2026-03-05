@@ -139,7 +139,7 @@ if cost_by_source:
         yaxis_title=None,
         xaxis_title='Cost (USD)',
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 else:
     st.info("No per-source cost data yet. Costs are tracked as API calls are made.")
 
@@ -197,7 +197,7 @@ if router_data and router_data.get('requests'):
             'P95 Latency (ms)': f"{p95_lat:.0f}" if lats else "N/A",
         })
 
-    st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(table_rows), hide_index=True, width='stretch')
 
     # Latency box plot
     all_latencies = []
@@ -216,7 +216,7 @@ if router_data and router_data.get('requests'):
             height=350,
         )
         fig_lat.update_layout(margin=dict(t=10, b=30))
-        st.plotly_chart(fig_lat, use_container_width=True)
+        st.plotly_chart(fig_lat, width='stretch')
 
     # Fallback chains
     fallbacks = router_data.get('fallbacks', {})
@@ -227,7 +227,7 @@ if router_data and router_data.get('requests'):
                 for chain, count in chains.items():
                     fb_rows.append({'Role': role, 'Chain': chain, 'Count': count})
             fb_df = pd.DataFrame(fb_rows).sort_values('Count', ascending=False)
-            st.dataframe(fb_df, hide_index=True, use_container_width=True)
+            st.dataframe(fb_df, hide_index=True, width='stretch')
 else:
     st.info("No router metrics data yet. Data appears after the first LLM API call.")
 
@@ -277,7 +277,7 @@ if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df
         margin=dict(t=20, b=40),
     )
 
-    st.plotly_chart(fig_trend, use_container_width=True)
+    st.plotly_chart(fig_trend, width='stretch')
 
     # Request count trend (secondary)
     if 'request_count' in costs_df.columns:
@@ -326,7 +326,7 @@ if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df
                 margin=dict(t=20, b=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02),
             )
-            st.plotly_chart(fig_x, use_container_width=True)
+            st.plotly_chart(fig_x, width='stretch')
         else:
             st.info("No X API calls recorded in the historical data yet.")
 else:
@@ -364,7 +364,7 @@ try:
             })
 
     if pricing_rows:
-        st.dataframe(pd.DataFrame(pricing_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(pricing_rows), hide_index=True, width='stretch')
         st.caption(f"Pricing last updated: {last_updated}")
 
 except Exception as e:
