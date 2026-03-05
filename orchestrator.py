@@ -2573,7 +2573,11 @@ async def sentinel_effectiveness_check(config: dict):
         weekly_change_pct = None
         try:
             import yfinance as yf
-            yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
+            try:
+                from dashboard_utils import resolve_yf_ticker
+                yf_ticker = resolve_yf_ticker(profile.contract.symbol)
+            except Exception:
+                yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
             data = yf.Ticker(yf_ticker).history(period="5d")
             if data is not None and len(data) >= 2:
                 weekly_change_pct = ((data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]) * 100
