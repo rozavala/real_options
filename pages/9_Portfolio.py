@@ -12,7 +12,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import _relative_time, discover_active_commodities
+from dashboard_utils import _relative_time, discover_active_commodities, get_active_theses
 
 st.set_page_config(layout="wide", page_title="Portfolio | Real Options")
 st.title("Portfolio Overview")
@@ -68,15 +68,14 @@ if prg_state:
             help="Account-wide P&L for the current trading day."
         )
     with cols[3]:
-        starting = prg_state.get("starting_equity", 0)
-        if starting > 0 and equity > 0:
-            dd_pct = ((starting - equity) / starting) * 100
+        if peak > 0 and equity > 0:
+            dd_pct = max(0.0, ((peak - equity) / peak) * 100)
             st.metric(
                 "Drawdown", f"{dd_pct:.2f}%",
-                help="Percentage decline from starting equity."
+                help="Peak-to-trough drawdown: percentage decline from all-time peak equity."
             )
         else:
-            st.metric("Drawdown", "N/A", help="Cannot calculate drawdown without starting equity.")
+            st.metric("Drawdown", "N/A", help="Cannot calculate drawdown without peak equity.")
 
     last_upd = prg_state.get('last_updated', 'unknown')
     st.caption(f"Last updated: {last_upd} ({_relative_time(last_upd)})")
@@ -88,14 +87,21 @@ else:
 st.markdown("---")
 st.subheader("Position Breakdown by Commodity")
 
-positions = prg_state.get("positions", {})
-if positions:
+# Live thesis count from TMS (not stale portfolio_risk_state.json)
+active_tickers = discover_active_commodities()
+_live_positions = {}
+for _t in active_tickers:
+    _theses = get_active_theses(_t)
+    if _theses:
+        _live_positions[_t] = len(_theses)
+
+if _live_positions:
     import plotly.express as px
     import pandas as pd
 
     df = pd.DataFrame([
         {"Commodity": k, "Positions": v}
-        for k, v in sorted(positions.items())
+        for k, v in sorted(_live_positions.items())
     ])
     fig = px.bar(
         df, x="Commodity", y="Positions",
@@ -105,17 +111,15 @@ if positions:
     fig.update_layout(showlegend=False, height=300)
     st.plotly_chart(fig, width='stretch')
 
-    total = sum(positions.values())
-    st.caption(f"Total open positions: {total}")
+    total = sum(_live_positions.values())
+    st.caption(f"Total open positions: {total} (live from TMS)")
 else:
-    st.info("No position data available.")
+    st.info("No active positions across any commodity.")
 
 
 # === SECTION 3: Engine Health ===
 st.markdown("---")
 st.subheader("Engine Health")
-
-active_tickers = discover_active_commodities()
 
 if active_tickers:
     cols = st.columns(min(len(active_tickers), 4))
@@ -124,19 +128,21 @@ if active_tickers:
         state = _load_json(state_path)
         with cols[i % len(cols)]:
             if state:
-                last_cycle = state.get("last_cycle_time", "unknown")
-                cycle_count = state.get("cycle_count", "?")
-                active_theses = state.get("active_theses", 0)
+                thesis_count = _live_positions.get(ticker, 0)
+
+                # Last IB activity from sensors (this field actually exists)
+                sensors = state.get("sensors", {})
+                last_ib = sensors.get("last_ib_success", {})
+                last_activity = last_ib.get("data", "unknown") if isinstance(last_ib, dict) else "unknown"
 
                 st.metric(
                     ticker,
-                    f"{active_theses} Theses",
-                    delta=f"Pulse: {_relative_time(last_cycle)}",
+                    f"{thesis_count} Theses",
+                    delta=f"IB: {_relative_time(last_activity)}",
                     delta_color="off",
                     help=(
-                        f"**Cycles Completed:** {cycle_count}\n"
-                        f"**Active Theses:** {active_theses}\n"
-                        f"**Last Cycle:** {last_cycle}"
+                        f"**Active Theses:** {thesis_count} (live from TMS)\n"
+                        f"**Last IB Activity:** {last_activity}"
                     )
                 )
             else:
@@ -151,31 +157,63 @@ st.subheader("VaR Utilization")
 
 var_state = _load_json(os.path.join(DATA_ROOT, "var_state.json"))
 if var_state:
-    cols = st.columns(3)
+    var_95 = var_state.get("var_95", 0)
+    var_95_pct = var_state.get("var_95_pct", 0)
+    var_99 = var_state.get("var_99", 0)
+    var_99_pct = var_state.get("var_99_pct", 0)
+    pos_count = var_state.get("position_count", 0)
+    commodities = var_state.get("commodities", [])
+
+    # VaR limit comes from config, not var_state.json
+    try:
+        from config_loader import load_config as _load_cfg
+        _cfg = _load_cfg()
+        var_limit_pct = _cfg.get('compliance', {}).get('var_limit_pct', 0.03)
+    except Exception:
+        var_limit_pct = 0.03
+
+    cols = st.columns(4)
     with cols[0]:
-        var_95 = var_state.get("var_95", 0)
         st.metric(
-            "VaR (95%)", f"${var_95:,.0f}" if var_95 else "N/A",
-            help="Value at Risk (95% confidence): Estimated maximum loss over one day based on current portfolio correlations."
+            "VaR (95%)", f"{var_95_pct:.1%}" if var_95_pct else "N/A",
+            delta=f"${var_95:,.0f}" if var_95 else None,
+            delta_color="off",
+            help="Value at Risk (95% confidence): Estimated maximum loss over one day."
         )
     with cols[1]:
-        var_limit = var_state.get("var_limit", 0)
         st.metric(
-            "VaR Limit", f"${var_limit:,.0f}" if var_limit else "N/A",
-            help="Maximum daily VaR allowed by the compliance system."
+            "VaR (99%)", f"{var_99_pct:.1%}" if var_99_pct else "N/A",
+            delta=f"${var_99:,.0f}" if var_99 else None,
+            delta_color="off",
+            help="Value at Risk (99% confidence): Estimated maximum loss in extreme conditions."
         )
     with cols[2]:
-        if var_95 and var_limit and var_limit > 0:
-            utilization = (var_95 / var_limit) * 100
+        if var_95_pct and var_limit_pct > 0:
+            utilization = (var_95_pct / var_limit_pct) * 100
             st.metric(
-                "Utilization", f"{utilization:.1f}%",
-                help="Percentage of the VaR limit currently being used."
+                "Utilization", f"{utilization:.0f}%",
+                help=f"VaR(95%) as percentage of the {var_limit_pct:.0%} limit."
             )
         else:
             st.metric("Utilization", "N/A", help="VaR utilization not available.")
+    with cols[3]:
+        commodity_str = ", ".join(commodities) if commodities else "None"
+        st.metric(
+            "Legs", f"{pos_count}",
+            help=f"Option contract legs across: {commodity_str}"
+        )
 
-    enforcement = var_state.get("enforcement_mode", "unknown")
-    last_comp = var_state.get('last_computed', 'unknown')
-    st.caption(f"Enforcement mode: **{enforcement}** | Last computed: {last_comp} ({_relative_time(last_comp)})")
+    # Staleness check
+    import time as _time
+    computed_epoch = var_state.get("computed_epoch", 0)
+    if computed_epoch:
+        age_hours = (_time.time() - computed_epoch) / 3600
+        age_label = f"{age_hours * 60:.0f}m ago" if age_hours < 1 else f"{age_hours:.1f}h ago"
+    else:
+        age_label = "unknown"
+    status = var_state.get("last_attempt_status", "OK")
+    st.caption(f"Last computed: {age_label} | Status: **{status}**")
+    if status == "FAILED":
+        st.warning(f"Last VaR computation failed: {var_state.get('last_attempt_error', 'Unknown')}")
 else:
     st.info("No VaR state found. VaR calculator has not run yet.")
