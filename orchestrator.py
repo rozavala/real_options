@@ -3562,7 +3562,10 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                         "vote_breakdown": json.dumps(decision.get('vote_breakdown', [])),
                         "dominant_agent": decision.get('dominant_agent', 'Unknown'),
-                        "weighted_score": 0.0 # Not explicitly returned by run_specialized_cycle but embedded in vote
+                        "weighted_score": 0.0, # Not explicitly returned by run_specialized_cycle but embedded in vote
+
+                        # v5: Regime tracking
+                        "entry_regime": market_data.get('regime', 'UNKNOWN'),
                     }
                     log_council_decision(council_log_entry)
 

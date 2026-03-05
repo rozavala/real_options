@@ -2198,7 +2198,8 @@ def get_current_market_regime() -> str:
 
     Priority:
     1. council_history -> entry_regime column (most recent council decision)
-    2. "UNKNOWN" if no data
+    2. decision_signals.csv -> regime column (lightweight decision log)
+    3. "UNKNOWN" if no data
 
     """
     try:
@@ -2208,6 +2209,20 @@ def get_current_market_regime() -> str:
             df = pd.read_csv(council_path, on_bad_lines='warn')
             if not df.empty and 'entry_regime' in df.columns:
                 recent_regimes = df['entry_regime'].dropna()
+                # Filter out empty strings
+                recent_regimes = recent_regimes[recent_regimes.astype(str).str.strip() != '']
+                if not recent_regimes.empty:
+                    return recent_regimes.iloc[-1]
+
+        # Priority 2: decision_signals.csv (always has a 'regime' column)
+        signals_path = _resolve_data_path('decision_signals.csv')
+        if os.path.exists(signals_path):
+            df = pd.read_csv(signals_path, on_bad_lines='warn')
+            if not df.empty and 'regime' in df.columns:
+                recent_regimes = df['regime'].dropna()
+                recent_regimes = recent_regimes[recent_regimes.astype(str).str.strip() != '']
+                # Exclude UNKNOWN values — we want an actual regime
+                recent_regimes = recent_regimes[recent_regimes.astype(str).str.upper() != 'UNKNOWN']
                 if not recent_regimes.empty:
                     return recent_regimes.iloc[-1]
 

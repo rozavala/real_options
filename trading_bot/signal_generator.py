@@ -783,6 +783,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         "var_utilization": round(var_utilization, 3) if var_utilization else None,
                         "var_dampener": weighted_result.get('var_dampener', 1.0),
                         "risk_briefing_injected": risk_briefing_injected,
+
+                        # v5: Regime tracking
+                        "entry_regime": regime_log,
                     }
                     log_council_decision(council_log_entry)
 
