@@ -1050,7 +1050,8 @@ OUTPUT FORMAT (JSON):
                 'data': formatted_text,
                 'confidence': parse_confidence(data.get('confidence', 0.5)),
                 'sentiment': data.get('sentiment', 'NEUTRAL'),
-                'data_freshness_hours': grounded_data.data_freshness_hours
+                'data_freshness_hours': grounded_data.data_freshness_hours,
+                'has_direction_mismatch': any('Direction-evidence mismatch' in i for i in issues),
             }
 
             # Record Trace
