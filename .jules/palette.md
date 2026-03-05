@@ -53,3 +53,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-03-04 - Semantic Highlighting for Task Failures
 **Learning:** Using `delta_color="inverse"` for failure-prone counts (like Overdue Tasks) ensures that non-zero values are highlighted in red (Streamlit default for inverse delta), making operational issues stand out even when the primary metric is numeric.
 **Action:** Apply the inverse delta pattern to metrics where "up" is "bad" to ensure consistent visual signaling of system friction.
+
+## 2026-03-05 - Completing the Micro-UX Tooltip Coverage
+**Learning:** During a codebase audit, several Streamlit metric components (`st.metric`) across utility and financial pages were found to be missing the `help` parameter. Consistency in providing native tooltips for metrics (like System Health, Failed Checks, and Realized P&L) is critical for a predictable user experience, as users learn to rely on hover states for context.
+**Action:** Always ensure that `st.metric` calls include a descriptive `help` attribute, especially for derived or aggregated values where the calculation or significance might not be immediately obvious.
