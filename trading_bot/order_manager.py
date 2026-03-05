@@ -2920,30 +2920,25 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     contract.currency = final_legs_list[0]['currency']
                     contract.exchange = final_legs_list[0]['exchange'] or config.get('exchange', 'SMART')
 
+                    # IB BAG orders: ratio must be 1 (per leg), totalQuantity
+                    # carries the size.  Compute GCD so unbalanced legs are
+                    # still possible (e.g. 2:1 ratio condor).
+                    from math import gcd
+                    from functools import reduce
+                    leg_qtys = [int(leg['quantity']) for leg in final_legs_list]
+                    qty_gcd = reduce(gcd, leg_qtys)
+
                     combo_legs = []
                     for leg in final_legs_list:
                         combo_leg = ComboLeg()
                         combo_leg.conId = leg['conId']
-                        combo_leg.ratio = int(leg['quantity']) # Assuming integer ratios for now
+                        combo_leg.ratio = int(leg['quantity']) // qty_gcd
                         combo_leg.action = leg['action']
                         combo_leg.exchange = leg['exchange'] or config.get('exchange', 'SMART')
                         combo_legs.append(combo_leg)
 
                     contract.comboLegs = combo_legs
-
-                    # For BAG orders, the totalQuantity is usually 1 (multiplied by ratio)
-                    # Use the GCD of quantities if possible, but for simple closes, usually ratio is quantity and bag size is 1.
-                    # Or ratio is 1 and bag size is quantity?
-                    # If we have 5 spreads, we usually set ratio 1, size 5.
-                    # Here we might have different quantities for different legs? (Unbalanced close).
-                    # If quantities differ (e.g. 2 calls, 1 put), we can't do a simple 1:1 spread.
-                    # We will assume balanced spread or use ratio=qty, size=1.
-
-                    # Logic: Find GCD of quantities?
-                    # Simplification: Set Ratio = Quantity, Bag Order Size = 1.
-                    # This works for "Closing what we have".
-
-                    order_size = 1
+                    order_size = qty_gcd
 
                     logger.info(f"Constructed BAG order for Pos ID {pos_id}: {[l.action + ' ' + str(l.ratio) + ' x ' + str(l.conId) for l in combo_legs]}")
 
