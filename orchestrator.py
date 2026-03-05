@@ -3254,6 +3254,19 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                      await emergency_hard_close(config)
                      return
 
+            # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
+            try:
+                from trading_bot.data_dir_context import get_engine_runtime
+                _ert = get_engine_runtime()
+                if _ert and _ert.shared and _ert.shared.portfolio_guard:
+                    _allowed, _prg_reason = await _ert.shared.portfolio_guard.can_open_position(_ert.ticker, 0)
+                    if not _allowed:
+                        logger.warning(f"Emergency cycle BLOCKED by PortfolioRiskGuard: {_prg_reason}")
+                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (PRG: {_prg_reason})")
+                        return
+            except Exception as _prg_e:
+                logger.debug(f"PRG check in emergency cycle failed (non-fatal): {_prg_e}")
+
             # === Generate Cycle ID for prediction tracking ===
             active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             cycle_id = generate_cycle_id(active_ticker)
@@ -4918,14 +4931,24 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
     # v3.1: Check equity data freshness before cycle
     await check_and_recover_equity_data(config)
 
+    # === Sync portfolio-wide position count from TMS (live, not stale file) ===
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt and rt.shared and rt.shared.portfolio_guard:
+        try:
+            _tms = TransactiveMemory()
+            _active = _tms.get_active_theses()
+            _count = len(_active) if _active else 0
+            await rt.shared.portfolio_guard.update_positions(rt.ticker, _count, 0)
+        except Exception as _up_e:
+            logger.debug(f"Scheduled path: PRG position sync failed (non-fatal): {_up_e}")
+
     _bg = _get_budget_guard()
     if _bg and _bg.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
         return
 
     # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
-    from trading_bot.data_dir_context import get_engine_runtime
-    rt = get_engine_runtime()
     if rt and rt.shared and rt.shared.portfolio_guard:
         allowed, reason = await rt.shared.portfolio_guard.can_open_position(rt.ticker, 0)
         if not allowed:

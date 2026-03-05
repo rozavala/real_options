@@ -28,10 +28,34 @@ from typing import Any, Optional
 
 import numpy as np
 
-from trading_bot.utils import price_option_black_scholes, get_dollar_multiplier
+from trading_bot.utils import price_option_black_scholes, get_dollar_multiplier, CENTS_INDICATORS
 from config.commodity_profiles import get_commodity_profile
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_dollar_multiplier(symbol: str, ib_multiplier: str = None) -> float:
+    """Resolve dollar multiplier per 1.0 price unit move for a given symbol.
+
+    Uses commodity profile to handle cents-quoted contracts (e.g., KC is quoted
+    in cents/lb, so 37500 lbs * 1 cent = $375, not $37500).
+    Falls back to raw IB multiplier if profile lookup fails.
+    """
+    try:
+        profile = get_commodity_profile(symbol)
+        raw = float(profile.contract.contract_size)
+        unit = profile.contract.unit.lower()
+        if any(ind in unit for ind in CENTS_INDICATORS):
+            return raw / 100.0
+        return raw
+    except (ValueError, KeyError):
+        # Unknown commodity — fall back to IB multiplier
+        if ib_multiplier:
+            try:
+                return float(ib_multiplier)
+            except (ValueError, TypeError):
+                pass
+        return 375.0  # conservative KC default
 
 # --- Module-level state ---
 _var_data_dir: str = "data"
@@ -374,10 +398,7 @@ class PortfolioVaRCalculator:
                     )
                     continue
 
-                try:
-                    multiplier = float(c.multiplier) if c.multiplier else get_dollar_multiplier(config)
-                except (ValueError, TypeError):
-                    multiplier = get_dollar_multiplier(config)
+                multiplier = _resolve_dollar_multiplier(ticker_sym, c.multiplier)
 
                 underlying_price_map[ticker_sym] = item.marketPrice
 
@@ -494,10 +515,7 @@ class PortfolioVaRCalculator:
                     )
 
                 ticker_sym = c.symbol
-                try:
-                    multiplier = float(c.multiplier) if c.multiplier else get_dollar_multiplier(config)
-                except (ValueError, TypeError):
-                    multiplier = get_dollar_multiplier(config)
+                multiplier = _resolve_dollar_multiplier(ticker_sym, c.multiplier)
 
                 # Calculate time to expiry
                 expiry_str = c.lastTradeDateOrContractMonth
@@ -515,20 +533,33 @@ class PortfolioVaRCalculator:
                     )
                     continue
 
-                # Validate option market price — IB returns -1.0 for "no data"
+                # Always compute B-S model price for cross-validation
+                r_rate = config.get("compliance", {}).get("var_risk_free_rate", 0.04)
+                model_price = self._bs_price(
+                    und_price, float(c.strike), expiry_years,
+                    r_rate, iv_val, c.right
+                )
+
+                # Validate option market price — IB returns -1.0 for "no data",
+                # and under FORCE_DELAYED_DATA returns averageCost as marketPrice
                 opt_price = item.marketPrice
                 if opt_price is None or opt_price <= 0 or (isinstance(opt_price, float) and np.isnan(opt_price)):
-                    # Fallback: use B-S model price as current_price (#1164)
-                    r_rate = config.get("compliance", {}).get("var_risk_free_rate", 0.04)
-                    model_price = self._bs_price(
-                        und_price, float(c.strike), expiry_years,
-                        r_rate, iv_val, c.right
-                    )
                     logger.warning(
                         f"Invalid market price for option {c.localSymbol}: "
                         f"{opt_price} — using B-S model price {model_price:.4f}"
                     )
                     opt_price = model_price
+                elif model_price > 0:
+                    # Cross-validate: if IB price deviates >80% from B-S model,
+                    # it's likely averageCost under delayed data, not a live quote
+                    deviation = abs(opt_price - model_price) / model_price
+                    if deviation > 0.80:
+                        logger.warning(
+                            f"Market price for {c.localSymbol} ({opt_price:.4f}) "
+                            f"deviates {deviation:.0%} from B-S model ({model_price:.4f}) "
+                            f"— likely stale/averageCost. Substituting model price."
+                        )
+                        opt_price = model_price
 
                 snapshots.append(PositionSnapshot(
                     symbol=ticker_sym,
