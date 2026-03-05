@@ -276,32 +276,40 @@ st.markdown("---")
 # === SECTION 4: Prediction Timeline ===
 st.subheader("📅 Prediction Timeline")
 
-if not struct_df.empty and 'timestamp' in struct_df.columns:
-    struct_df['date'] = struct_df['timestamp'].dt.date
+# Use enhanced Brier JSON as primary source (legacy CSV deprecated since Mar 1)
+_timeline_built = False
+if enhanced_data and enhanced_data.get('predictions'):
+    try:
+        _preds_df = pd.DataFrame(enhanced_data['predictions'])
+        if 'timestamp' in _preds_df.columns and len(_preds_df) > 0:
+            _preds_df['timestamp'] = pd.to_datetime(_preds_df['timestamp'], utc=True)
+            _preds_df['date'] = _preds_df['timestamp'].dt.date
+            _preds_df['is_resolved'] = _preds_df['resolved_at'].notna()
 
-    daily = struct_df.groupby('date').agg(
-        total=('actual', 'count'),
-        pending=('actual', lambda x: (x == 'PENDING').sum()),
-        resolved=('actual', lambda x: ((x != 'PENDING') & (x != 'ORPHANED')).sum()),
-    ).reset_index()
+            daily = _preds_df.groupby('date').agg(
+                resolved=('is_resolved', 'sum'),
+                pending=('is_resolved', lambda x: (~x).sum()),
+            ).reset_index()
 
-    st.bar_chart(
-        daily.set_index('date')[['resolved', 'pending']],
-        width="stretch",
-    )
+            st.bar_chart(
+                daily.set_index('date')[['resolved', 'pending']],
+                width="stretch",
+            )
 
-    with st.expander("Per-Agent Breakdown"):
-        if 'agent' in struct_df.columns:
-            agent_summary = struct_df.groupby('agent').agg(
-                total=('actual', 'count'),
-                pending=('actual', lambda x: (x == 'PENDING').sum()),
-                correct=('actual', lambda x: (
-                    (x == struct_df.loc[x.index, 'direction']).sum()
-                    if 'direction' in struct_df.columns else 0
-                )),
-            ).sort_values('total', ascending=False)
-            st.dataframe(agent_summary, width="stretch")
-else:
+            with st.expander("Per-Agent Breakdown"):
+                if 'agent' in _preds_df.columns:
+                    agent_summary = _preds_df.groupby('agent').agg(
+                        total=('is_resolved', 'count'),
+                        pending=('is_resolved', lambda x: (~x).sum()),
+                        resolved=('is_resolved', 'sum'),
+                    ).sort_values('total', ascending=False)
+                    st.dataframe(agent_summary, width="stretch")
+
+            _timeline_built = True
+    except Exception:
+        pass
+
+if not _timeline_built:
     st.info("No prediction data available yet.")
 
 
