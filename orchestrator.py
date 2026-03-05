@@ -1336,12 +1336,40 @@ async def _reconcile_orphaned_theses(
                     for s, exp in expected_legs.items()
                 )
                 if any_present:
-                    live_position_ids.add(tid)
-                    logger.warning(
-                        f"Reconciliation: Thesis {tid} partially covered "
-                        f"(expected={expected_legs}, remaining={remaining_ib}). "
-                        f"Keeping alive (fail-closed)."
-                    )
+                    # Check thesis age — stale partial theses (>48h) should be
+                    # invalidated rather than kept alive indefinitely (#1166)
+                    max_partial_hours = 48
+                    tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                    entry_time_str = tid_rows['timestamp'].min() if not tid_rows.empty else None
+                    thesis_age_hours = None
+                    if entry_time_str:
+                        try:
+                            entry_dt = pd.to_datetime(entry_time_str, utc=True)
+                            thesis_age_hours = (
+                                datetime.now(timezone.utc) - entry_dt
+                            ).total_seconds() / 3600
+                        except Exception:
+                            pass
+
+                    if thesis_age_hours and thesis_age_hours > max_partial_hours:
+                        logger.warning(
+                            f"Reconciliation: Thesis {tid} partially covered for "
+                            f"{thesis_age_hours:.0f}h (>{max_partial_hours}h). "
+                            f"Force-invalidating stale partial thesis. "
+                            f"expected={expected_legs}, remaining_ib={remaining_ib}"
+                        )
+                        # Don't add to live_position_ids — will be orphaned and invalidated
+                    else:
+                        live_position_ids.add(tid)
+                        logger.warning(
+                            f"Reconciliation: Thesis {tid} partially covered "
+                            f"(expected={expected_legs}, remaining={remaining_ib}). "
+                            f"Keeping alive (fail-closed, age={thesis_age_hours:.0f}h)."
+                            if thesis_age_hours else
+                            f"Reconciliation: Thesis {tid} partially covered "
+                            f"(expected={expected_legs}, remaining={remaining_ib}). "
+                            f"Keeping alive (fail-closed)."
+                        )
 
         # Theses with no ledger entries but IB has positions: fail closed
         for tid in active_thesis_ids:

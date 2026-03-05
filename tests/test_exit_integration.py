@@ -625,21 +625,20 @@ class TestReconcileOrphanedThesesAggregation(unittest.IsolatedAsyncioTestCase):
 
     async def test_partial_coverage_fail_closed(self):
         """
-        IB has one leg but not the other for a thesis. Thesis should be kept alive
+        IB has one leg but not the other for a RECENT thesis. Thesis should be kept alive
         (fail-closed) because partial IB backing suggests something is still live.
         """
         tid1 = 'thesis_partial'
         self._record_thesis(tid1)
 
+        # Use recent timestamps (within 48h) so fail-closed keeps thesis alive
+        recent_time = datetime.now(timezone.utc) - timedelta(hours=6)
         trade_ledger = pd.DataFrame({
             'position_id': [tid1, tid1],
             'local_symbol': ['KCN6 P275', 'KCN6 P270'],
             'action': ['BUY', 'SELL'],
             'quantity': [1, 1],
-            'timestamp': [
-                datetime(2026, 2, 28, 10, 0),
-                datetime(2026, 2, 28, 10, 0),
-            ]
+            'timestamp': [recent_time, recent_time]
         })
 
         # IB has the long leg but NOT the short leg
@@ -655,6 +654,38 @@ class TestReconcileOrphanedThesesAggregation(unittest.IsolatedAsyncioTestCase):
         active = self.tms.collection.get(where={"active": "true"}, include=['metadatas'])
         active_ids = {m['trade_id'] for m in active['metadatas']}
         self.assertIn(tid1, active_ids)
+
+    async def test_stale_partial_coverage_invalidated(self):
+        """
+        IB has one leg but not the other for a STALE thesis (>48h old).
+        Thesis should be invalidated rather than kept alive indefinitely (#1166).
+        """
+        tid1 = 'thesis_stale_partial'
+        self._record_thesis(tid1)
+
+        # Use old timestamp (>48h ago) so stale partial is force-invalidated
+        old_time = datetime.now(timezone.utc) - timedelta(hours=72)
+        trade_ledger = pd.DataFrame({
+            'position_id': [tid1, tid1],
+            'local_symbol': ['KCN6 P275', 'KCN6 P270'],
+            'action': ['BUY', 'SELL'],
+            'quantity': [1, 1],
+            'timestamp': [old_time, old_time]
+        })
+
+        # IB has the long leg but NOT the short leg
+        mock_ib = MagicMock()
+        mock_ib.reqPositionsAsync = AsyncMock(return_value=[
+            self._make_ib_position('KCN6 P275', 1),
+        ])
+
+        result = await _reconcile_orphaned_theses(mock_ib, trade_ledger, self.tms, self.config)
+        self.assertEqual(result, 1, "Stale partially covered thesis (>48h) should be invalidated")
+
+        # Verify thesis is no longer active
+        active = self.tms.collection.get(where={"active": "true"}, include=['metadatas'])
+        active_ids = {m['trade_id'] for m in active['metadatas']}
+        self.assertNotIn(tid1, active_ids)
 
     async def test_timeout_fail_closed(self):
         """
