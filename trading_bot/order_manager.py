@@ -1709,6 +1709,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         return  # Fail closed - cannot place orders without connection
 
     live_orders = {} # Dictionary to track order status by orderId
+    _fill_tasks = []  # Collect fill handler tasks so we can await them before disconnect
 
     # --- Event Handlers ---
     def on_order_status(trade: Trade):
@@ -1743,6 +1744,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Position ID {position_uuid}.")
             fill_task = asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid, decision_data, config))
             fill_task.add_done_callback(lambda t: _log_task_exception(t, f"fill_logging_{order_id}"))
+            _fill_tasks.append(fill_task)
 
             order_details['filled_legs'].add(leg_con_id)
             order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
@@ -2580,6 +2582,25 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     finally:
         # NOTE: _recorded_thesis_positions is cleared at START of next run,
         # not here, to avoid racing with inflight _handle_and_log_fill tasks.
+
+        # Await all inflight fill handler tasks before disconnecting IB.
+        # Without this, fill tasks that create TMS theses or trigger CONTRADICT
+        # auto-close would lose the IB connection mid-flight.
+        if _fill_tasks:
+            pending = [t for t in _fill_tasks if not t.done()]
+            if pending:
+                logger.info(f"Awaiting {len(pending)} inflight fill tasks before disconnect...")
+                try:
+                    await asyncio.wait_for(
+                        asyncio.gather(*pending, return_exceptions=True),
+                        timeout=15.0
+                    )
+                    logger.info("All fill tasks completed.")
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        f"Fill task await timed out after 15s — "
+                        f"{sum(1 for t in pending if not t.done())} tasks still pending"
+                    )
 
         try:
             if ib.isConnected():
