@@ -175,6 +175,13 @@ class PortfolioVaRCalculator:
             var_95 = max(var_95, 0.0)
             var_99 = max(var_99, 0.0)
 
+            # Sanity check: VaR=0 with positions is suspect (#1164)
+            if len(positions) > 0 and var_95 == 0.0 and var_99 == 0.0:
+                logger.warning(
+                    f"VaR returned $0 with {len(positions)} positions — "
+                    f"likely invalid market data. Check option prices."
+                )
+
             result = VaRResult(
                 var_95=round(var_95, 2),
                 var_99=round(var_99, 2),
@@ -508,6 +515,21 @@ class PortfolioVaRCalculator:
                     )
                     continue
 
+                # Validate option market price — IB returns -1.0 for "no data"
+                opt_price = item.marketPrice
+                if opt_price is None or opt_price <= 0 or (isinstance(opt_price, float) and np.isnan(opt_price)):
+                    # Fallback: use B-S model price as current_price (#1164)
+                    r_rate = config.get("compliance", {}).get("var_risk_free_rate", 0.04)
+                    model_price = self._bs_price(
+                        und_price, float(c.strike), expiry_years,
+                        r_rate, iv_val, c.right
+                    )
+                    logger.warning(
+                        f"Invalid market price for option {c.localSymbol}: "
+                        f"{opt_price} — using B-S model price {model_price:.4f}"
+                    )
+                    opt_price = model_price
+
                 snapshots.append(PositionSnapshot(
                     symbol=ticker_sym,
                     sec_type=c.secType,
@@ -517,7 +539,7 @@ class PortfolioVaRCalculator:
                     expiry_years=expiry_years,
                     iv=iv_val,
                     underlying_price=und_price,
-                    current_price=item.marketPrice,  # option's current market price
+                    current_price=opt_price,
                     dollar_multiplier=multiplier,
                 ))
 

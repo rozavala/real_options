@@ -702,6 +702,48 @@ async def test_fut_invalid_market_price_excluded(calculator, sample_config):
     assert len(snapshots) == 0, "FUT with marketPrice=-1 should be excluded"
 
 
+# --- Test 21b: FOP with invalid marketPrice uses B-S model fallback ---
+
+async def test_fop_invalid_market_price_uses_model(calculator, sample_config):
+    """Options with marketPrice=-1 (IB 'no data') should use B-S model price, not -1."""
+    mock_ib = MagicMock()
+
+    # Valid FUT so underlying_price is available
+    mock_fut = MagicMock()
+    mock_fut.position = 1
+    mock_fut.contract = MagicMock(
+        secType="FUT", symbol="KC", conId=100,
+        localSymbol="KCN6", multiplier="37500",
+    )
+    mock_fut.marketPrice = 380.0
+
+    # FOP with invalid market price (-1 from IB)
+    mock_opt = MagicMock()
+    mock_opt.position = 1
+    mock_opt.contract = MagicMock(
+        secType="FOP", symbol="KC", conId=200,
+        localSymbol="KCN6 C400", multiplier="37500",
+        strike=400.0, right="C",
+        lastTradeDateOrContractMonth="20260701",
+    )
+    mock_opt.marketPrice = -1.0  # IB sentinel for "no data"
+
+    mock_ib.portfolio.return_value = [mock_fut, mock_opt]
+
+    # Mock IV batch fetch
+    with patch.object(calculator, '_batch_fetch_iv', return_value={200: 0.35}):
+        snapshots = await calculator._snapshot_portfolio(mock_ib, sample_config)
+
+    # FUT should be included
+    futs = [s for s in snapshots if s.sec_type == "FUT"]
+    assert len(futs) == 1
+
+    # FOP should be included with B-S model price (NOT -1.0)
+    opts = [s for s in snapshots if s.sec_type == "FOP"]
+    assert len(opts) == 1, "Option with invalid price should still be included via B-S fallback"
+    assert opts[0].current_price > 0, f"current_price should be B-S model price, got {opts[0].current_price}"
+
+
 # --- Test 22: Negative shocked_S clamped in B-S revaluation ---
 
 def test_negative_shocked_price_clamped(calculator):
