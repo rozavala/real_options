@@ -575,5 +575,251 @@ class TestScorecardUX(unittest.TestCase):
             )
 
 
+class TestBuildPositionPnlMap(unittest.TestCase):
+    """Tests for dashboard_utils.build_position_pnl_map()."""
+
+    def _make_item(self, local_symbol, unrealized_pnl, position=1):
+        """Create a mock portfolio item."""
+        class MockContract:
+            pass
+        class MockItem:
+            pass
+        contract = MockContract()
+        contract.localSymbol = local_symbol
+        item = MockItem()
+        item.contract = contract
+        item.unrealizedPNL = unrealized_pnl
+        item.position = position
+        return item
+
+    def test_single_leg_match(self):
+        """Single leg maps correctly via ledger."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C3.5'],
+            'position_id': ['pid-001'],
+        })
+        live_data = {'portfolio_items': [self._make_item('KCH6 C3.5', 150.0)]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=ledger):
+            from dashboard_utils import build_position_pnl_map
+            result = build_position_pnl_map(live_data, ticker='KC')
+
+        self.assertEqual(result, {'pid-001': 150.0})
+
+    def test_multi_leg_spread_aggregation(self):
+        """Multiple legs with same position_id aggregate P&L."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C3.5', 'KCH6 C3.75'],
+            'position_id': ['pid-001', 'pid-001'],
+        })
+        live_data = {'portfolio_items': [
+            self._make_item('KCH6 C3.5', 100.0),
+            self._make_item('KCH6 C3.75', -30.0),
+        ]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=ledger):
+            from dashboard_utils import build_position_pnl_map
+            result = build_position_pnl_map(live_data, ticker='KC')
+
+        self.assertAlmostEqual(result['pid-001'], 70.0)
+
+    def test_empty_portfolio(self):
+        """Empty portfolio returns empty dict."""
+        from dashboard_utils import build_position_pnl_map
+        result = build_position_pnl_map({'portfolio_items': []}, ticker='KC')
+        self.assertEqual(result, {})
+
+    def test_empty_ledger(self):
+        """Empty ledger returns empty dict."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        live_data = {'portfolio_items': [self._make_item('KCH6 C3.5', 100.0)]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=pd.DataFrame()):
+            from dashboard_utils import build_position_pnl_map
+            result = build_position_pnl_map(live_data, ticker='KC')
+
+        self.assertEqual(result, {})
+
+    def test_missing_position_id_column(self):
+        """Ledger without position_id column returns empty dict."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        ledger = pd.DataFrame({'local_symbol': ['KCH6 C3.5']})
+        live_data = {'portfolio_items': [self._make_item('KCH6 C3.5', 100.0)]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=ledger):
+            from dashboard_utils import build_position_pnl_map
+            result = build_position_pnl_map(live_data, ticker='KC')
+
+        self.assertEqual(result, {})
+
+    def test_no_match_excluded(self):
+        """Portfolio items not in ledger are excluded from map."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C3.5'],
+            'position_id': ['pid-001'],
+        })
+        live_data = {'portfolio_items': [self._make_item('KCH6 P3.0', 50.0)]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=ledger):
+            from dashboard_utils import build_position_pnl_map
+            result = build_position_pnl_map(live_data, ticker='KC')
+
+        self.assertEqual(result, {})
+
+
+class TestFindUntrackedIbkrPositions(unittest.TestCase):
+    """Tests for dashboard_utils.find_untracked_ibkr_positions()."""
+
+    def _make_item(self, local_symbol, position=1, unrealized_pnl=0, market_value=0, avg_cost=0):
+        class MockContract:
+            pass
+        class MockItem:
+            pass
+        contract = MockContract()
+        contract.localSymbol = local_symbol
+        item = MockItem()
+        item.contract = contract
+        item.position = position
+        item.unrealizedPNL = unrealized_pnl
+        item.marketValue = market_value
+        item.averageCost = avg_cost
+        return item
+
+    def test_all_tracked(self):
+        """No untracked items when all symbols map to active theses."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C3.5'],
+            'position_id': ['pid-001'],
+        })
+        live_data = {'portfolio_items': [self._make_item('KCH6 C3.5')]}
+        theses = [{'position_id': 'pid-001'}]
+
+        with patch('dashboard_utils.load_trade_data', return_value=ledger):
+            from dashboard_utils import find_untracked_ibkr_positions
+            result = find_untracked_ibkr_positions(live_data, theses, ticker='KC')
+
+        self.assertEqual(result, [])
+
+    def test_untracked_detected(self):
+        """Detects items not linked to any thesis."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        ledger = pd.DataFrame({
+            'local_symbol': ['KCH6 C3.5'],
+            'position_id': ['pid-001'],
+        })
+        live_data = {'portfolio_items': [
+            self._make_item('KCH6 C3.5'),
+            self._make_item('KCH6 P3.0', position=2, unrealized_pnl=-50),
+        ]}
+        theses = [{'position_id': 'pid-001'}]
+
+        with patch('dashboard_utils.load_trade_data', return_value=ledger):
+            from dashboard_utils import find_untracked_ibkr_positions
+            result = find_untracked_ibkr_positions(live_data, theses, ticker='KC')
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['local_symbol'], 'KCH6 P3.0')
+
+    def test_zero_qty_excluded(self):
+        """Zero-quantity positions are not reported as untracked."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        live_data = {'portfolio_items': [self._make_item('KCH6 C3.5', position=0)]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=pd.DataFrame()):
+            from dashboard_utils import find_untracked_ibkr_positions
+            result = find_untracked_ibkr_positions(live_data, [], ticker='KC')
+
+        self.assertEqual(result, [])
+
+    def test_empty_theses(self):
+        """All non-zero positions reported when no theses exist."""
+        import pandas as pd
+        from unittest.mock import patch
+
+        live_data = {'portfolio_items': [self._make_item('KCH6 C3.5', position=1)]}
+
+        with patch('dashboard_utils.load_trade_data', return_value=pd.DataFrame()):
+            from dashboard_utils import find_untracked_ibkr_positions
+            result = find_untracked_ibkr_positions(live_data, [], ticker='KC')
+
+        self.assertEqual(len(result), 1)
+
+    def test_empty_portfolio(self):
+        """Empty portfolio returns empty list."""
+        from dashboard_utils import find_untracked_ibkr_positions
+        result = find_untracked_ibkr_positions({'portfolio_items': []}, [], ticker='KC')
+        self.assertEqual(result, [])
+
+
+class TestRenderThesisCardSignature(unittest.TestCase):
+    """AST tests: verify render_thesis_card_enhanced structure after refactor."""
+
+    def _get_tree_and_func(self):
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "1_Cockpit.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "render_thesis_card_enhanced":
+                return tree, node
+        self.fail("render_thesis_card_enhanced not found")
+
+    def test_pnl_map_param_present(self):
+        """Function must accept a pnl_map parameter."""
+        _, func = self._get_tree_and_func()
+        param_names = [arg.arg for arg in func.args.args]
+        self.assertIn("pnl_map", param_names)
+
+    def test_no_stop_price_metric(self):
+        """No st.metric call with 'Stop Price' label should exist."""
+        _, func = self._get_tree_and_func()
+        for node in ast.walk(func):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "metric":
+                if node.args and isinstance(node.args[0], ast.Constant) and node.args[0].value == "Stop Price":
+                    self.fail("Found 'Stop Price' metric — should have been removed")
+
+    def test_uses_three_columns(self):
+        """st.columns should be called with 3, not 4."""
+        _, func = self._get_tree_and_func()
+        for node in ast.walk(func):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "columns":
+                if node.args and isinstance(node.args[0], ast.Constant) and node.args[0].value == 4:
+                    self.fail("Found st.columns(4) — should be st.columns(3)")
+
+    def test_extract_stop_price_removed(self):
+        """extract_stop_price_from_triggers should not exist in the file."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "1_Cockpit.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "extract_stop_price_from_triggers":
+                self.fail("extract_stop_price_from_triggers still exists — should have been removed")
+
+
 if __name__ == "__main__":
     unittest.main()
