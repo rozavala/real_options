@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 from ib_insync import Bag, ComboLeg, Contract, Order, Trade, Position
@@ -9,25 +8,22 @@ import os
 from trading_bot.order_manager import generate_and_queue_orders, place_queued_orders, close_stale_positions, ORDER_QUEUE
 from ib_insync import util
 
-class TestOrderManager(unittest.TestCase):
+class TestOrderManager(unittest.IsolatedAsyncioTestCase):
 
     @patch('trading_bot.order_manager.generate_signals')
     @patch('trading_bot.order_manager.IBConnectionPool')
-    def test_generate_and_queue_orders_calls_signal_generator(self, mock_pool, mock_generate_signals):
-        async def run_test():
-            mock_ib_instance = AsyncMock()
-            mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
-            mock_generate_signals.return_value = [] # Return empty list to stop early
+    async def test_generate_and_queue_orders_calls_signal_generator(self, mock_pool, mock_generate_signals):
+        mock_ib_instance = AsyncMock()
+        mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
+        mock_generate_signals.return_value = [] # Return empty list to stop early
 
-            config = {'strategy': {'signal_threshold': 0.5}}
-            await generate_and_queue_orders(config)
+        config = {'strategy': {'signal_threshold': 0.5}}
+        await generate_and_queue_orders(config)
 
-            mock_generate_signals.assert_called_once()
-            mock_pool.get_connection.assert_called_once()
+        mock_generate_signals.assert_called_once()
+        mock_pool.get_connection.assert_called_once()
 
-        asyncio.run(run_test())
-
-class TestPositionClosing(unittest.TestCase):
+class TestPositionClosing(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         # Use a temporary ledger path for tests to avoid messing with real data
@@ -93,146 +89,143 @@ class TestPositionClosing(unittest.TestCase):
     @patch('trading_bot.order_manager.place_order', new_callable=MagicMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
     @patch('trading_bot.order_manager.IBConnectionPool')
-    def test_closes_only_old_positions_and_correct_symbols(self, mock_pool, mock_log_trade, mock_place_order):
-        async def run_test():
-            mock_ib_instance = AsyncMock()
-            mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
-            mock_ib_instance.connectAsync = AsyncMock()
-            mock_ib_instance.reqPositionsAsync = AsyncMock()
-            mock_ib_instance.isConnected = MagicMock(return_value=True)
+    async def test_closes_only_old_positions_and_correct_symbols(self, mock_pool, mock_log_trade, mock_place_order):
+        mock_ib_instance = AsyncMock()
+        mock_pool.get_connection = AsyncMock(return_value=mock_ib_instance)
+        mock_ib_instance.connectAsync = AsyncMock()
+        mock_ib_instance.reqPositionsAsync = AsyncMock()
+        mock_ib_instance.isConnected = MagicMock(return_value=True)
 
-            # Mock Market Data for Limit Order logic
-            # reqMktData returns a Ticker
-            mock_ticker = MagicMock()
-            mock_ticker.bid = 5.0
-            mock_ticker.ask = 5.5
-            mock_ticker.last = 5.25
-            mock_ticker.close = 5.25
+        # Mock Market Data for Limit Order logic
+        # reqMktData returns a Ticker
+        mock_ticker = MagicMock()
+        mock_ticker.bid = 5.0
+        mock_ticker.ask = 5.5
+        mock_ticker.last = 5.25
+        mock_ticker.close = 5.25
 
-            # Since reqMktData is synchronous in ib_insync (it returns the ticker object immediately, which updates later),
-            # we just return the mock ticker.
-            # We must explicitly set it as a MagicMock to avoid AsyncMock treating it as a coroutine
-            mock_ib_instance.reqMktData = MagicMock(return_value=mock_ticker)
-            mock_ib_instance.cancelMktData = MagicMock()
+        # Since reqMktData is synchronous in ib_insync (it returns the ticker object immediately, which updates later),
+        # we just return the mock ticker.
+        # We must explicitly set it as a MagicMock to avoid AsyncMock treating it as a coroutine
+        mock_ib_instance.reqMktData = MagicMock(return_value=mock_ticker)
+        mock_ib_instance.cancelMktData = MagicMock()
 
-            # Mock Positions
-            mock_positions = [
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'), position=-1, avgCost=1.0),
-                Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
-            ]
-            mock_ib_instance.reqPositionsAsync.return_value = mock_positions
+        # Mock Positions
+        mock_positions = [
+            Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+            Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+            Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+            Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'), position=-1, avgCost=1.0),
+            Position(account='test_account', contract=Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'), position=1, avgCost=1.0),
+        ]
+        mock_ib_instance.reqPositionsAsync.return_value = mock_positions
 
-            # Mock qualifyContractsAsync to return populated contracts based on conId
-            populated_contracts = {
-                1: Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'),
-                2: Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'),
-                3: Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'),
-                4: Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'),
-                5: Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'),
-            }
+        # Mock qualifyContractsAsync to return populated contracts based on conId
+        populated_contracts = {
+            1: Contract(localSymbol='KC 26JUL24 250 C', symbol='KC', conId=1, exchange='NYBOT', secType='FOP'),
+            2: Contract(localSymbol='KC 26JUL24 260 C', symbol='KC', conId=2, exchange='NYBOT', secType='FOP'),
+            3: Contract(localSymbol='KC 26JUL24 300 P', symbol='KC', conId=3, exchange='NYBOT', secType='FOP'),
+            4: Contract(localSymbol='KC 26JUL24 310 P', symbol='KC', conId=4, exchange='NYBOT', secType='FOP'),
+            5: Contract(localSymbol='KC 26JUL24 200 C', symbol='KC', conId=5, exchange='NYBOT', secType='FOP'),
+        }
 
-            async def mock_qualify(*contracts):
-                result = []
-                for c in contracts:
-                    if c.conId in populated_contracts:
-                        result.append(populated_contracts[c.conId])
-                    else:
-                        result.append(c)
-                return result
-
-            mock_ib_instance.qualifyContractsAsync = AsyncMock(side_effect=mock_qualify)
-
-            mock_trade = MagicMock()
-            mock_trade.orderStatus.status = 'Filled'
-            mock_fill = MagicMock()
-            mock_fill.commissionReport.realizedPNL = 50.0
-            mock_trade.fills = [mock_fill]
-            mock_trade.orderStatus.avgFillPrice = 1.0
-
-            mock_place_order.return_value = mock_trade
-
-            config = {'symbol': 'KC', 'exchange': 'NYBOT'}
-
-            # Patch datetime to avoid Weekly Close logic triggering
-            with patch('trading_bot.order_manager.datetime') as mock_datetime:
-                mock_datetime.now.return_value = self.mock_now
-                mock_datetime.date.return_value = self.mock_now.date()
-
-                await close_stale_positions(config)
-
-            # We expect 3 calls to place_order: 1 for OLD_POSITION, 1 for COMBO_POSITION, 1 for RECON_POSITION
-            self.assertEqual(mock_place_order.call_count, 3)
-
-            single_order_calls = []
-            bag_order_call = None
-
-            for call in mock_place_order.call_args_list:
-                args, kwargs = call
-                contract = args[1]
-                if contract.secType == 'BAG':
-                    bag_order_call = call
+        async def mock_qualify(*contracts):
+            result = []
+            for c in contracts:
+                if c.conId in populated_contracts:
+                    result.append(populated_contracts[c.conId])
                 else:
-                    single_order_calls.append(call)
+                    result.append(c)
+            return result
 
-            # VERIFY SINGLE ORDERS
-            self.assertEqual(len(single_order_calls), 2)
+        mock_ib_instance.qualifyContractsAsync = AsyncMock(side_effect=mock_qualify)
 
-            # Sort calls by conId to make assertions deterministic
-            single_order_calls.sort(key=lambda call: call[0][1].conId)
+        mock_trade = MagicMock()
+        mock_trade.orderStatus.status = 'Filled'
+        mock_fill = MagicMock()
+        mock_fill.commissionReport.realizedPNL = 50.0
+        mock_trade.fills = [mock_fill]
+        mock_trade.orderStatus.avgFillPrice = 1.0
 
-            # 1. OLD_POSITION (conId 1)
-            args, _ = single_order_calls[0]
-            single_contract_1 = args[1]
-            single_order_1 = args[2]
+        mock_place_order.return_value = mock_trade
 
-            self.assertEqual(single_contract_1.conId, 1)
-            self.assertEqual(single_contract_1.symbol, 'KC')
-            self.assertEqual(single_contract_1.secType, 'FOP')
-            self.assertEqual(single_order_1.orderType, 'LMT')
-            self.assertEqual(single_order_1.lmtPrice, 5.0)
-            self.assertEqual(single_order_1.action, 'SELL')
+        config = {'symbol': 'KC', 'exchange': 'NYBOT'}
 
-            # 2. RECON_POSITION (conId 5)
-            args, _ = single_order_calls[1]
-            single_contract_2 = args[1]
-            single_order_2 = args[2]
+        # Patch datetime to avoid Weekly Close logic triggering
+        with patch('trading_bot.order_manager.datetime') as mock_datetime:
+            mock_datetime.now.return_value = self.mock_now
+            mock_datetime.date.return_value = self.mock_now.date()
 
-            self.assertEqual(single_contract_2.conId, 5)
-            self.assertEqual(single_contract_2.symbol, 'KC')
-            self.assertEqual(single_contract_2.secType, 'FOP')
-            self.assertEqual(single_order_2.orderType, 'LMT')
-            self.assertEqual(single_order_2.lmtPrice, 5.0)
-            self.assertEqual(single_order_2.action, 'SELL')
+            await close_stale_positions(config)
 
-            # VERIFY BAG ORDER
-            self.assertIsNotNone(bag_order_call)
-            args, _ = bag_order_call
-            bag_contract = args[1]
-            bag_order = args[2]
+        # We expect 3 calls to place_order: 1 for OLD_POSITION, 1 for COMBO_POSITION, 1 for RECON_POSITION
+        self.assertEqual(mock_place_order.call_count, 3)
 
-            self.assertEqual(bag_contract.symbol, 'KC')
-            self.assertEqual(bag_contract.secType, 'BAG')
+        single_order_calls = []
+        bag_order_call = None
 
-            # Verify Limit Order Logic
-            # Combo Position: ... -> Close Action: BUY (bag_action defaults to BUY as per code, unless we changed it logic?)
-            # Wait, the code sets bag_action based on final_legs_list[0]['action'] if size is 1?
-            # Or if multiple legs, bag_action = 'BUY' and we rely on leg actions?
-            # My code:
-            # bag_action = 'BUY'
-            # if len(final_legs_list) == 1:
-            #    bag_action = final_legs_list[0]['action']
+        for call in mock_place_order.call_args_list:
+            args, kwargs = call
+            contract = args[1]
+            if contract.secType == 'BAG':
+                bag_order_call = call
+            else:
+                single_order_calls.append(call)
 
-            # So for Bag it is BUY.
-            # Limit price for BUY is ASK (5.5).
-            # UPDATED: Code now calculates price from legs (5.25 - 5.25 = 0) + slippage (0.05).
-            self.assertEqual(bag_order.orderType, 'LMT')
-            self.assertEqual(bag_order.lmtPrice, 0.05)
-            self.assertEqual(bag_order.action, 'BUY')
+        # VERIFY SINGLE ORDERS
+        self.assertEqual(len(single_order_calls), 2)
 
-        asyncio.run(run_test())
+        # Sort calls by conId to make assertions deterministic
+        single_order_calls.sort(key=lambda call: call[0][1].conId)
+
+        # 1. OLD_POSITION (conId 1)
+        args, _ = single_order_calls[0]
+        single_contract_1 = args[1]
+        single_order_1 = args[2]
+
+        self.assertEqual(single_contract_1.conId, 1)
+        self.assertEqual(single_contract_1.symbol, 'KC')
+        self.assertEqual(single_contract_1.secType, 'FOP')
+        self.assertEqual(single_order_1.orderType, 'LMT')
+        self.assertEqual(single_order_1.lmtPrice, 5.0)
+        self.assertEqual(single_order_1.action, 'SELL')
+
+        # 2. RECON_POSITION (conId 5)
+        args, _ = single_order_calls[1]
+        single_contract_2 = args[1]
+        single_order_2 = args[2]
+
+        self.assertEqual(single_contract_2.conId, 5)
+        self.assertEqual(single_contract_2.symbol, 'KC')
+        self.assertEqual(single_contract_2.secType, 'FOP')
+        self.assertEqual(single_order_2.orderType, 'LMT')
+        self.assertEqual(single_order_2.lmtPrice, 5.0)
+        self.assertEqual(single_order_2.action, 'SELL')
+
+        # VERIFY BAG ORDER
+        self.assertIsNotNone(bag_order_call)
+        args, _ = bag_order_call
+        bag_contract = args[1]
+        bag_order = args[2]
+
+        self.assertEqual(bag_contract.symbol, 'KC')
+        self.assertEqual(bag_contract.secType, 'BAG')
+
+        # Verify Limit Order Logic
+        # Combo Position: ... -> Close Action: BUY (bag_action defaults to BUY as per code, unless we changed it logic?)
+        # Wait, the code sets bag_action based on final_legs_list[0]['action'] if size is 1?
+        # Or if multiple legs, bag_action = 'BUY' and we rely on leg actions?
+        # My code:
+        # bag_action = 'BUY'
+        # if len(final_legs_list) == 1:
+        #    bag_action = final_legs_list[0]['action']
+
+        # So for Bag it is BUY.
+        # Limit price for BUY is ASK (5.5).
+        # UPDATED: Code now calculates price from legs (5.25 - 5.25 = 0) + slippage (0.05).
+        self.assertEqual(bag_order.orderType, 'LMT')
+        self.assertEqual(bag_order.lmtPrice, 0.05)
+        self.assertEqual(bag_order.action, 'BUY')
 
 import pytest
 
