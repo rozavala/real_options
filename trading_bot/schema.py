@@ -35,6 +35,8 @@ COUNCIL_HISTORY_FIELDNAMES = [
     "thesis_strength", "primary_catalyst", "conviction_multiplier", "dissent_acknowledged",
     # v4 — VaR & Compliance observability
     "compliance_reason", "var_utilization", "var_dampener", "risk_briefing_injected",
+    # v5 — Regime tracking (enables dashboard regime display from council_history)
+    "entry_regime",
 ]
 
 # Semantically honest defaults for backfilling old rows on schema migration.
@@ -57,6 +59,8 @@ COUNCIL_HISTORY_BACKFILL_DEFAULTS = {
     "var_utilization": "",
     "var_dampener": "1.0",
     "risk_briefing_injected": "False",
+    # v5 columns
+    "entry_regime": "",
 }
 
 

@@ -1190,7 +1190,7 @@ if os.path.exists(logs_dir):
         st.dataframe(
             df_logs,
             hide_index=True,
-            use_container_width=True,
+            width='stretch',
             column_config={
                 "File": st.column_config.TextColumn("File", width="medium"),
                 "Size (KB)": st.column_config.NumberColumn("Size", format="%.1f KB", width="small"),

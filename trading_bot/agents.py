@@ -32,6 +32,21 @@ from trading_bot.prompt_trace import PromptTraceRecord, hash_persona
 
 logger = logging.getLogger(__name__)
 
+
+def _is_error_report(report) -> bool:
+    """Check if a report is a dict-wrapped error from research_topic().
+
+    research_topic() wraps exceptions as:
+      {'data': 'Error conducting research: ...', 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
+    These must not be passed to the council as legitimate agent reports (Issue #1167).
+    """
+    if isinstance(report, dict) and isinstance(report.get('data'), str):
+        data_str = report['data']
+        if 'Error conducting research' in data_str or 'All providers exhausted' in data_str:
+            return True
+    return False
+
+
 # === NEW IMPORTS FOR COMMODITY-AGNOSTIC SUPPORT ===
 # Added for HRO Enhancement - does not affect existing functionality
 # FIX (MECE 1.2): More explicit error handling to prevent silent failures
@@ -1617,8 +1632,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Create combined reports for Decision context
         final_reports = cached_reports.copy()
 
-        # Overwrite/Add the fresh report
-        final_reports[active_agent_key] = fresh_report
+        # Validate fresh_report before merging (Issue #1167)
+        if _is_error_report(fresh_report):
+            logger.warning(f"Agent {active_agent_key}: research returned error, excluding from council - {fresh_report.get('data', '')[:100]}")
+        else:
+            # Overwrite/Add the fresh report
+            final_reports[active_agent_key] = fresh_report
 
         # --- Handle "Empty Brain" (Cold Start) ---
         expected_agents = [
@@ -1669,12 +1688,14 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
                     # Update reports
                     for agent, res in zip(cued_tasks.keys(), cued_results):
-                        if not isinstance(res, Exception):
+                        if isinstance(res, Exception):
+                            logger.error(f"Cued agent {agent} failed: {res}")
+                        elif _is_error_report(res):
+                            logger.warning(f"Cued agent {agent}: research returned error, excluding from council - {res.get('data', '')[:100]}")
+                        else:
                             final_reports[agent] = res
                             # Save to state
                             StateManager.save_state({agent: res})
-                        else:
-                            logger.error(f"Cued agent {agent} failed: {res}")
 
         # === NEW: Calculate Weighted Vote ===
         trigger_type = determine_trigger_type(trigger.source)

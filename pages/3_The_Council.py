@@ -739,7 +739,7 @@ else:
                             'assigned_provider', 'assigned_model', 'persona_hash', 'demo_count',
                             'latency_ms']
             available_cols = [c for c in display_cols if c in cycle_traces.columns]
-            st.dataframe(cycle_traces[available_cols], use_container_width=True, hide_index=True)
+            st.dataframe(cycle_traces[available_cols], width='stretch', hide_index=True)
         else:
             st.info("No cycle data found.")
 
@@ -761,7 +761,7 @@ else:
                     st.dataframe(
                         fallbacks[['agent', 'assigned_provider', 'assigned_model',
                                    'model_provider', 'model_name']],
-                        use_container_width=True, hide_index=True
+                        width='stretch', hide_index=True
                     )
             else:
                 st.info("No routed calls with assignment data yet.")
@@ -775,7 +775,7 @@ else:
                     names=source_counts.index,
                     title="Prompt Source Distribution",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
 
     with st.expander("Persona Drift Detection", expanded=False):
         if 'persona_hash' in traces_df.columns and 'agent' in traces_df.columns:
@@ -786,7 +786,7 @@ else:
                 drifted = drift[drift['Unique Persona Hashes'] > 1]
                 if not drifted.empty:
                     st.warning(f"{len(drifted)} agent(s) have changed persona text across cycles:")
-                    st.dataframe(drifted, use_container_width=True, hide_index=True)
+                    st.dataframe(drifted, width='stretch', hide_index=True)
                 else:
                     st.success("All agent personas are stable (single hash per agent).")
             else:

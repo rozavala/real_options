@@ -788,7 +788,7 @@ if task_data['available']:
         st.dataframe(
             df,
             hide_index=True,
-            use_container_width=True,
+            width='stretch',
             column_config={
                 "Status": st.column_config.TextColumn("Status", width="medium", help="Current operational status of the task."),
                 "Scheduled (ET)": st.column_config.TextColumn("Scheduled (ET)", width="small", help="Planned execution time in New York (Eastern) time."),
@@ -1094,7 +1094,7 @@ if active_theses:
     if _untracked:
         st.warning(f"⚠️ {len(_untracked)} IBKR position(s) with no active thesis")
         with st.expander(f"View {len(_untracked)} untracked position(s)"):
-            st.dataframe(pd.DataFrame(_untracked), use_container_width=True)
+            st.dataframe(pd.DataFrame(_untracked), width='stretch')
 
 else:
     st.info("No active position theses. The system has no open positions or theses haven't been recorded yet.")
