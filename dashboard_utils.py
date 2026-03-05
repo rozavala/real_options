@@ -317,6 +317,93 @@ def load_trade_data(ticker: str = None):
         return pd.DataFrame()
 
 
+def build_position_pnl_map(live_data: dict, ticker: str = None) -> dict:
+    """Map position_id → aggregate unrealizedPNL using the trade ledger as a bridge.
+
+    IBKR portfolio items are keyed by localSymbol (e.g. "KCH6 C3.5").
+    The trade ledger maps local_symbol → position_id.
+    This function joins the two to produce {position_id: total_unrealized_pnl}.
+    """
+    portfolio_items = live_data.get('portfolio_items', [])
+    if not portfolio_items:
+        return {}
+
+    trade_df = load_trade_data(ticker)
+    if trade_df.empty or 'local_symbol' not in trade_df.columns or 'position_id' not in trade_df.columns:
+        return {}
+
+    # Build local_symbol → position_id lookup (last-write-wins)
+    symbol_to_pid = {}
+    for _, row in trade_df.iterrows():
+        sym = row.get('local_symbol')
+        pid = row.get('position_id')
+        if pd.notna(sym) and pd.notna(pid):
+            symbol_to_pid[sym] = pid
+
+    # Aggregate unrealizedPNL per position_id
+    pnl_map: dict[str, float] = {}
+    for item in portfolio_items:
+        if not hasattr(item, 'contract'):
+            continue
+        local_sym = getattr(item.contract, 'localSymbol', None)
+        if not local_sym:
+            continue
+        pid = symbol_to_pid.get(local_sym)
+        if pid is None:
+            continue
+        pnl = getattr(item, 'unrealizedPNL', 0) or 0
+        pnl_map[pid] = pnl_map.get(pid, 0) + pnl
+
+    return pnl_map
+
+
+def find_untracked_ibkr_positions(live_data: dict, active_theses: list, ticker: str = None) -> list:
+    """Find IBKR portfolio positions that have no matching active thesis.
+
+    Returns list of dicts with keys: local_symbol, quantity, unrealized_pnl,
+    market_value, avg_cost.
+    """
+    portfolio_items = live_data.get('portfolio_items', [])
+    if not portfolio_items:
+        return []
+
+    # Collect position_ids from active theses
+    thesis_pids = {t.get('position_id') for t in (active_theses or [])}
+
+    trade_df = load_trade_data(ticker)
+    # Build local_symbol → position_id lookup
+    symbol_to_pid = {}
+    if not trade_df.empty and 'local_symbol' in trade_df.columns and 'position_id' in trade_df.columns:
+        for _, row in trade_df.iterrows():
+            sym = row.get('local_symbol')
+            pid = row.get('position_id')
+            if pd.notna(sym) and pd.notna(pid):
+                symbol_to_pid[sym] = pid
+
+    untracked = []
+    for item in portfolio_items:
+        if not hasattr(item, 'contract'):
+            continue
+        qty = getattr(item, 'position', 0)
+        if qty == 0:
+            continue
+        local_sym = getattr(item.contract, 'localSymbol', None)
+        if not local_sym:
+            continue
+        pid = symbol_to_pid.get(local_sym)
+        if pid and pid in thesis_pids:
+            continue  # tracked
+        untracked.append({
+            'local_symbol': local_sym,
+            'quantity': qty,
+            'unrealized_pnl': getattr(item, 'unrealizedPNL', None),
+            'market_value': getattr(item, 'marketValue', None),
+            'avg_cost': getattr(item, 'averageCost', None),
+        })
+
+    return untracked
+
+
 @st.cache_data(ttl=3600)
 def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
     """Loads and caches legacy council history files (long TTL)."""

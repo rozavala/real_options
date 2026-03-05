@@ -13,7 +13,6 @@ import pytz
 import sys
 import os
 import asyncio
-import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import (
@@ -34,103 +33,24 @@ from dashboard_utils import (
     load_task_schedule_status,
     load_deduplicator_metrics,
     _resolve_data_path,
-    _relative_time
+    _relative_time,
+    build_position_pnl_map,
+    find_untracked_ibkr_positions,
 )
 from trading_bot.calendars import is_trading_day
 from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
 
 
-def _parse_price_from_text(text: str, entry_price: float, min_price: float, max_price: float) -> float | None:
-    """Helper to extract price from trigger text."""
-    text_upper = text.upper()
-
-    # Look for price keywords
-    if any(kw in text_upper for kw in ['STOP', 'CLOSE', 'EXIT', 'PRICE <', 'PRICE >', 'BELOW', 'ABOVE', 'BREACH']):
-        match = re.search(r'\$?(\d+(?:\.\d{1,2})?)', text)
-        if match:
-            price = float(match.group(1))
-            if min_price <= price <= max_price:
-                return price
-
-    # Check for percentage-based stops
-    pct_match = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
-    if pct_match and entry_price and entry_price > 0:
-        pct = float(pct_match.group(1)) / 100
-        calculated_stop = entry_price * (1 - pct)
-        if min_price <= calculated_stop <= max_price:
-            return calculated_stop
-
-    return None
-
-
-def extract_stop_price_from_triggers(
-    triggers: any,
-    entry_price: float,
-    config: dict = None
-) -> float | None:
-    """
-    Extracts stop/invalidation price from various trigger formats.
-
-    Handles:
-    - Dict: {'stop_loss_price': 320.0}
-    - List: ['Close if price < 320', 'Monitor frost']
-    - String: 'Stop at 5% loss'
-
-    Uses config-driven price bounds to filter false positives.
-    """
-    if triggers is None:
-        return None
-
-    # Get commodity-specific bounds (permissive fallback for any commodity)
-    profile = get_commodity_profile(config)
-    min_price, max_price = profile.get('stop_parse_range', [0, 100000])
-
-    # === Dict format ===
-    if isinstance(triggers, dict):
-        for key in ['stop_loss_price', 'stop_price', 'invalidation_price', 'exit_price']:
-            if key in triggers:
-                price = float(triggers[key])
-                if min_price <= price <= max_price:
-                    return price
-        return None
-
-    # === List format ===
-    if isinstance(triggers, list):
-        for trigger in triggers:
-            if isinstance(trigger, str):
-                price = _parse_price_from_text(trigger, entry_price, min_price, max_price)
-                if price is not None:
-                    return price
-        return None
-
-    # === String format ===
-    if isinstance(triggers, str):
-        return _parse_price_from_text(triggers, entry_price, min_price, max_price)
-
-    return None
-
-
-def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = None):
-    """Renders thesis card with live P&L and distance to invalidation."""
+def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = None, pnl_map: dict = None):
+    """Renders thesis card with live P&L and invalidation triggers inline."""
     position_id = thesis.get('position_id', 'UNKNOWN')
     strategy = thesis.get('strategy_type', 'DIRECTIONAL')
     entry_price = thesis.get('entry_price', 0) or thesis.get('supporting_data', {}).get('entry_price', 0)
 
-    # Find matching position in portfolio
-    unrealized_pnl = None
-    for item in live_data.get('portfolio_items', []):
-        if hasattr(item, 'contract') and position_id in str(item.contract.localSymbol):
-            unrealized_pnl = getattr(item, 'unrealizedPNL', None)
-            break
+    # P&L lookup via pre-built map (bridges localSymbol → position_id via ledger)
+    unrealized_pnl = pnl_map.get(position_id) if pnl_map else None
 
-    # Extract stop price from triggers
     triggers = thesis.get('invalidation_triggers', [])
-    stop_price = extract_stop_price_from_triggers(triggers, entry_price, config)
-
-    # Calculate distance to stop
-    distance_pct = None
-    if stop_price and entry_price and entry_price != 0:
-        distance_pct = abs(entry_price - stop_price) / entry_price
 
     # Render
     with st.container():
@@ -142,7 +62,6 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 f"Guardian: {thesis.get('guardian_agent', 'Master')}"
             )
         with head_cols[1]:
-            # UX Improvement: Copy ID Button
             label = f"🆔 {position_id[:8]}"
             if hasattr(st, "popover"):
                 with st.popover(label, width="stretch"):
@@ -152,10 +71,9 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 with st.expander(label):
                     st.code(position_id, language=None)
 
-        cols = st.columns(4)
+        cols = st.columns(3)
 
         with cols[0]:
-            # Format entry timestamp for tooltip
             entry_ts = thesis.get('entry_timestamp', 'Unknown')
             if isinstance(entry_ts, datetime):
                 entry_ts_str = entry_ts.strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -181,41 +99,17 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 st.metric("Unrealized P&L", "N/A", help="Current open profit/loss on active positions")
 
         with cols[2]:
-            stop_help = "Calculated from invalidation triggers"
-            if isinstance(triggers, list) and triggers:
-                stop_help += ":\n\n" + "\n".join([f"• {t}" for t in triggers])
-            elif isinstance(triggers, str):
-                stop_help += f":\n\n• {triggers}"
-
             st.metric(
-                "Stop Price",
-                f"${stop_price:.2f}" if stop_price else "N/A",
-                help=stop_help
+                "Strategy",
+                strategy.replace('_', ' ').title(),
+                help="Trading strategy used for this position"
             )
 
-        with cols[3]:
-            dist_help = "Distance between current entry price and stop price"
-            if distance_pct is not None:
-                if distance_pct < 0.05:
-                    st.error(f"⚠️ {distance_pct:.1%} to stop", help=dist_help)
-                elif distance_pct < 0.10:
-                    st.warning(f"🔶 {distance_pct:.1%} to stop", help=dist_help)
-                else:
-                    st.success(f"✅ {distance_pct:.1%} to stop", help=dist_help)
-            else:
-                # Issue 6 Fix: Strategy-aware stop display
-                MULTI_LEG_STRATEGIES = {'IRON_CONDOR', 'LONG_STRADDLE', 'IRON_BUTTERFLY', 'STRANGLE'}
-                if strategy.upper() in MULTI_LEG_STRATEGIES:
-                    st.info("📑 Uses invalidation triggers")
-                else:
-                    st.error("No stop defined")
-
-        with st.expander("📜 Invalidation Triggers"):
-            if isinstance(triggers, list):
-                for t in triggers:
-                    st.write(f"• {t}")
-            else:
-                st.write(str(triggers) if triggers else "None defined")
+        # Show invalidation triggers inline
+        if isinstance(triggers, list) and triggers:
+            st.caption("Triggers: " + "  \u2022  ".join(str(t) for t in triggers))
+        elif isinstance(triggers, str) and triggers:
+            st.caption(f"Triggers: {triggers}")
 
 
 def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
@@ -1191,8 +1085,16 @@ if active_theses:
     st.markdown("")
 
     # Detailed thesis cards
+    pnl_map = build_position_pnl_map(live_data, ticker=ticker)
     for thesis in active_theses:
-        render_thesis_card_enhanced(thesis, live_data, config)
+        render_thesis_card_enhanced(thesis, live_data, config, pnl_map=pnl_map)
+
+    # Untracked IBKR positions warning
+    _untracked = find_untracked_ibkr_positions(live_data, active_theses, ticker=ticker)
+    if _untracked:
+        st.warning(f"⚠️ {len(_untracked)} IBKR position(s) with no active thesis")
+        with st.expander(f"View {len(_untracked)} untracked position(s)"):
+            st.dataframe(pd.DataFrame(_untracked), use_container_width=True)
 
 else:
     st.info("No active position theses. The system has no open positions or theses haven't been recorded yet.")
