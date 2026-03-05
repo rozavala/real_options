@@ -4639,6 +4639,117 @@ async def emergency_hard_close(config: dict):
                         f"{contract.localSymbol} status={trade.orderStatus.status}"
                     )
 
+            # --- Phase 4: Retry margin-rejected orders (Error 201) ---
+            # After other legs close, margin may have freed up enough.
+            if error_201_symbols and failed_symbols:
+                retry_candidates = [
+                    (sym, status, err) for sym, status, err in failed_symbols
+                    if sym in error_201_symbols
+                ]
+                if retry_candidates:
+                    logger.info(
+                        f"Retrying {len(retry_candidates)} margin-rejected order(s) "
+                        f"after 5s margin release window..."
+                    )
+                    await asyncio.sleep(5)
+
+                    # Build symbol → position lookup from original positions
+                    pos_by_symbol = {
+                        pos.contract.localSymbol: pos for pos in open_positions
+                    }
+
+                    for sym, _status, _err in retry_candidates:
+                        pos = pos_by_symbol.get(sym)
+                        if not pos:
+                            continue
+                        contract = pos.contract
+                        if not contract.exchange:
+                            contract.exchange = config.get('exchange', 'SMART')
+                        close_action = 'SELL' if pos.position > 0 else 'BUY'
+                        qty = abs(pos.position)
+
+                        # Retry 1: same quantity
+                        order = MarketOrder(close_action, qty)
+                        order.tif = 'GTC'
+                        trade = ib.placeOrder(contract, order)
+                        logger.info(f"Emergency retry: {close_action} {qty} {sym} (MARKET)")
+
+                        retry_deadline = asyncio.get_event_loop().time() + 10
+                        while not trade.isDone() and asyncio.get_event_loop().time() < retry_deadline:
+                            await asyncio.sleep(0.5)
+
+                        if trade.isDone() and trade.orderStatus.status == 'Filled':
+                            closed += 1
+                            failed -= 1
+                            # Remove from failed lists
+                            failed_symbols = [(s, st, e) for s, st, e in failed_symbols if s != sym]
+                            error_201_symbols = [s for s in error_201_symbols if s != sym]
+                            logger.info(f"Emergency retry FILLED: {sym} qty={trade.orderStatus.filled}")
+                            try:
+                                from trading_bot.utils import log_trade_to_ledger
+                                import time as _time
+                                await log_trade_to_ledger(
+                                    ib, trade,
+                                    reason="EMERGENCY_HARD_CLOSE_RETRY",
+                                    position_id=f"EMERGENCY_{sym}_{today_date}_{int(_time.time())}"
+                                )
+                            except Exception as ledger_err:
+                                logger.error(f"Failed to log retry fill to ledger: {ledger_err}")
+                            continue
+
+                        # Retry 2: reduce quantity to 1 if original was > 1
+                        if qty > 1:
+                            logger.info(f"Emergency retry reduced qty: {close_action} 1 {sym} (MARKET)")
+                            try:
+                                ib.cancelOrder(trade.order)
+                            except Exception:
+                                pass
+                            await asyncio.sleep(1)
+
+                            order2 = MarketOrder(close_action, 1)
+                            order2.tif = 'GTC'
+                            trade2 = ib.placeOrder(contract, order2)
+
+                            retry2_deadline = asyncio.get_event_loop().time() + 10
+                            while not trade2.isDone() and asyncio.get_event_loop().time() < retry2_deadline:
+                                await asyncio.sleep(0.5)
+
+                            if trade2.isDone() and trade2.orderStatus.status == 'Filled':
+                                closed += 1
+                                logger.info(f"Emergency retry (reduced qty) FILLED: {sym} qty=1")
+                                try:
+                                    from trading_bot.utils import log_trade_to_ledger
+                                    import time as _time
+                                    await log_trade_to_ledger(
+                                        ib, trade2,
+                                        reason="EMERGENCY_HARD_CLOSE_RETRY_PARTIAL",
+                                        position_id=f"EMERGENCY_{sym}_{today_date}_{int(_time.time())}"
+                                    )
+                                except Exception as ledger_err:
+                                    logger.error(f"Failed to log partial retry fill: {ledger_err}")
+                                # Still have remaining qty unfilled
+                                remaining = qty - 1
+                                if remaining > 0:
+                                    logger.warning(
+                                        f"MANUAL CLOSE REQUIRED: {remaining} remaining "
+                                        f"{close_action} {sym}"
+                                    )
+                                continue
+
+                        # All retries exhausted
+                        logger.error(f"MANUAL CLOSE REQUIRED: {sym} — all retry attempts failed")
+
+                    # Send separate notification for manual close items
+                    manual_close_needed = [s for s in error_201_symbols]
+                    if manual_close_needed:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "🚨 MANUAL CLOSE REQUIRED",
+                            f"Emergency close retry exhausted for: "
+                            f"{', '.join(manual_close_needed)}\n"
+                            f"These positions remain OPEN. Close manually ASAP."
+                        )
+
             # B2: Include failed symbol details in notification
             summary = f"Emergency hard close: {closed} closed, {failed} failed"
             if failed_symbols:
