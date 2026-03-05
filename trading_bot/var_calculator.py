@@ -199,12 +199,23 @@ class PortfolioVaRCalculator:
             var_95 = max(var_95, 0.0)
             var_99 = max(var_99, 0.0)
 
-            # Sanity check: VaR=0 with positions is suspect (#1164)
+            # VaR=0 with positions: could be genuine (hedged spreads) or data issue
             if len(positions) > 0 and var_95 == 0.0 and var_99 == 0.0:
-                logger.warning(
-                    f"VaR returned $0 with {len(positions)} positions — "
-                    f"likely invalid market data. Check option prices."
-                )
+                p1 = float(np.percentile(scenarios, 1))
+                p5 = float(np.percentile(scenarios, 5))
+                min_pnl = float(scenarios.min())
+                if min_pnl >= 0:
+                    # All scenarios profitable — genuinely hedged portfolio
+                    logger.info(
+                        f"VaR=$0 with {len(positions)} positions: portfolio gains "
+                        f"in all {len(scenarios)} scenarios (min P&L=${min_pnl:,.0f})"
+                    )
+                else:
+                    # Some losses but 5th percentile still positive — log for review
+                    logger.warning(
+                        f"VaR=$0 with {len(positions)} positions — "
+                        f"P1=${p1:,.0f} P5=${p5:,.0f} min=${min_pnl:,.0f}"
+                    )
 
             result = VaRResult(
                 var_95=round(var_95, 2),
