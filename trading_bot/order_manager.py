@@ -2815,7 +2815,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         # --- 4. FIFO Reconstruction and Age Verification ---
         # Map unique local symbols to live positions
         # Note: If multiple accounts, this assumes unique local_symbol per account or aggregated.
-        live_pos_map = {p.contract.localSymbol: p for p in live_positions if p.position != 0}
+        live_pos_map = {p.contract.localSymbol: p for p in non_zero_positions}
 
         for symbol, pos in live_pos_map.items():
             live_qty = abs(pos.position)
