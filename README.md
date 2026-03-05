@@ -88,6 +88,7 @@ graph TD
 7.  **DSPy Optimizer (`trading_bot/dspy_optimizer.py`):** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
 8.  **Automated Trade Journal (`trading_bot/trade_journal.py`):** Generates structured post-mortem narratives for every closed trade, stored in TMS for future learning.
 9.  **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry.
+10. **Error Reporter (`scripts/error_reporter.py`):** A standalone telemetry script (decoupled from the orchestrator) that scans system logs, uses fingerprinting to deduplicate errors, intelligently filters out transient operational noise (e.g., 429 rate limits, 503 unavailable, lock timeouts), and auto-generates structured GitHub issues to track true system anomalies.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
