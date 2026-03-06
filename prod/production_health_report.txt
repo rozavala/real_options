@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Fri Mar  6 18:30:04 UTC 2026
+Timestamp: Fri Mar  6 19:00:03 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  18:30:04 up 54 days, 53 min,  2 users,  load average: 0.33, 0.28, 0.28
+Uptime:  19:00:03 up 54 days,  1:23,  2 users,  load average: 0.63, 0.40, 0.38
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,18 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.7Gi       131Mi        34Mi       1.2Gi       1.2Gi
+Mem:           3.8Gi       2.6Gi       314Mi        34Mi       1.2Gi       1.3Gi
 Swap:          4.0Gi       1.0Gi       3.0Gi
 
 === LOAD AVERAGE ===
-0.33 0.28 0.28 2/835 1748868
+0.63 0.40 0.38 1/803 1749952
 
 === PROCESS STATUS ===
 Trading processes:
-console  1507363  0.2  8.4 2039200 339424 ?      Ssl  Feb27  30:56 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  1733523  0.0  7.2 1355380 291068 ?      Sl   09:15   0:12 /home/console/real_options/venv/bin/python position_monitor.py
+console  1507363  0.2  9.9 2001568 398204 ?      Ssl  Feb27  31:49 /home/console/real_options/venv/bin/python -u orchestrator.py
 
 Dashboard processes:
-console  1185121  0.2  0.8 2896520 33236 ?       Sl   Feb17  72:36 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.2  0.8 2896520 33236 ?       Sl   Feb17  72:44 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,7 +35,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-03-06 12:01:17,686 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: . Next retry backoff: 10.0s
 2026-03-06 12:08:44,412 - ib_insync.wrapper - ERROR - Error 162, reqId 55: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=673787174, symbol='KC', lastTradeDateOrContractMonth='20260612', strike=290.0, right='C', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KON6 C2.9', tradingClass='KO')
 2026-03-06 12:33:56,471 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED WITH BEARISH TRADE. The risk/reward is asymmetric to the downside for a short position. You are considering shorting a market that is: (1) in backwardation (immediate tightness), (2) exhibiting elevated IV (36.37% vs low-20s historical mean, indicating expensive tail protection for a reason), (3) facing an unverified but high-severity weather threat in Vietnam during the most critical phenological window, and (4) experiencing documented geopolitical and logistical friction (Hormuz, Red Sea reroutes, Brazil export -17.4% cited as logistics+supply). Your Bear case rests heavily on *lagging* indicators (ICE stocks rising for 3 days, a crop forecast 9 months forward, Vietnam production projections made before the drought reading) and dismisses *leading* risk signals as 'not corroborated' or 'priced in.' The volatility analyst explicitly warned that options are expensive, which in the framework downgrades conviction. The weighted consensus is BEARISH at only 0.61 confidence with a -0.124 score—this is not a high-conviction setup. Meanwhile, you have 3 agents (Supply_Chain 0.8 BULLISH, Volatility 0.65 BULLISH, and the original Bull's uncorroborated-but-plausible drought shock) pointing to upside risks that could become consensus in 24-48 hours if any confirming data emerges. If you must express a view, the correct trade is to WAIT for confirmation (Vietnam weather updates, next ICE stock report, Brazil export flow data) or to trade options structure (sell elevated IV via spreads) rather than naked directional short exposure. Shorting a backwardated, headline-sensitive, geopolitically exposed commodity with 0.7 confidence is a recipe for getting run over by a headline you deemed 'not corroborated' until it's too late.
 2026-03-06 13:04:47,410 - ib_insync.wrapper - ERROR - Error 162, reqId 53: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=742750192, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=282.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.825', tradingClass='KO')
@@ -46,3 +44,4 @@ Recent orchestrator errors:
 2026-03-06 16:39:17,512 - ib_insync.client - ERROR - API connection failed: TimeoutError()
 2026-03-06 16:39:18,176 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: . Next retry backoff: 10.0s
 2026-03-06 16:40:09,685 - Orchestrator - WARNING - CRITICAL trigger PredictionMarketSentinel (Sev: 9) bypassing post-cycle debounce
+2026-03-06 18:30:17,957 - ib_insync.ib - ERROR - cancelMktData: No reqId found for contract Contract(secType='FUT', conId=634760204, symbol='KC', lastTradeDateOrContractMonth='20260518', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KCK6', tradingClass='KC')
