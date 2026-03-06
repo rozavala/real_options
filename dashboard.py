@@ -42,7 +42,7 @@ from dashboard_utils import (
     get_starting_capital,
     _relative_time,
 )
-from _date_filter import date_range_filter
+from _date_filter import date_range_picker, apply_date_filter
 
 config = get_config()
 
@@ -422,12 +422,18 @@ else:
 st.markdown("---")
 st.markdown("### Commodity Summary")
 
+# Build a merged df to derive date bounds for the single page-level picker
+_all_council = {t: load_council_history_for_commodity(t) for t in active_commodities}
+_reference_df = pd.concat([d for d in _all_council.values() if not d.empty], ignore_index=True) if _all_council else pd.DataFrame()
+_home_dates = date_range_picker(_reference_df, key='home')
+
 card_cols = st.columns(max(len(active_commodities), 1))
 
 for idx, ticker in enumerate(active_commodities):
     meta = _get_commodity_meta(ticker)
-    council_df = load_council_history_for_commodity(ticker)
-    council_df = date_range_filter(council_df, key_prefix=f'home_{ticker}')
+    council_df = _all_council[ticker]
+    if _home_dates:
+        council_df = apply_date_filter(council_df, *_home_dates)
 
     with card_cols[idx]:
         st.markdown(f"#### {meta['emoji']} {meta['name']}")
@@ -466,15 +472,12 @@ st.markdown("---")
 st.markdown("### Recent Activity")
 
 try:
-    all_dfs = []
-    for ticker in active_commodities:
-        df = load_council_history_for_commodity(ticker)
-        if not df.empty:
-            all_dfs.append(df)
+    all_dfs = [d for d in _all_council.values() if not d.empty]
 
     if all_dfs:
         merged = pd.concat(all_dfs, ignore_index=True)
-        merged = date_range_filter(merged, key_prefix='home_activity')
+        if _home_dates:
+            merged = apply_date_filter(merged, *_home_dates)
         merged = merged.sort_values("timestamp", ascending=False).head(10).copy()
 
         graded_merged = grade_decision_quality(merged)
