@@ -50,6 +50,7 @@ A set of agents that synthesize the analysts' reports.
 - **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
 - **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
+- **Error Reporter Pipeline:** A standalone telemetry script (`scripts/error_reporter.py`) decoupled from the orchestrator. It ensures fail-safe operational awareness by parsing system logs, filtering out expected transient noise (e.g., `503 UNAVAILABLE`, `RESOURCE_EXHAUSTED`, rate limits, `CIRCUIT BREAKER`, emergency lock timeouts), and uses fingerprinting to deduplicate and auto-generate structured GitHub issues for true anomalies.
 
 ## Knowledge Generation and Memory
 

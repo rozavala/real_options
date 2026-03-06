@@ -152,9 +152,9 @@ Researcher agent monitors preprint servers, USDA/ICO reports. Extracts causal me
 ---
 
 ### #10 — G.1 Formal Observability (AgentOps)
-**Type:** Ops | **Effort:** 2-3 weeks | **Status:** Partial (internal only)
+**Type:** Ops | **Effort:** 2-3 weeks | **Status:** Partial (internal + GitHub)
 
-Custom `observability.py` exists with HallucinationDetector, AgentTrace, and ObservabilityHub. Missing: third-party integration (AgentOps or LangSmith) for trace replay, cost attribution dashboards, and alert rules. Keep custom hallucination detection as it's commodity-aware.
+Custom `observability.py` exists with HallucinationDetector, AgentTrace, and ObservabilityHub. The decoupled `scripts/error_reporter.py` script now handles out-of-band log telemetry, intelligent filtering of transient operational noise (e.g., rate limits, lock timeouts, 503 errors), and auto-generation of structured GitHub issues with full backtraces for true system anomalies. Missing: third-party integration (AgentOps or LangSmith) for trace replay, cost attribution dashboards, and advanced real-time alert rules. Keep custom hallucination detection as it's commodity-aware.
 
 ---
 
