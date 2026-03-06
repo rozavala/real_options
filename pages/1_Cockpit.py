@@ -39,6 +39,7 @@ from dashboard_utils import (
 )
 from trading_bot.calendars import is_trading_day
 from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
+from trading_bot.utils import get_market_state
 
 
 def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = None, pnl_map: dict = None):
@@ -437,39 +438,44 @@ except Exception:
     _clock_exchange = 'ICE'
     _hours_label = "04:15-13:30"
 
-# Determine Market Status (check hours, weekday, AND holidays)
+# Determine Market Status using three-tier state resolver
+# Build a minimal config dict for the state resolver
+_state_config = get_config()
+market_state = get_market_state(_state_config)
+
 market_open_ny = ny_now.replace(hour=_open_time.hour, minute=_open_time.minute, second=0, microsecond=0)
 market_close_ny = ny_now.replace(hour=_close_time.hour, minute=_close_time.minute, second=0, microsecond=0)
 is_weekday = ny_now.weekday() < 5
-is_within_hours = market_open_ny <= ny_now <= market_close_ny
 is_trading = is_trading_day(ny_now.date(), exchange=_clock_exchange)
 
-is_open = is_weekday and is_within_hours and is_trading
+if market_state == 'ACTIVE':
+    status_color = "🟢"
+    status_text = "ACTIVE"
+elif market_state == 'PASSIVE':
+    status_color = "🟡"
+    status_text = "PASSIVE (Surveillance)"
+else:
+    status_color = "🔴"
+    status_text = "SLEEPING"
 
-status_color = "🟢" if is_open else "🔴"
-status_text = "OPEN" if is_open else "CLOSED"
 countdown_text = None
 
-# Add specific reason for closure and compute countdown
-if not is_open:
+if market_state == 'SLEEPING':
     if not is_weekday:
-        status_text += " (Weekend)"
+        status_text += " — Weekend"
     elif not is_trading:
-        status_text += " (Holiday)"
-    elif not is_within_hours:
-        status_text += " (After Hours)"
-    # Calculate "opens in" countdown to next trading day open
+        status_text += " — Holiday"
+    # Calculate "opens in" countdown to next active window
     next_open = ny_now.replace(hour=_open_time.hour, minute=_open_time.minute, second=0, microsecond=0)
     if ny_now >= next_open:
         next_open += timedelta(days=1)
-    # Advance to next trading day
     while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange=_clock_exchange):
         next_open += timedelta(days=1)
     delta = next_open - ny_now
     total_mins = int(delta.total_seconds() // 60)
     h, m = divmod(total_mins, 60)
-    countdown_text = f"Opens in {h}h {m}m"
-else:
+    countdown_text = f"Active in {h}h {m}m"
+elif market_state == 'ACTIVE':
     delta = market_close_ny - ny_now
     if delta.total_seconds() > 0:
         total_mins = int(delta.total_seconds() // 60)

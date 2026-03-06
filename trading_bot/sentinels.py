@@ -349,24 +349,24 @@ class PriceSentinel(Sentinel):
         if (now - self.last_triggered) < 3600:
             return None
 
-        # Market Hours Check: 09:00 - 17:00 NY, Mon-Fri
-        # Logic: Calculate local NY times then convert to UTC for comparison
-        utc = timezone.utc
-        ny_tz = pytz.timezone('America/New_York')
-        now_utc = datetime.now(utc)
-        now_ny = now_utc.astimezone(ny_tz)
-
-        if now_ny.weekday() >= 5: # Sat(5) or Sun(6)
-            return None
-
-        market_start_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
-        market_end_ny = now_ny.replace(hour=17, minute=0, second=0, microsecond=0)
-
-        market_start_utc = market_start_ny.astimezone(utc)
-        market_end_utc = market_end_ny.astimezone(utc)
-
-        if not (market_start_utc <= now_utc <= market_end_utc):
-            return None
+        # Market State Check: skip when SLEEPING (replaces hardcoded 09:00-17:00)
+        try:
+            from trading_bot.utils import get_market_state
+            market_state = get_market_state(self.config)
+            if market_state == 'SLEEPING':
+                return None
+        except Exception:
+            # Fallback: hardcoded hours if state resolver fails
+            utc = timezone.utc
+            ny_tz = pytz.timezone('America/New_York')
+            now_utc = datetime.now(utc)
+            now_ny = now_utc.astimezone(ny_tz)
+            if now_ny.weekday() >= 5:
+                return None
+            market_start_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
+            market_end_ny = now_ny.replace(hour=17, minute=0, second=0, microsecond=0)
+            if not (market_start_ny.astimezone(utc) <= now_utc <= market_end_ny.astimezone(utc)):
+                return None
 
         try:
             contract = cached_contract

@@ -359,12 +359,16 @@ class ComplianceGuardian:
             logger.warning(f"Concentration check failed: {e}")
             return False, f"Concentration check blocked: {e} (fail-closed)"
 
-    async def _fetch_volume_stats(self, ib, contract) -> float:
+    async def _fetch_volume_stats(self, ib, contract, cycle_type: str = 'SCHEDULED', passive_mode: bool = False) -> float:
         """
         Fetch volume with IB primary, YFinance fallback, -1 for unknown.
 
         For FOP (options) and BAG (combos), fetches volume from the UNDERLYING
         FUTURES contract using the 'underConId' hard link from ContractDetails.
+
+        During EMERGENCY/PASSIVE cycles, the YFinance fallback is skipped
+        because it returns stale daily volume that can cause false-positive
+        liquidity readings.
         """
         from ib_insync import Contract, Bag
 
@@ -441,6 +445,12 @@ class ComplianceGuardian:
                     logger.warning(f"IB volume fetch failed: {e}")
 
         # === SECONDARY: YFinance (fallback) ===
+        # Skip YFinance during emergency/passive cycles — stale daily volume
+        # can produce false-positive liquidity readings.
+        if cycle_type == 'EMERGENCY' or passive_mode:
+            logger.info("Skipping YFinance volume fallback (emergency/passive cycle)")
+            return -1.0
+
         try:
             from trading_bot.utils import get_market_data_cached
             symbol = target_contract.symbol if target_contract else get_active_ticker(self.config)
@@ -480,7 +490,11 @@ class ComplianceGuardian:
         equity = order_context.get('account_equity', 100000.0)
 
         # 1. Gather Data for Constitution
-        volume_15m = await self._fetch_volume_stats(ib, contract)
+        _cycle_type = order_context.get('cycle_type', 'SCHEDULED')
+        _passive_mode = order_context.get('passive_mode', False)
+        volume_15m = await self._fetch_volume_stats(
+            ib, contract, cycle_type=_cycle_type, passive_mode=_passive_mode
+        )
 
         # === v5.1 FIX: Shorter retry for scheduled, skip for emergency ===
         if volume_15m < 0:
@@ -496,7 +510,9 @@ class ComplianceGuardian:
                 await asyncio.sleep(15)  # Was 60s
 
                 # v5.1 FIX: Correct method name and arguments
-                volume_15m_retry = await self._fetch_volume_stats(ib, contract)
+                volume_15m_retry = await self._fetch_volume_stats(
+                    ib, contract, cycle_type=_cycle_type, passive_mode=_passive_mode
+                )
 
                 if volume_15m_retry < 0:
                     logger.warning(
@@ -516,28 +532,40 @@ class ComplianceGuardian:
                 reason = f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
                 return False, reason
 
-        # === EIA Natural Gas Storage Report Blackout Window ===
-        # EIA releases weekly NG storage data Thursdays 10:30 AM ET.
-        # Block NG orders in the +/- 5 minute window to avoid slippage.
-        _order_commodity = (
-            order_context.get('commodity', '')
-            or order_context.get('symbol', '')
-            or getattr(self, '_ticker', '')
-            or ''
-        ).upper()
-        if _order_commodity == 'NG':
-            _now_et = _eia_now_et()
-            # Thursday = weekday 3
-            if _now_et.weekday() == 3:
-                _eia_start = _now_et.replace(hour=10, minute=25, second=0, microsecond=0)
-                _eia_end = _now_et.replace(hour=10, minute=35, second=0, microsecond=0)
-                if _eia_start <= _now_et <= _eia_end:
-                    reason = (
-                        f"REJECTED - EIA Blackout: NG order blocked during EIA storage report "
-                        f"window ({_eia_start.strftime('%H:%M')}-{_eia_end.strftime('%H:%M')} ET)"
-                    )
-                    logger.warning(reason)
-                    return False, reason
+        # === PROFILE-DRIVEN BLACKOUT WINDOWS ===
+        # Check market_states.blackout_windows from the commodity profile.
+        # Replaces hardcoded EIA check with a generic, profile-driven approach.
+        # Use order commodity if available (may differ from engine config commodity).
+        try:
+            from config.commodity_profiles import get_commodity_profile
+            _order_ticker = (
+                order_context.get('commodity', '')
+                or order_context.get('symbol', '')
+                or getattr(self, '_ticker', '')
+                or ''
+            ).upper()
+            _profile = get_commodity_profile(_order_ticker) if _order_ticker else None
+            _ms = getattr(_profile, 'market_states', None) if _profile else None
+            if _ms and hasattr(_ms, 'blackout_windows') and _ms.blackout_windows:
+                _now_et = _eia_now_et()
+                for _bw in _ms.blackout_windows:
+                    _bw_dow = _bw.get('day_of_week')
+                    if _bw_dow is not None and _now_et.weekday() != _bw_dow:
+                        continue
+                    _sh, _sm = map(int, _bw['start'].split(':'))
+                    _eh, _em = map(int, _bw['end'].split(':'))
+                    _bw_start = _now_et.replace(hour=_sh, minute=_sm, second=0, microsecond=0)
+                    _bw_end = _now_et.replace(hour=_eh, minute=_em, second=0, microsecond=0)
+                    if _bw_start <= _now_et <= _bw_end:
+                        _bw_name = _bw.get('name', 'Data Release')
+                        reason = (
+                            f"REJECTED - Blackout: Order blocked during {_bw_name} "
+                            f"window ({_bw['start']}-{_bw['end']} ET)"
+                        )
+                        logger.warning(reason)
+                        return False, reason
+        except Exception as e:
+            logger.debug(f"Blackout window check skipped: {e}")
 
         # Prepare Review Packet
         # Calculate actual capital at risk for spreads (not fictitious futures notional)
