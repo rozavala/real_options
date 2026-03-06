@@ -77,7 +77,7 @@ class CouncilDataset:
             for row_num, row in enumerate(reader, start=2):
                 try:
                     actual = row.get("actual", "PENDING").strip()
-                    if actual == "PENDING" or not actual:
+                    if actual in ("PENDING", "ORPHANED") or not actual:
                         continue
                     agent = row["agent"].strip()
                     if not agent:
@@ -205,18 +205,22 @@ def _compute_brier(examples: list[dict]) -> float:
 
 
 def _class_balance(directions: list[str]) -> float:
-    """Return minority class ratio (0.0-0.5).
+    """Return minority class ratio (0.0-0.5) for the two primary classes.
 
+    Only considers BULLISH and BEARISH for balance calculation since
+    NEUTRAL outcomes are rare and shouldn't skew the imbalance metric.
     Returns 0.0 for empty input or single-class data (maximum imbalance).
     """
     if not directions:
         return 0.0
     from collections import Counter
     counts = Counter(directions)
-    if len(counts) < 2:
+    # Focus on the two primary directional classes
+    primary = {k: v for k, v in counts.items() if k in ("BULLISH", "BEARISH")}
+    if len(primary) < 2:
         return 0.0
-    total = len(directions)
-    min_count = min(counts.values())
+    total = sum(primary.values())
+    min_count = min(primary.values())
     return min_count / total
 
 
