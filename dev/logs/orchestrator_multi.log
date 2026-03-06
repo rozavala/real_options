@@ -4716,3 +4716,139 @@
 2026-03-06 19:25:00,638 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
 2026-03-06 19:25:00,638 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
 2026-03-06 19:25:03,647 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-06 19:35:00 UTC. Waiting for 0.17 hours.
+2026-03-06 19:35:00,006 - Engine.NG - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-03-06 19:35:00,011 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
+2026-03-06 19:35:00,018 - Engine.NG - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-03-06 19:38:00 UTC. Waiting for 0.05 hours.
+2026-03-06 19:38:00,006 - Engine.NG - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-03-06 19:38:00,011 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-03-06 19:38:00,012 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
+2026-03-06 19:38:00,012 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-03-06 19:38:00,013 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-06 19:38:00,013 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-03-06 19:38:01,060 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-06 19:38:11,070 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-06 19:38:11,223 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-06 19:38:11,228 - TradeReconciler - INFO - Parsed 92 executions from the Flex Query report.
+2026-03-06 19:38:11,253 - TradeReconciler - INFO - Successfully processed 92 trades into the reconciliation DataFrame.
+2026-03-06 19:38:11,254 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-03-06 19:38:11,441 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-06 19:38:21,452 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-06 19:38:21,620 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-06 19:38:21,623 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-03-06 19:38:21,633 - TradeReconciler - INFO - Successfully processed 4 trades into the reconciliation DataFrame.
+2026-03-06 19:38:21,635 - TradeReconciler - INFO - Consolidated to 96 unique trades from all reports.
+2026-03-06 19:38:21,636 - TradeReconciler - INFO - Filtered IB trades by commodity NG (prefixes ('NG', 'LNE')): 96 -> 37
+2026-03-06 19:38:21,636 - TradeReconciler - INFO - Found 8 archived ledger files.
+2026-03-06 19:38:21,652 - TradeReconciler - INFO - Consolidated a total of 61 trades from all ledgers.
+2026-03-06 19:38:21,653 - TradeReconciler - INFO - Excluded 24 synthetic/manual reconciliation entries from comparison.
+2026-03-06 19:38:21,654 - TradeReconciler - INFO - Filtered IB trades from 37 to 37 records within the last 30 days.
+2026-03-06 19:38:21,655 - TradeReconciler - INFO - Filtered local ledger from 37 to 37 records within the last 30 days.
+2026-03-06 19:38:21,715 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-03-06 19:38:21,716 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-03-06 19:38:21,716 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-03-06 19:38:21,716 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-03-06 19:38:21,920 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-06 19:38:31,930 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-06 19:38:32,091 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-06 19:38:32,094 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-03-06 19:38:32,094 - TradeReconciler - INFO - Found 8 archived ledger files.
+2026-03-06 19:38:32,113 - TradeReconciler - INFO - Consolidated a total of 61 trades from all ledgers.
+2026-03-06 19:38:32,120 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-03-06 19:38:32,120 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-03-06 19:38:32,427 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:38:32,459 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-05 14:04:30.018276+00:00: NGK26 (202604) (NEUTRAL)
+2026-03-06 19:38:32,459 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 17:04 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-03-06 19:38:33,042 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.99 -> Exit 3.16 (5.79% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-03-06 19:38:43,980 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
+2026-03-06 19:38:43,980 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-03-06 19:38:44,110 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-05 15:11:53.168217+00:00: NGM26 (202605) (NEUTRAL)
+2026-03-06 19:38:44,111 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 18:11 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-03-06 19:38:44,284 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:38:44,690 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGM26 (202605)
+2026-03-06 19:38:44,692 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.14 -> Exit 3.18 (1.21% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-03-06 19:38:56,922 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) FLAT ($0.00)
+2026-03-06 19:38:56,923 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-03-06 19:38:57,051 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-05 15:14:23.860078+00:00: NGQ26 (202607) (NEUTRAL)
+2026-03-06 19:38:57,052 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 18:14 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-03-06 19:38:57,222 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.50 -> Exit 3.61 (3.09% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-03-06 19:39:02,897 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) FLAT ($0.00)
+2026-03-06 19:39:02,898 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-03-06 19:39:03,020 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-05 15:15:08.122708+00:00: NGK26 (202604) (NEUTRAL)
+2026-03-06 19:39:03,020 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 18:15 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-03-06 19:39:03,204 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:39:03,593 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGK26 (202604)
+2026-03-06 19:39:03,594 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 2.96 -> Exit 3.17 (6.99% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-03-06 19:39:14,400 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
+2026-03-06 19:39:14,400 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-03-06 19:39:14,524 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-05 15:15:43.628534+00:00: NGU26 (202608) (NEUTRAL)
+2026-03-06 19:39:14,524 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 18:15 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-03-06 19:39:14,698 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:39:15,059 - trading_bot.reconciliation - INFO - Stored reflexion lesson for macro on NGU26 (202608)
+2026-03-06 19:39:15,060 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.49 -> Exit 3.69 (5.73% move) | Strategy: NONE | Outcome: BULLISH | P&L: 0.0000
+2026-03-06 19:39:27,380 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) FLAT ($0.00)
+2026-03-06 19:39:27,380 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BULLISH
+2026-03-06 19:39:27,505 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-05 15:17:02.449589+00:00: NGN26 (202606) (NEUTRAL)
+2026-03-06 19:39:27,506 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 18:17 UTC → actual Fri 16:00 UTC (weekly close policy)
+2026-03-06 19:39:27,680 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:39:28,046 - trading_bot.reconciliation - INFO - Stored reflexion lesson for fundamentalist on NGN26 (202606)
+2026-03-06 19:39:28,052 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:39:28,391 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGN26 (202606)
+2026-03-06 19:39:28,391 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.42 -> Exit 3.33 (2.49% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
+2026-03-06 19:39:37,451 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) FLAT ($0.00)
+2026-03-06 19:39:37,451 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
+2026-03-06 19:39:37,598 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
+2026-03-06 19:39:40,603 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-03-06 19:39:40,604 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-03-06 19:39:40,604 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_v2.csv
+2026-03-06 19:39:40,608 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260227_194437.csv
+2026-03-06 19:39:40,612 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_194006.csv
+2026-03-06 19:39:40,619 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260305_194013.csv
+2026-03-06 19:39:40,623 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_194136.csv
+2026-03-06 19:39:40,627 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_v3.csv
+2026-03-06 19:39:40,631 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_v2.csv
+2026-03-06 19:39:40,635 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260227_v2.csv
+2026-03-06 19:39:40,642 - PerformanceAnalyzer - INFO - Consolidated a total of 61 trade records.
+2026-03-06 19:39:40,648 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-03-06 19:39:41,011 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $30,145.22
+2026-03-06 19:39:43,024 - PerformanceAnalyzer - INFO - Successfully fetched 6 execution(s) for today from IB.
+2026-03-06 19:39:46,618 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-03-06 19:39:46,921 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-06 19:39:47,124 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-03-06 19:39:47,125 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-03-06 19:39:47,132 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-06 19:39:47,133 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=836
+2026-03-06 19:39:47,133 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-03-06 19:39:47,133 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-03-06 19:39:47,139 - Engine.NG - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-03-06 19:50:00 UTC. Waiting for 0.17 hours.
+2026-03-06 19:50:00,002 - Engine.NG - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-03-06 19:50:00,006 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-06 19:50:00,006 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-03-06 19:50:00,014 - trading_bot.enhanced_brier - INFO - Loaded 704 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-06 19:50:00,021 - Orchestrator - WARNING - Brier stall: 48 pending, 0 resolved today (streak: 1 days)
+2026-03-06 19:50:00,021 - Orchestrator - INFO - Running feedback loop health check...
+2026-03-06 19:50:00,021 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
+2026-03-06 19:50:00,027 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-03-06 19:53:00 UTC. Waiting for 0.05 hours.
+2026-03-06 19:53:00,006 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-03-06 19:53:00,010 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-03-06 19:53:00,084 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change +7.0%, alerts: 61, sentinel trades: 2
+2026-03-06 19:53:00,089 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-03-06 19:56:00 UTC. Waiting for 0.05 hours.
+2026-03-06 19:56:00,006 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-03-06 19:56:00,009 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-03-06 19:56:00,009 - Orchestrator - INFO - Scheduled shutdown flag SET — no new scheduled trades will be processed
+2026-03-06 19:56:00,009 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-03-06 19:56:00,009 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1237 [REMOTE/PAPER]...
+2026-03-06 19:56:00,435 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1237
+2026-03-06 19:56:00,440 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 19:56:00,441 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-03-06 19:56:00,543 - OrderManager - INFO - No open orders found to cancel.
+2026-03-06 19:56:00,543 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-06 19:56:03,548 - Orchestrator - INFO - Market entering PASSIVE state — position monitor stays alive, emergency cycles remain enabled
+2026-03-06 19:56:03,549 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-03-06 19:56:03,554 - Engine.NG - INFO - Next task 'system_digest' (System Health Digest) scheduled for 2026-03-06 20:00:00 UTC. Waiting for 0.07 hours.
+2026-03-06 20:00:00,006 - Engine.NG - INFO - --- Running scheduled task: system_digest [generate_system_digest_task] ---
+2026-03-06 20:00:00,010 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
+2026-03-06 20:00:00,107 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.17}
+2026-03-06 20:00:00,176 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-06 20:00:00,228 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-06 20:00:00,269 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-06_40b4ae1c3a95 (3 commodities, 9 improvement opportunities)
+2026-03-06 20:00:00,277 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-09 13:15:00 UTC. Waiting for 65.25 hours.
