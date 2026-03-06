@@ -177,7 +177,7 @@ def main():
     min_for_suggest = dspy_config.get("min_examples_for_suggest", DEFAULT_MIN_EXAMPLES_FOR_SUGGEST)
 
     # Load data
-    dataset = CouncilDataset(data_dir)
+    dataset = CouncilDataset(os.path.join(data_dir, ticker))
     try:
         predictions = dataset.load()
     except FileNotFoundError as e:
