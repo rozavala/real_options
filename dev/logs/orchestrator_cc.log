@@ -1217,3 +1217,35 @@
 2026-03-06 16:21:41,062 - trading_bot.state_manager - INFO - Queued deferred trigger from PriceSentinel
 2026-03-06 16:21:41,254 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
 2026-03-06 16:25:41,947 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 16:30:43,070 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 16:35:44,225 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 16:38:44,712 - Orchestrator - INFO - PriceSentinel detected 2.6% move - triggering position audit
+2026-03-06 16:38:44,720 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (PriceSentinel trigger (2.6% move)) ---
+2026-03-06 16:38:44,721 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 469 [REMOTE/PAPER]...
+2026-03-06 16:38:44,743 - Orchestrator - INFO - Emergency cycle BLOCKED (holding-time gate): Only 0.0h until weekly close (minimum: 2.0h). Skipping council pipeline for PriceSentinel.
+2026-03-06 16:38:44,747 - trading_bot.state_manager - INFO - Queued deferred trigger from PriceSentinel
+2026-03-06 16:38:45,101 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-06 16:38:45,466 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 469
+2026-03-06 16:38:45,471 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 16:38:45,589 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-06 16:38:45,646 - Orchestrator - INFO - State stores reconciled: 0 thesis groups (0 legs) across all stores
+2026-03-06 16:38:45,650 - Orchestrator - INFO - No open positions to audit.
+2026-03-06 16:38:45,651 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-03-06 16:40:45,248 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 16:45:00,014 - Engine.CC - INFO - --- Running scheduled task: signal_mid [guarded_generate_orders] ---
+2026-03-06 16:45:00,022 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-06 16:45:00,121 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-06 16:45:00,121 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
+2026-03-06 16:45:00,121 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'anthropic', 'gemini', 'openai'], 'diversity_score': 1.0}
+2026-03-06 16:45:00,128 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-06 16:45:00,139 - trading_bot.enhanced_brier - INFO - Loaded 1344 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-03-06 16:45:00,141 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-03-06 16:45:00,141 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-03-06 16:45:00,141 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-03-06 16:45:00,141 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-06 16:45:00,142 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-06 16:45:00,142 - Orchestrator - WARNING - Order generation SKIPPED: Only 27 min to shutdown. Insufficient time for full council cycle.
+2026-03-06 16:45:00,147 - Engine.CC - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-03-06 17:55:00 UTC. Waiting for 1.17 hours.
+2026-03-06 16:45:45,807 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 16:50:46,536 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=505, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 16:55:47,067 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_state=ACTIVE, market_open=True, trading_day=True
