@@ -357,7 +357,7 @@ if not weight_df.empty and len(weight_df) >= 5:
 
     for agent in available_agents:
         agent_data = weight_df[weight_df['agent'] == agent].sort_values('timestamp')
-        y_vals = agent_data['final_weight'].rolling(window=smoothing, min_periods=1).mean()
+        y_vals = agent_data['final_weight'].ewm(span=smoothing, min_periods=1).mean()
         display_name = _DISPLAY_NAMES.get(agent, agent.title())
         color = _AGENT_COLORS.get(agent, None)
 
