@@ -388,3 +388,37 @@
 2026-03-06 18:55:32,638 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=630, market_state=ACTIVE, market_open=True, trading_day=True
 2026-03-06 18:56:35,465 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
 2026-03-06 18:56:35,465 - ib_insync.ib - ERROR - cancelMktData: No reqId found for contract Contract(secType='FUT', conId=269460054, symbol='NG', lastTradeDateOrContractMonth='20260428', multiplier='10000', exchange='NYMEX', currency='USD', localSymbol='NGK26', tradingClass='NG')
+2026-03-06 19:05:00,006 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-06 19:05:00,010 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-06 19:05:00,011 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-03-06 19:05:00,012 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1239 [REMOTE/PAPER]...
+2026-03-06 19:05:00,340 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1239
+2026-03-06 19:05:00,345 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 19:05:00,345 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-06 19:05:00,490 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-03-06 19:05:00,490 - OrderManager - INFO -   Filtered to 0 NG positions with non-zero quantity (from 2 total across all commodities)
+2026-03-06 19:05:00,490 - OrderManager - INFO - No open NG positions to close.
+2026-03-06 19:05:00,490 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-06 19:05:03,499 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-06 19:15:00 UTC. Waiting for 0.17 hours.
+2026-03-06 19:15:00,007 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-06 19:15:00,010 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-03-06 19:15:00,010 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-03-06 19:15:00,010 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-06 19:15:00,010 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-03-06 19:15:00,011 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1238 [REMOTE/PAPER]...
+2026-03-06 19:15:00,279 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1238
+2026-03-06 19:15:00,283 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 19:15:00,284 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-06 19:15:00,429 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-03-06 19:15:00,429 - OrderManager - INFO -   Filtered to 0 NG positions with non-zero quantity (from 2 total across all commodities)
+2026-03-06 19:15:00,429 - OrderManager - INFO - No open NG positions to close.
+2026-03-06 19:15:00,429 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-06 19:15:03,439 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-06 19:25:00 UTC. Waiting for 0.17 hours.
+2026-03-06 19:25:00,006 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-06 19:25:00,013 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-06 19:25:00,013 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1234 [REMOTE/PAPER]...
+2026-03-06 19:25:00,487 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1234
+2026-03-06 19:25:00,493 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 19:25:00,638 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-06 19:25:00,638 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-06 19:25:03,647 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-06 19:35:00 UTC. Waiting for 0.17 hours.
