@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import _resolve_data_path_for
+from _date_filter import date_range_filter
 
 st.set_page_config(layout="wide", page_title="Brier Analysis | Real Options")
 
@@ -324,7 +325,13 @@ st.caption("Agents above 1.0 have earned more influence through accurate predict
 
 weight_df = load_weight_evolution(ticker)
 
+weight_df = date_range_filter(weight_df, key_prefix='brier')
+
 if not weight_df.empty and len(weight_df) >= 5:
+    smoothing = st.slider("Smoothing window (cycles)", 1, 30, 7,
+                           help="Rolling average window. 1 = raw data.",
+                           key="brier_smoothing")
+
     available_agents = sorted(weight_df['agent'].unique())
 
     _AGENT_COLORS = {
@@ -350,12 +357,13 @@ if not weight_df.empty and len(weight_df) >= 5:
 
     for agent in available_agents:
         agent_data = weight_df[weight_df['agent'] == agent].sort_values('timestamp')
+        y_vals = agent_data['final_weight'].rolling(window=smoothing, min_periods=1).mean()
         display_name = _DISPLAY_NAMES.get(agent, agent.title())
         color = _AGENT_COLORS.get(agent, None)
 
         fig.add_trace(go.Scatter(
             x=agent_data['timestamp'],
-            y=agent_data['final_weight'],
+            y=y_vals,
             mode='lines',
             name=display_name,
             line=dict(color=color, width=2) if color else dict(width=2),

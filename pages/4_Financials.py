@@ -20,6 +20,7 @@ from dashboard_utils import (
     get_config,
     grade_decision_quality
 )
+from _date_filter import date_range_filter
 
 st.set_page_config(layout="wide", page_title="Trade Analytics | Real Options")
 
@@ -32,6 +33,8 @@ st.caption("Per-commodity strategy performance, trade breakdown, and execution l
 # --- Load Data ---
 trade_df = load_trade_data(ticker=ticker)
 council_df = load_council_history(ticker=ticker)
+council_df = date_range_filter(council_df, key_prefix='financials')
+trade_df = date_range_filter(trade_df, key_prefix='financials_trades')
 config = get_config()
 
 st.markdown("---")

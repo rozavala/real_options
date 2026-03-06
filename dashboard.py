@@ -42,6 +42,7 @@ from dashboard_utils import (
     get_starting_capital,
     _relative_time,
 )
+from _date_filter import date_range_filter
 
 config = get_config()
 
@@ -426,6 +427,7 @@ card_cols = st.columns(max(len(active_commodities), 1))
 for idx, ticker in enumerate(active_commodities):
     meta = _get_commodity_meta(ticker)
     council_df = load_council_history_for_commodity(ticker)
+    council_df = date_range_filter(council_df, key_prefix=f'home_{ticker}')
 
     with card_cols[idx]:
         st.markdown(f"#### {meta['emoji']} {meta['name']}")
@@ -472,6 +474,7 @@ try:
 
     if all_dfs:
         merged = pd.concat(all_dfs, ignore_index=True)
+        merged = date_range_filter(merged, key_prefix='home_activity')
         merged = merged.sort_values("timestamp", ascending=False).head(10).copy()
 
         graded_merged = grade_decision_quality(merged)
