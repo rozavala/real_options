@@ -75,7 +75,7 @@ with metric_cols[2]:
             help="Sum of P&L from reconciled trades in council_history"
         )
     else:
-        st.metric("Realized P&L", "$0.00")
+        st.metric("Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
 
 # Pre-compute graded trades for sections that need it
 graded_fin = grade_decision_quality(council_df) if not council_df.empty else pd.DataFrame()

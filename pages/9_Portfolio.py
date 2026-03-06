@@ -146,7 +146,7 @@ if active_tickers:
                     )
                 )
             else:
-                st.metric(ticker, "No data", delta="OFFLINE", delta_color="inverse")
+                st.metric(ticker, "No data", delta="OFFLINE", delta_color="inverse", help=f"Engine state file not found for {ticker}")
 else:
     st.info("No engine state files found.")
 
