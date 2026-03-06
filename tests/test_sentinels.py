@@ -24,8 +24,11 @@ async def test_price_sentinel_trigger():
         mock_datetime.now.return_value = mock_now
         mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
 
-        # Mock get_active_futures
-        with patch('trading_bot.ib_interface.get_active_futures', new_callable=AsyncMock) as mock_futures:
+        # Mock get_market_state to return ACTIVE (sentinel now uses state resolver)
+        with patch('trading_bot.utils.get_market_state', return_value='ACTIVE'):
+
+          # Mock get_active_futures
+          with patch('trading_bot.ib_interface.get_active_futures', new_callable=AsyncMock) as mock_futures:
             mock_contract = MagicMock()
             mock_contract.localSymbol = "KC_TEST"
             mock_futures.return_value = [mock_contract]
@@ -58,7 +61,8 @@ async def test_price_sentinel_no_trigger():
         mock_now = datetime(2023, 10, 23, 14, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = mock_now
 
-        with patch('trading_bot.ib_interface.get_active_futures', new_callable=AsyncMock) as mock_futures:
+        with patch('trading_bot.utils.get_market_state', return_value='ACTIVE'):
+          with patch('trading_bot.ib_interface.get_active_futures', new_callable=AsyncMock) as mock_futures:
             mock_contract = MagicMock()
             mock_futures.return_value = [mock_contract]
 
@@ -72,11 +76,8 @@ async def test_price_sentinel_no_trigger():
 async def test_price_sentinel_market_closed():
     mock_ib = MagicMock()
 
-    # Mock datetime to be Sunday
-    with patch('trading_bot.sentinels.datetime') as mock_datetime:
-        mock_now = datetime(2023, 10, 22, 14, 0, 0, tzinfo=timezone.utc) # Sunday
-        mock_datetime.now.return_value = mock_now
-
+    # Mock get_market_state to return SLEEPING (Sunday)
+    with patch('trading_bot.utils.get_market_state', return_value='SLEEPING'):
         config = {'sentinels': {'price': {'pct_change_threshold': 1.5}}, 'symbol': 'KC', 'exchange': 'NYBOT'}
         sentinel = PriceSentinel(config, mock_ib)
 

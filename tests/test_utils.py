@@ -82,10 +82,17 @@ class TestUtils:
         assert round_to_tick(18.801, COFFEE_OPTIONS_TICK_SIZE, 'SELL') == 18.85
 
     @patch('csv.DictWriter')
-    @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)
-    async def test_log_trade_to_ledger(self, mock_isfile, mock_open, mock_csv_writer):
+    async def test_log_trade_to_ledger(self, mock_isfile, mock_csv_writer):
         # --- Setup Mocks ---
+        # Use side_effect to only mock ledger CSV opens; let JSON profile reads through
+        _real_open = open
+        _mock_file = mock_open()()
+        def _selective_open(path, *args, **kwargs):
+            if str(path).endswith('trade_ledger.csv'):
+                return _mock_file
+            return _real_open(path, *args, **kwargs)
+
         mock_ib = AsyncMock(spec=IB)
         mock_ib.qualifyContractsAsync = AsyncMock(return_value=[
             FuturesOption(symbol='KC', localSymbol='KCH6 C3.5', strike=3.5, right='C', multiplier='37500'),
@@ -111,19 +118,16 @@ class TestUtils:
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        await log_trade_to_ledger(mock_ib, trade, "Test Combo")
+        with patch('builtins.open', side_effect=_selective_open):
+            await log_trade_to_ledger(mock_ib, trade, "Test Combo")
 
         # --- Assertions ---
-        # Check that the file was opened correctly
-        expected_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'trade_ledger.csv')
-        mock_open.assert_called_once_with(expected_path, 'a', newline='')
-
         # Check that DictWriter was called with correct fieldnames
         expected_fieldnames = [
             'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
             'avg_fill_price', 'strike', 'right', 'total_value_usd', 'reason'
         ]
-        mock_csv_writer.assert_called_once_with(mock_open.return_value, fieldnames=expected_fieldnames)
+        mock_csv_writer.assert_called_once_with(_mock_file, fieldnames=expected_fieldnames)
 
         # Check that writerows was called once
         mock_writer_instance.writerows.assert_called_once()
@@ -147,15 +151,22 @@ class TestUtils:
         assert abs(written_rows[1]['total_value_usd'] - 75.0) < 0.01
 
     @patch('csv.DictWriter')
-    @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)
-    async def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_open, mock_csv_writer):
+    async def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_csv_writer):
         """
         Verify that if a fill contains an incomplete contract, the logger
         correctly uses the conId to find the full contract details from the
         ib.contracts cache.
         """
         # --- Setup Mocks ---
+        # Use side_effect to only mock ledger CSV opens; let JSON profile reads through
+        _real_open = open
+        _mock_file = mock_open()()
+        def _selective_open(path, *args, **kwargs):
+            if str(path).endswith('trade_ledger.csv'):
+                return _mock_file
+            return _real_open(path, *args, **kwargs)
+
         # 1. Mock the IB object and its contracts cache
         mock_ib = AsyncMock(spec=IB)
         complete_contract = FuturesOption(
@@ -185,7 +196,8 @@ class TestUtils:
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        await log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
+        with patch('builtins.open', side_effect=_selective_open):
+            await log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
 
         # --- Assertions ---
         # Verify that writerows was called and captured the data

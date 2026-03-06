@@ -118,25 +118,26 @@ class MicrostructureSentinel:
         return elapsed < self.cooldown_seconds
 
     def is_core_market_hours(self) -> bool:
-        """Check if current time is within core US trading hours (09:00 - 13:30 NY)."""
-        # Logic: Calculate local NY times then convert to UTC for comparison
-        utc = timezone.utc
-        ny_tz = pytz.timezone('America/New_York')
-        now_utc = datetime.now(utc)
-        now_ny = now_utc.astimezone(ny_tz)
+        """Check if current time is within ACTIVE or PASSIVE market state.
 
-        # Check for weekends
-        if now_ny.weekday() >= 5:  # 5=Sat, 6=Sun
-            return False
-
-        # Core hours: 09:00 - 13:30 NY
-        market_open_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
-        market_close_ny = now_ny.replace(hour=13, minute=30, second=0, microsecond=0)
-
-        market_open_utc = market_open_ny.astimezone(utc)
-        market_close_utc = market_close_ny.astimezone(utc)
-
-        return market_open_utc <= now_utc <= market_close_utc
+        Uses the three-tier state resolver when available, with hardcoded
+        fallback for safety.
+        """
+        try:
+            from trading_bot.utils import get_market_state
+            state = get_market_state(self.config)
+            return state in ('ACTIVE', 'PASSIVE')
+        except Exception:
+            # Fallback: hardcoded 09:00 - 13:30 NY
+            utc = timezone.utc
+            ny_tz = pytz.timezone('America/New_York')
+            now_utc = datetime.now(utc)
+            now_ny = now_utc.astimezone(ny_tz)
+            if now_ny.weekday() >= 5:
+                return False
+            market_open_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
+            market_close_ny = now_ny.replace(hour=13, minute=30, second=0, microsecond=0)
+            return market_open_ny.astimezone(utc) <= now_utc <= market_close_ny.astimezone(utc)
 
     async def check(self) -> Optional[SentinelTrigger]:
         """Check for microstructure anomalies."""

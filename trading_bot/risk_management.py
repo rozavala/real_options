@@ -592,6 +592,19 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     try:
         while True:
             try:
+                # Self-gate: sleep longer during SLEEPING state
+                try:
+                    from trading_bot.utils import get_market_state
+                    _ms = get_market_state(config)
+                    if _ms == 'SLEEPING':
+                        logging.debug("Position monitor: SLEEPING state — skipping cycle")
+                        await asyncio.sleep(60)
+                        continue
+                    # Adaptive interval: slower during PASSIVE
+                    _effective_interval = 120 if _ms == 'PASSIVE' else interval
+                except Exception:
+                    _effective_interval = interval
+
                 logging.debug("P&L monitor cycle starting...")
                 # Always run check if we have valid thresholds, but also the loop logic depends on them being present?
                 if target_capture_pct or max_risk_loss_pct:
@@ -605,8 +618,8 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                     await check_iron_condor_theses(ib, config)
                     ic_check_counter = 0
 
-                logging.debug(f"P&L monitor cycle complete. Waiting {interval} seconds.")
-                await asyncio.sleep(interval)
+                logging.debug(f"P&L monitor cycle complete. Waiting {_effective_interval} seconds.")
+                await asyncio.sleep(_effective_interval)
             except asyncio.CancelledError:
                 logging.info("P&L monitoring task was cancelled.")
                 break

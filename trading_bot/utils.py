@@ -885,11 +885,17 @@ def is_market_open(config: dict = None) -> bool:
     if now_ny.date() in us_holidays:
         return False
 
-    # 3. Time Check — use profile hours if config provided, else hardcoded
+    # 3. Time Check — use market_states.active if present, else profile
+    #    trading_hours_et, else hardcoded fallback.
     if config is not None:
         try:
             from config.commodity_profiles import get_active_profile, parse_trading_hours
             profile = get_active_profile(config)
+            # Prefer market_states.active as source of truth
+            ms = getattr(profile, 'market_states', None)
+            if ms is not None:
+                now_minutes = now_ny.hour * 60 + now_ny.minute
+                return _in_time_window(now_minutes, ms.active)
             open_t, close_t = parse_trading_hours(profile.contract.trading_hours_et)
             market_open_ny = now_ny.replace(hour=open_t.hour, minute=open_t.minute, second=0, microsecond=0)
             market_close_ny = now_ny.replace(hour=close_t.hour, minute=close_t.minute, second=0, microsecond=0)
@@ -931,6 +937,156 @@ def is_trading_day() -> bool:
         return False
 
     return True
+
+
+# ---------------------------------------------------------------------------
+# Three-Tier Market State Resolver
+# ---------------------------------------------------------------------------
+
+def _in_time_window(now_minutes: int, window_str: str) -> bool:
+    """Check if ``now_minutes`` (0-1439) falls inside a time window string.
+
+    Handles overnight windows correctly (e.g., "18:00-09:00" spans midnight).
+
+    Args:
+        now_minutes: Minutes since midnight in ET (0-1439).
+        window_str: "HH:MM-HH:MM" format. Start inclusive, end exclusive.
+
+    Returns:
+        True if now_minutes is inside the window.
+    """
+    start_str, end_str = window_str.split('-')
+    sh, sm = map(int, start_str.split(':'))
+    eh, em = map(int, end_str.split(':'))
+    start = sh * 60 + sm
+    end = eh * 60 + em
+    if start <= end:
+        # Same-day window: e.g. 09:00-14:30
+        return start <= now_minutes < end
+    else:
+        # Overnight window: e.g. 18:00-09:00
+        return now_minutes >= start or now_minutes < end
+
+
+def get_market_state(config: dict = None) -> str:
+    """Resolve the current three-tier market state for the active commodity.
+
+    Returns one of ``'ACTIVE'``, ``'PASSIVE'``, or ``'SLEEPING'``.
+
+    Resolution order:
+    1. Saturday → SLEEPING
+    2. Sunday before 18:00 ET → SLEEPING; 18:00+ → fall through to window checks
+    3. Holiday → SLEEPING
+    4. maintenance_breaks → SLEEPING
+    5. active window → ACTIVE
+    6. passive windows → PASSIVE
+    7. else → SLEEPING
+
+    When no ``market_states`` is configured on the profile, falls back to
+    binary ``is_market_open()`` logic (ACTIVE if open, SLEEPING otherwise).
+    """
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+    weekday = now_ny.weekday()  # 0=Mon ... 6=Sun
+
+    # --- Load profile's market_states config ---
+    ms_config = None
+    if config is not None:
+        try:
+            from config.commodity_profiles import get_active_profile
+            profile = get_active_profile(config)
+            ms_config = getattr(profile, 'market_states', None)
+        except Exception:
+            pass
+
+    # If no market_states configured, fall back to binary is_market_open()
+    if ms_config is None:
+        return 'ACTIVE' if is_market_open(config) else 'SLEEPING'
+
+    # --- Day-level gates ---
+    # Saturday → always SLEEPING
+    if weekday == 5:
+        return 'SLEEPING'
+
+    # Sunday: before 18:00 ET → SLEEPING (CME Globex opens 18:00 Sun)
+    if weekday == 6:
+        sunday_minutes = now_ny.hour * 60 + now_ny.minute
+        if sunday_minutes < 18 * 60:
+            return 'SLEEPING'
+        # Sunday ≥ 18:00 falls through to window checks below
+
+    # Holiday check (weekdays)
+    if weekday < 5:
+        us_holidays = holidays.US(years=now_ny.year, observed=True)
+        try:
+            nyse_holidays = holidays.financial_holidays('NYSE', years=now_ny.year)
+            if now_ny.date() in nyse_holidays:
+                return 'SLEEPING'
+        except (AttributeError, TypeError):
+            pass
+        if now_ny.date() in us_holidays:
+            return 'SLEEPING'
+
+    # --- Time-of-day windows (all in ET minutes) ---
+    now_minutes = now_ny.hour * 60 + now_ny.minute
+
+    # Maintenance breaks → SLEEPING
+    for brk in ms_config.maintenance_breaks:
+        if _in_time_window(now_minutes, brk):
+            return 'SLEEPING'
+
+    # Active window → ACTIVE
+    if _in_time_window(now_minutes, ms_config.active):
+        return 'ACTIVE'
+
+    # Passive windows → PASSIVE
+    for pw in ms_config.passive:
+        if _in_time_window(now_minutes, pw):
+            return 'PASSIVE'
+
+    return 'SLEEPING'
+
+
+def is_passive_mode(config: dict = None) -> bool:
+    """Convenience: True when the market is in PASSIVE state."""
+    return get_market_state(config) == 'PASSIVE'
+
+
+def _minutes_until_next_break(config: dict = None) -> int:
+    """Return minutes until the next maintenance break starts.
+
+    Returns ``9999`` if no breaks are configured or no profile is available.
+    Used as a guard to avoid starting emergency cycles too close to a break.
+    """
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+    now_minutes = now_ny.hour * 60 + now_ny.minute
+
+    ms_config = None
+    if config is not None:
+        try:
+            from config.commodity_profiles import get_active_profile
+            profile = get_active_profile(config)
+            ms_config = getattr(profile, 'market_states', None)
+        except Exception:
+            pass
+
+    if ms_config is None or not ms_config.maintenance_breaks:
+        return 9999
+
+    min_dist = 9999
+    for brk in ms_config.maintenance_breaks:
+        start_str = brk.split('-')[0]
+        sh, sm = map(int, start_str.split(':'))
+        break_start = sh * 60 + sm
+        dist = break_start - now_minutes
+        if dist < 0:
+            dist += 1440  # wrap around midnight
+        if dist < min_dist:
+            min_dist = dist
+
+    return min_dist
+
 
 def get_effective_close_time(config: dict = None) -> tuple[int, int]:
     """

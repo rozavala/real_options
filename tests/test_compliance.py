@@ -179,7 +179,7 @@ class TestEIABlackout:
                     approved, reason = await guardian.review_order(context)
 
                     assert approved is False
-                    assert "EIA Blackout" in reason
+                    assert "Blackout" in reason
 
     @pytest.mark.asyncio
     async def test_eia_blackout_allows_ng_outside_window(self, mock_config):

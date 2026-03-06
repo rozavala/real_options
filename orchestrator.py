@@ -37,7 +37,7 @@ from trading_bot.order_manager import (
     place_queued_orders,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, word_boundary_match, hours_until_weekly_close
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, get_market_state, _minutes_until_next_break, word_boundary_match, hours_until_weekly_close
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger, _sentinel_diag
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -77,9 +77,20 @@ GLOBAL_BUDGET_GUARD = None
 GLOBAL_DRAWDOWN_GUARD = None
 _STARTUP_DISCOVERY_TIME = 0  # Set to time.time() after successful startup topic discovery
 
-# Module-level shutdown state
-_SYSTEM_SHUTDOWN = False
+# Module-level shutdown state (two-tier for Passive mode support)
+# _SCHEDULED_SHUTDOWN: set when the daily scheduled cycle ends (blocks new
+#   scheduled signals). May remain True while the position monitor stays alive
+#   during PASSIVE periods.
+# _FULL_SHUTDOWN: set when the system is fully down (SLEEPING). Sentinel loop
+#   gate uses this to stop IB connections.
+_SCHEDULED_SHUTDOWN = False
+_FULL_SHUTDOWN = False
 _brier_zero_resolution_streak = 0
+
+# Passive emergency cooldown tracking: ticker → datetime of last trigger
+_last_passive_emergency: dict = {}
+# Deferred trigger rate limiting: (ticker, sentinel_type) → datetime
+_deferred_trigger_times: dict = {}
 
 # IB startup grace — suppress ERROR logging for IB failures during first 2 minutes
 _IB_BOOT_TIME = None
@@ -93,8 +104,44 @@ def _in_ib_startup_grace() -> bool:
     return (time_module.time() - _IB_BOOT_TIME) < _IB_STARTUP_GRACE_SECONDS
 
 def is_system_shutdown() -> bool:
-    """Check if the system has entered end-of-day shutdown."""
-    return _SYSTEM_SHUTDOWN
+    """Check if the system has fully shut down (SLEEPING state)."""
+    return _FULL_SHUTDOWN
+
+
+def is_scheduled_shutdown() -> bool:
+    """Check if the scheduled trading cycle has ended.
+
+    True after cancel_and_stop_monitoring() runs. Used by
+    guarded_generate_orders() to block new scheduled signals.
+    """
+    return _SCHEDULED_SHUTDOWN
+
+
+def _is_in_passive_emergency_cooldown(ticker: str, cooldown_seconds: int) -> bool:
+    """Check if a passive emergency was triggered recently for this ticker."""
+    last = _last_passive_emergency.get(ticker)
+    if last is None:
+        return False
+    elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+    return elapsed < cooldown_seconds
+
+
+def _write_deferred_trigger(trigger: SentinelTrigger, ticker: str) -> None:
+    """Rate-limited deferred trigger write.
+
+    Uses a (ticker, sentinel_type) composite key so that NG PriceSentinel
+    rate-limiting doesn't block NG NewsSentinel deferrals.
+    """
+    key = (ticker, trigger.source)
+    now = datetime.now(timezone.utc)
+    last = _deferred_trigger_times.get(key)
+    if last is not None and (now - last).total_seconds() < 300:
+        logger.debug(f"Deferred trigger rate-limited: {key}")
+        return
+    _deferred_trigger_times[key] = now
+    StateManager.queue_deferred_trigger(trigger)
+    logger.info(f"Deferred {trigger.source} trigger for {ticker}")
+
 
 def _record_sentinel_health(name: str, status: str, interval_seconds: int, error: str = None):
     """
@@ -2355,11 +2402,12 @@ async def log_stream(stream, logger_func):
 
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
-    global monitor_process, _SYSTEM_SHUTDOWN
+    global monitor_process, _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
 
-    # Reset shutdown flag for new trading day
-    _SYSTEM_SHUTDOWN = False
-    logger.info("System shutdown flag CLEARED — new trading day beginning")
+    # Reset both shutdown flags for new trading day
+    _SCHEDULED_SHUTDOWN = False
+    _FULL_SHUTDOWN = False
+    logger.info("Shutdown flags CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
     if not is_market_open(config):
@@ -2410,23 +2458,37 @@ async def stop_monitoring(config: dict):
 
 async def cancel_and_stop_monitoring(config: dict):
     """Wrapper task to cancel open orders and then stop the monitor."""
-    global _SYSTEM_SHUTDOWN
+    global _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
 
     logger.info("--- Initiating end-of-day shutdown sequence ---")
-    _SYSTEM_SHUTDOWN = True  # Set BEFORE canceling orders
-    logger.info("System shutdown flag SET — no new trades or emergency cycles will be processed")
+    _SCHEDULED_SHUTDOWN = True  # Block new scheduled signals immediately
+    logger.info("Scheduled shutdown flag SET — no new scheduled trades will be processed")
 
     await cancel_all_open_orders(config)
-    await stop_monitoring(config)
 
-    # v5.4 Fix: Release pooled connections to prevent "Peer closed" errors
-    # at 20:00 UTC Gateway restart. Post-shutdown tasks (equity logging,
-    # reconciliation) use their own self-managed connections, not the pool.
-    try:
-        await IBConnectionPool.release_all()
-        logger.info("Connection pool released — no stale connections for Gateway restart")
-    except Exception as e:
-        logger.warning(f"Pool cleanup during shutdown: {e}")
+    # Check if the commodity has a PASSIVE window. If so, keep the position
+    # monitor alive and don't fully shut down — sentinels can still trigger
+    # emergency cycles during passive hours.
+    current_state = get_market_state(config)
+    if current_state == 'PASSIVE':
+        logger.info(
+            "Market entering PASSIVE state — position monitor stays alive, "
+            "emergency cycles remain enabled"
+        )
+        # Don't stop monitoring, don't set _FULL_SHUTDOWN
+    else:
+        _FULL_SHUTDOWN = True
+        logger.info("Full shutdown flag SET — system entering SLEEPING state")
+        await stop_monitoring(config)
+
+        # v5.4 Fix: Release pooled connections to prevent "Peer closed" errors
+        # at 20:00 UTC Gateway restart. Post-shutdown tasks (equity logging,
+        # reconciliation) use their own self-managed connections, not the pool.
+        try:
+            await IBConnectionPool.release_all()
+            logger.info("Connection pool released — no stale connections for Gateway restart")
+        except Exception as e:
+            logger.warning(f"Pool cleanup during shutdown: {e}")
 
     logger.info("--- End-of-day shutdown sequence complete ---")
 
@@ -3081,10 +3143,16 @@ async def _is_signal_priced_in(trigger: SentinelTrigger, ib: IB, contract) -> tu
         return False, ""  # Fail open — council still evaluates the signal
 
 
-async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
+async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, passive_mode: bool = False):
     """
     Runs a specialized cycle triggered by a Sentinel.
     Executes trades if the Council approves.
+
+    Args:
+        passive_mode: If True, this cycle was triggered during PASSIVE state
+            (emergency threshold exceeded). The caller has already validated
+            thresholds and cooldowns. The market hours gate uses passive_mode
+            as the primary gate; the state check is a safety net.
     """
     # === SHUTDOWN GATE ===
     if is_system_shutdown():
@@ -3094,8 +3162,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (system shutdown)")
         return
 
-    # === NEW: MARKET HOURS GATE ===
-    if not is_market_open(config):
+    # === MARKET HOURS GATE ===
+    # passive_mode is the primary gate (caller's intent). State check is a
+    # safety net against races where state transitions between the sentinel
+    # loop's decision and function entry.
+    if not is_market_open(config) and not passive_mode:
         logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
         _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (market closed)")
         StateManager.queue_deferred_trigger(trigger)
@@ -3485,20 +3556,102 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     decision = cached_decision
                     logger.info(f"SEMANTIC CACHE HIT: Reusing decision for {contract_name}/{trigger.source}")
                 else:
-                    decision = await council.run_specialized_cycle(
-                        trigger,
-                        contract_name,
-                        market_data,
-                        market_context_str,
-                        ib=ib,
-                        target_contract=target_contract,
-                        cycle_id=cycle_id, # Pass cycle_id for logging if supported
-                        regime_context=regime_context
-                    )
+                    _council_start = time_module.time()
+                    _council_timed_out = False
+                    try:
+                        _timeout = 300  # default
+                        if passive_mode:
+                            try:
+                                from config.commodity_profiles import get_active_profile as _gap
+                                _ep = _gap(config)
+                                _ms_cfg = getattr(_ep, 'market_states', None)
+                                if _ms_cfg:
+                                    _timeout = _ms_cfg.emergency_council_timeout_seconds
+                            except Exception:
+                                pass
+                        decision = await asyncio.wait_for(
+                            council.run_specialized_cycle(
+                                trigger,
+                                contract_name,
+                                market_data,
+                                market_context_str,
+                                ib=ib,
+                                target_contract=target_contract,
+                                cycle_id=cycle_id,
+                                regime_context=regime_context
+                            ),
+                            timeout=_timeout
+                        )
+                    except asyncio.TimeoutError:
+                        _council_timed_out = True
+                        logger.error(f"Council timed out after {_timeout}s during emergency cycle")
+                        decision = {
+                            'direction': 'NEUTRAL',
+                            'confidence': 0.0,
+                            'reasoning': f'Council timed out after {_timeout}s',
+                        }
+                    _council_duration = time_module.time() - _council_start
+
+                    # Log council duration for latency analysis
+                    try:
+                        _ticker = get_active_ticker(config)
+                        _dur_dir = os.path.join('data', _ticker)
+                        os.makedirs(_dur_dir, exist_ok=True)
+                        _dur_path = os.path.join(_dur_dir, 'emergency_council_durations.csv')
+                        _dur_exists = os.path.isfile(_dur_path)
+                        with open(_dur_path, 'a', newline='') as _df:
+                            import csv as _csv
+                            _w = _csv.writer(_df)
+                            if not _dur_exists:
+                                _w.writerow(['timestamp', 'duration_s', 'timed_out', 'dry_run', 'trigger_pct', 'passive_mode'])
+                            _dry = False
+                            _tpct = 0.0
+                            try:
+                                from config.commodity_profiles import get_active_profile as _gap2
+                                _ep2 = _gap2(config)
+                                _ms2 = getattr(_ep2, 'market_states', None)
+                                if _ms2:
+                                    _dry = _ms2.emergency_dry_run
+                                    _tpct = _ms2.emergency_trigger_pct
+                            except Exception:
+                                pass
+                            _w.writerow([
+                                datetime.now(timezone.utc).isoformat(),
+                                f"{_council_duration:.1f}",
+                                _council_timed_out,
+                                _dry,
+                                _tpct,
+                                passive_mode,
+                            ])
+                    except Exception as e:
+                        logger.debug(f"Council duration logging failed: {e}")
+
                     semantic_cache.put(contract_name, trigger.source, market_data, decision)
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
                 cycle_actually_ran = True
+
+                # === MID-DEBATE SLEEPING GUARD ===
+                # If we entered SLEEPING (e.g., maintenance break) while the council
+                # was deliberating during a passive emergency, abort before placing orders.
+                if passive_mode and get_market_state(config) == 'SLEEPING':
+                    logger.warning(
+                        f"PASSIVE EMERGENCY ABORTED: Market entered SLEEPING during council deliberation. "
+                        f"Decision logged but orders will NOT be placed."
+                    )
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        f"Passive Emergency Aborted",
+                        f"{trigger.source}: Council decided {decision.get('direction')} but market "
+                        f"entered SLEEPING during deliberation. No orders placed."
+                    )
+                    # Still log the decision for forensics, but skip execution
+                    # by setting direction to NEUTRAL
+                    decision['direction'] = 'NEUTRAL'
+                    decision['reasoning'] = (
+                        decision.get('reasoning', '') +
+                        ' [ABORTED: market entered SLEEPING during passive emergency deliberation]'
+                    )
 
                 # Amendment A: Inject polymarket context into the decision for thesis recording
                 if trigger.source == "PredictionMarketSentinel":
@@ -3604,6 +3757,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                         "compliance_approved": True, # Assume true if we reached here, actually checked later
                         "trigger_type": trigger.source,
+                        "source_state": 'PASSIVE_EMERGENCY' if passive_mode else 'ACTIVE',
 
                         "vote_breakdown": json.dumps(decision.get('vote_breakdown', [])),
                         "dominant_agent": decision.get('dominant_agent', 'Unknown'),
@@ -3973,6 +4127,7 @@ async def run_sentinels(config: dict):
     - Price/Microstructure sentinels only run during market hours (IB needed)
     - IB connection is LAZY: only established when market is actually open
     """
+    global _FULL_SHUTDOWN  # Written during PASSIVE → SLEEPING transitions
     logger.info("--- Starting Sentinel Array ---")
 
     # === 1. LAZY INITIALIZATION: Start with NO connection ===
@@ -4045,7 +4200,7 @@ async def run_sentinels(config: dict):
             _sentinel_iteration += 1
 
             # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
-            if _SYSTEM_SHUTDOWN:
+            if _FULL_SHUTDOWN:
                 # One-time microstructure cleanup (Issue 7 integrated)
                 if micro_sentinel is not None:
                     logger.info("Shutdown: Gracefully disengaging Microstructure Sentinel")
@@ -4064,18 +4219,25 @@ async def run_sentinels(config: dict):
                 continue
 
             now = time_module.time()
-            market_open = is_market_open(config)
+            market_state = get_market_state(config)
+            market_open = (market_state == 'ACTIVE')  # backward compat
             trading_day = is_trading_day()
 
             # Heartbeat: confirm sentinel loop is alive
             if _sentinel_iteration % _HEARTBEAT_INTERVAL == 0:
                 logger.info(
                     f"Sentinel loop heartbeat: iteration={_sentinel_iteration}, "
-                    f"market_open={market_open}, trading_day={trading_day}"
+                    f"market_state={market_state}, market_open={market_open}, trading_day={trading_day}"
                 )
 
-            # === 2. MARKET HOURS GATE: Only connect when market is OPEN ===
-            should_connect = market_open  # NOT trading_day - must be is_market_open(config)
+            # === 2. MARKET STATE GATE: Connect when ACTIVE or PASSIVE ===
+            should_connect = market_state in ('ACTIVE', 'PASSIVE')
+            # For commodities with no Passive window (KC/CC): on trading days,
+            # run background sentinels even when state is SLEEPING. The
+            # `or trading_day` ensures Weather/News/X still run on weekdays
+            # outside Active hours. On Sunday >=18:00 ET for NG, market_state
+            # is PASSIVE (not SLEEPING), so the first clause handles it.
+            should_run_background_sentinels = market_state != 'SLEEPING' or trading_day
 
             if should_connect:
                 # Market is open - we need IB for Price/Microstructure sentinels
@@ -4098,7 +4260,7 @@ async def run_sentinels(config: dict):
                         # === SAFETY NET: Ensure position monitoring is running ===
                         # Covers the gap where bot starts just before market open
                         # and the scheduled start_monitoring was already missed.
-                        if not _SYSTEM_SHUTDOWN and (
+                        if not _FULL_SHUTDOWN and (
                             monitor_process is None or monitor_process.returncode is not None
                         ):
                             logger.info(
@@ -4153,7 +4315,12 @@ async def run_sentinels(config: dict):
                     outage_notification_sent = False
 
             else:
-                # === 4. MARKET CLOSED: Disconnect to prevent zombie state ===
+                # === 4. MARKET SLEEPING: Disconnect to prevent zombie state ===
+                # Also ensure _FULL_SHUTDOWN is set when entering SLEEPING
+                if market_state == 'SLEEPING' and not _FULL_SHUTDOWN and _SCHEDULED_SHUTDOWN:
+                    _FULL_SHUTDOWN = True
+                    logger.info("State transition: PASSIVE → SLEEPING — full shutdown engaged")
+
                 if sentinel_ib is not None and sentinel_ib.isConnected():
                     logger.info("Market Closed: Releasing Sentinel IB connection to pool.")
                     try:
@@ -4185,7 +4352,7 @@ async def run_sentinels(config: dict):
             # === MICROSTRUCTURE SENTINEL LIFECYCLE ===
             gateway_available = sentinel_ib is not None and sentinel_ib.isConnected()
 
-            if market_open and micro_sentinel is None and gateway_available:
+            if should_connect and micro_sentinel is None and gateway_available:
                 logger.info("Market Open: Engaging Microstructure Sentinel")
                 try:
                     micro_ib = await IBConnectionPool.get_connection("microstructure", config)
@@ -4215,10 +4382,10 @@ async def run_sentinels(config: dict):
                     micro_ib = None
                     _record_sentinel_health("MicrostructureSentinel", "ERROR", 60, str(e))
 
-            elif market_open and micro_sentinel is None and not gateway_available:
+            elif should_connect and micro_sentinel is None and not gateway_available:
                 logger.debug("Skipping Microstructure engagement - Gateway unavailable")
 
-            elif not market_open and micro_sentinel is not None:
+            elif not should_connect and micro_sentinel is not None:
                 logger.info("Market Closed: Disengaging Microstructure Sentinel")
                 try:
                     await micro_sentinel.unsubscribe_all()
@@ -4255,11 +4422,60 @@ async def run_sentinels(config: dict):
                             )
 
                     if trigger and _get_deduplicator().should_process(trigger):
-                        task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                        _get_inflight_tasks().add(task)
-                        task.add_done_callback(
-                            lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                        )
+                        if market_state == 'PASSIVE':
+                            # === PASSIVE EMERGENCY PIPELINE ===
+                            _ticker = get_active_ticker(config)
+                            try:
+                                from config.commodity_profiles import get_active_profile
+                                _profile = get_active_profile(config)
+                                _ms = getattr(_profile, 'market_states', None)
+                            except Exception:
+                                _ms = None
+
+                            _change = abs(trigger.payload.get('change', 0))
+
+                            if _ms is None or _ms.emergency_trigger_pct <= 0:
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _change < _ms.emergency_trigger_pct:
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _is_in_passive_emergency_cooldown(_ticker, _ms.emergency_cooldown_seconds):
+                                logger.info(f"Passive emergency cooldown active for {_ticker}")
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _minutes_until_next_break(config) < 10:
+                                logger.info(f"Too close to maintenance break — deferring {trigger.source}")
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _ms.emergency_dry_run:
+                                logger.warning(
+                                    f"DRY RUN: Passive emergency would fire for {_ticker} "
+                                    f"({_change:.1f}% > {_ms.emergency_trigger_pct}%)"
+                                )
+                                send_pushover_notification(
+                                    config.get('notifications', {}),
+                                    f"DRY RUN: {_ticker} Passive Emergency",
+                                    f"{trigger.source}: {_change:.1f}% move detected during PASSIVE. "
+                                    f"Would invoke council if dry_run=false."
+                                )
+                                _last_passive_emergency[_ticker] = datetime.now(timezone.utc)
+                            else:
+                                logger.warning(
+                                    f"PASSIVE EMERGENCY: {_ticker} {_change:.1f}% > "
+                                    f"{_ms.emergency_trigger_pct}% — invoking council"
+                                )
+                                _last_passive_emergency[_ticker] = datetime.now(timezone.utc)
+                                task = asyncio.create_task(
+                                    run_emergency_cycle(trigger, config, sentinel_ib, passive_mode=True)
+                                )
+                                _get_inflight_tasks().add(task)
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
+                        else:
+                            # === NORMAL ACTIVE EMERGENCY ===
+                            task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            _get_inflight_tasks().add(task)
+                            task.add_done_callback(
+                                lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                            )
                         _get_deduplicator().set_cooldown(trigger.source, 900)
                 except asyncio.TimeoutError:
                     logger.error("PriceSentinel TIMED OUT after 30s")
@@ -4292,7 +4508,7 @@ async def run_sentinels(config: dict):
             )
 
             # 5. X Sentiment Sentinel (Every 90 min during market-adjacent hours on trading days)
-            if trading_day and (now - last_x_sentiment) > 5400:
+            if should_run_background_sentinels and (now - last_x_sentiment) > 5400:
                 # Only run during market-adjacent hours (6:00 AM - 4:30 PM ET)
                 from datetime import time as dt_time
                 et_now = datetime.now(pytz.timezone('US/Eastern'))
@@ -5056,7 +5272,7 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
                  except Exception:
                      pass
 
-    await generate_and_execute_orders(config, shutdown_check=is_system_shutdown, schedule_id=schedule_id)
+    await generate_and_execute_orders(config, shutdown_check=is_scheduled_shutdown, schedule_id=schedule_id)
 
     # Invalidate semantic cache after scheduled cycle (fresh analysis supersedes cached)
     try:

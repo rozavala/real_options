@@ -12,7 +12,7 @@ from .commodity_profiles import (
     ContractSpec,
     GrowingRegion,
     LogisticsHub,
-    COFFEE_ARABICA_PROFILE,
+    MarketStatesConfig,
 )
 
 __all__ = [
@@ -23,5 +23,5 @@ __all__ = [
     'ContractSpec',
     'GrowingRegion',
     'LogisticsHub',
-    'COFFEE_ARABICA_PROFILE',
+    'MarketStatesConfig',
 ]

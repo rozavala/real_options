@@ -697,17 +697,11 @@ def load_task_schedule_status() -> dict:
     # rather than 'overdue' — matching the orchestrator's own weekend skip logic.
     ny_tz_check = pytz.timezone('America/New_York')
     now_ny_check = datetime.now(timezone.utc).astimezone(ny_tz_check)
-    _is_trading_day = now_ny_check.weekday() < 5  # Mon-Fri
-
-    if _is_trading_day:
-        # Also check US holidays (consistent with trading_bot/utils.py is_trading_day)
-        try:
-            import holidays as holidays_lib
-            us_holidays = holidays_lib.US(years=now_ny_check.year, observed=True)
-            if now_ny_check.date() in us_holidays:
-                _is_trading_day = False
-        except ImportError:
-            pass  # holidays lib not available — weekday check is sufficient
+    try:
+        from trading_bot.utils import is_trading_day as _utils_is_trading_day
+        _is_trading_day = _utils_is_trading_day()
+    except ImportError:
+        _is_trading_day = now_ny_check.weekday() < 5
 
     if not _is_trading_day:
         # Non-trading day: return all tasks as 'inactive' with metadata
