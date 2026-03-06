@@ -25,6 +25,7 @@ from dashboard_utils import (
     load_llm_daily_costs,
     get_config,
 )
+from _date_filter import date_range_filter
 
 config = get_config()
 
@@ -239,12 +240,12 @@ st.markdown("---")
 st.subheader("Daily Cost Trend")
 
 costs_df = load_llm_daily_costs(ticker)
+costs_df = date_range_filter(costs_df, timestamp_col='date', key_prefix='llm')
 
 if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df.columns:
     import plotly.graph_objects as go
 
-    # Last 30 days
-    costs_df = costs_df.sort_values('date').tail(30)
+    costs_df = costs_df.sort_values('date')
 
     fig_trend = go.Figure()
 

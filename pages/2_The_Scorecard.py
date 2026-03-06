@@ -28,6 +28,7 @@ from dashboard_utils import (
     _resolve_data_path_for,
 )
 import numpy as np
+from _date_filter import date_range_filter
 
 
 def create_process_outcome_matrix(df: pd.DataFrame):
@@ -129,6 +130,7 @@ st.caption(
 
 # --- Load Data ---
 council_df = load_council_history(ticker=ticker)
+council_df = date_range_filter(council_df, key_prefix='scorecard')
 config = get_config()
 
 if council_df.empty:
