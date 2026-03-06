@@ -538,8 +538,8 @@ if pd.notna(actual_trend) and actual_trend:
     with outcome_cols[0]:
         master = row.get('master_decision', 'NEUTRAL')
         is_correct = (
-            (master == 'BULLISH' and actual_trend == 'UP') or
-            (master == 'BEARISH' and actual_trend == 'DOWN')
+            (master == 'BULLISH' and actual_trend in ('UP', 'BULLISH')) or
+            (master == 'BEARISH' and actual_trend in ('DOWN', 'BEARISH'))
         )
         if master == 'NEUTRAL':
             st.info("➖ NO POSITION")
@@ -549,7 +549,7 @@ if pd.notna(actual_trend) and actual_trend:
             st.error("❌ INCORRECT")
 
     with outcome_cols[1]:
-        trend_icon = "📈" if actual_trend == "UP" else "📉"
+        trend_icon = "📈" if actual_trend in ("UP", "BULLISH") else "📉"
         st.metric("📉 Market Move", f"{trend_icon} {actual_trend}",
                   help="The actual realized direction of the market after the decision.")
 
@@ -638,8 +638,8 @@ try:
                 d_master = drow.get('master_decision', 'NEUTRAL')
                 d_trend = drow.get('actual_trend_direction', '')
                 d_correct = (
-                    (d_master == 'BULLISH' and d_trend == 'UP') or
-                    (d_master == 'BEARISH' and d_trend == 'DOWN')
+                    (d_master == 'BULLISH' and d_trend in ('UP', 'BULLISH')) or
+                    (d_master == 'BEARISH' and d_trend in ('DOWN', 'BEARISH'))
                 )
                 if d_master != 'NEUTRAL':
                     if d_correct:
