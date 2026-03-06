@@ -217,15 +217,8 @@ class EnhancedBrierTracker:
         # Per-agent, per-regime Brier scores
         self.agent_scores: Dict[str, Dict[str, List[float]]] = {}
 
-        # Load existing data and sync with CSV
+        # Load existing data
         self._load()
-        # Auto-backfill from structured CSV in same directory as data_path
-        try:
-            csv_dir = os.path.dirname(self.data_path) or '.'
-            structured_csv = os.path.join(csv_dir, "agent_accuracy_structured.csv")
-            self.backfill_from_resolved_csv(structured_csv_path=structured_csv)
-        except Exception as e:
-            logger.warning(f"Auto-backfill on init failed (non-fatal): {e}")
         try:
             self.auto_orphan_stale_predictions()
         except Exception as e:

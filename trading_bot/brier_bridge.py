@@ -1,12 +1,9 @@
 """
-Brier Bridge: Unified prediction recording across legacy and enhanced systems.
+Brier Bridge: Unified prediction recording via the enhanced Brier system.
 
-This module provides a single entry point for recording and resolving predictions,
-ensuring both the legacy CSV-based system and the enhanced probabilistic system
-stay in sync.
-
-ARCHITECTURE PRINCIPLE: Dual-write pattern ensures backward compatibility.
-The enhanced system can fail without impacting legacy behavior.
+This module provides a single entry point for recording and resolving predictions
+using enhanced_brier.json as the sole data store. The legacy CSV dual-write path
+was removed after its deprecation date (2026-03-01).
 """
 
 import logging
@@ -15,10 +12,6 @@ from datetime import datetime, timezone
 from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
-
-# B1 FIX: Track legacy usage for migration
-_LEGACY_USAGE_COUNT = 0
-_LEGACY_DEPRECATION_DATE = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
 
 def record_agent_prediction(
@@ -46,16 +39,13 @@ def record_agent_prediction(
         timestamp: When prediction was made (default: now UTC)
     """
     ts = timestamp or datetime.now(timezone.utc)
-    global _LEGACY_USAGE_COUNT
 
-    # === ENHANCED SYSTEM (JSON) — fail-safe ===
+    # === ENHANCED SYSTEM (JSON) — sole write path ===
     try:
         from trading_bot.enhanced_brier import EnhancedBrierTracker, MarketRegime, normalize_regime
 
         tracker = _get_enhanced_tracker()
-        if tracker is None:
-            pass # Fall through to legacy if enabled
-        else:
+        if tracker is not None:
             # Convert confidence to probability distribution
             prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(
                 predicted_direction, predicted_confidence
@@ -78,29 +68,6 @@ def record_agent_prediction(
     except Exception as e:
         # Enhanced system failure MUST NOT block trading
         logger.warning(f"Enhanced Brier recording failed for {agent}: {e}")
-
-    # === LEGACY SYSTEM (CSV) — Deprecated ===
-    if datetime.now(timezone.utc) < _LEGACY_DEPRECATION_DATE:
-        try:
-            from trading_bot.brier_scoring import get_brier_tracker
-            legacy_tracker = get_brier_tracker()
-            legacy_tracker.record_prediction_structured(
-                agent=agent,
-                predicted_direction=predicted_direction,
-                predicted_confidence=predicted_confidence,
-                actual='PENDING',
-                timestamp=ts,
-                cycle_id=cycle_id,
-            )
-            _LEGACY_USAGE_COUNT += 1
-
-            if _LEGACY_USAGE_COUNT % 100 == 0:
-                logger.warning(
-                    f"DEPRECATION: Legacy Brier system used {_LEGACY_USAGE_COUNT} times. "
-                    f"Will be removed after {_LEGACY_DEPRECATION_DATE}"
-                )
-        except Exception as e:
-            logger.error(f"Legacy Brier recording failed for {agent}: {e}")
 
 
 def resolve_agent_prediction(

@@ -25,14 +25,13 @@ def set_data_dir(data_dir: str):
 
 
 def _get_paths():
-    """Return (structured_file, council_file, accuracy_file) for active commodity."""
+    """Return (council_file, accuracy_file) for active commodity."""
     try:
         from trading_bot.data_dir_context import get_engine_data_dir
         base = get_engine_data_dir()
     except LookupError:
         base = _data_dir or os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"))
     return (
-        os.path.join(base, "agent_accuracy_structured.csv"),
         os.path.join(base, "council_history.csv"),
         os.path.join(base, "agent_accuracy.csv"),
     )
@@ -52,13 +51,20 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     2. Check if that cycle's council decision has been reconciled
     3. Only resolve if reconciled; otherwise classify as "awaiting reconciliation"
     """
-    STRUCTURED_FILE, COUNCIL_FILE, ACCURACY_FILE = _get_paths()
+    COUNCIL_FILE, ACCURACY_FILE = _get_paths()
 
-    if not os.path.exists(STRUCTURED_FILE) or not os.path.exists(COUNCIL_FILE):
+    if not os.path.exists(COUNCIL_FILE):
         logger.info("Missing required files for resolution")
         return 0
 
-    predictions_df = pd.read_csv(STRUCTURED_FILE)
+    # Legacy structured CSV no longer exists — resolution is handled by
+    # the enhanced Brier system (enhanced_brier.json) directly.
+    structured_file = os.path.join(os.path.dirname(COUNCIL_FILE), "agent_accuracy_structured.csv")
+    if not os.path.exists(structured_file):
+        logger.info("agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system")
+        return 0
+
+    predictions_df = pd.read_csv(structured_file)
     council_df = pd.read_csv(COUNCIL_FILE)
 
     if predictions_df.empty or council_df.empty:
@@ -194,8 +200,8 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
 
     # Save changes if any (resolved or orphaned)
     if (resolved_count > 0 or orphaned_count > 0) and not dry_run:
-        predictions_df.to_csv(STRUCTURED_FILE, index=False)
-        logger.info(f"Saved updated {STRUCTURED_FILE}")
+        predictions_df.to_csv(structured_file, index=False)
+        logger.info(f"Saved updated {structured_file}")
 
         # Sync to legacy file (only resolved ones, orphans don't go to legacy)
         if resolved_count > 0:
