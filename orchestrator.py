@@ -12,6 +12,7 @@ import logging
 import sys
 import os
 import json
+import numpy as np
 import hashlib
 from collections import deque
 from dataclasses import dataclass
@@ -1040,11 +1041,10 @@ def _find_position_id_for_contract(
         pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
 
         # Calculate net quantity for this symbol
-        net_qty = 0
-        for _, row in pos_entries.iterrows():
-            if row['local_symbol'] == symbol:
-                qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-                net_qty += qty
+        sym_mask = pos_entries['local_symbol'] == symbol
+        buys = pos_entries.loc[sym_mask & (pos_entries['action'] == 'BUY'), 'quantity'].sum()
+        sells = pos_entries.loc[sym_mask & (pos_entries['action'] == 'SELL'), 'quantity'].sum()
+        net_qty = buys - sells
 
         if net_qty != 0:
             entry_time = pos_entries['timestamp'].min()
@@ -1336,14 +1336,14 @@ async def _reconcile_orphaned_theses(
             tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
             if tid_rows.empty:
                 continue
-            leg_map = {}
-            for _, row in tid_rows.iterrows():
-                sym = row.get('local_symbol', '')
-                if not sym:
-                    continue
-                qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-                leg_map[sym] = leg_map.get(sym, 0) + qty
-            leg_map = {s: q for s, q in leg_map.items() if q != 0}
+            tid_valid = tid_rows[tid_rows['local_symbol'].astype(str).str.strip() != ''].copy()
+            if not tid_valid.empty:
+                tid_valid['signed_qty'] = np.where(tid_valid['action'] == 'BUY', tid_valid['quantity'], -tid_valid['quantity'])
+                leg_map_vec = tid_valid.groupby('local_symbol')['signed_qty'].sum()
+                leg_map = leg_map_vec[leg_map_vec != 0].to_dict()
+            else:
+                leg_map = {}
+
             if leg_map:
                 thesis_expected[tid] = leg_map
 
@@ -1542,10 +1542,9 @@ async def _reconcile_phantom_ledger_entries(
                     if reasons.str.contains('PHANTOM_RECONCILIATION').any():
                         continue
 
-                net_qty = 0
-                for _, row in symbol_rows.iterrows():
-                    qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-                    net_qty += qty
+                buys = symbol_rows.loc[symbol_rows['action'] == 'BUY', 'quantity'].sum()
+                sells = symbol_rows.loc[symbol_rows['action'] == 'SELL', 'quantity'].sum()
+                net_qty = buys - sells
                 if net_qty != 0:
                     phantoms.append({
                         'position_id': pos_id,
@@ -1960,14 +1959,11 @@ async def _reconcile_state_stores(
         # net to zero — grouping by position_id makes open spreads look closed.
         # IBKR counts each contract leg as a separate position, so we must too.
         if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
-            for sym in trade_ledger['local_symbol'].unique():
-                sym_entries = trade_ledger[trade_ledger['local_symbol'] == sym]
-                net_qty = 0
-                for _, row in sym_entries.iterrows():
-                    qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-                    net_qty += qty
-                if net_qty != 0:
-                    results['ledger_open'] += 1
+            tl_valid = trade_ledger[trade_ledger['local_symbol'].astype(str).str.strip() != ''].copy()
+            if not tl_valid.empty:
+                tl_valid['signed_qty'] = np.where(tl_valid['action'] == 'BUY', tl_valid['quantity'], -tl_valid['quantity'])
+                net_qtys = tl_valid.groupby('local_symbol')['signed_qty'].sum()
+                results['ledger_open'] += (net_qtys != 0).sum()
 
         # 3. Count active theses in TMS
         active_theses = tms.collection.get(
@@ -3636,12 +3632,12 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                 # was deliberating during a passive emergency, abort before placing orders.
                 if passive_mode and get_market_state(config) == 'SLEEPING':
                     logger.warning(
-                        f"PASSIVE EMERGENCY ABORTED: Market entered SLEEPING during council deliberation. "
-                        f"Decision logged but orders will NOT be placed."
+                        "PASSIVE EMERGENCY ABORTED: Market entered SLEEPING during council deliberation. "
+                        "Decision logged but orders will NOT be placed."
                     )
                     send_pushover_notification(
                         config.get('notifications', {}),
-                        f"Passive Emergency Aborted",
+                        "Passive Emergency Aborted",
                         f"{trigger.source}: Council decided {decision.get('direction')} but market "
                         f"entered SLEEPING during deliberation. No orders placed."
                     )
