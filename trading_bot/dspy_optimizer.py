@@ -47,7 +47,7 @@ def _validate_path_component(value: str, label: str) -> str:
 # ---------------------------------------------------------------------------
 
 class CouncilDataset:
-    """Load labeled examples from council_history.csv + agent_accuracy_structured.csv."""
+    """Load labeled examples from enhanced_brier.json + council_history.csv."""
 
     def __init__(self, data_dir: str):
         self.data_dir = Path(data_dir)
@@ -56,6 +56,8 @@ class CouncilDataset:
     def load(self) -> dict[str, list[dict]]:
         """Return {agent_name: [example_dict]} with resolved predictions only.
 
+        Reads from enhanced_brier.json (source of truth) and enriches with
+        market context from council_history.csv.
         Agent names are discovered from the data, not hardcoded.
         Each example_dict has keys: cycle_id, timestamp, direction, confidence,
         prob_bullish, actual, market_context (from council_history join).
@@ -63,45 +65,56 @@ class CouncilDataset:
         if self._predictions_cache is not None:
             return self._predictions_cache
 
-        accuracy_path = self.data_dir / "agent_accuracy_structured.csv"
+        brier_path = self.data_dir / "enhanced_brier.json"
         council_path = self.data_dir / "council_history.csv"
 
-        if not accuracy_path.exists():
-            raise FileNotFoundError(f"Agent accuracy data not found: {accuracy_path}")
+        if not brier_path.exists():
+            raise FileNotFoundError(f"Enhanced Brier data not found: {brier_path}")
 
-        # Load agent predictions, filter resolved
+        # Load enhanced Brier predictions
+        with open(brier_path, "r") as f:
+            brier_data = json.load(f)
+
+        # Filter to resolved, non-ORPHANED predictions
         predictions: dict[str, list[dict]] = {}
         skipped_rows = 0
-        with open(accuracy_path, "r", newline="") as f:
-            reader = csv.DictReader(f)
-            for row_num, row in enumerate(reader, start=2):
-                try:
-                    actual = row.get("actual", "PENDING").strip()
-                    if actual in ("PENDING", "ORPHANED") or not actual:
-                        continue
-                    agent = row["agent"].strip()
-                    if not agent:
-                        continue
-
-                    # Safe float conversion with fallback
-                    confidence = _safe_float(row.get("confidence"), 0.5)
-                    prob_bullish = _safe_float(row.get("prob_bullish"), 0.5)
-
-                    predictions.setdefault(agent, []).append({
-                        "cycle_id": row.get("cycle_id", "").strip(),
-                        "timestamp": row.get("timestamp", "").strip(),
-                        "direction": row.get("direction", "").strip(),
-                        "confidence": confidence,
-                        "prob_bullish": prob_bullish,
-                        "actual": actual,
-                    })
-                except (KeyError, ValueError) as e:
-                    skipped_rows += 1
-                    logger.debug(f"Skipping malformed row {row_num}: {e}")
+        for pred in brier_data.get("predictions", []):
+            try:
+                actual = pred.get("actual_outcome")
+                if actual is None or actual == "ORPHANED":
+                    continue
+                agent = pred.get("agent", "").strip()
+                if not agent:
                     continue
 
+                # Derive direction and confidence from probability triple
+                prob_bullish = _safe_float(pred.get("prob_bullish"), 1 / 3)
+                prob_neutral = _safe_float(pred.get("prob_neutral"), 1 / 3)
+                prob_bearish = _safe_float(pred.get("prob_bearish"), 1 / 3)
+
+                probs = {
+                    "BULLISH": prob_bullish,
+                    "NEUTRAL": prob_neutral,
+                    "BEARISH": prob_bearish,
+                }
+                direction = max(probs, key=probs.get)
+                confidence = max(prob_bullish, prob_neutral, prob_bearish)
+
+                predictions.setdefault(agent, []).append({
+                    "cycle_id": pred.get("cycle_id", ""),
+                    "timestamp": pred.get("timestamp", ""),
+                    "direction": direction,
+                    "confidence": confidence,
+                    "prob_bullish": prob_bullish,
+                    "actual": actual,
+                })
+            except (KeyError, ValueError) as e:
+                skipped_rows += 1
+                logger.debug(f"Skipping malformed prediction: {e}")
+                continue
+
         if skipped_rows > 0:
-            logger.warning(f"Skipped {skipped_rows} malformed rows in {accuracy_path}")
+            logger.warning(f"Skipped {skipped_rows} malformed predictions in {brier_path}")
 
         # Load council history for market context (optional enrichment)
         council_context: dict[str, dict] = {}
