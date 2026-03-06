@@ -81,9 +81,9 @@ if enhanced_data:
     col3.metric("Pending", pending, help="Predictions waiting for market resolution (T+1).")
     col4.metric(
         "Resolution Rate",
-        f"{resolved / total * 100:.0f}%" if total > 0 else "N/A"
+        f"{resolved / total * 100:.0f}%" if total > 0 else "N/A",
+        help="Percentage of predictions that have been resolved"
     )
-
 else:
     st.info("No prediction data available yet.")
 

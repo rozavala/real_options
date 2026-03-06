@@ -751,11 +751,12 @@ else:
                 matched = len(routed[routed['assigned_provider'] == routed['model_provider']])
                 fallback_count = total - matched
                 col1, col2, col3 = st.columns(3)
-                col1.metric("Total Routed Calls", total)
-                col2.metric("Primary Success", matched)
+                col1.metric("Total Routed Calls", total, help="Total number of LLM calls made during this session")
+                col2.metric("Primary Success", matched, help="Number of calls successfully routed to the primary assigned provider")
                 col3.metric("Fallbacks", fallback_count,
                             delta=f"-{fallback_count}" if fallback_count > 0 else None,
-                            delta_color="inverse")
+                            delta_color="inverse",
+                            help="Number of calls that fell back to a secondary provider due to failure or timeout")
                 if fallback_count > 0:
                     fallbacks = routed[routed['assigned_provider'] != routed['model_provider']]
                     st.dataframe(
