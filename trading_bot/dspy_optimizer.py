@@ -28,6 +28,10 @@ MIN_IMPROVEMENT_PCT = 5.0
 MIN_CLASS_RATIO = 0.15
 MIN_AGENTS_IMPROVED_RATIO = 0.60
 
+# Agents excluded from DSPy optimization (meta-agents whose output is derived
+# from other agents, not standalone forecasts)
+DSPY_EXCLUDED_AGENTS = {"master_decision"}
+
 # Valid characters for path components (ticker, agent_name)
 _SAFE_PATH_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
@@ -84,7 +88,7 @@ class CouncilDataset:
                 if actual is None or actual == "ORPHANED":
                     continue
                 agent = pred.get("agent", "").strip()
-                if not agent:
+                if not agent or agent in DSPY_EXCLUDED_AGENTS:
                     continue
 
                 # Derive direction and confidence from probability triple
@@ -152,16 +156,24 @@ class CouncilDataset:
         all_dates = []
 
         for agent, examples in predictions.items():
-            directions = [ex["actual"] for ex in examples]
-            bullish = directions.count("BULLISH")
-            bearish = directions.count("BEARISH")
-            neutral = directions.count("NEUTRAL")
+            actuals = [ex["actual"] for ex in examples]
+            bullish = actuals.count("BULLISH")
+            bearish = actuals.count("BEARISH")
+            neutral = actuals.count("NEUTRAL")
             total = len(examples)
 
-            correct = sum(
-                1 for ex in examples if ex["direction"] == ex["actual"]
+            # Directional accuracy: only score BULLISH/BEARISH predictions
+            directional = [ex for ex in examples if ex["direction"] != "NEUTRAL"]
+            directional_correct = sum(
+                1 for ex in directional if ex["direction"] == ex["actual"]
             )
-            accuracy = correct / total if total > 0 else 0.0
+            directional_accuracy = (
+                directional_correct / len(directional) if directional else 0.0
+            )
+            neutral_predictions = sum(
+                1 for ex in examples if ex["direction"] == "NEUTRAL"
+            )
+            abstention_rate = neutral_predictions / total if total > 0 else 0.0
 
             # Brier score: mean squared error of probability vs outcome
             brier = _compute_brier(examples)
@@ -171,13 +183,15 @@ class CouncilDataset:
 
             result[agent] = {
                 "total": total,
-                "correct": correct,
-                "accuracy": accuracy,
+                "directional_total": len(directional),
+                "directional_correct": directional_correct,
+                "directional_accuracy": directional_accuracy,
+                "abstention_rate": abstention_rate,
                 "brier_score": brier,
                 "bullish": bullish,
                 "bearish": bearish,
                 "neutral": neutral,
-                "class_balance": _class_balance(directions),
+                "class_balance": _class_balance(actuals),
             }
 
         sorted_dates = sorted(set(all_dates))
@@ -307,8 +321,8 @@ def should_suggest_enable(
     improvements = []
     common_agents = set(baseline.keys()) & set(optimized.keys())
     for agent in common_agents:
-        base_acc = baseline[agent].get("accuracy", 0)
-        opt_acc = optimized[agent].get("accuracy", 0)
+        base_acc = baseline[agent].get("directional_accuracy", 0)
+        opt_acc = optimized[agent].get("directional_accuracy", 0)
         improvements.append(opt_acc - base_acc)
 
     if improvements:
@@ -404,7 +418,7 @@ def optimize_agent(
 
     if len(trainset) < 5:
         logger.warning(f"[{agent_name}] Too few training examples ({len(trainset)}), skipping")
-        return {"accuracy": 0.0, "n_demos": 0, "skipped": True}
+        return {"directional_accuracy": 0.0, "abstention_rate": 0.0, "n_demos": 0, "skipped": True}
 
     # Look up agent's persona prompt from config
     personas = config.get("gemini", {}).get("personas", {})
@@ -428,14 +442,19 @@ def optimize_agent(
                 task=f"Analyze as {agent_name}",
             )
 
-    # Metric: direction accuracy (0.7) + calibration (0.3)
+    # Metric: directional accuracy (0.7) + calibration (0.3)
+    # NEUTRAL predictions are penalized — agents should commit to a direction
     def metric(example, prediction, trace=None):
-        direction_match = 1.0 if prediction.direction == example.direction else 0.0
+        pred_dir = prediction.direction
+        if pred_dir == "NEUTRAL":
+            direction_match = 0.0
+        else:
+            direction_match = 1.0 if pred_dir == example.actual else 0.0
         try:
             pred_conf = float(prediction.confidence)
         except (ValueError, TypeError, AttributeError):
             pred_conf = 0.5
-        actual_hit = 1.0 if example.direction == example.actual else 0.0
+        actual_hit = 1.0 if pred_dir == example.actual else 0.0
         calibration = 1.0 - abs(pred_conf - actual_hit)
         return direction_match * 0.7 + calibration * 0.3
 
@@ -449,17 +468,21 @@ def optimize_agent(
     module = AgentPredictor()
     compiled = optimizer.compile(module, trainset=trainset)
 
-    # Evaluate on validation set
+    # Evaluate on validation set (directional accuracy only)
+    val_directional = 0
     val_correct = 0
     for ex in valset:
         try:
             pred = compiled(market_context=ex.market_context)
-            if pred.direction == ex.actual:
-                val_correct += 1
+            if pred.direction != "NEUTRAL":
+                val_directional += 1
+                if pred.direction == ex.actual:
+                    val_correct += 1
         except Exception as e:
             logger.debug(f"[{agent_name}] Eval error: {e}")
 
-    val_accuracy = val_correct / len(valset) if valset else 0.0
+    val_accuracy = val_correct / val_directional if val_directional else 0.0
+    val_abstention = 1.0 - (val_directional / len(valset)) if valset else 0.0
 
     # Extract optimized instruction and demos
     instruction = persona_prompt  # BootstrapFewShot selects demos, keeps instruction
@@ -479,7 +502,8 @@ def optimize_agent(
 
     # Save
     result = {
-        "accuracy": val_accuracy,
+        "directional_accuracy": val_accuracy,
+        "abstention_rate": val_abstention,
         "n_demos": len(demos),
         "instruction": instruction,
         "demos": demos,
@@ -544,8 +568,9 @@ def export_optimized_prompt(
         "ticker": ticker,
         "optimized_at": datetime.now(timezone.utc).isoformat(),
         "n_training_examples": result.get("n_demos", 0),
-        "baseline_accuracy": result.get("baseline_accuracy", None),
-        "optimized_accuracy": result.get("accuracy", None),
+        "baseline_directional_accuracy": result.get("baseline_directional_accuracy", None),
+        "optimized_directional_accuracy": result.get("directional_accuracy", None),
+        "optimized_abstention_rate": result.get("abstention_rate", None),
         "instruction": instruction,
         "demos": result.get("demos", []),
     }
@@ -603,7 +628,8 @@ def evaluate_baseline(stats: dict) -> dict[str, dict]:
     result = {}
     for agent, info in stats.get("agents", {}).items():
         result[agent] = {
-            "accuracy": info["accuracy"],
+            "directional_accuracy": info["directional_accuracy"],
+            "abstention_rate": info["abstention_rate"],
             "brier_score": info["brier_score"],
             "n_examples": info["total"],
             "class_balance": info["class_balance"],

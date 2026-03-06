@@ -71,28 +71,30 @@ def print_eval_table(stats: dict, readiness: dict, min_examples: int):
     print()
 
     # Header
-    fmt = "{:<20} {:>8} {:>9} {:>7}  {}"
-    print(fmt.format("Agent", "Examples", "Accuracy", "Brier", "Ready?"))
-    print("-" * 70)
+    fmt = "{:<20} {:>8} {:>10} {:>11} {:>7}  {}"
+    print(fmt.format("Agent", "Examples", "Dir. Acc.", "Abstention", "Brier", "Ready?"))
+    print("-" * 85)
 
-    # Sort by accuracy ascending (worst first)
+    # Sort by directional accuracy ascending (worst first)
     sorted_agents = sorted(
         agents_info.items(),
-        key=lambda x: x[1].get("accuracy", 0),
+        key=lambda x: x[1].get("directional_accuracy", 0),
     )
 
     for agent, info in sorted_agents:
         ready_info = readiness.get(agent, {})
         ready_str = "YES" if ready_info.get("ready") else "NO"
         reason = ready_info.get("reason", "")
+        dir_total = info.get("directional_total", 0)
         flag = ""
-        if info["accuracy"] < 0.30:
+        if info["directional_accuracy"] < 0.30:
             flag = " <-- worst"
 
         print(fmt.format(
             agent,
-            info["total"],
-            f"{info['accuracy']:.1%}",
+            f"{dir_total}/{info['total']}",
+            f"{info['directional_accuracy']:.1%}",
+            f"{info['abstention_rate']:.1%}",
             f"{info['brier_score']:.2f}",
             f"{ready_str} ({reason}){flag}",
         ))
@@ -114,9 +116,9 @@ def print_optimization_results(
     print(f"  Optimization Results ({ticker})")
     print(f"{'='*56}\n")
 
-    fmt = "{:<20} {:>8} {:>8} {:>10}  {:>5}"
-    print(fmt.format("Agent", "Before", "After", "Delta", "Demos"))
-    print("-" * 60)
+    fmt = "{:<20} {:>8} {:>8} {:>10} {:>11}  {:>5}"
+    print(fmt.format("Agent", "Before", "After", "Delta", "Abstention", "Demos"))
+    print("-" * 75)
 
     for agent in sorted(optimized_results.keys()):
         opt = optimized_results[agent]
@@ -124,16 +126,18 @@ def print_optimization_results(
             print(f"{agent:<20} {'skipped':>8}")
             continue
 
-        base_acc = baseline.get(agent, {}).get("accuracy", 0)
-        opt_acc = opt.get("accuracy", 0)
+        base_acc = baseline.get(agent, {}).get("directional_accuracy", 0)
+        opt_acc = opt.get("directional_accuracy", 0)
         delta = opt_acc - base_acc
         delta_str = f"{delta:+.1%}"
+        abstention = opt.get("abstention_rate", 0)
 
         print(fmt.format(
             agent,
             f"{base_acc:.1%}",
             f"{opt_acc:.1%}",
             delta_str,
+            f"{abstention:.1%}",
             opt.get("n_demos", 0),
         ))
 
@@ -238,7 +242,7 @@ def main():
             optimized_results[agent] = result
         except Exception as e:
             logger.error(f"  Failed to optimize {agent}: {e}")
-            optimized_results[agent] = {"accuracy": 0.0, "skipped": True}
+            optimized_results[agent] = {"directional_accuracy": 0.0, "abstention_rate": 0.0, "skipped": True}
 
     print_optimization_results(baseline, optimized_results, ticker, output_dir, stats, min_for_suggest)
 
