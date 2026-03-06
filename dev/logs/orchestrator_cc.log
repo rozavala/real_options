@@ -1276,3 +1276,43 @@
 2026-03-06 17:55:02,120 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
 2026-03-06 17:55:05,206 - Engine.CC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-06 18:05:00 UTC. Waiting for 0.17 hours.
 2026-03-06 17:56:15,646 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=570, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 18:01:16,792 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=575, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 18:05:00,008 - Engine.CC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-06 18:05:00,011 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-06 18:05:00,011 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-03-06 18:05:00,012 - trading_bot.connection_pool - INFO - Connecting IB (CC_orchestrator_orders) ID: 437 [REMOTE/PAPER]...
+2026-03-06 18:05:01,087 - trading_bot.connection_pool - INFO - IB (CC_orchestrator_orders) connected successfully with ID 437
+2026-03-06 18:05:01,093 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 18:05:01,094 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-06 18:05:01,340 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-03-06 18:05:01,340 - OrderManager - INFO -   Filtered to 0 CC positions with non-zero quantity (from 2 total across all commodities)
+2026-03-06 18:05:01,341 - OrderManager - INFO - No open CC positions to close.
+2026-03-06 18:05:01,341 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_orchestrator_orders)...
+2026-03-06 18:05:04,348 - Engine.CC - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-06 18:15:00 UTC. Waiting for 0.17 hours.
+2026-03-06 18:06:17,883 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=580, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 18:11:19,063 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=585, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 18:15:00,012 - Engine.CC - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-06 18:15:00,014 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-03-06 18:15:00,015 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-03-06 18:15:00,015 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-06 18:15:00,015 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-03-06 18:15:00,015 - trading_bot.connection_pool - INFO - Connecting IB (CC_orchestrator_orders) ID: 438 [REMOTE/PAPER]...
+2026-03-06 18:15:01,042 - trading_bot.connection_pool - INFO - IB (CC_orchestrator_orders) connected successfully with ID 438
+2026-03-06 18:15:01,049 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 18:15:01,050 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-06 18:15:01,370 - OrderManager - INFO - Found 2 live position legs in the IB account.
+2026-03-06 18:15:01,370 - OrderManager - INFO -   Filtered to 0 CC positions with non-zero quantity (from 2 total across all commodities)
+2026-03-06 18:15:01,370 - OrderManager - INFO - No open CC positions to close.
+2026-03-06 18:15:01,370 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_orchestrator_orders)...
+2026-03-06 18:15:04,377 - Engine.CC - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-06 18:25:00 UTC. Waiting for 0.17 hours.
+2026-03-06 18:16:20,234 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=590, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 18:21:22,373 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=595, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-06 18:25:00,014 - Engine.CC - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-06 18:25:00,018 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-06 18:25:00,018 - trading_bot.connection_pool - INFO - Connecting IB (CC_orchestrator_orders) ID: 439 [REMOTE/PAPER]...
+2026-03-06 18:25:01,270 - trading_bot.connection_pool - INFO - IB (CC_orchestrator_orders) connected successfully with ID 439
+2026-03-06 18:25:01,276 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-06 18:25:01,667 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-06 18:25:01,668 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_orchestrator_orders)...
+2026-03-06 18:25:04,675 - Engine.CC - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-06 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-06 18:26:23,585 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=600, market_state=ACTIVE, market_open=True, trading_day=True
