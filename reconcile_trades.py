@@ -923,7 +923,16 @@ async def main(lookback_days: int = None, config: dict = None):
         write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'))
         write_superfluous_trades_to_csv(superfluous_trades_df, config.get('data_dir'))
 
-    # --- 8. Return the dataframes for the orchestrator ---
+    # --- 8. Invalidate synthetics superseded by RECONCILIATION_MISSING ---
+    # Phantom reconciliation creates synthetic closes with fabricated timestamps
+    # that never match real IB trades (2s tolerance). So when Flex reconciliation
+    # discovers the real trade, it writes a RECONCILIATION_MISSING entry — causing
+    # double-counting. This step detects the overlap and writes reversal entries.
+    n_invalidated = invalidate_superseded_synthetics(config.get('data_dir'))
+    if n_invalidated:
+        logger.info(f"Invalidated {n_invalidated} superseded synthetic entries.")
+
+    # --- 9. Return the dataframes for the orchestrator ---
     return missing_trades_df, superfluous_trades_df
 
 
