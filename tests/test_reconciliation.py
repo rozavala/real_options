@@ -163,3 +163,191 @@ async def test_reconcile_council_history_pnl_calc(reconciliation_patches):
         assert mock_csv_data.iloc[0]['exit_price'] == 145.0
         assert mock_csv_data.iloc[0]['pnl_realized'] == 5.0  # (150 - 145) for Short
         assert mock_csv_data.iloc[0]['actual_trend_direction'] == 'BEARISH'
+
+
+# ---------------------------------------------------------------------------
+# invalidate_superseded_synthetics tests
+# ---------------------------------------------------------------------------
+
+class TestInvalidateSupersededSynthetics:
+    """Tests for the double-counting fix in reconcile_trades.py."""
+
+    def _make_ledger_row(self, symbol, action, qty, reason, ts='2026-03-05 12:00:00'):
+        return {
+            'timestamp': ts, 'position_id': 'test', 'combo_id': '',
+            'local_symbol': symbol, 'action': action, 'quantity': qty,
+            'avg_fill_price': 0.0, 'strike': '', 'right': '',
+            'total_value_usd': 0.0, 'reason': reason,
+        }
+
+    def test_invalidates_superseded_synthetic(self, tmp_path):
+        """When both synthetic and RECONCILIATION_MISSING exist for same
+        (symbol, action), a reversal entry should be written."""
+        from reconcile_trades import invalidate_superseded_synthetics
+
+        archive_dir = tmp_path / 'archive_ledger'
+        archive_dir.mkdir()
+
+        # Create a ledger with a synthetic BUY and a RECONCILIATION_MISSING BUY
+        rows = [
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually in TWS'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'RECONCILIATION_MISSING',
+                                  ts='2026-03-05 15:10:00'),
+        ]
+        df = pd.DataFrame(rows)
+        df.to_csv(tmp_path / 'trade_ledger.csv', index=False)
+
+        n = invalidate_superseded_synthetics(str(tmp_path))
+        assert n == 1
+
+        # Verify the invalidation file was written
+        inv_path = archive_dir / 'trade_ledger_synthetic_invalidations.csv'
+        assert inv_path.exists()
+        inv_df = pd.read_csv(inv_path)
+        assert len(inv_df) == 1
+        assert inv_df.iloc[0]['local_symbol'] == 'KO N25 C2.85'
+        assert inv_df.iloc[0]['action'] == 'SELL'  # opposite of BUY
+        assert inv_df.iloc[0]['quantity'] == 1
+
+    def test_no_overlap_no_invalidation(self, tmp_path):
+        """No invalidation when synthetics and RECONCILIATION_MISSING are
+        for different symbols."""
+        from reconcile_trades import invalidate_superseded_synthetics
+
+        rows = [
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually'),
+            self._make_ledger_row('KO N25 P2.70', 'SELL', 1,
+                                  'RECONCILIATION_MISSING'),
+        ]
+        df = pd.DataFrame(rows)
+        df.to_csv(tmp_path / 'trade_ledger.csv', index=False)
+
+        n = invalidate_superseded_synthetics(str(tmp_path))
+        assert n == 0
+
+    def test_idempotent_reruns(self, tmp_path):
+        """Running twice should produce the same result (idempotent)."""
+        from reconcile_trades import invalidate_superseded_synthetics
+
+        archive_dir = tmp_path / 'archive_ledger'
+        archive_dir.mkdir()
+
+        rows = [
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'RECONCILIATION_MISSING'),
+        ]
+        df = pd.DataFrame(rows)
+        df.to_csv(tmp_path / 'trade_ledger.csv', index=False)
+
+        n1 = invalidate_superseded_synthetics(str(tmp_path))
+        assert n1 == 1
+
+        # Second run should still write 1 (it excludes existing invalidations
+        # from analysis and rewrites the file)
+        n2 = invalidate_superseded_synthetics(str(tmp_path))
+        assert n2 == 1
+
+    def test_multiple_symbols_and_actions(self, tmp_path):
+        """Handles multiple symbols with different actions correctly."""
+        from reconcile_trades import invalidate_superseded_synthetics
+
+        archive_dir = tmp_path / 'archive_ledger'
+        archive_dir.mkdir()
+
+        rows = [
+            # C2.85: synthetic BUY + RECON_MISSING BUY → invalidate
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'RECONCILIATION_MISSING'),
+            # C2.8: synthetic SELL + RECON_MISSING SELL → invalidate
+            self._make_ledger_row('KO N25 C2.8', 'SELL', 1,
+                                  'PHANTOM_RECONCILIATION - closed externally'),
+            self._make_ledger_row('KO N25 C2.8', 'SELL', 1,
+                                  'RECONCILIATION_MISSING'),
+            # P2.8: synthetic SELL 2 + RECON_MISSING SELL 2 → invalidate
+            self._make_ledger_row('KO N25 P2.8', 'SELL', 2,
+                                  'Ledger reconciliation - closed externally'),
+            self._make_ledger_row('KO N25 P2.8', 'SELL', 2,
+                                  'RECONCILIATION_MISSING'),
+        ]
+        df = pd.DataFrame(rows)
+        df.to_csv(tmp_path / 'trade_ledger.csv', index=False)
+
+        n = invalidate_superseded_synthetics(str(tmp_path))
+        assert n == 3
+
+        inv_df = pd.read_csv(archive_dir / 'trade_ledger_synthetic_invalidations.csv')
+        assert len(inv_df) == 3
+
+    def test_partial_overlap(self, tmp_path):
+        """When synthetic qty > RECON_MISSING qty, only overlap is invalidated."""
+        from reconcile_trades import invalidate_superseded_synthetics
+
+        archive_dir = tmp_path / 'archive_ledger'
+        archive_dir.mkdir()
+
+        rows = [
+            self._make_ledger_row('KO N25 P2.8', 'SELL', 3,
+                                  'Ledger reconciliation - closed externally'),
+            self._make_ledger_row('KO N25 P2.8', 'SELL', 2,
+                                  'RECONCILIATION_MISSING'),
+        ]
+        df = pd.DataFrame(rows)
+        df.to_csv(tmp_path / 'trade_ledger.csv', index=False)
+
+        n = invalidate_superseded_synthetics(str(tmp_path))
+        assert n == 1
+
+        inv_df = pd.read_csv(archive_dir / 'trade_ledger_synthetic_invalidations.csv')
+        assert inv_df.iloc[0]['quantity'] == 2  # min(3, 2)
+
+    def test_net_position_corrected(self, tmp_path):
+        """After invalidation, get_local_active_positions should show
+        correct net positions."""
+        from reconcile_trades import invalidate_superseded_synthetics, get_local_active_positions
+
+        archive_dir = tmp_path / 'archive_ledger'
+        archive_dir.mkdir()
+
+        # Simulate the real scenario: original SELL, synthetic BUY (close),
+        # RECONCILIATION_MISSING BUY (real close)
+        rows = [
+            self._make_ledger_row('KO N25 C2.85', 'SELL', 1,
+                                  'Strategy Execution',
+                                  ts='2026-03-04 10:00:00'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually',
+                                  ts='2026-03-05 12:00:00'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'RECONCILIATION_MISSING',
+                                  ts='2026-03-05 15:10:00'),
+        ]
+        df = pd.DataFrame(rows)
+        df.to_csv(tmp_path / 'trade_ledger.csv', index=False)
+
+        # Before fix: net = -1 + 1 + 1 = +1 (wrong)
+        positions_before = get_local_active_positions(
+            pd.read_csv(tmp_path / 'trade_ledger.csv')
+        )
+        assert not positions_before.empty, "Should show phantom position before fix"
+
+        # Apply fix
+        invalidate_superseded_synthetics(str(tmp_path))
+
+        # After fix: load full ledger including invalidation file
+        from reconcile_trades import get_trade_ledger_df
+        full_ledger = get_trade_ledger_df(str(tmp_path))
+        positions_after = get_local_active_positions(full_ledger)
+
+        # Net should be 0 (SELL 1 + BUY 1 synthetic + BUY 1 recon
+        #                    + SELL 1 invalidation = 0)
+        c285 = positions_after[
+            positions_after['Symbol'] == 'KO N25 C2.85'
+        ]
+        assert c285.empty, f"Position should be flat, got: {c285}"
