@@ -107,6 +107,11 @@ def log_decision_signal(
     Returns True on success, False on failure (never raises).
     """
     try:
+        # Guard: only log signals inside a live orchestrator session.
+        from trading_bot.data_dir_context import get_engine_runtime
+        if get_engine_runtime() is None:
+            return True  # Silently skip in non-orchestrator context
+
         # Normalize trigger_type: handle enum objects, lowercase strings, etc.
         if hasattr(trigger_type, 'value'):
             trigger_type = trigger_type.value  # Extract enum value

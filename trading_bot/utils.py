@@ -726,6 +726,15 @@ def log_council_decision(decision_data):
     """
     import pandas as pd
 
+    # Guard: only log decisions inside a live orchestrator session.
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        if get_engine_runtime() is None:
+            logger.debug("Skipping council decision log: no EngineRuntime (non-orchestrator context)")
+            return
+    except Exception:
+        pass  # Allow in legacy single-engine mode
+
     eff_dir = _get_data_dir()
     if eff_dir:
         council_data_dir = eff_dir
