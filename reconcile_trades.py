@@ -326,114 +326,6 @@ def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame, data_di
         logger.error(f"An unexpected error occurred in write_superfluous_trades_to_csv: {e}")
 
 
-def invalidate_superseded_synthetics(data_dir: str = None) -> int:
-    """
-    Detect synthetic 'Ledger reconciliation' entries that are superseded by
-    RECONCILIATION_MISSING entries for the same (local_symbol, action), and
-    write reversal entries to cancel the duplicates.
-
-    This fixes the double-counting bug where phantom reconciliation creates
-    synthetic closes BEFORE Flex reconciliation discovers the real trades,
-    causing get_local_active_positions() to report a non-zero net position.
-
-    Idempotent: each run overwrites the invalidation file with the complete
-    set of needed reversals based on the current ledger state.
-    """
-    ledger = get_trade_ledger_df(data_dir)
-    if ledger.empty or 'reason' not in ledger.columns:
-        return 0
-
-    reasons = ledger['reason'].fillna('')
-
-    # Exclude existing invalidation entries from analysis to avoid oscillation
-    non_invalidation = ledger[~reasons.str.contains('SYNTHETIC_INVALIDATED', case=False)]
-    reasons_filtered = non_invalidation['reason'].fillna('')
-
-    synthetic_mask = reasons_filtered.str.contains(
-        'Ledger reconciliation|PHANTOM_RECONCILIATION', case=False
-    )
-    synthetics = non_invalidation[synthetic_mask].copy()
-
-    recon_mask = reasons_filtered.str.contains('RECONCILIATION_MISSING', case=False)
-    recon_missing = non_invalidation[recon_mask].copy()
-
-    if synthetics.empty or recon_missing.empty:
-        logger.info("No synthetic/RECONCILIATION_MISSING overlap to fix.")
-        return 0
-
-    # Ensure quantity is numeric
-    synthetics['quantity'] = pd.to_numeric(synthetics['quantity'], errors='coerce').fillna(0)
-    recon_missing['quantity'] = pd.to_numeric(recon_missing['quantity'], errors='coerce').fillna(0)
-
-    syn_grouped = synthetics.groupby(['local_symbol', 'action'])['quantity'].sum()
-    recon_grouped = recon_missing.groupby(['local_symbol', 'action'])['quantity'].sum()
-
-    reversals = []
-    opposite = {'BUY': 'SELL', 'SELL': 'BUY'}
-
-    for (symbol, action), syn_qty in syn_grouped.items():
-        if (symbol, action) not in recon_grouped.index:
-            continue
-
-        recon_qty = recon_grouped[(symbol, action)]
-        overlap = int(min(syn_qty, recon_qty))
-        if overlap <= 0:
-            continue
-
-        rev_action = opposite.get(action)
-        if not rev_action:
-            continue
-
-        reversals.append({
-            'timestamp': pd.Timestamp.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-            'position_id': 'INVALIDATION',
-            'combo_id': '',
-            'local_symbol': symbol,
-            'action': rev_action,
-            'quantity': overlap,
-            'avg_fill_price': 0.0,
-            'strike': '',
-            'right': '',
-            'total_value_usd': 0.0,
-            'reason': f'SYNTHETIC_INVALIDATED - reversal of superseded {action} {overlap} for {symbol}',
-        })
-        logger.info(
-            f"Invalidating synthetic: {symbol} {action} {overlap} "
-            f"(superseded by RECONCILIATION_MISSING)"
-        )
-
-    # Determine output path
-    if data_dir:
-        archive_dir = os.path.join(data_dir, 'archive_ledger')
-    else:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        archive_dir = os.path.join(base_dir, 'archive_ledger')
-
-    output_path = os.path.join(archive_dir, 'trade_ledger_synthetic_invalidations.csv')
-
-    if not reversals:
-        # Remove stale file if no reversals are needed
-        if os.path.exists(output_path):
-            os.remove(output_path)
-            logger.info(f"Removed stale invalidation file '{output_path}'.")
-        logger.info("No superseded synthetics found to invalidate.")
-        return 0
-
-    os.makedirs(archive_dir, exist_ok=True)
-
-    fieldnames = [
-        'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
-        'avg_fill_price', 'strike', 'right', 'total_value_usd', 'reason'
-    ]
-
-    rev_df = pd.DataFrame(reversals)
-    rev_df = rev_df.reindex(columns=fieldnames)
-    rev_df.to_csv(output_path, index=False, float_format='%.2f')
-
-    logger.info(f"Wrote {len(reversals)} synthetic invalidation(s) to '{output_path}'.")
-    return len(reversals)
-
-
 def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Compares IB trades with the local ledger to identify discrepancies.
@@ -953,16 +845,7 @@ async def main(lookback_days: int = None, config: dict = None):
         write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'))
         write_superfluous_trades_to_csv(superfluous_trades_df, config.get('data_dir'))
 
-    # --- 8. Invalidate synthetics superseded by RECONCILIATION_MISSING ---
-    # Phantom reconciliation creates synthetic closes with fabricated timestamps
-    # that never match real IB trades (2s tolerance). So when Flex reconciliation
-    # discovers the real trade, it writes a RECONCILIATION_MISSING entry — causing
-    # double-counting. This step detects the overlap and writes reversal entries.
-    n_invalidated = invalidate_superseded_synthetics(config.get('data_dir'))
-    if n_invalidated:
-        logger.info(f"Invalidated {n_invalidated} superseded synthetic entries.")
-
-    # --- 9. Return the dataframes for the orchestrator ---
+    # --- 8. Return the dataframes for the orchestrator ---
     return missing_trades_df, superfluous_trades_df
 
 
