@@ -138,7 +138,7 @@ Specialized LLM personas that analyze grounded data.
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration.
 8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
-9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
+9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation dynamically drops superseded synthetic phantom entries when actual IB trades are discovered, preventing double-counting. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
 ## Running
@@ -181,7 +181,7 @@ git push origin production
 
 ## Tech Stack
 
--   **Runtime:** Python 3.11+, `asyncio`
+-   **Runtime:** Python 3.11+, `asyncio`, highly optimized vectorized `pandas`/`NumPy` operations for data analysis.
 -   **Execution:** Interactive Brokers Gateway (`ib_insync`)
 -   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1)
 -   **Memory:** ChromaDB (Vector Store)
