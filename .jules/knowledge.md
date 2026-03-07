@@ -64,7 +64,7 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action. Emergency closures execute concurrently via true market orders.
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
-4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups.
+4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups. It dynamically filters out superseded synthetic ledger entries when actual trades are discovered, eliminating phantom positions without requiring explicit reversal entries.
 5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.
 
 ### Three-Tier Market State
