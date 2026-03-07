@@ -310,14 +310,14 @@ class TestPortfolioUX(unittest.TestCase):
             tree = ast.parse(f.read())
 
         target_metrics = [
-            "Net Liquidation",
-            "Peak Equity",
-            "Daily P&L",
-            "Drawdown",
-            "VaR (95%)",
-            "VaR (99%)",
-            "Utilization",
-            "Legs",
+            "💰 Net Liquidation",
+            "🏔️ Peak Equity",
+            "💵 Daily P&L",
+            "📉 Drawdown",
+            "🎯 VaR (95%)",
+            "🎯 VaR (99%)",
+            "⚖️ Utilization",
+            "🔢 Legs",
         ]
         found_metrics = {m: False for m in target_metrics}
 
@@ -539,13 +539,13 @@ class TestScorecardUX(unittest.TestCase):
             tree = ast.parse(f.read())
 
         target_metrics = [
-            "Precision",
-            "Recall",
-            "Accuracy",
-            "Total Graded",
-            "Avg Winning Duration",
-            "Avg Losing Duration",
-            "Win Rate",
+            "🎯 Precision",
+            "📡 Recall",
+            "⚖️ Accuracy",
+            "🔢 Total Graded",
+            "⏱️ Avg Winning Duration",
+            "⏱️ Avg Losing Duration",
+            "📈 Win Rate",
         ]
         found_metrics = {m: False for m in target_metrics}
 
