@@ -386,56 +386,58 @@ class EnhancedBrierTracker:
         if structured_csv_path is None:
             structured_csv_path = os.path.join(os.path.dirname(self.data_path), "agent_accuracy_structured.csv")
 
-        if not os.path.exists(structured_csv_path):
-            return 0
+        csv_exists = os.path.exists(structured_csv_path)
 
-        try:
-            csv_df = pd.read_csv(structured_csv_path)
-        except Exception as e:
-            logger.error(f"Backfill: Failed to read CSV: {e}")
-            return 0
-
-        # Build lookup of resolved CSV predictions: cycle_id+agent → actual_direction
-        csv_resolved = {}
-        for _, row in csv_df.iterrows():
-            actual = str(row.get('actual', 'PENDING'))
-            if actual in ('PENDING', 'ORPHANED', ''):
-                continue
-            cycle_id = str(row.get('cycle_id', '')).strip()
-            agent = str(row.get('agent', '')).strip()
-            if cycle_id and agent:
-                csv_resolved[(cycle_id, agent)] = actual
-
-        # Find unresolved Enhanced Brier predictions that have CSV resolutions
+        # Pass 1: Resolve JSON predictions from legacy CSV resolutions
         backfilled = 0
-        for pred in self.predictions:
-            if pred.actual_outcome is not None:
-                continue  # Already resolved
+        if csv_exists:
+            try:
+                csv_df = pd.read_csv(structured_csv_path)
+            except Exception as e:
+                logger.error(f"Backfill: Failed to read CSV: {e}")
+                csv_exists = False
 
-            key = (pred.cycle_id, pred.agent)
-            if key in csv_resolved:
-                actual = csv_resolved[key]
-                pred.actual_outcome = actual
-                pred.resolved_at = datetime.now(timezone.utc)
+        if csv_exists:
+            # Build lookup of resolved CSV predictions: cycle_id+agent → actual_direction
+            csv_resolved = {}
+            for _, row in csv_df.iterrows():
+                actual = str(row.get('actual', 'PENDING'))
+                if actual in ('PENDING', 'ORPHANED', ''):
+                    continue
+                cycle_id = str(row.get('cycle_id', '')).strip()
+                agent = str(row.get('agent', '')).strip()
+                if cycle_id and agent:
+                    csv_resolved[(cycle_id, agent)] = actual
 
-                brier = pred.calc_brier_score()
-                if brier is not None:
-                    self._update_agent_score(pred.agent, pred.regime.value, brier)
-                    self._update_calibration(pred)
+            # Find unresolved Enhanced Brier predictions that have CSV resolutions
+            for pred in self.predictions:
+                if pred.actual_outcome is not None:
+                    continue  # Already resolved
 
-                backfilled += 1
-                brier_str = f"{brier:.4f}" if brier is not None else "N/A"
-                logger.info(
-                    f"Backfilled {pred.agent} (cycle={pred.cycle_id}): "
-                    f"{pred.predicted_direction} vs {actual}, "
-                    f"Brier={brier_str}"
-                )
+                key = (pred.cycle_id, pred.agent)
+                if key in csv_resolved:
+                    actual = csv_resolved[key]
+                    pred.actual_outcome = actual
+                    pred.resolved_at = datetime.now(timezone.utc)
+
+                    brier = pred.calc_brier_score()
+                    if brier is not None:
+                        self._update_agent_score(pred.agent, pred.regime.value, brier)
+                        self._update_calibration(pred)
+
+                    backfilled += 1
+                    brier_str = f"{brier:.4f}" if brier is not None else "N/A"
+                    logger.info(
+                        f"Backfilled {pred.agent} (cycle={pred.cycle_id}): "
+                        f"{pred.predicted_direction} vs {actual}, "
+                        f"Brier={brier_str}"
+                    )
 
         # Pass 2: Create predictions from CSV that are missing in JSON.
         # After legacy deprecation, CSV is frozen — no new rows are written.
         # Re-creating historical CSV entries on every restart inflates the list
         # and causes trimming to drop recent JSON-only predictions (the KC bug).
-        skip_pass2 = datetime.now(timezone.utc) >= _BACKFILL_PASS2_CUTOFF
+        skip_pass2 = not csv_exists or datetime.now(timezone.utc) >= _BACKFILL_PASS2_CUTOFF
         if skip_pass2:
             logger.info(
                 "Backfill Pass 2 skipped (legacy CSV deprecated %s, no new rows to import)",
