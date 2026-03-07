@@ -71,8 +71,9 @@ class TestGetAgentReliability(unittest.TestCase):
 
 
 class TestRecordAgentPrediction(unittest.TestCase):
+    @patch('trading_bot.data_dir_context.get_engine_runtime', return_value=MagicMock())
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_writes_to_enhanced_only(self, mock_enhanced_fn):
+    def test_writes_to_enhanced_only(self, mock_enhanced_fn, _mock_rt):
         """record_agent_prediction writes to enhanced system only (legacy removed)."""
         mock_enhanced_tracker = MagicMock()
         mock_enhanced_fn.return_value = mock_enhanced_tracker

@@ -40,6 +40,17 @@ def record_agent_prediction(
     """
     ts = timestamp or datetime.now(timezone.utc)
 
+    # Guard: only record predictions inside a live orchestrator session.
+    # Prevents DSPy evaluations, manual tests, and scripts from polluting
+    # the production Brier data.
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        if get_engine_runtime() is None:
+            logger.debug(f"Skipping Brier recording for {agent}: no EngineRuntime (non-orchestrator context)")
+            return
+    except Exception:
+        pass  # If ContextVar lookup fails, allow recording (legacy single-engine mode)
+
     # === ENHANCED SYSTEM (JSON) — sole write path ===
     try:
         from trading_bot.enhanced_brier import EnhancedBrierTracker, MarketRegime, normalize_regime
