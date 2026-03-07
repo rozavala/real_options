@@ -1035,9 +1035,9 @@ if _brier_data and _brier_data.get('predictions'):
     rate = resolved / total * 100 if total > 0 else 0
 
     health_cols = st.columns(4)
-    health_cols[0].metric("Total Predictions", total)
-    health_cols[1].metric("Resolved", resolved)
-    health_cols[2].metric("Pending", pending)
+    health_cols[0].metric("Total Predictions", total, help="Total number of Brier score predictions")
+    health_cols[1].metric("Resolved", resolved, help="Number of predictions with a known outcome")
+    health_cols[2].metric("Pending", pending, help="Number of predictions waiting for resolution")
     health_cols[3].metric(
         "Resolution Rate", f"{rate:.0f}%", help="Resolved / Total predictions"
     )
