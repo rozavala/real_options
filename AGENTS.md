@@ -9,6 +9,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 3.  **Fail-Closed:** All components must fail closed. If an error occurs, the trade is blocked.
 4.  **Traceability:** All decisions must be logged in `council_history.csv` and `decision_signals.csv`.
 5.  **State Management:** State reconciliation must group raw IBKR legs into semantic thesis groups and use aggregate quantities to avoid false-positive orphan detection.
+6.  **Market States:** The system operates in a Three-Tier Market State model (`Active`, `Passive`, `Sleeping`). Agents must be aware that during `Passive` mode (e.g., CME Globex overnight sessions), normal cycles are skipped but emergency surveillance continues, allowing for passive emergency closes if triggers are met.
 
 ## Core Components
 
@@ -42,7 +43,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 
 ## Learning & Optimization
 
--   **Prompt Optimization (DSPy):** The system uses `trading_bot/dspy_optimizer.py` to optimize agent prompts. This offline process analyzes `council_history.csv` to find effective few-shot examples (BootstrapFewShot) that improve reasoning accuracy.
+-   **Prompt Optimization (DSPy):** The system uses `trading_bot/dspy_optimizer.py` to optimize agent prompts. This offline process analyzes `enhanced_brier.json` to find effective few-shot examples (BootstrapFewShot) that improve reasoning accuracy. Metrics evaluated are directional accuracy (BULLISH/BEARISH matches) and abstention rate (NEUTRAL predictions).
 -   **Trade Journal:** Every closed trade triggers a post-mortem analysis (`trading_bot/trade_journal.py`). This generates a "Key Lesson" which is stored in TMS and retrieved via **Reflexion** during future cycles to prevent repeating mistakes.
 -   **Reflexion:** Agents query the TMS for past mistakes ("Self-Critique") before finalizing their analysis.
 

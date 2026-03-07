@@ -89,6 +89,7 @@ graph TD
 8.  **Automated Trade Journal (`trading_bot/trade_journal.py`):** Generates structured post-mortem narratives for every closed trade, stored in TMS for future learning.
 9.  **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry.
 10. **Error Reporter (`scripts/error_reporter.py`):** A standalone telemetry script (decoupled from the orchestrator) that scans system logs, uses fingerprinting to deduplicate errors, intelligently filters out transient operational noise (e.g., 429 rate limits, 503 unavailable, lock timeouts), and auto-generates structured GitHub issues to track true system anomalies.
+11. **Three-Tier Market State Resolver (`trading_bot/utils.py`):** Dynamically dictates the state of each commodity (`Active`, `Passive`, `Sleeping`), allowing continuous 24/7 surveillance of extended sessions (e.g., CME Globex overnight) without the risk of generating unnecessary active cycle trades.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
@@ -137,7 +138,7 @@ Specialized LLM personas that analyze grounded data.
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration.
 8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
-9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching.
+9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
 ## Running
@@ -165,7 +166,8 @@ streamlit run dashboard.py
 
 ### Configuration
 -   **`config.json`**: Primary configuration (model registry, thresholds, sentinel intervals).
--   **`commodity_overrides`**: Per-commodity config overrides in `config.json` (e.g., `commodity_overrides.CC`).
+-   **`commodity_overrides`**: Per-commodity runtime config overrides in `config.json` (schedule, strategy, risk).
+-   **`config/profiles/<ticker>.json`**: Commodity-specific profiles (market states, contract specs, growing regions).
 -   **`ACTIVE_COMMODITIES`**: Comma-separated list of tickers in `.env` or config (default: `KC,CC,NG`).
 
 ### Deployment

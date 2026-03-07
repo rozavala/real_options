@@ -49,7 +49,7 @@ A set of agents that synthesize the analysts' reports.
 - **Commodity Engine:** Runs the per-commodity loop.
 - **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
-- **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
+- **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot). Evaluates based on directional accuracy and abstention rate directly from `enhanced_brier.json` (legacy CSV paths have been deprecated).
 - **Error Reporter Pipeline:** A standalone telemetry script (`scripts/error_reporter.py`) decoupled from the orchestrator. It ensures fail-safe operational awareness by parsing system logs, filtering out expected transient noise (e.g., `503 UNAVAILABLE`, `RESOURCE_EXHAUSTED`, rate limits, `CIRCUIT BREAKER`, emergency lock timeouts), and uses fingerprinting to deduplicate and auto-generate structured GitHub issues for true anomalies.
 
 ## Knowledge Generation and Memory
@@ -66,3 +66,9 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
 4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups.
 5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.
+
+### Three-Tier Market State
+To handle 24/7 trading availability for commodities like Natural Gas (NG) on CME Globex, the system dynamically shifts between three states:
+- **ACTIVE:** Full orchestration, strategy evaluation, and active order execution.
+- **PASSIVE:** Active cycles are paused. Sentinel surveillance runs continuously. If a catastrophe is detected, a passive emergency cycle is launched (dry run optional) to execute defensive closures.
+- **SLEEPING:** The system completely drops connections and performs no active polling or LLM calls (e.g., weekends, maintenance windows, specific holidays).

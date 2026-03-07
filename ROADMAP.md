@@ -158,6 +158,13 @@ Custom `observability.py` exists with HallucinationDetector, AgentTrace, and Obs
 
 ---
 
+### #12 — G.7 Three-Tier Market State Model
+**Type:** Ops | **Effort:** 1-2 weeks | **Status:** Complete
+
+**Completed (March 2026):** Implemented an `ACTIVE`/`PASSIVE`/`SLEEPING` state model to handle 24/7 coverage for extended hours commodities like Natural Gas (NG). `PASSIVE` mode allows Sentinel surveillance and emergency closures while saving costs by pausing regular active polling and full Council cycles. Uses JSON configuration profiles (`config/profiles/<ticker>.json`).
+
+---
+
 ### #11 — F.6 Synthetic Rare Event Generation
 **Type:** Stress test | **Effort:** 3-4 weeks | **Status:** Not started
 
