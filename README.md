@@ -166,7 +166,8 @@ streamlit run dashboard.py
 
 ### Configuration
 -   **`config.json`**: Primary configuration (model registry, thresholds, sentinel intervals).
--   **`config/profiles/<ticker>.json`**: Commodity-specific configurations that define market states (`Active`, `Passive`, `Sleeping`), maintenance breaks, and override options (e.g., `kc.json`, `cc.json`, `ng.json`).
+-   **`commodity_overrides`**: Per-commodity runtime config overrides in `config.json` (schedule, strategy, risk).
+-   **`config/profiles/<ticker>.json`**: Commodity-specific profiles (market states, contract specs, growing regions).
 -   **`ACTIVE_COMMODITIES`**: Comma-separated list of tickers in `.env` or config (default: `KC,CC,NG`).
 
 ### Deployment
