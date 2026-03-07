@@ -923,12 +923,7 @@ async def main(lookback_days: int = None, config: dict = None):
         write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'))
         write_superfluous_trades_to_csv(superfluous_trades_df, config.get('data_dir'))
 
-    # --- 8. Invalidate synthetics superseded by RECONCILIATION_MISSING ---
-    n_invalidated = invalidate_superseded_synthetics(config.get('data_dir'))
-    if n_invalidated:
-        logger.info(f"Invalidated {n_invalidated} superseded synthetic entries.")
-
-    # --- 9. Return the dataframes for the orchestrator ---
+    # --- 8. Return the dataframes for the orchestrator ---
     return missing_trades_df, superfluous_trades_df
 
 
