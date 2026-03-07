@@ -59,12 +59,13 @@ async def test_contextvar_post_trade_math():
 
 
 @pytest.mark.asyncio
-async def test_contextvar_set_and_get():
+async def test_contextvar_set_and_get(tmp_path):
     """Basic set/get works within a single task."""
+    test_dir = str(tmp_path / "TEST")
     async def _task():
-        set_engine_data_dir('data/TEST')
+        set_engine_data_dir(test_dir)
         result = get_engine_data_dir()
-        assert result == 'data/TEST', f"Expected 'data/TEST', got '{result}'"
+        assert result == test_dir, f"Expected '{test_dir}', got '{result}'"
     await asyncio.create_task(_task())
 
 

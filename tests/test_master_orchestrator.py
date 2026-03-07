@@ -126,7 +126,7 @@ async def test_ib_pool_no_prefix_in_legacy():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_engine_runtime_full_isolation():
+async def test_engine_runtime_full_isolation(tmp_path):
     """Verify complete isolation of deduplicator, drawdown_guard across engines."""
     results = {}
 
@@ -140,7 +140,8 @@ async def test_engine_runtime_full_isolation():
             drawdown_guard=MagicMock(),
         )
         set_engine_runtime(rt)
-        set_engine_data_dir(f"data/{ticker}")
+        data_dir = str(tmp_path / ticker)
+        set_engine_data_dir(data_dir)
 
         await asyncio.sleep(0.05)  # Yield to other tasks
 
@@ -160,9 +161,9 @@ async def test_engine_runtime_full_isolation():
     assert results["KC"]["runtime_ticker"] == "KC"
     assert results["CC"]["runtime_ticker"] == "CC"
     assert results["SB"]["runtime_ticker"] == "SB"
-    assert results["KC"]["data_dir"] == "data/KC"
-    assert results["CC"]["data_dir"] == "data/CC"
-    assert results["SB"]["data_dir"] == "data/SB"
+    assert results["KC"]["data_dir"] == str(tmp_path / "KC")
+    assert results["CC"]["data_dir"] == str(tmp_path / "CC")
+    assert results["SB"]["data_dir"] == str(tmp_path / "SB")
 
 
 # ---------------------------------------------------------------------------
