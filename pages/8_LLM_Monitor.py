@@ -36,7 +36,7 @@ st.caption("API costs, budget utilization, provider health, and latency")
 # =====================================================================
 # SECTION 1: Today's Budget
 # =====================================================================
-st.subheader("Today's Budget")
+st.subheader("📅 Today's Budget")
 
 budget = load_budget_status(ticker)
 
@@ -67,10 +67,10 @@ if budget:
         throttle_color = "red"
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Daily Spend", f"${daily_spend:.2f}", help="Total LLM API cost incurred today across all agents (resets at midnight UTC).")
-    col2.metric("Remaining", f"${remaining:.2f}", help="Remaining budget before graduated throttling begins.")
-    col3.metric("Requests", str(request_count), help="Total number of successful LLM API requests made today.")
-    col4.metric("Throttle", throttle_label, help="Current system throttling level. Normal operation is 'All Clear'.")
+    col1.metric("💳 Daily Spend", f"${daily_spend:.2f}", help="Total LLM API cost incurred today across all agents (resets at midnight UTC).")
+    col2.metric("💰 Remaining", f"${remaining:.2f}", help="Remaining budget before graduated throttling begins.")
+    col3.metric("🔢 Requests", str(request_count), help="Total number of successful LLM API requests made today.")
+    col4.metric("🚦 Throttle", throttle_label, help="Current system throttling level. Normal operation is 'All Clear'.")
 
     # Progress bar
     if pct_used < 50:
@@ -96,14 +96,14 @@ else:
 # SECTION 1b: X/Twitter API Usage
 # =====================================================================
 st.markdown("---")
-st.subheader("X (Twitter) API Usage")
+st.subheader("🐦 X (Twitter) API Usage")
 
 x_api_calls = budget.get('x_api_calls', 0) if budget else 0
 x_api_cost = budget.get('x_api_cost', 0.0) if budget else 0.0
 
 col1, col2, col3 = st.columns(3)
-col1.metric("API Calls Today", str(x_api_calls), help="Number of requests made to the X (Twitter) API today.")
-col2.metric("Estimated Cost Today", f"${x_api_cost:.4f}", help="Estimated cost based on configured per-call rates.")
+col1.metric("🔢 API Calls Today", str(x_api_calls), help="Number of requests made to the X (Twitter) API today.")
+col2.metric("💰 Estimated Cost Today", f"${x_api_cost:.4f}", help="Estimated cost based on configured per-call rates.")
 col3.caption(
     "X Bearer API costs are tracked separately from LLM spend. "
     "Per-call rate is configured in config/api_costs.json."
@@ -114,7 +114,7 @@ col3.caption(
 # SECTION 2: Cost by Agent Role
 # =====================================================================
 st.markdown("---")
-st.subheader("Cost by Agent Role (Today)")
+st.subheader("🎭 Cost by Agent Role (Today)")
 
 cost_by_source = budget.get('cost_by_source', {}) if budget else {}
 
@@ -140,7 +140,7 @@ if cost_by_source:
         yaxis_title=None,
         xaxis_title='Cost (USD)',
     )
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("No per-source cost data yet. Costs are tracked as API calls are made.")
 
@@ -149,7 +149,7 @@ else:
 # SECTION 3: Provider Health
 # =====================================================================
 st.markdown("---")
-st.subheader("Provider Health")
+st.subheader("🏥 Provider Health")
 
 metrics_path = _resolve_data_path_for('router_metrics.json', ticker)
 
@@ -198,7 +198,7 @@ if router_data and router_data.get('requests'):
             'P95 Latency (ms)': f"{p95_lat:.0f}" if lats else "N/A",
         })
 
-    st.dataframe(pd.DataFrame(table_rows), hide_index=True, width='stretch')
+    st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
 
     # Latency box plot
     all_latencies = []
@@ -217,7 +217,7 @@ if router_data and router_data.get('requests'):
             height=350,
         )
         fig_lat.update_layout(margin=dict(t=10, b=30))
-        st.plotly_chart(fig_lat, width='stretch')
+        st.plotly_chart(fig_lat, use_container_width=True)
 
     # Fallback chains
     fallbacks = router_data.get('fallbacks', {})
@@ -228,7 +228,7 @@ if router_data and router_data.get('requests'):
                 for chain, count in chains.items():
                     fb_rows.append({'Role': role, 'Chain': chain, 'Count': count})
             fb_df = pd.DataFrame(fb_rows).sort_values('Count', ascending=False)
-            st.dataframe(fb_df, hide_index=True, width='stretch')
+            st.dataframe(fb_df, hide_index=True, use_container_width=True)
 else:
     st.info("No router metrics data yet. Data appears after the first LLM API call.")
 
@@ -237,7 +237,7 @@ else:
 # SECTION 4: Daily Cost Trend (last 30 days)
 # =====================================================================
 st.markdown("---")
-st.subheader("Daily Cost Trend")
+st.subheader("📈 Daily Cost Trend")
 
 costs_df = load_llm_daily_costs(ticker)
 costs_df = date_range_filter(costs_df, timestamp_col='date', key_prefix='llm')
@@ -278,7 +278,7 @@ if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df
         margin=dict(t=20, b=40),
     )
 
-    st.plotly_chart(fig_trend, width='stretch')
+    st.plotly_chart(fig_trend, use_container_width=True)
 
     # Request count trend (secondary)
     if 'request_count' in costs_df.columns:
@@ -288,7 +288,7 @@ if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df
     # X API usage trend
     if 'x_api_calls' in costs_df.columns:
         st.markdown("---")
-        st.subheader("X (Twitter) API History")
+        st.subheader("🐦 X (Twitter) API History")
 
         x_cols = ['x_api_calls']
         if 'x_api_cost_usd' in costs_df.columns:
@@ -327,7 +327,7 @@ if not costs_df.empty and 'date' in costs_df.columns and 'total_usd' in costs_df
                 margin=dict(t=20, b=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02),
             )
-            st.plotly_chart(fig_x, width='stretch')
+            st.plotly_chart(fig_x, use_container_width=True)
         else:
             st.info("No X API calls recorded in the historical data yet.")
 else:
@@ -341,7 +341,7 @@ else:
 # SECTION 5: Model Pricing Reference
 # =====================================================================
 st.markdown("---")
-st.subheader("Model Pricing Reference")
+st.subheader("🏷️ Model Pricing Reference")
 
 try:
     cost_file = os.path.join(
@@ -365,7 +365,7 @@ try:
             })
 
     if pricing_rows:
-        st.dataframe(pd.DataFrame(pricing_rows), hide_index=True, width='stretch')
+        st.dataframe(pd.DataFrame(pricing_rows), hide_index=True, use_container_width=True)
         st.caption(f"Pricing last updated: {last_updated}")
 
 except Exception as e:
