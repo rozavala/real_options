@@ -1042,9 +1042,13 @@ def _find_position_id_for_contract(
 
         # Calculate net quantity for this symbol
         sym_mask = pos_entries['local_symbol'] == symbol
-        buys = pos_entries.loc[sym_mask & (pos_entries['action'] == 'BUY'), 'quantity'].sum()
-        sells = pos_entries.loc[sym_mask & (pos_entries['action'] == 'SELL'), 'quantity'].sum()
-        net_qty = buys - sells
+        sym_entries = pos_entries[sym_mask].copy()
+
+        if not sym_entries.empty:
+            sym_entries['signed_qty'] = np.where(sym_entries['action'] == 'BUY', sym_entries['quantity'], -sym_entries['quantity'])
+            net_qty = sym_entries['signed_qty'].sum()
+        else:
+            net_qty = 0
 
         if net_qty != 0:
             entry_time = pos_entries['timestamp'].min()
@@ -1542,9 +1546,10 @@ async def _reconcile_phantom_ledger_entries(
                     if reasons.str.contains('PHANTOM_RECONCILIATION').any():
                         continue
 
-                buys = symbol_rows.loc[symbol_rows['action'] == 'BUY', 'quantity'].sum()
-                sells = symbol_rows.loc[symbol_rows['action'] == 'SELL', 'quantity'].sum()
-                net_qty = buys - sells
+                sr_valid = symbol_rows.copy()
+                sr_valid['signed_qty'] = np.where(sr_valid['action'] == 'BUY', sr_valid['quantity'], -sr_valid['quantity'])
+                net_qty = sr_valid['signed_qty'].sum()
+
                 if net_qty != 0:
                     phantoms.append({
                         'position_id': pos_id,
