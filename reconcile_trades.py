@@ -87,6 +87,36 @@ def get_local_active_positions(ledger: pd.DataFrame = None) -> pd.DataFrame:
     # If I Buy 1 contract (to close short), my position is 0.
     # So: BUY is always +Quantity, SELL is always -Quantity.
 
+    # Drop synthetic entries superseded by RECONCILIATION_MISSING.
+    # Phantom reconciliation creates synthetic closes (fabricated timestamp,
+    # $0 price) when IB shows no position. Later, Flex reconciliation finds
+    # the real trade and writes a RECONCILIATION_MISSING entry. Both account
+    # for the same close → double-counting. When both exist for the same
+    # (symbol, action), the synthetic is redundant — drop it.
+    if 'reason' in ledger.columns:
+        reasons = ledger['reason'].fillna('')
+        synthetic_mask = reasons.str.contains(
+            'Ledger reconciliation|PHANTOM_RECONCILIATION', case=False
+        )
+        recon_mask = reasons.str.contains('RECONCILIATION_MISSING', case=False)
+
+        if synthetic_mask.any() and recon_mask.any():
+            # Find (symbol, action) pairs that have RECONCILIATION_MISSING
+            recon_pairs = set(
+                ledger.loc[recon_mask, ['local_symbol', 'action']]
+                .apply(tuple, axis=1)
+            )
+            # Drop synthetics whose (symbol, action) is covered
+            superseded = synthetic_mask & ledger.apply(
+                lambda r: (r['local_symbol'], r['action']) in recon_pairs, axis=1
+            )
+            if superseded.any():
+                logger.info(
+                    f"Dropping {superseded.sum()} synthetic entries superseded "
+                    f"by RECONCILIATION_MISSING"
+                )
+                ledger = ledger[~superseded].copy()
+
     # ⚡ Bolt: Vectorized np.where provides ~100x speedup over row-wise .apply() for conditional arithmetic
     ledger['signed_quantity'] = np.where(ledger['action'] == 'BUY', ledger['quantity'], -ledger['quantity'])
 
