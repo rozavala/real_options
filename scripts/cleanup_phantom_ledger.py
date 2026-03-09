@@ -110,68 +110,50 @@ def cleanup_commodity(ticker: str, data_dir: str, dry_run: bool) -> dict:
     full["signed"] = np.where(full["action"] == "BUY", full["quantity"], -full["quantity"])
     reason_col = full["reason"].fillna("")
 
-    # Identify RECON_MISSING entries to remove:
-    # Strategy: remove RECON_MISSING entries for symbols where:
-    #   (a) base ledger (non-PHANTOM, non-RECON) is already balanced (net=0), OR
-    #   (b) RECON_MISSING creates imbalance beyond what base+RECON should show
+    # --- Pass 2b: Remove "Ledger reconciliation: phantom RECONCILIATION_MISSING"
+    # entries — these are counter-entries created to cancel RECON_MISSING entries
+    # that were later deemed invalid. With PHANTOM cleanup, they become orphaned.
+    phantom_recon_mask = reason_col.str.contains(
+        "phantom RECONCILIATION_MISSING", case=False
+    )
+    phantom_recon_to_remove = set(full[phantom_recon_mask].index)
+    if phantom_recon_to_remove:
+        for idx in phantom_recon_to_remove:
+            row = full.loc[idx]
+            logger.info(
+                f"  Orphaned counter-entry: {row['timestamp']} {row['action']} "
+                f"{row['local_symbol']} ({row['reason'][:55]})"
+            )
+
+    # --- Pass 2c: Remove duplicate RECON_MISSING entries (same pid+symbol+action
+    # as a base entry — proves the trade was already recorded)
     base_mask = ~reason_col.str.contains(
         "RECONCILIATION_MISSING|PHANTOM_RECONCILIATION", case=False
     )
     base = full[base_mask]
     recon = full[reason_col == "RECONCILIATION_MISSING"]
 
-    if recon.empty:
-        return stats
-
-    base_net = base.groupby("local_symbol")["signed"].sum()
-    recon_net = recon.groupby("local_symbol")["signed"].sum()
-
-    # Find RECON_MISSING entries that are duplicates (same pid, symbol, action
-    # as a base entry within 30 seconds)
-    dupes_to_remove = []
+    dupes_to_remove = set()
     if not base.empty and not recon.empty:
-        base_ts = base.copy()
-        recon_ts = recon.copy()
-        base_ts["timestamp"] = pd.to_datetime(base_ts["timestamp"], errors="coerce")
-        recon_ts["timestamp"] = pd.to_datetime(recon_ts["timestamp"], errors="coerce")
-
-        for idx, rrow in recon_ts.iterrows():
+        for idx, rrow in recon.iterrows():
             sym = rrow.get("local_symbol", "")
             pid = str(rrow.get("position_id", ""))
             action = rrow.get("action", "")
 
             # Check if a base entry exists with same pid, symbol, action
-            matches = base_ts[
-                (base_ts["local_symbol"] == sym)
-                & (base_ts["position_id"].astype(str) == pid)
-                & (base_ts["action"] == action)
+            matches = base[
+                (base["local_symbol"] == sym)
+                & (base["position_id"].astype(str) == pid)
+                & (base["action"] == action)
             ]
             if not matches.empty:
-                dupes_to_remove.append(idx)
+                dupes_to_remove.add(idx)
                 logger.info(
                     f"  Duplicate RECON_MISSING: {rrow['timestamp']} {action} {sym} "
                     f"pid={pid[:35]} (base has same trade)"
                 )
 
-    # Find RECON_MISSING entries for symbols already balanced in base
-    orphans_to_remove = []
-    for sym in recon["local_symbol"].unique():
-        sym_base_net = base_net.get(sym, 0)
-        sym_recon_net = recon_net.get(sym, 0)
-        combined = sym_base_net + sym_recon_net
-
-        if abs(sym_base_net) < 0.001 and abs(combined) > 0.001:
-            # Base is balanced but RECON creates imbalance — these are orphaned
-            orphan_entries = recon[recon["local_symbol"] == sym]
-            for idx, row in orphan_entries.iterrows():
-                if idx not in dupes_to_remove:  # Don't double-count
-                    orphans_to_remove.append(idx)
-                    logger.info(
-                        f"  Orphaned RECON_MISSING: {row['timestamp']} {row['action']} {sym} "
-                        f"(base already balanced, RECON adds {sym_recon_net:+.0f})"
-                    )
-
-    all_recon_to_remove = set(dupes_to_remove + orphans_to_remove)
+    all_recon_to_remove = phantom_recon_to_remove | dupes_to_remove
     stats["recon_dupes_removed"] = len(all_recon_to_remove)
 
     if all_recon_to_remove and not dry_run:
