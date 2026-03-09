@@ -223,3 +223,55 @@
 2026-03-09 13:26:54,293 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 30% of average
 2026-03-09 13:26:54,300 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-03-09 13:26:54,638 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-09 13:30:55,434 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=530, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-09 13:30:55,832 - trading_bot.state_manager - INFO - Logged sentinel event from PriceSentinel to history.
+2026-03-09 13:30:55,896 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized from live NLV: $30,145.22 (no daily_equity.csv available)
+2026-03-09 13:30:55,898 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by PriceSentinel: Cumulative +10.7% move over 3 days (BULLISH) (Cycle: NG-a0da8e30)
+2026-03-09 13:30:56,111 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-09 13:30:56,121 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-09 13:30:56,214 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-09 13:30:56,214 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['anthropic', 'openai', 'gemini', 'xai']
+2026-03-09 13:30:56,215 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['anthropic', 'openai', 'gemini', 'xai'], 'diversity_score': 1.0}
+2026-03-09 13:30:56,220 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-09 13:30:56,228 - trading_bot.enhanced_brier - INFO - Loaded 704 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-09 13:30:56,228 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-03-09 13:30:56,229 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-03-09 13:30:56,229 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-03-09 13:30:56,229 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-09 13:30:56,229 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-09 13:30:56,229 - root - INFO - Fetching 2 active futures contracts for NG on NYMEX...
+2026-03-09 13:30:56,232 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-09 13:30:56,428 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-09 13:30:56,430 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-09 13:30:56,431 - Orchestrator - INFO - Targeting contract: NGK26 (202604)
+2026-03-09 13:31:02,361 - trading_bot.market_data_provider - INFO - Building market context for NGK26 (202604)...
+2026-03-09 13:31:02,939 - trading_bot.market_data_provider - INFO - Market context for NGK26 (202604): price=3.26, sma_200=3.53591, regime=HIGH_VOLATILITY, vol_5d=0.0349
+2026-03-09 13:31:02,940 - Orchestrator - INFO - Emergency market context: price=3.256, regime=HIGH_VOLATILITY
+2026-03-09 13:31:02,940 - trading_bot.agents - INFO - Running Specialized Cycle triggered by PriceSentinel...
+2026-03-09 13:31:02,940 - trading_bot.agents - INFO - Routing to technical (Reason: Default routing)
+2026-03-09 13:31:02,941 - trading_bot.agents - INFO - Waking up technical...
+2026-03-09 13:31:03,268 - trading_bot.agents - INFO - Retrieved 3 TMS insights for technical.
+2026-03-09 13:31:03,268 - trading_bot.agents - INFO - [technical] Phase 1: Gathering grounded data...
+2026-03-09 13:32:13,079 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-03-09 13:32:13,090 - trading_bot.enhanced_brier - INFO - Loaded 704 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-09 13:32:13,091 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"sentiment": "domain=2.0 \u00d7 reliability=0.9 = 0.18", "agronomist": "domain=1.5 \u00d7 reliability=1.0 = 0.15", "macro": "domain=1.5 \u00d7 reliability=0.7 = 0.10", "geopolitical": "domain=1.0 \u00d7 reliability=0.8 = 0.08", "supply_chain": "domain=1.0 \u00d7 reliability=0.8 = 0.08", "inventory": "domain=1.0 \u00d7 reliability=1.0 = 0.10", "technical": "domain=2.1 \u00d7 reliability=0.6 = 1.30", "volatility": "domain=3.8 \u00d7 reliability=0.6 = 0.22"}
+2026-03-09 13:32:13,092 - trading_bot.weighted_voting - INFO - Weighted Vote: BULLISH (score=0.508, dominant=technical)
+2026-03-09 13:32:13,093 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "sentiment",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 2.0,\n    "reliability_mult": 0.9,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.18,\n    "contribution": 0.117\n  },\n  {\n    "agent": "agronomist",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.99,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.15,\n    "contribution": 0.097\n  },\n  {\n    "agent": "macro",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.67,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.1,\n    "contribution": -0.055\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.79,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.08,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.78,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.08,\n    "contribution": 0.062\n  },\n  {\n    "agent": "inventory",\n    "direction": "BULLISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.03,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.1,\n    "contribution": 0.056\n  },\n  {\n    "agent": "technical",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 2.0999999999999996,\n    "reliability_mult": 0.62,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "mismatch_discount": 1.0,\n    "final_weight": 1.3,\n    "contribution": 0.844\n  },\n  {\n    "agent": "volatility",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 3.75,\n    "reliability_mult": 0.59,\n    "staleness_weight": 0.1,\n    "age_hours": 94.2,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.22,\n    "contribution": 0.0\n  }\n]
+2026-03-09 13:33:40,151 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Competing forces: a real short-covering/momentum burst (+10.
+2026-03-09 13:33:40,152 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.6)
+2026-03-09 13:33:40,153 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-09 13:33:40,153 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-09 13:33:40,154 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-09 13:33:40,156 - root - INFO - Logged council decision for NGK26 (202604)
+2026-03-09 13:33:40,160 - trading_bot.decision_signals - INFO - Decision signal logged: NGK26 (202604) → NEUTRAL (DIRECTIONAL/NONE)
+2026-03-09 13:33:40,290 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-03-09 13:33:40,293 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-09 13:35:58,951 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=535, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-09 13:41:01,803 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=540, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-09 13:42:15,461 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 29% of average
+2026-03-09 13:42:15,461 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-03-09 13:56:54.641474. Skipping.
+2026-03-09 13:46:15,848 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=545, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-09 13:51:17,648 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=550, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-09 13:55:20,428 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 20% of average
+2026-03-09 13:55:20,428 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-03-09 13:56:54.641474. Skipping.
+2026-03-09 13:56:20,436 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=555, market_state=ACTIVE, market_open=True, trading_day=True
