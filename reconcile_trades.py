@@ -230,7 +230,74 @@ async def reconcile_active_positions(config: dict):
         logger.info("Active Position Reconciliation complete. No discrepancies found.")
 
 
-def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame, data_dir: str = None):
+def _resolve_original_position_ids(
+    missing_df: pd.DataFrame,
+    ledger: pd.DataFrame = None,
+    data_dir: str = None,
+) -> pd.DataFrame:
+    """
+    Replace fabricated Flex Query position_ids with original position_ids
+    from the consolidated trade ledger.
+
+    For each missing trade, finds ledger entries with the same local_symbol
+    and picks the position_id from the most recent open position group.
+    This ensures RECONCILIATION_MISSING entries cancel out the correct
+    original entries when net quantities are computed per (position_id, symbol).
+    """
+    if ledger is None:
+        ledger = get_trade_ledger_df(data_dir)
+    if ledger.empty:
+        return missing_df
+
+    result = missing_df.copy()
+
+    # Exclude synthetic entries from lookup — we want real position_ids
+    if 'reason' in ledger.columns:
+        reasons = ledger['reason'].fillna('')
+        ledger = ledger[~reasons.str.contains(
+            'PHANTOM_RECONCILIATION|RECONCILIATION_MISSING|Ledger reconciliation',
+            case=False
+        )]
+
+    if ledger.empty:
+        return missing_df
+
+    # Ensure timestamp is datetime for sorting
+    if not pd.api.types.is_datetime64_any_dtype(ledger['timestamp']):
+        ledger['timestamp'] = pd.to_datetime(ledger['timestamp'], utc=True, errors='coerce')
+
+    # Pre-compute lookup: symbol → position_id of the most recent entry
+    sorted_ledger = ledger.sort_values('timestamp', ascending=False)
+    pid_lookup = (
+        sorted_ledger
+        .dropna(subset=['position_id'])
+        .groupby('local_symbol')['position_id']
+        .first()
+        .to_dict()
+    )
+
+    for idx, row in result.iterrows():
+        symbol = row.get('local_symbol', '')
+        if not symbol:
+            continue
+
+        original_pid = pid_lookup.get(symbol)
+        if original_pid and str(original_pid).strip():
+            old_pid = row.get('position_id', '')
+            result.at[idx, 'position_id'] = original_pid
+            logger.info(
+                f"Resolved position_id for {symbol}: "
+                f"{str(old_pid)[:30]}... → {str(original_pid)[:30]}..."
+            )
+
+    return result
+
+
+def write_missing_trades_to_csv(
+    missing_trades_df: pd.DataFrame,
+    data_dir: str = None,
+    ledger: pd.DataFrame = None,
+):
     """
     Writes the DataFrame of missing trades to a `missing_trades.csv` file
     inside the `archive_ledger` directory.
@@ -255,10 +322,10 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame, data_dir: str =
     ]
 
     try:
-        # Create the final DataFrame with the 'reason' column and ensure field order
-        final_df = missing_trades_df.copy()
+        # Resolve fabricated Flex Query position_ids to original ledger ones
+        final_df = _resolve_original_position_ids(missing_trades_df, ledger=ledger, data_dir=data_dir)
         final_df['reason'] = 'RECONCILIATION_MISSING'
-        
+
         # Sort by timestamp before writing
         final_df.sort_values(by='timestamp', inplace=True)
 
@@ -267,14 +334,14 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame, data_dir: str =
 
         # Reorder columns to match the ledger
         final_df = final_df.reindex(columns=fieldnames)
-        
+
         final_df.to_csv(
-            output_path, 
-            index=False, 
-            header=True, 
+            output_path,
+            index=False,
+            header=True,
             float_format='%.2f'
         )
-        
+
         logger.info(f"Successfully wrote {len(final_df)} missing trade(s) to '{output_path}'.")
 
     except IOError as e:
@@ -796,7 +863,8 @@ async def main(lookback_days: int = None, config: dict = None):
         logger.info(f"Filtered IB trades by commodity {ticker} (prefixes {prefixes}): {pre_filter_count} -> {len(ib_trades_df)}")
 
     # --- 4. Load Local Trade Ledger ---
-    local_trades_df = get_trade_ledger_df(config.get('data_dir'))
+    full_ledger = get_trade_ledger_df(config.get('data_dir'))
+    local_trades_df = full_ledger
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
 
@@ -840,7 +908,7 @@ async def main(lookback_days: int = None, config: dict = None):
     else:
         # --- 7. Output Discrepancy Reports ---
         logger.info("Discrepancies found. Writing to output files.")
-        write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'))
+        write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'), ledger=full_ledger)
         write_superfluous_trades_to_csv(superfluous_trades_df, config.get('data_dir'))
 
     # --- 8. Return the dataframes for the orchestrator ---
