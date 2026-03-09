@@ -576,6 +576,28 @@ class TestScorecardUX(unittest.TestCase):
             )
 
 
+class TestLLMMonitorUX(unittest.TestCase):
+    def test_llm_monitor_dataframe_config(self):
+        """Verify that the Provider Health dataframe in LLM Monitor uses column_config."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '8_LLM_Monitor.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'dataframe':
+                for kw in node.keywords:
+                    if kw.arg == 'column_config':
+                        # Check for ProgressColumn config
+                        config_str = ast.dump(kw.value)
+                        if "ProgressColumn" in config_str and "Success Rate" in config_str:
+                            found_config = True
+                            # Check max_value=100 (fixes the 1.0% vs 100% bug)
+                            self.assertIn("100", config_str, "ProgressColumn should have max_value=100")
+                            break
+        self.assertTrue(found_config, "LLM Monitor Provider Health dataframe is missing 'column_config' with 'Success Rate' ProgressColumn")
+
+
 class TestBuildPositionPnlMap(unittest.TestCase):
     """Tests for dashboard_utils.build_position_pnl_map()."""
 

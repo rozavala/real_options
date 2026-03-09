@@ -193,12 +193,32 @@ if router_data and router_data.get('requests'):
         table_rows.append({
             'Provider': provider,
             'Requests': total,
-            'Success Rate': f"{success_rate:.1%}",
-            'Avg Latency (ms)': f"{avg_lat:.0f}" if lats else "N/A",
-            'P95 Latency (ms)': f"{p95_lat:.0f}" if lats else "N/A",
+            'Success Rate': success_rate * 100,
+            'Avg Latency (ms)': avg_lat if lats else None,
+            'P95 Latency (ms)': p95_lat if lats else None,
         })
 
-    st.dataframe(pd.DataFrame(table_rows), hide_index=True, use_container_width=True)
+    st.dataframe(
+        pd.DataFrame(table_rows),
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Success Rate": st.column_config.ProgressColumn(
+                format="%.1f%%",
+                min_value=0,
+                max_value=100,
+                help="Percentage of requests handled by primary provider without fallback"
+            ),
+            "Avg Latency (ms)": st.column_config.NumberColumn(
+                format="%.0f ms",
+                help="Average response time in milliseconds"
+            ),
+            "P95 Latency (ms)": st.column_config.NumberColumn(
+                format="%.0f ms",
+                help="95th percentile response time in milliseconds"
+            ),
+        }
+    )
 
     # Latency box plot
     all_latencies = []
@@ -360,12 +380,26 @@ try:
         if isinstance(pricing, dict):
             pricing_rows.append({
                 'Model': model,
-                'Input ($/1K tokens)': f"${pricing.get('input', 0):.5f}",
-                'Output ($/1K tokens)': f"${pricing.get('output', 0):.5f}",
+                'Input ($/1K tokens)': pricing.get('input', 0),
+                'Output ($/1K tokens)': pricing.get('output', 0),
             })
 
     if pricing_rows:
-        st.dataframe(pd.DataFrame(pricing_rows), hide_index=True, use_container_width=True)
+        st.dataframe(
+            pd.DataFrame(pricing_rows),
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                'Input ($/1K tokens)': st.column_config.NumberColumn(
+                    format="$%.5f",
+                    help="Cost per 1,000 input tokens"
+                ),
+                'Output ($/1K tokens)': st.column_config.NumberColumn(
+                    format="$%.5f",
+                    help="Cost per 1,000 output tokens"
+                ),
+            }
+        )
         st.caption(f"Pricing last updated: {last_updated}")
 
 except Exception as e:
