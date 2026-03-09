@@ -200,11 +200,17 @@ def main():
     # Optimization mode — pre-flight checks
     # Check for required API key before starting (avoids N identical failures)
     bootstrap_model = dspy_config.get("bootstrap_model", "openai/gpt-4o-mini")
-    if bootstrap_model.startswith("openai/") and not os.environ.get("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY environment variable is required for --optimize mode.")
-        print(f"  Bootstrap model: {bootstrap_model}")
-        print("  Set the key or configure dspy.bootstrap_model in config.json.")
-        sys.exit(1)
+    api_key_map = {
+        "openai/": "OPENAI_API_KEY",
+        "xai/": "XAI_API_KEY",
+        "anthropic/": "ANTHROPIC_API_KEY",
+    }
+    for prefix, env_var in api_key_map.items():
+        if bootstrap_model.startswith(prefix) and not os.environ.get(env_var):
+            print(f"Error: {env_var} environment variable is required for --optimize mode.")
+            print(f"  Bootstrap model: {bootstrap_model}")
+            print("  Set the key or configure dspy.bootstrap_model in config.json.")
+            sys.exit(1)
 
     _ensure_signature()
 

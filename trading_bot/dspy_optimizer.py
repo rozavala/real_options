@@ -458,11 +458,14 @@ def optimize_agent(
         calibration = 1.0 - abs(pred_conf - actual_hit)
         return direction_match * 0.7 + calibration * 0.3
 
-    # Run BootstrapFewShot
+    # Run BootstrapFewShot (demo counts configurable via config.dspy)
+    dspy_cfg = config.get("dspy", {})
+    max_bootstrapped = dspy_cfg.get("max_bootstrapped_demos", 4)
+    max_labeled = dspy_cfg.get("max_labeled_demos", 4)
     optimizer = dspy.BootstrapFewShot(
         metric=metric,
-        max_bootstrapped_demos=4,
-        max_labeled_demos=4,
+        max_bootstrapped_demos=max_bootstrapped,
+        max_labeled_demos=max_labeled,
     )
 
     module = AgentPredictor()
