@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Mon Mar  9 15:30:03 UTC 2026
+Timestamp: Mon Mar  9 16:00:05 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  15:30:03 up 56 days, 21:53,  2 users,  load average: 0.00, 0.01, 0.01
+Uptime:  16:00:05 up 56 days, 22:23,  2 users,  load average: 0.52, 0.14, 0.04
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.7Gi       185Mi        30Mi       1.1Gi       1.1Gi
+Mem:           3.8Gi       2.8Gi       184Mi        30Mi       1.1Gi       1.1Gi
 Swap:          4.0Gi       1.0Gi       3.0Gi
 
 === LOAD AVERAGE ===
-0.00 0.01 0.01 1/880 1824481
+0.52 0.14 0.04 1/885 1825447
 
 === PROCESS STATUS ===
 Trading processes:
-console  1507363  0.2 10.1 2000032 407504 ?      Ssl  Feb27  36:42 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1507363  0.2 10.1 2000032 408536 ?      Ssl  Feb27  37:45 /home/console/real_options/venv/bin/python -u orchestrator.py
 console  1814963  0.0  7.3 1355376 293040 ?      Sl   08:29   0:11 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.2  0.8 2896520 33748 ?       Sl   Feb17  84:33 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.2  0.8 2896520 33620 ?       Sl   Feb17  84:40 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,8 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-03-06 15:45:23,250 - ib_insync.client - ERROR - Peer closed connection.
-2026-03-06 15:45:23,251 - Orchestrator - INFO - 2026-03-06 15:45:23,250 - ib_insync.client - ERROR - Peer closed connection.
 2026-03-06 16:39:17,512 - ib_insync.client - ERROR - API connection failed: TimeoutError()
 2026-03-06 16:39:18,176 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: . Next retry backoff: 10.0s
 2026-03-06 16:40:09,685 - Orchestrator - WARNING - CRITICAL trigger PredictionMarketSentinel (Sev: 9) bypassing post-cycle debounce
@@ -46,3 +44,5 @@ Recent orchestrator errors:
 2026-03-09 08:36:04,866 - root - ERROR - ABORT: Invalid underlying_price=nan for KCK6. Cannot calculate strikes. Market may be closed or data unavailable.
 2026-03-09 08:42:28,414 - ib_insync.client - ERROR - API connection failed: TimeoutError()
 2026-03-09 13:29:27,854 - OrderManager - INFO - Generated 5 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price-action checks do not force a dip-buy: the 24h change is positive but not an obvious “priced in” blow-off, and the 5-day run-up indicates the market has already been reacting to upside narratives. In that context, the Bear’s case is more grounded in verifiable, coffee-specific supply data: (1) ICE certified stocks are building with a meaningful pending grading queue, which is direct evidence that deliverable supply is increasing rather than tightening; (2) multiple independent flow indicators point the same way (Vietnam exports up, ICO global exports up, and Brazil projecting a very large upcoming crop / surplus in the specialist reports); (3) the Agronomist explicitly concludes macro-bearish on surplus despite acknowledging flood-driven quality/logistics volatility—i.e., the weather shock is not “overwhelming” enough to override the larger supply outlook.\n\nBy contrast, the Bull leans heavily on (a) momentum/positioning (CFTC net longs + rising OI) and (b) a geopolitics/logistics risk premium that even the Geopolitical specialist flags as weakly linked to coffee-specific lanes (missing route-share, freight/rollover/port-congestion confirmation). Those are supportive for short-term volatility and headline-driven bids, but they are weaker as a durable catalyst than actual deliverable inventory build and export supply data. The Bull’s interpretation that lagging Brazil new-crop sales is bullish “withholding” is plausible, but it cuts both ways and does not negate the broader evidence that supply is arriving (stocks/exports) and that a surplus is projected.\n\nFinally, volatility costs require caution: the Volatility analyst says options are expensive due to event risk. That doesn’t disprove downside, but it does argue against high-conviction directional aggression; hence BEARISH but not “PROVEN.” [Consensus ALIGNED (Vote=NEUTRAL)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 299.2, 'sma_200': 328.0575, 'expected_price': 299.2, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'Trend/price-action check: the 24h change is only moderately positive (not a liquidation regime, not a blow-off “priced in” move either), but the 5-day move is meaningfully up, so the bar for a fresh bullish add is higher and requires a clearly dominant new shock.\n\nOn the debate, the Permabear is more grounded in the highest-quality, coffee-specific datapoints that bear directly on supply/availability: (1) Conab’s record harvest projection and StoneX’s even larger crop estimate are independent sources pointing to a large upcoming supply increase, and the agronomist’s weather read supports that conditions are currently beneficial rather than threatening yield. (2) Visible exchange availability is improving now: ICE certified stocks have risen with a notable amount pending certification—this is direct, market-relevant evidence against acute scarcity. (3) Positioning is deteriorating at the margin (net long reduced, COT index down), which is a second-order but independent headwind if the market stops rewarding the “tightness” story.\n\nThe Permabull’s core claim—logistics-driven near-term tightness dominating forward supply—has some support (Cecafé vessel delays; freight index up; February exports down YoY), but it leans heavily on channels that are either less coffee-specific (global shipping disruption headlines) or are ambiguous in price impact (freight cost inflation can squeeze roaster margins rather than sustainably lift futures). Critically, the bull argument does not decisively refute the bear’s strongest point: certified stocks are rising and crop prospects are improving, which are the cleanest indicators we have in this packet.\n\nHegelian synthesis: yes, there is a real “timing friction” story (port delays/export softness) that can sustain backwardation and nearby premiums; the bull shows that risk. But the bear more convincingly shows that (a) the supply shock is not bullish (it’s the opposite: projected supply increase plus supportive weather), and (b) the scarcity narrative is already weakening via replenishing certified stocks. With multiple independent bearish lines (agronomics + official/industry crop estimates + exchange inventory trend + softening speculative posture), the bear’s case edges out.\n\nVolatility cost awareness: options markets show meaningful demand for downside protection (put/call premium skew), which aligns more with caution than with a clean bullish trend. Even though the vol analyst argues IV is not outright “expensive” versus realized, the skew itself reinforces that the market is paying up to protect against a downside scenario, consistent with downgrading bullish conviction and supporting at least a plausible bearish bias. [Consensus ALIGNED (Vote=NEUTRAL)]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.7, 'price': 293.85, 'sma_200': 318.649, 'expected_price': 293.85, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0}, {'contract_month': '202609', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=HIGH_VOLATILITY, conflict=0.00)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.45, 'price': 287.75, 'sma_200': 309.21575, 'expected_price': 287.75, 'predicted_return': 0.0, 'thesis_strength': 'SPECULATIVE', 'conviction_multiplier': 1.0}, {'contract_month': '202612', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=RANGE_BOUND, conflict=0.40)', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.52, 'price': 281.95, 'sma_200': 301.8925, 'expected_price': 281.95, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 0.75}, {'contract_month': '202703', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=BULLISH, regime=HIGH_VOLATILITY, conflict=0.16)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BULLISH', 'confidence': 0.45, 'price': 278.65, 'sma_200': 297.035, 'expected_price': 278.65, 'predicted_return': 0.0, 'thesis_strength': 'SPECULATIVE', 'conviction_multiplier': 1.0}]
+2026-03-09 15:39:17,437 - ib_insync.client - ERROR - API connection failed: TimeoutError()
+2026-03-09 15:39:17,944 - trading_bot.connection_pool - ERROR - IB (drawdown_check) connection failed: . Next retry backoff: 10.0s
