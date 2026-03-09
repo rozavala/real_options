@@ -311,7 +311,11 @@ with manual_cols[1]:
     st.caption("Immediately cancels all unfilled DAY orders in IB")
 
     confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all")
-    if st.button("🛑 Cancel All Open Orders", disabled=not confirm_cancel_all):
+    if st.button(
+        "🛑 Cancel All Open Orders",
+        disabled=not confirm_cancel_all,
+        help="Immediately cancels all unfilled DAY orders in Interactive Brokers."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -343,7 +347,11 @@ with manual_cols2[0]:
     st.caption("Closes positions held longer than max_holding_days")
 
     confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale")
-    if st.button("🔄 Force Close Stale Positions", disabled=not confirm_close_stale):
+    if st.button(
+        "🔄 Force Close Stale Positions",
+        disabled=not confirm_close_stale,
+        help="Forces the closure of any open positions that have exceeded their maximum configured holding period."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:

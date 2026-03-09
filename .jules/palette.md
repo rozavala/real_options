@@ -57,3 +57,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-03-05 - Completing the Micro-UX Tooltip Coverage
 **Learning:** During a codebase audit, several Streamlit metric components (`st.metric`) across utility and financial pages were found to be missing the `help` parameter. Consistency in providing native tooltips for metrics (like System Health, Failed Checks, and Realized P&L) is critical for a predictable user experience, as users learn to rely on hover states for context.
 **Action:** Always ensure that `st.metric` calls include a descriptive `help` attribute, especially for derived or aggregated values where the calculation or significance might not be immediately obvious.
+
+## 2026-03-05 - Completing Tooltip Coverage for High-Impact Actions
+**Learning:** While the dashboard has a standard of using tooltips (`help` parameter) on high-stakes manual triggers (like "Force Generate & Execute Orders" and "Clear All Caches"), several critical buttons (e.g., "Cancel All Open Orders" and "Force Close Stale Positions") were found lacking them. Users need immediate, clear context for what destructive actions will do before clicking them, even if there is a safety interlock checkbox.
+**Action:** Ensure exhaustive tooltip coverage across all Streamlit components that trigger state mutations or irreversible actions. The `help` string should explicitly describe the scope and consequence of the action (e.g., "Immediately cancels all unfilled DAY orders in Interactive Brokers.").
