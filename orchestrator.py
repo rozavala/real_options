@@ -1965,6 +1965,15 @@ async def _reconcile_state_stores(
         # IBKR counts each contract leg as a separate position, so we must too.
         if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
             tl_valid = trade_ledger[trade_ledger['local_symbol'].astype(str).str.strip() != ''].copy()
+            # Drop PHANTOM_RECONCILIATION entries — these are synthetic closes
+            # that double-count positions already covered by RECONCILIATION_MISSING.
+            # Matches the filtering in get_local_active_positions().
+            if 'reason' in tl_valid.columns:
+                reasons = tl_valid['reason'].fillna('')
+                phantom_mask = reasons.str.contains('PHANTOM_RECONCILIATION', case=False)
+                if phantom_mask.any():
+                    logger.info(f"State sync: excluding {phantom_mask.sum()} PHANTOM entries from ledger count")
+                    tl_valid = tl_valid[~phantom_mask]
             if not tl_valid.empty:
                 tl_valid['signed_qty'] = np.where(tl_valid['action'] == 'BUY', tl_valid['quantity'], -tl_valid['quantity'])
                 net_qtys = tl_valid.groupby('local_symbol')['signed_qty'].sum()
@@ -2101,19 +2110,12 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             except Exception as e:
                 logger.warning(f"Post-audit reconciliation failed (non-fatal): {e}")
 
-            # Reconcile: If ledger has non-zero entries but IB has no positions,
-            # zero them out with synthetic close rows
-            try:
-                phantom_count = await _reconcile_phantom_ledger_entries(
-                    trade_ledger, tms, config
-                )
-                if phantom_count > 0:
-                    logger.warning(
-                        f"Phantom reconciliation zeroed out {phantom_count} "
-                        f"ledger entries (IB has zero positions)"
-                    )
-            except Exception as e:
-                logger.warning(f"Phantom ledger reconciliation failed (non-fatal): {e}")
+            # Phantom reconciliation DISABLED — it creates synthetic close rows
+            # that worsen state sync discrepancies (adds extra non-zero symbols).
+            # Root causes: IB net-zero netting of opposing spreads, RECON_MISSING
+            # with fabricated position_ids, and emergency close EMERGENCY_ pids.
+            # See: https://github.com/rozavala/real_options/pull/1210
+            logger.info("Phantom ledger reconciliation skipped (disabled)")
 
             return
 
