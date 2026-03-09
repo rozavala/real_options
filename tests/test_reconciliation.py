@@ -247,6 +247,36 @@ class TestSyntheticDedup:
 
         assert positions.empty, f"All positions should be flat, got:\n{positions}"
 
+    def test_cross_direction_phantom_dropped(self):
+        """Phantom entries in BOTH directions are dropped when RECONCILIATION_MISSING
+        exists for that symbol — reproduces the NG bear put spread phantom bug."""
+        from reconcile_trades import get_local_active_positions
+
+        rows = [
+            # Original open: SELL P2800 (short leg of bear put spread)
+            self._make_ledger_row('LNEK6 P2800', 'SELL', 1,
+                                  'Strategy Execution', ts='2026-02-26 10:00:00'),
+            # Flex recon found the close: BUY P2800
+            self._make_ledger_row('LNEK6 P2800', 'BUY', 1,
+                                  'RECONCILIATION_MISSING', ts='2026-02-26 15:00:00'),
+            # Phantom recon also created a BUY close (same position_id)
+            self._make_ledger_row('LNEK6 P2800', 'BUY', 1,
+                                  'PHANTOM_RECONCILIATION', ts='2026-02-27 19:00:00'),
+            # Phantom recon ALSO created a SELL for the recon position_id
+            self._make_ledger_row('LNEK6 P2800', 'SELL', 1,
+                                  'PHANTOM_RECONCILIATION', ts='2026-02-27 19:00:00'),
+        ]
+        df = pd.DataFrame(rows)
+        positions = get_local_active_positions(df)
+
+        # All phantoms (both BUY and SELL) should be dropped.
+        # Net: SELL 1 (original) + BUY 1 (RECON_MISSING) = 0
+        p2800 = positions[positions['Symbol'] == 'LNEK6 P2800']
+        assert p2800.empty, (
+            f"LNEK6 P2800 should be flat after dropping both-direction phantoms, "
+            f"got: {p2800}"
+        )
+
     def test_no_reason_column(self):
         """Works without a reason column (legacy ledgers)."""
         from reconcile_trades import get_local_active_positions
