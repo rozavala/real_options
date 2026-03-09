@@ -53,7 +53,7 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
-confirm_collect = st.checkbox("I confirm I want to collect logs", key="confirm_collect")
+confirm_collect = st.checkbox("I confirm I want to collect logs", key="confirm_collect", help="Check this to enable the Collect Logs button.")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
@@ -216,7 +216,7 @@ with manual_cols[0]:
     st.caption("Runs full order generation cycle: data pull → Council deliberation → signals → order placement")
 
     # Safety Interlock
-    confirm_exec = st.checkbox("I confirm I want to execute live trades", key="confirm_exec_orders")
+    confirm_exec = st.checkbox("I confirm I want to execute live trades", key="confirm_exec_orders", help="Check this to enable the Force Generate & Execute Orders button.")
     confirm_text = st.text_input("Type 'EXECUTE' to confirm:", key="confirm_text_orders")
 
     is_authorized = confirm_exec and confirm_text == "EXECUTE"
@@ -310,7 +310,7 @@ with manual_cols[1]:
     st.warning("⚠️ **Cancel All Open Orders**")
     st.caption("Immediately cancels all unfilled DAY orders in IB")
 
-    confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all")
+    confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all", help="Check this to enable the Cancel All Open Orders button.")
     if st.button(
         "🛑 Cancel All Open Orders",
         disabled=not confirm_cancel_all,
@@ -346,7 +346,7 @@ with manual_cols2[0]:
     st.warning("⚠️ **Close Stale Positions**")
     st.caption("Closes positions held longer than max_holding_days")
 
-    confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale")
+    confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale", help="Check this to enable the Force Close Stale Positions button.")
     if st.button(
         "🔄 Force Close Stale Positions",
         disabled=not confirm_close_stale,
@@ -380,7 +380,7 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
-    confirm_sync = st.checkbox("I confirm I want to force equity sync", key="confirm_sync")
+    confirm_sync = st.checkbox("I confirm I want to force equity sync", key="confirm_sync", help="Check this to enable the Force Equity Sync button.")
     if st.button(
         "💰 Force Equity Sync",
         disabled=not confirm_sync,
@@ -665,7 +665,7 @@ with state_cols[1]:
 
     # Use a form with confirmation checkbox to prevent accidental clicks
     with st.form("clear_state_form"):
-        confirm_clear = st.checkbox("I understand this will clear all state data")
+        confirm_clear = st.checkbox("I understand this will clear all state data", help="Check this to confirm clearing the state.")
         submit_clear = st.form_submit_button("🗑️ Clear State File")
 
         if submit_clear:
@@ -704,12 +704,12 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    confirm_val = st.checkbox("I confirm I want to run system validation", key="confirm_val")
+    confirm_val = st.checkbox("I confirm I want to run system validation", key="confirm_val", help="Check this to enable the Run System Validation button.")
     run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', disabled=not confirm_val, help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
 
 with validation_cols[1]:
-    json_output = st.checkbox("JSON Output", value=False)
-    quick_mode = st.checkbox("Quick Mode (Skip slow tests)", value=True)
+    json_output = st.checkbox("JSON Output", value=False, help="Enable to output raw JSON results.")
+    quick_mode = st.checkbox("Quick Mode (Skip slow tests)", value=True, help="Enable to skip longer-running integration tests.")
 
 if run_validation:
     with st.spinner("Running comprehensive system validation..."):
@@ -1143,7 +1143,7 @@ st.markdown("Clear cached data to force fresh data loads from sources.")
 cache_cols = st.columns(2)
 
 with cache_cols[0]:
-    confirm_clear_cache = st.checkbox("I confirm I want to clear all cached data", key="confirm_clear_cache")
+    confirm_clear_cache = st.checkbox("I confirm I want to clear all cached data", key="confirm_clear_cache", help="Check this to enable the Clear All Caches button.")
     if st.button(
         "🔄 Clear All Caches",
         disabled=not confirm_clear_cache,

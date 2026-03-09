@@ -61,3 +61,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-03-05 - Completing Tooltip Coverage for High-Impact Actions
 **Learning:** While the dashboard has a standard of using tooltips (`help` parameter) on high-stakes manual triggers (like "Force Generate & Execute Orders" and "Clear All Caches"), several critical buttons (e.g., "Cancel All Open Orders" and "Force Close Stale Positions") were found lacking them. Users need immediate, clear context for what destructive actions will do before clicking them, even if there is a safety interlock checkbox.
 **Action:** Ensure exhaustive tooltip coverage across all Streamlit components that trigger state mutations or irreversible actions. The `help` string should explicitly describe the scope and consequence of the action (e.g., "Immediately cancels all unfilled DAY orders in Interactive Brokers.").
+
+## $(date +%Y-%m-%d) - Safety Interlock Tooltips
+**Learning:** While the dashboard has a standard of using the Safety Interlock pattern (`st.checkbox` gating a dangerous `st.button`), the checkboxes themselves often lacked tooltips (`help` parameter). Users need to know exactly what they are agreeing to enable before checking the box, as the action button text alone might not provide full context until it is un-disabled.
+**Action:** Always provide descriptive `help` tooltips on `st.checkbox` components used as safety interlocks to clarify what enabling the checkbox will allow the user to do.

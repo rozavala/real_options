@@ -1129,7 +1129,7 @@ with ctrl_cols[0]:
     st.caption("No active cooldown")
 
 with ctrl_cols[1]:
-    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt")
+    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt", help="Check this to enable the EMERGENCY HALT button.")
     if st.button(
         "🛑 EMERGENCY HALT",
         type="primary",
@@ -1162,7 +1162,7 @@ with ctrl_cols[1]:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
-    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh")
+    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh", help="Check this to enable the Refresh All Data button.")
     if st.button(
         "🔄 Refresh All Data",
         width="stretch",
