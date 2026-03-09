@@ -153,7 +153,30 @@ def cleanup_commodity(ticker: str, data_dir: str, dry_run: bool) -> dict:
                     f"pid={pid[:35]} (base has same trade)"
                 )
 
-    all_recon_to_remove = phantom_recon_to_remove | dupes_to_remove
+    # --- Pass 2d: Remove paired RECON_MISSING entries ---
+    # When one leg of a RECON_MISSING pair (same pid, opposite action) is flagged
+    # as a duplicate, the other leg becomes orphaned and must also be removed.
+    # Example: BUY+SELL RECON_MISSING with same pid — if SELL matches base
+    # EMERGENCY_HARD_CLOSE, the BUY is also a duplicate of the original trade.
+    paired_to_remove = set()
+    if dupes_to_remove and not recon.empty:
+        flagged_pids = {
+            str(full.loc[idx, "position_id"])
+            for idx in dupes_to_remove
+            if idx in full.index
+        }
+        for idx, rrow in recon.iterrows():
+            if idx in dupes_to_remove:
+                continue
+            pid = str(rrow.get("position_id", ""))
+            if pid in flagged_pids:
+                paired_to_remove.add(idx)
+                logger.info(
+                    f"  Paired RECON_MISSING: {rrow['timestamp']} {rrow['action']} "
+                    f"{rrow['local_symbol']} pid={pid[:35]} (counterpart is duplicate)"
+                )
+
+    all_recon_to_remove = phantom_recon_to_remove | dupes_to_remove | paired_to_remove
     stats["recon_dupes_removed"] = len(all_recon_to_remove)
 
     if all_recon_to_remove and not dry_run:
