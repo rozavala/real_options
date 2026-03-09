@@ -401,7 +401,8 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
 
     This enhanced version ignores `combo_id` and `position_id` and instead
     matches trades based on a combination of symbol, quantity, action, and
-    a 2-second timestamp tolerance for robustness.
+    a 30-second timestamp tolerance (IB execution timestamps can differ
+    from system recording time by 10-15s due to order routing latency).
 
     Returns:
         A tuple containing two DataFrames:
@@ -441,8 +442,10 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
             # Check for a timestamp match within the tolerance
             time_diff = (potential_matches['timestamp'] - ib_trade['timestamp']).abs()
 
-            # Find the index of the first match within the 2-second window
-            match_indices = potential_matches[time_diff <= pd.Timedelta(seconds=2)].index
+            # Find the closest match within a 30-second window.
+            # IB execution timestamps can differ from system recording time
+            # by 10-15 seconds due to order routing and callback latency.
+            match_indices = potential_matches[time_diff <= pd.Timedelta(seconds=30)].index
 
             if len(match_indices) > 0:
                 # If a match is found, remove it from the unmatched pool
