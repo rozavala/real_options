@@ -10,7 +10,7 @@ import asyncio
 import io
 import logging
 import os
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 
 import httpx  # Added for HTTP requests
 import numpy as np
