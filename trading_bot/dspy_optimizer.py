@@ -413,6 +413,11 @@ def optimize_agent(
     ):
         _ensure_signature()
 
+    # Compute baseline directional accuracy from raw examples
+    directional_examples = [ex for ex in examples if ex["direction"] != "NEUTRAL"]
+    baseline_correct = sum(1 for ex in directional_examples if ex["direction"] == ex["actual"])
+    baseline_accuracy = baseline_correct / len(directional_examples) if directional_examples else 0.0
+
     # Build dspy.Example list
     trainset, valset = _build_splits(examples)
 
@@ -443,13 +448,14 @@ def optimize_agent(
             )
 
     # Metric: directional accuracy (0.7) + calibration (0.3)
-    # NEUTRAL predictions are penalized — agents should commit to a direction
+    # NEUTRAL predictions get flat 0.0 — agents must commit to a direction.
+    # Without this, NEUTRAL scores ~0.15 (via calibration credit), same as a
+    # wrong directional call, so the optimizer learns to abstain.
     def metric(example, prediction, trace=None):
         pred_dir = prediction.direction
         if pred_dir == "NEUTRAL":
-            direction_match = 0.0
-        else:
-            direction_match = 1.0 if pred_dir == example.actual else 0.0
+            return 0.0  # No credit for abstaining
+        direction_match = 1.0 if pred_dir == example.actual else 0.0
         try:
             pred_conf = float(prediction.confidence)
         except (ValueError, TypeError, AttributeError):
@@ -487,17 +493,22 @@ def optimize_agent(
     val_accuracy = val_correct / val_directional if val_directional else 0.0
     val_abstention = 1.0 - (val_directional / len(valset)) if valset else 0.0
 
-    # Extract optimized instruction and demos
+    # Extract optimized instruction and demos (filter out NEUTRAL demos —
+    # they teach abstention rather than directional commitment)
     instruction = persona_prompt  # BootstrapFewShot selects demos, keeps instruction
     demos = []
     if hasattr(compiled, "predict") and hasattr(compiled.predict, "demos"):
         for demo in compiled.predict.demos:
+            direction = getattr(demo, "direction", "")
+            if direction == "NEUTRAL":
+                logger.info(f"[{agent_name}] Filtering out NEUTRAL demo from export")
+                continue
             demos.append({
                 "input": {
                     "market_context": getattr(demo, "market_context", ""),
                 },
                 "output": {
-                    "direction": getattr(demo, "direction", ""),
+                    "direction": direction,
                     "confidence": str(getattr(demo, "confidence", "0.5")),
                     "analysis": getattr(demo, "analysis", ""),
                 },
@@ -505,6 +516,7 @@ def optimize_agent(
 
     # Save
     result = {
+        "baseline_directional_accuracy": baseline_accuracy,
         "directional_accuracy": val_accuracy,
         "abstention_rate": val_abstention,
         "n_demos": len(demos),
