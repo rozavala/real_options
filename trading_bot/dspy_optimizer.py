@@ -413,6 +413,11 @@ def optimize_agent(
     ):
         _ensure_signature()
 
+    # Compute baseline directional accuracy from raw examples
+    directional_examples = [ex for ex in examples if ex["direction"] != "NEUTRAL"]
+    baseline_correct = sum(1 for ex in directional_examples if ex["direction"] == ex["actual"])
+    baseline_accuracy = baseline_correct / len(directional_examples) if directional_examples else 0.0
+
     # Build dspy.Example list
     trainset, valset = _build_splits(examples)
 
@@ -505,6 +510,7 @@ def optimize_agent(
 
     # Save
     result = {
+        "baseline_directional_accuracy": baseline_accuracy,
         "directional_accuracy": val_accuracy,
         "abstention_rate": val_abstention,
         "n_demos": len(demos),
