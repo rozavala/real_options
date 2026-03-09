@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-03-09T03:02:41.671982+00:00",
+  "generated_at": "2026-03-09T18:00:00.023040+00:00",
   "active_tickers": [
     "KC",
     "CC",
@@ -10,10 +10,10 @@
     "KC": {
       "feedback_loop": {
         "status": "healthy",
-        "resolution_rate": 1.0,
-        "total_predictions": 1539,
+        "resolution_rate": 0.934,
+        "total_predictions": 1648,
         "resolved": 1539,
-        "pending": 0,
+        "pending": 109,
         "thresholds": {
           "healthy": 0.75,
           "critical": 0.5
@@ -34,33 +34,53 @@
         "tracked_count": 2
       },
       "cognitive_layer": {
-        "decisions_today": 0,
-        "bull_pct": null,
-        "bear_pct": null,
-        "neutral_pct": null,
-        "avg_confidence": null,
-        "avg_weighted_score": null,
-        "strategies_used": []
+        "decisions_today": 13,
+        "bull_pct": 0.077,
+        "bear_pct": 0.077,
+        "neutral_pct": 0.846,
+        "avg_confidence": 0.566,
+        "avg_weighted_score": 0.255,
+        "strategies_used": [
+          "IRON_CONDOR",
+          "NONE",
+          "LONG_STRADDLE",
+          "BULL_CALL_SPREAD",
+          "BEAR_PUT_SPREAD"
+        ]
       },
       "sentinel_efficiency": {
-        "sentinels": {},
-        "total_alerts": 0,
+        "sentinels": {
+          "WeatherSentinel": {
+            "total_alerts": 1,
+            "trades_triggered": 0,
+            "signal_to_noise": 0.0
+          }
+        },
+        "total_alerts": 1,
         "total_trades_triggered": 0
       },
       "efficiency": {
-        "daily_spend_usd": 0.0,
-        "request_count": 0,
+        "daily_spend_usd": 2.7190504499999992,
+        "request_count": 360,
         "router_metrics": {
           "total_requests": 3230,
           "total_errors": 0,
           "total_fallbacks": 0
         },
-        "semantic_cache": null
+        "semantic_cache": {
+          "enabled": true,
+          "hits": 0,
+          "misses": 5,
+          "hit_rate": 0.0,
+          "invalidations": 5,
+          "entries": 1,
+          "partitions": 1
+        }
       },
       "risk_rails": {
         "drawdown": {
           "status": "NORMAL",
-          "current_pct": -0.38038410110243437,
+          "current_pct": -0.8735049868602707,
           "thresholds": {
             "warning_pct": 2.0,
             "halt_pct": 4.0,
@@ -69,152 +89,152 @@
         },
         "var": {
           "utilization": null,
-          "var_95": 219.56,
-          "var_99": 277.68,
+          "var_95": 249.28,
+          "var_99": 319.55,
           "enforcement_mode": "log_only"
         }
       },
       "decision_traces": [
         {
-          "timestamp": "2026-03-06 12:19:27.016384+00:00",
+          "timestamp": "2026-03-09 15:45:27.115044+00:00",
           "direction": "NEUTRAL",
           "confidence": 0.6,
-          "strategy": "IRON_CONDOR",
-          "top_contributors": [
-            {
-              "agent": "agronomist",
-              "weight": 2.516,
-              "key_argument": "[EVIDENCE]: 1. [2026-03-04] Historical weather data for Vit\u00f3ria, Esp\u00edrito Santo, shows a dry start to March with only 1.3mm of total monthly rainfall "
-            },
-            {
-              "agent": "technical",
-              "weight": 2.42,
-              "key_argument": "STALE (66min old) - {'data': '[EVIDENCE]: [2026-03-06] 200-day SMA for US Coffee C futures: 291.21 \u00a2/lb (Investing.com /..."
-            }
-          ],
-          "contrarian_view": "Strongest counter-argument is the Bull\u2019s claim that the Esp\u00edrito Santo bean-filling drought plus backwardation and weak exports imply a near-term supply squeeze that should dominate price direction. I",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-06 11:12:33.024992+00:00",
-          "direction": "BEARISH",
-          "confidence": 0.8,
-          "strategy": "BEAR_PUT_SPREAD",
-          "top_contributors": [
-            {
-              "agent": "technical",
-              "weight": 2.44,
-              "key_argument": "[EVIDENCE]: [2026-03-06] 200-day SMA for US Coffee C futures: 291.21 \u00a2/lb (Investing.com / Barchart).  [2026-03-05] Front-month price closed 295.40 \u00a2/"
-            },
-            {
-              "agent": "geopolitical",
-              "weight": 1.34,
-              "key_argument": "[EVIDENCE]: 1) Port of Santos vessel turnaround delays average 4 to 6 days (extreme of 36 days), with 75% of vessels delayed amid a soy and coffee 'ex"
-            }
-          ],
-          "contrarian_view": "The strongest counter is the combination of historically low (though rising) ICE certified stocks plus persistent backwardation and near-term disruption/quality risks (ongoing heavy rain in Minas Gera",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-06 11:11:53.931078+00:00",
-          "direction": "NEUTRAL",
-          "confidence": 0.45,
           "strategy": "NONE",
           "top_contributors": [
             {
-              "agent": "agronomist",
-              "weight": -1.46,
-              "key_argument": "[EVIDENCE]: [2026-03-05] Conab projects a record 2026 coffee harvest of 66.2 million bags (+17.2% YoY). [2026-03-05] Minas Gerais received 400-600 mm "
+              "agent": "supply_chain",
+              "weight": 1.538,
+              "key_argument": ""
             },
             {
-              "agent": "volatility",
-              "weight": -1.415,
-              "key_argument": "[EVIDENCE]: - [2026-03-03] Coffee IV Index Mean at 18.87%, up from 16.23% one week prior and exceeding 52-week high of 12.83% (IVolatility). - Current"
+              "agent": "sentiment",
+              "weight": 1.259,
+              "key_argument": "[EVIDENCE]: - [2026-03-06] CFTC COT report: non-commercial net long 10,800 contracts (47,704 longs vs. 36,904 shorts) as of March 3, down from prior w"
             }
           ],
-          "contrarian_view": "Strongest counter-argument: the bear\u2019s forward supply wall (CONAB record Brazil crop + Rabobank record global production) combined with bearish options skew could mean any tightness is temporary and t",
+          "contrarian_view": "Strongest counter-argument (bull): near-term supply tightness is corroborated by backwardation, Brazil export declines, and Minas Gerais flooding/continued rains creating harvest delay and quality ris",
           "realized_pnl": null
         },
         {
-          "timestamp": "2026-03-06 11:10:56.437519+00:00",
-          "direction": "BEARISH",
-          "confidence": 0.8,
-          "strategy": "BEAR_PUT_SPREAD",
+          "timestamp": "2026-03-09 15:44:44.771706+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "NONE",
           "top_contributors": [
             {
-              "agent": "volatility",
-              "weight": 1.77,
-              "key_argument": "[EVIDENCE]: - Implied Volatility: Coffee May '26 (KCK26) at 36.37%, July '26 (KCN26) at 36.11% (Barchart). - Historical volatility: 9.3% for Jan 2026 "
+              "agent": "supply_chain",
+              "weight": 1.538,
+              "key_argument": ""
             },
             {
-              "agent": "agronomist",
-              "weight": -1.46,
-              "key_argument": "[EVIDENCE]: [2026-03-05] Conab projects a record 2026 Brazil coffee production of 66.2 million bags (+17.2% y/y), driven by 400-600mm of rain in Minas"
+              "agent": "sentiment",
+              "weight": 1.259,
+              "key_argument": "[EVIDENCE]: - [2026-03-03] Coffee COT Index at 21,640, reflecting non-commercial net long position (MacroMicro). - [2026-03-03] Commercial traders net"
             }
           ],
-          "contrarian_view": "The strongest counter-argument is the bull\u2019s claim of acute near-term physical tightness: Cecaf\u00e9\u2019s report of ~602,000 bags/month trapped with 55% vessel delays, corroborated by backwardation and risin",
+          "contrarian_view": "Strongest counter-argument is the bearish claim that the sustained ICE-certified stock build (and broader supply expansion signals) will swamp temporary logistics/quality issues. I override a fully be",
           "realized_pnl": null
         },
         {
-          "timestamp": "2026-03-06 11:09:43.791249+00:00",
+          "timestamp": "2026-03-09 15:43:43.198057+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "LONG_STRADDLE",
+          "top_contributors": [
+            {
+              "agent": "supply_chain",
+              "weight": 1.538,
+              "key_argument": ""
+            },
+            {
+              "agent": "sentiment",
+              "weight": 1.259,
+              "key_argument": "[EVIDENCE]: - [2026-03-03] Coffee COT Index at 21,640, reflecting non-commercial net long position (MacroMicro). - [2026-03-03] Commercial traders net"
+            }
+          ],
+          "contrarian_view": "Strongest counter-argument (to neutrality) is the bearish case: rapidly building ICE certified stocks with additional bags awaiting certification, alongside record Brazilian and global crop projection",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 15:42:18.382905+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "NONE",
+          "top_contributors": [
+            {
+              "agent": "sentiment",
+              "weight": 1.94,
+              "key_argument": "[EVIDENCE]: - [2026-03-06] COT report (data as of 2026-03-03): non-commercial net long 10,800 contracts (47,704 longs vs. 36,904 shorts) (Tradingster)"
+            },
+            {
+              "agent": "supply_chain",
+              "weight": 1.893,
+              "key_argument": ""
+            }
+          ],
+          "contrarian_view": "Strongest counter-argument (bullish): the pronounced backwardation alongside documented port/shipping frictions implies real prompt tightness that can persist despite forward crop optimism. I override",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 14:06:15.635602+00:00",
           "direction": "BEARISH",
           "confidence": 0.56,
           "strategy": "BEAR_PUT_SPREAD",
           "top_contributors": [
             {
-              "agent": "agronomist",
-              "weight": -1.46,
-              "key_argument": "[EVIDENCE]: [2026-03-05] Minas Gerais received 400-600 mm of rain from late Dec 2025 through Feb 2026, significantly higher than last year (DTN). [202"
+              "agent": "sentiment",
+              "weight": 1.94,
+              "key_argument": "[EVIDENCE]: - [2026-03-06] CFTC COT: Non-commercial net long positions in coffee at 21,640 contracts, down 16.09% WoW (MacroMicro / CFTC). - [2026-03-"
             },
             {
-              "agent": "geopolitical",
-              "weight": 1.32,
-              "key_argument": "[EVIDENCE]: 1) [2026-03-06] Port of Santos reports 4-day average vessel wait, Itajai 10-day delays (GoComet). 2) [2026-03-02 to 2026-03-05] Maersk, MS"
+              "agent": "supply_chain",
+              "weight": 1.538,
+              "key_argument": ""
             }
           ],
-          "contrarian_view": "The strongest counter-argument is that Brazilian exports fell sharply (Feb -17.4% YoY; Jan -30.8% YoY) amid port congestion and Red Sea disruptions, creating acute near-term physical tightness (also s",
+          "contrarian_view": "The strongest bullish counter is the non-trivial forward-curve backwardation (May-26 over Dec-26) alongside documented Santos congestion and rising freight costs, which can create real prompt tightnes",
           "realized_pnl": null
         }
       ],
       "data_freshness": {
         "sentinels": {
           "WeatherSentinel": {
-            "last_check_minutes_ago": 126.4,
+            "last_check_minutes_ago": 79.4,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "LogisticsSentinel": {
-            "last_check_minutes_ago": 126.4,
+            "last_check_minutes_ago": 81.9,
             "check_interval_seconds": 21600,
             "is_stale": false
           },
           "NewsSentinel": {
-            "last_check_minutes_ago": 6.3,
+            "last_check_minutes_ago": 79.4,
             "check_interval_seconds": 7200,
             "is_stale": false
           },
           "XSentimentSentinel": {
-            "last_check_minutes_ago": 36.3,
+            "last_check_minutes_ago": 78.2,
             "check_interval_seconds": 5400,
             "is_stale": false
           },
           "PredictionMarketSentinel": {
-            "last_check_minutes_ago": 1.2,
+            "last_check_minutes_ago": 4.6,
             "check_interval_seconds": 300,
             "is_stale": false
           },
           "MacroContagionSentinel": {
-            "last_check_minutes_ago": 126.3,
+            "last_check_minutes_ago": 79.4,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "PriceSentinel": {
-            "last_check_minutes_ago": 126.4,
+            "last_check_minutes_ago": 29.7,
             "check_interval_seconds": 60,
             "is_stale": false
           },
           "MicrostructureSentinel": {
-            "last_check_minutes_ago": 126.4,
+            "last_check_minutes_ago": 29.6,
             "check_interval_seconds": 60,
             "is_stale": false
           }
@@ -230,32 +250,32 @@
       "agent_contribution": {
         "agents": {
           "macro": {
-            "agreement_rate_with_master": 0.324,
-            "samples": 222
+            "agreement_rate_with_master": 0.35,
+            "samples": 234
           },
           "geopolitical": {
-            "agreement_rate_with_master": 0.381,
-            "samples": 215
+            "agreement_rate_with_master": 0.383,
+            "samples": 227
           },
           "sentiment": {
-            "agreement_rate_with_master": 0.318,
-            "samples": 236
+            "agreement_rate_with_master": 0.331,
+            "samples": 248
           },
           "technical": {
-            "agreement_rate_with_master": 0.493,
-            "samples": 221
-          },
-          "volatility": {
-            "agreement_rate_with_master": 0.534,
-            "samples": 219
-          },
-          "agronomist": {
-            "agreement_rate_with_master": 0.635,
+            "agreement_rate_with_master": 0.481,
             "samples": 233
           },
+          "volatility": {
+            "agreement_rate_with_master": 0.524,
+            "samples": 231
+          },
+          "agronomist": {
+            "agreement_rate_with_master": 0.626,
+            "samples": 246
+          },
           "inventory": {
-            "agreement_rate_with_master": 0.586,
-            "samples": 215
+            "agreement_rate_with_master": 0.559,
+            "samples": 227
           }
         }
       }
@@ -263,10 +283,10 @@
     "CC": {
       "feedback_loop": {
         "status": "healthy",
-        "resolution_rate": 1.0,
-        "total_predictions": 1344,
+        "resolution_rate": 0.96,
+        "total_predictions": 1400,
         "resolved": 1344,
-        "pending": 0,
+        "pending": 56,
         "thresholds": {
           "healthy": 0.75,
           "critical": 0.5
@@ -287,13 +307,16 @@
         "tracked_count": 2
       },
       "cognitive_layer": {
-        "decisions_today": 0,
-        "bull_pct": null,
-        "bear_pct": null,
-        "neutral_pct": null,
-        "avg_confidence": null,
-        "avg_weighted_score": null,
-        "strategies_used": []
+        "decisions_today": 7,
+        "bull_pct": 0.0,
+        "bear_pct": 0.571,
+        "neutral_pct": 0.429,
+        "avg_confidence": 0.457,
+        "avg_weighted_score": -0.27,
+        "strategies_used": [
+          "NONE",
+          "BEAR_PUT_SPREAD"
+        ]
       },
       "sentinel_efficiency": {
         "sentinels": {
@@ -303,7 +326,7 @@
             "signal_to_noise": 0.0
           },
           "PriceSentinel": {
-            "total_alerts": 17,
+            "total_alerts": 18,
             "trades_triggered": 0,
             "signal_to_noise": 0.0
           },
@@ -318,7 +341,7 @@
             "signal_to_noise": 0.0
           },
           "WeatherSentinel": {
-            "total_alerts": 11,
+            "total_alerts": 12,
             "trades_triggered": 0,
             "signal_to_noise": 0.0
           },
@@ -328,28 +351,36 @@
             "signal_to_noise": 0.037
           },
           "NewsSentinel": {
-            "total_alerts": 3,
+            "total_alerts": 4,
             "trades_triggered": 0,
             "signal_to_noise": 0.0
           }
         },
-        "total_alerts": 79,
+        "total_alerts": 82,
         "total_trades_triggered": 1
       },
       "efficiency": {
-        "daily_spend_usd": 0.0006745,
-        "request_count": 3,
+        "daily_spend_usd": 1.275193149999999,
+        "request_count": 179,
         "router_metrics": {
           "total_requests": 820,
           "total_errors": 0,
           "total_fallbacks": 0
         },
-        "semantic_cache": null
+        "semantic_cache": {
+          "enabled": true,
+          "hits": 0,
+          "misses": 5,
+          "hit_rate": 0.0,
+          "invalidations": 5,
+          "entries": 1,
+          "partitions": 1
+        }
       },
       "risk_rails": {
         "drawdown": {
           "status": "NORMAL",
-          "current_pct": -0.2842683674962978,
+          "current_pct": -0.6914860797167867,
           "thresholds": {
             "warning_pct": 2.0,
             "halt_pct": 4.0,
@@ -358,152 +389,152 @@
         },
         "var": {
           "utilization": null,
-          "var_95": 219.56,
-          "var_99": 277.68,
+          "var_95": 249.28,
+          "var_99": 319.55,
           "enforcement_mode": "log_only"
         }
       },
       "decision_traces": [
         {
-          "timestamp": "2026-03-06 11:36:03.856505+00:00",
-          "direction": "BEARISH",
-          "confidence": 0.9,
-          "strategy": "BEAR_PUT_SPREAD",
-          "top_contributors": [
-            {
-              "agent": "geopolitical",
-              "weight": 1.5,
-              "key_argument": "[EVIDENCE]: 1) [2026-03-05] Ivory Coast cut its mid-crop farmgate price by nearly 60% to 1,200 CFA/kg and authorized the CCC to purchase 200,000 tons "
-            },
-            {
-              "agent": "agronomist",
-              "weight": -1.461,
-              "key_argument": "[EVIDENCE]: [2026-03-06] Seasonal forecasts indicate average to above-average rainfall for the March to May 2026 long rains season across West Africa."
-            }
-          ],
-          "contrarian_view": "The strongest counter-argument is the bull\u2019s oversold/short-squeeze setup (RSI 28.6, flattening EMA spread, and persistent net-short specs in a range-bound, moderate-volatility regime), implying downs",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-06 11:35:49.599044+00:00",
-          "direction": "BEARISH",
-          "confidence": 0.8,
-          "strategy": "BEAR_PUT_SPREAD",
-          "top_contributors": [
-            {
-              "agent": "geopolitical",
-              "weight": 1.5,
-              "key_argument": "[EVIDENCE]: 1) [2026-03-05] Ivory Coast cut mid-crop farmgate price by ~60% to 1,200 CFA/kg; CCC to buy 200,000 tons to clear port backlogs. 2) [2026-"
-            },
-            {
-              "agent": "agronomist",
-              "weight": -1.461,
-              "key_argument": "[EVIDENCE]: [2026-03-06] Seasonal forecasts indicate average to above-average rainfall for the March to May 2026 long rains season across West Africa."
-            }
-          ],
-          "contrarian_view": "The strongest counter-argument is the bull\u2019s mean-reversion case: RSI is extremely oversold, the market regime is labeled RANGE_BOUND, specs are net short (raising squeeze risk), and demand elasticity",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-06 11:34:58.234240+00:00",
-          "direction": "BEARISH",
-          "confidence": 0.8,
-          "strategy": "BEAR_PUT_SPREAD",
-          "top_contributors": [
-            {
-              "agent": "agronomist",
-              "weight": -1.461,
-              "key_argument": "[EVIDENCE]: [2026-03-04] Cumulative cocoa arrivals at Ivorian ports reached 1.5 million metric tons by March 1, surpassing exporter estimates of 1.335"
-            },
-            {
-              "agent": "geopolitical",
-              "weight": 1.2,
-              "key_argument": "[EVIDENCE]: 1) [2026-03-05] C\u00f4te d'Ivoire cut farmgate prices by 57-60% to 1,200 CFA francs/kg. 2) [2026-03-04] Ivorian government is buying 100,000 M"
-            }
-          ],
-          "contrarian_view": "The strongest bullish counter is that Ghana/C\u00f4te d\u2019Ivoire financing and policy constraints (COCOBOD liquidity issues, strike risk, and processing mandates) could impair procurement/export execution an",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-06 11:33:35.385149+00:00",
-          "direction": "BEARISH",
-          "confidence": 0.8,
-          "strategy": "BEAR_PUT_SPREAD",
-          "top_contributors": [
-            {
-              "agent": "agronomist",
-              "weight": -1.461,
-              "key_argument": "[EVIDENCE]: [2026-03-05] Favorable growing conditions in West Africa are expected to boost the mid-crop harvest, with farmers reporting larger and hea"
-            },
-            {
-              "agent": "geopolitical",
-              "weight": -0.975,
-              "key_argument": "[EVIDENCE]: 1) [2026-03-05] Ghanaian farmers remain unpaid since November 2025; LBCs are diverting 3.62 billion cedis to bank debt instead of paying f"
-            }
-          ],
-          "contrarian_view": "The strongest bullish counter-argument is that after a very large multi-month/YoY collapse and with bullish RSI divergence in a range-bound regime, much of the bearish news may already be priced in, m",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-06 10:20:10.685208+00:00",
+          "timestamp": "2026-03-09 14:42:56.384056+00:00",
           "direction": "NEUTRAL",
           "confidence": 0.0,
-          "strategy": "IRON_CONDOR",
+          "strategy": "NONE",
           "top_contributors": [
             {
-              "agent": "sentiment",
-              "weight": -4.53,
-              "key_argument": "[EVIDENCE]: - [2026-03-04] Ivory Coast 57-60% farmgate price cut from 2,800 to 1,200 CFA francs per kg due to international price collapse and global "
+              "agent": "geopolitical",
+              "weight": -1.44,
+              "key_argument": "[EVIDENCE]: 1) [2026-03-09] Ghana's COCOBOD holds 581,000 MT of cocoa bought at $7,200/tonne; global prices have fallen to $4,100/tonne, leaving $750 "
             },
             {
               "agent": "macro",
-              "weight": 0.44,
-              "key_argument": "STALE (1143min old) - {'data': '[EVIDENCE]: [2026-03-05] EUR/USD fell to 1.1594 (-0.34% session) amid escalating Middle Ea..."
+              "weight": 1.18,
+              "key_argument": "[EVIDENCE]: - [2026-03-09] EUR/USD fell to 1.1575 (-0.37% session), lowest in >3 months. (Trading Economics)\n- [2026-03-06] BCEAO manual FX: 655.957 X"
             }
           ],
-          "contrarian_view": "The strongest counter-argument is the Permabull\u2019s mean-reversion case: the market is deeply oversold (RSI below 30) and far below the long-term average, and both sides acknowledge a potential short-co",
+          "contrarian_view": "The strongest counter-argument is the bull\u2019s point that extreme fund net-shorts and recent upside momentum can fuel a sharp short-covering rally (a genuine risk both sides acknowledge), potentially am",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 14:16:28.495299+00:00",
+          "direction": "BEARISH",
+          "confidence": 0.8,
+          "strategy": "BEAR_PUT_SPREAD",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": -1.153,
+              "key_argument": "[EVIDENCE]: [2026-02-27] Hedgepoint Global Markets estimated a 2025/26 global cocoa surplus of 365,000 tons, citing favorable West African weather. [2"
+            },
+            {
+              "agent": "geopolitical",
+              "weight": -1.08,
+              "key_argument": "[EVIDENCE]: 1) [2026-03-09] Ghana's COCOBOD holds 581,000 MT of cocoa bought at $7,200/tonne; global prices have fallen to $4,100/tonne, leaving $750 "
+            }
+          ],
+          "contrarian_view": "The strongest counter is the bull\u2019s short-squeeze/technical continuation case: extreme fund net-shorts plus a strong 5-day rebound could extend the rally even if fundamentals are heavy. I override it ",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 14:15:34.596213+00:00",
+          "direction": "BEARISH",
+          "confidence": 0.8,
+          "strategy": "BEAR_PUT_SPREAD",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": -1.153,
+              "key_argument": "[EVIDENCE]: [2026-02-27] Hedgepoint Global Markets estimated a 2025/26 global cocoa surplus of 365,000 tons, citing favorable West African weather. [2"
+            },
+            {
+              "agent": "volatility",
+              "weight": 1.15,
+              "key_argument": "[EVIDENCE]: - [2026-03-06] ICE NY cocoa May (CCK26) closed +5.73% at 3,230; Sep (CCU26) at 3,340 (Barchart). - Rally linked to reported fears from Ira"
+            }
+          ],
+          "contrarian_view": "The strongest counter-argument is the bull\u2019s contrarian setup: extreme speculative net-shorts plus technical mean-reversion signals could extend a short-covering rally, especially with call-skew and g",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 14:14:30.032727+00:00",
+          "direction": "BEARISH",
+          "confidence": 0.8,
+          "strategy": "BEAR_PUT_SPREAD",
+          "top_contributors": [
+            {
+              "agent": "geopolitical",
+              "weight": 1.35,
+              "key_argument": "[EVIDENCE]: No evidence or specific sources are available because the previous research attempt resulted in a system error ('LLM returned non-dict JSO"
+            },
+            {
+              "agent": "volatility",
+              "weight": 1.15,
+              "key_argument": "[EVIDENCE]: - [2026-03-09] Cocoa prices at $3,269.64 per tonne, +1.23% daily but -60% YoY (Trading Economics). - [2026-03-06] May '26 CCK26 IV 44.29% "
+            }
+          ],
+          "contrarian_view": "The strongest counter-argument is the bull\u2019s crowded-short/oversold setup (record fund net shorts in NY and London, RSI ~36\u201338) combined with an ongoing 5-day rebound, which can produce a sharp short-",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 14:13:22.614443+00:00",
+          "direction": "BEARISH",
+          "confidence": 0.8,
+          "strategy": "BEAR_PUT_SPREAD",
+          "top_contributors": [
+            {
+              "agent": "geopolitical",
+              "weight": 1.35,
+              "key_argument": "[EVIDENCE]: 1) [2026-03-09] Ghana's COCOBOD lost $941 million on a single trade deal. 2) [2026-03-06] Ghanaian farmers remain unpaid since November 20"
+            },
+            {
+              "agent": "agronomist",
+              "weight": -1.153,
+              "key_argument": "[EVIDENCE]: [2026-03-05] Cumulative cocoa arrivals at Ivorian ports reached 1.5 million metric tons by March 1, exceeding exporter estimates of 1.335 "
+            }
+          ],
+          "contrarian_view": "The strongest counter-argument is the bull\u2019s squeeze/technical rebound case: very large fund net-shorts (CFTC and London) plus RSI near oversold and a multi-day rebound could extend on short-covering,",
           "realized_pnl": null
         }
       ],
       "data_freshness": {
         "sentinels": {
           "WeatherSentinel": {
-            "last_check_minutes_ago": 126.1,
+            "last_check_minutes_ago": 80.6,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "LogisticsSentinel": {
-            "last_check_minutes_ago": 126.1,
+            "last_check_minutes_ago": 80.6,
             "check_interval_seconds": 21600,
             "is_stale": false
           },
           "NewsSentinel": {
-            "last_check_minutes_ago": 6.0,
+            "last_check_minutes_ago": 79.4,
             "check_interval_seconds": 7200,
             "is_stale": false
           },
           "XSentimentSentinel": {
-            "last_check_minutes_ago": 36.0,
+            "last_check_minutes_ago": 79.2,
             "check_interval_seconds": 5400,
             "is_stale": false
           },
           "PredictionMarketSentinel": {
-            "last_check_minutes_ago": 5.9,
+            "last_check_minutes_ago": 4.6,
             "check_interval_seconds": 300,
             "is_stale": false
           },
           "MacroContagionSentinel": {
-            "last_check_minutes_ago": 126.0,
+            "last_check_minutes_ago": 80.5,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "PriceSentinel": {
-            "last_check_minutes_ago": 126.1,
+            "last_check_minutes_ago": 29.7,
             "check_interval_seconds": 60,
             "is_stale": false
           },
           "MicrostructureSentinel": {
-            "last_check_minutes_ago": 126.1,
+            "last_check_minutes_ago": 29.7,
             "check_interval_seconds": 60,
             "is_stale": false
           }
@@ -519,32 +550,32 @@
       "agent_contribution": {
         "agents": {
           "macro": {
-            "agreement_rate_with_master": 0.675,
-            "samples": 123
+            "agreement_rate_with_master": 0.656,
+            "samples": 128
           },
           "geopolitical": {
-            "agreement_rate_with_master": 0.234,
-            "samples": 111
+            "agreement_rate_with_master": 0.241,
+            "samples": 116
           },
           "sentiment": {
-            "agreement_rate_with_master": 0.696,
-            "samples": 138
+            "agreement_rate_with_master": 0.699,
+            "samples": 143
           },
           "technical": {
-            "agreement_rate_with_master": 0.489,
-            "samples": 137
+            "agreement_rate_with_master": 0.49,
+            "samples": 143
           },
           "volatility": {
-            "agreement_rate_with_master": 0.719,
-            "samples": 121
+            "agreement_rate_with_master": 0.706,
+            "samples": 126
           },
           "agronomist": {
-            "agreement_rate_with_master": 0.653,
-            "samples": 121
+            "agreement_rate_with_master": 0.646,
+            "samples": 127
           },
           "inventory": {
-            "agreement_rate_with_master": 0.839,
-            "samples": 112
+            "agreement_rate_with_master": 0.838,
+            "samples": 117
           }
         }
       }
@@ -552,10 +583,10 @@
     "NG": {
       "feedback_loop": {
         "status": "healthy",
-        "resolution_rate": 1.0,
-        "total_predictions": 704,
+        "resolution_rate": 0.871,
+        "total_predictions": 808,
         "resolved": 704,
-        "pending": 0,
+        "pending": 104,
         "thresholds": {
           "healthy": 0.75,
           "critical": 0.5
@@ -572,13 +603,16 @@
         "tracked_count": 1
       },
       "cognitive_layer": {
-        "decisions_today": 0,
-        "bull_pct": null,
-        "bear_pct": null,
-        "neutral_pct": null,
-        "avg_confidence": null,
-        "avg_weighted_score": null,
-        "strategies_used": []
+        "decisions_today": 12,
+        "bull_pct": 0.167,
+        "bear_pct": 0.0,
+        "neutral_pct": 0.833,
+        "avg_confidence": 0.612,
+        "avg_weighted_score": 0.304,
+        "strategies_used": [
+          "NONE",
+          "BULL_CALL_SPREAD"
+        ]
       },
       "sentinel_efficiency": {
         "sentinels": {
@@ -588,7 +622,7 @@
             "signal_to_noise": 0.1818
           },
           "MicrostructureSentinel": {
-            "total_alerts": 44,
+            "total_alerts": 54,
             "trades_triggered": 0,
             "signal_to_noise": 0.0
           },
@@ -598,7 +632,7 @@
             "signal_to_noise": 0.0
           },
           "PriceSentinel": {
-            "total_alerts": 3,
+            "total_alerts": 5,
             "trades_triggered": 0,
             "signal_to_noise": 0.0
           },
@@ -618,23 +652,31 @@
             "signal_to_noise": null
           }
         },
-        "total_alerts": 65,
+        "total_alerts": 77,
         "total_trades_triggered": 2
       },
       "efficiency": {
-        "daily_spend_usd": 0.0,
-        "request_count": 0,
+        "daily_spend_usd": 2.150178699999998,
+        "request_count": 257,
         "router_metrics": {
-          "total_requests": 3450,
+          "total_requests": 3700,
           "total_errors": 0,
           "total_fallbacks": 0
         },
-        "semantic_cache": null
+        "semantic_cache": {
+          "enabled": true,
+          "hits": 0,
+          "misses": 5,
+          "hit_rate": 0.0,
+          "invalidations": 5,
+          "entries": 1,
+          "partitions": 1
+        }
       },
       "risk_rails": {
         "drawdown": {
           "status": "NORMAL",
-          "current_pct": -0.021286053872517623,
+          "current_pct": -0.9434663273314967,
           "thresholds": {
             "warning_pct": 2.0,
             "halt_pct": 4.0,
@@ -643,152 +685,152 @@
         },
         "var": {
           "utilization": null,
-          "var_95": 219.56,
-          "var_99": 277.68,
+          "var_95": 249.28,
+          "var_99": 319.55,
           "enforcement_mode": "log_only"
         }
       },
       "decision_traces": [
         {
-          "timestamp": "2026-03-05 15:17:02.449589+00:00",
+          "timestamp": "2026-03-09 16:30:44.978787+00:00",
           "direction": "NEUTRAL",
           "confidence": 0.6,
           "strategy": "NONE",
           "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": 1.79,
+              "key_argument": "[EVIDENCE]: 1. U.S. Lower 48 dry gas production reached 113.1 Bcf/d (5.6% YoY increase); oil-directed rigs rose by 4 to 411. 2. EIA reported a 132 Bcf"
+            },
+            {
+              "agent": "inventory",
+              "weight": 1.54,
+              "key_argument": "[EVIDENCE]: 1. [2026-03-05] EIA reported a weekly storage withdrawal of 132 Bcf for the week ending Feb 27, 2026 \u2014 exceeding the 120-124 Bcf analyst c"
+            }
+          ],
+          "contrarian_view": "Strongest counter-argument is the bull\u2019s point that a massive, real Qatar outage plus Europe\u2019s price spike can maintain a sustained risk premium and keep U.S. LNG demand maximized, while a bullish sto",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 16:30:44.871271+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "NONE",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": 1.79,
+              "key_argument": "[EVIDENCE]: 1. U.S. Lower 48 dry gas production reached 113.1 Bcf/d (5.6% YoY increase); oil-directed rigs rose by 4 to 411. 2. EIA reported a 132 Bcf"
+            },
+            {
+              "agent": "inventory",
+              "weight": 1.54,
+              "key_argument": "[EVIDENCE]: 1. [2026-03-05] EIA reported a weekly storage withdrawal of 132 Bcf for the week ending Feb 27, 2026 \u2014 exceeding the 120-124 Bcf analyst c"
+            }
+          ],
+          "contrarian_view": "Strongest counter-argument (Bull): Qatar force majeure plus Europe/TTF shock will guarantee sustained maxed U.S. LNG demand and, with a new storage deficit, should drive continued upside. I override t",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 16:29:21.221314+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "NONE",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": 1.79,
+              "key_argument": "[EVIDENCE]: 1. U.S. Lower 48 dry gas production reached 113.1 Bcf/d, a 5.6% YoY increase (BNEF). 2. Gas-directed rigs fell by 2 to 132, while oil-dire"
+            },
+            {
+              "agent": "inventory",
+              "weight": 1.54,
+              "key_argument": "[EVIDENCE]: 1. [2026-03-05] EIA reported a weekly storage withdrawal of 132 Bcf for the week ending Feb 27, 2026 \u2014 exceeding the 120-124 Bcf analyst c"
+            }
+          ],
+          "contrarian_view": "Strongest counter-argument: the bear\u2019s point that U.S. LNG is already near max throughput (94% utilization; ~19 Bcf/d feedgas), so Qatar cannot create much additional U.S. demand, while warming weathe",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 16:28:47.837048+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "NONE",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": -1.455,
+              "key_argument": "[EVIDENCE]: 1. U.S. Lower-48 dry gas production was 113.1 Bcf/d on March 5, 2026 (+5.6% YoY). 2. Gas-directed rigs fell by 2 to 132; oil-directed rigs"
+            },
+            {
+              "agent": "geopolitical",
+              "weight": 1.18,
+              "key_argument": "[EVIDENCE]: 1) QatarEnergy confirmed Ras Laffan LNG production is suspended until Middle East hostilities end, following the closure of the Strait of "
+            }
+          ],
+          "contrarian_view": "Strongest counter-argument (bullish): the Middle East disruption plus very wide global LNG prices can keep U.S. LNG running at maximum, creating a durable demand floor, while storage is below the five",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-09 16:27:51.120600+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.6,
+          "strategy": "NONE",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": 2.24,
+              "key_argument": "[EVIDENCE]: 1. Lower 48 dry gas production was estimated at 113.6 Bcf/d, representing a 6.4% year-over-year increase (BNEF). 2. For the week ending Ma"
+            },
             {
               "agent": "volatility",
-              "weight": 1.35,
-              "key_argument": "[EVIDENCE]: 1. CME Henry Hub Natural Gas CVOL Index at 76.7450 on 2026-03-05, up 3.83 points, indicating elevated expected volatility (CME Group). 2. "
-            },
-            {
-              "agent": "macro",
-              "weight": 1.12,
-              "key_argument": "[EVIDENCE]: 1) [2026-03-04] Lower-48 dry gas production reached 112.9 Bcf/d (+6.0% YoY). (Barchart / BNEF)\n2) [2026-03-04] Estimated LNG feedgas flows"
+              "weight": 1.33,
+              "key_argument": "[EVIDENCE]: - CME Henry Hub CVOL at 63.72 on 2026-03-02 (up 3.04 points, mid-60s elevated; CME Group; RAW RESEARCH). - April NGJ26 +6.09% to one-month"
             }
           ],
-          "contrarian_view": "Strongest bullish counterargument: LNG feedgas is near-peak with 94% utilization and could stay maximized if global LNG remains stressed, while crowded net shorts create squeeze risk. I override it be",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-05 15:15:43.628534+00:00",
-          "direction": "NEUTRAL",
-          "confidence": 0.6,
-          "strategy": "NONE",
-          "top_contributors": [
-            {
-              "agent": "agronomist",
-              "weight": 1.572,
-              "key_argument": "[EVIDENCE]: 1. U.S. natural gas storage is at 2,018 Bcf (0.3% below the five-year average) with a forecasted 124 Bcf withdrawal (Trading Economics, FX"
-            },
-            {
-              "agent": "geopolitical",
-              "weight": 1.5,
-              "key_argument": "[EVIDENCE]: 1) Qatar halted LNG production and the Strait of Hormuz remains closed for a 4th day, causing TTF prices to surge 60% to over \u20ac56/MWh. 2) "
-            }
-          ],
-          "contrarian_view": "The strongest counter-argument is the bull case that near-max LNG utilization (+YoY feedgas) and constrained Permian takeaway (Waha negative pricing) create a durable Henry Hub floor and, combined wit",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-05 15:15:08.122708+00:00",
-          "direction": "NEUTRAL",
-          "confidence": 0.8,
-          "strategy": "NONE",
-          "top_contributors": [
-            {
-              "agent": "inventory",
-              "weight": 1.61,
-              "key_argument": "[EVIDENCE]: 1. [2026-03-05] Market consensus forecasts an EIA storage withdrawal of 120-124 Bcf for the week ending Feb 27 \u2014 sourced from Reuters, Blo"
-            },
-            {
-              "agent": "geopolitical",
-              "weight": 1.5,
-              "key_argument": "[EVIDENCE]: 1) TTF gas futures surged 60% (>\u20ac56/MWh) due to Qatar's Ras Laffan LNG suspension (15-17% of EU supply). 2) Asian JKM spot prices hold a $"
-            }
-          ],
-          "contrarian_view": "Strongest bull counter-argument: the market shows near-term tightness signals (backwardation) and a potentially above-average storage withdrawal expectation, with crowded speculative shorts that could",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-05 15:14:23.860078+00:00",
-          "direction": "NEUTRAL",
-          "confidence": 0.6,
-          "strategy": "NONE",
-          "top_contributors": [
-            {
-              "agent": "agronomist",
-              "weight": 1.572,
-              "key_argument": "[EVIDENCE]: 1. U.S. natural gas storage is at 2,018 Bcf (0.3% below the five-year average) with a forecasted 124 Bcf withdrawal (Trading Economics, FX"
-            },
-            {
-              "agent": "geopolitical",
-              "weight": 1.5,
-              "key_argument": "[EVIDENCE]: 1) Qatar halted LNG production and the Strait of Hormuz remains closed for a 4th day, causing TTF prices to surge 60% to over \u20ac56/MWh. 2) "
-            }
-          ],
-          "contrarian_view": "Strongest counter-argument (Bull): near-peak LNG utilization (~94\u201395%) plus modest domestic tightness (storage slightly below the five-year average and a potentially large withdrawal) creates a durabl",
-          "realized_pnl": null
-        },
-        {
-          "timestamp": "2026-03-05 15:11:53.168217+00:00",
-          "direction": "NEUTRAL",
-          "confidence": 0.8,
-          "strategy": "NONE",
-          "top_contributors": [
-            {
-              "agent": "agronomist",
-              "weight": 2.42,
-              "key_argument": "[EVIDENCE]: 1. Lower 48 dry gas production fell by 1.1 Bcf/d to 109.1 Bcf/d due to freeze-offs and maintenance. 2. U.S. frack spreads rose by 7 to 167"
-            },
-            {
-              "agent": "inventory",
-              "weight": 1.61,
-              "key_argument": "[EVIDENCE]: 1. [2026-02-26] EIA confirmed working gas at 2,018 Bcf following a 52 Bcf withdrawal for week ending Feb 20 \u2014 sitting 7 Bcf (0.3%) below t"
-            }
-          ],
-          "contrarian_view": "Strongest counter-argument (Bull): LNG feedgas is running ~18.2\u201318.5 Bcf/d and global LNG disruption risk (Qatar/Hormuz) plus a 120\u2013125 Bcf withdrawal consensus could tighten balances and trigger shor",
+          "contrarian_view": "Strongest counter-argument: the bull\u2019s point that the storage signal (132 Bcf draw, widening deficit vs 5-year average) plus elevated power burn and pipeline constraints represents genuine domestic ti",
           "realized_pnl": null
         }
       ],
       "data_freshness": {
         "sentinels": {
           "WeatherSentinel": {
-            "last_check_minutes_ago": 125.8,
+            "last_check_minutes_ago": 80.3,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "LogisticsSentinel": {
-            "last_check_minutes_ago": 125.8,
+            "last_check_minutes_ago": 80.3,
             "check_interval_seconds": 21600,
             "is_stale": false
           },
           "NewsSentinel": {
-            "last_check_minutes_ago": 5.2,
+            "last_check_minutes_ago": 78.0,
             "check_interval_seconds": 7200,
             "is_stale": false
           },
           "XSentimentSentinel": {
-            "last_check_minutes_ago": 35.4,
+            "last_check_minutes_ago": 76.6,
             "check_interval_seconds": 5400,
             "is_stale": false
           },
           "PredictionMarketSentinel": {
-            "last_check_minutes_ago": 5.2,
+            "last_check_minutes_ago": 4.0,
             "check_interval_seconds": 300,
             "is_stale": false
           },
           "MacroContagionSentinel": {
-            "last_check_minutes_ago": 125.7,
+            "last_check_minutes_ago": 80.2,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "PriceSentinel": {
-            "last_check_minutes_ago": 1.2,
+            "last_check_minutes_ago": 4.1,
             "check_interval_seconds": 60,
             "is_stale": false
           },
           "MicrostructureSentinel": {
-            "last_check_minutes_ago": 1.2,
+            "last_check_minutes_ago": 4.0,
             "check_interval_seconds": 60,
             "is_stale": false
           }
@@ -804,32 +846,32 @@
       "agent_contribution": {
         "agents": {
           "macro": {
-            "agreement_rate_with_master": 0.616,
-            "samples": 73
+            "agreement_rate_with_master": 0.627,
+            "samples": 83
           },
           "geopolitical": {
-            "agreement_rate_with_master": 0.286,
-            "samples": 70
-          },
-          "sentiment": {
-            "agreement_rate_with_master": 0.462,
+            "agreement_rate_with_master": 0.35,
             "samples": 80
           },
+          "sentiment": {
+            "agreement_rate_with_master": 0.433,
+            "samples": 90
+          },
           "technical": {
-            "agreement_rate_with_master": 0.611,
-            "samples": 72
+            "agreement_rate_with_master": 0.619,
+            "samples": 84
           },
           "volatility": {
-            "agreement_rate_with_master": 0.314,
-            "samples": 70
+            "agreement_rate_with_master": 0.312,
+            "samples": 80
           },
           "agronomist": {
-            "agreement_rate_with_master": 0.586,
-            "samples": 70
+            "agreement_rate_with_master": 0.538,
+            "samples": 80
           },
           "inventory": {
-            "agreement_rate_with_master": 0.414,
-            "samples": 70
+            "agreement_rate_with_master": 0.438,
+            "samples": 80
           }
         }
       }
@@ -839,7 +881,23 @@
     "status": "no_data"
   },
   "changes": {
-    "changes": []
+    "changes": [
+      {
+        "component": "KC/decisions",
+        "yesterday": 0,
+        "today": 13
+      },
+      {
+        "component": "CC/decisions",
+        "yesterday": 0,
+        "today": 7
+      },
+      {
+        "component": "NG/decisions",
+        "yesterday": 0,
+        "today": 12
+      }
+    ]
   },
   "rolling_trends": {
     "status": "no_data"
@@ -848,7 +906,7 @@
     {
       "priority": "MEDIUM",
       "component": "CC/sentinel/PriceSentinel",
-      "observation": "SNR 0.0000 with 17 alerts \u2014 mostly noise",
+      "observation": "SNR 0.0000 with 18 alerts \u2014 mostly noise",
       "suggestion": "Increase trigger threshold or add debounce"
     },
     {
@@ -860,7 +918,7 @@
     {
       "priority": "MEDIUM",
       "component": "CC/sentinel/WeatherSentinel",
-      "observation": "SNR 0.0000 with 11 alerts \u2014 mostly noise",
+      "observation": "SNR 0.0000 with 12 alerts \u2014 mostly noise",
       "suggestion": "Increase trigger threshold or add debounce"
     },
     {
@@ -872,7 +930,7 @@
     {
       "priority": "MEDIUM",
       "component": "NG/sentinel/MicrostructureSentinel",
-      "observation": "SNR 0.0000 with 44 alerts \u2014 mostly noise",
+      "observation": "SNR 0.0000 with 54 alerts \u2014 mostly noise",
       "suggestion": "Increase trigger threshold or add debounce"
     },
     {
@@ -924,8 +982,7 @@
       "soft_freshness_limit_hours": 4,
       "max_total_positions": 30,
       "max_commodity_concentration_pct": 0.5,
-      "max_correlated_exposure_pct": 0.7,
-      "max_open_positions": 3
+      "max_correlated_exposure_pct": 0.7
     },
     "drawdown": {
       "enabled": true,
@@ -942,7 +999,7 @@
         "adaptive_step_percentage": 0.04,
         "ceiling_aggression_factor": 0.75,
         "adaptive_target_steps": 10,
-        "cap_timeout_seconds": 900,
+        "cap_timeout_seconds": 1800,
         "iron_condor_short_strikes_from_atm": 2,
         "iron_condor_wing_strikes_apart": 2,
         "slippage_spread_percentage": 0.5,
@@ -951,7 +1008,7 @@
         "min_book_depth_multiplier": 3,
         "max_single_leg_spread_pct": 0.5,
         "fixed_slippage_cents": 0.5,
-        "monitoring_duration_seconds": 1800
+        "monitoring_duration_seconds": 2400
       },
       "KC": {
         "max_liquidity_spread_percentage": 0.75,
@@ -1049,14 +1106,14 @@
       "last_report_time": null
     }
   },
-  "digest_id": "2026-03-09_24e8868ca72e",
+  "digest_id": "2026-03-09_b91eb690eb8b",
   "system_health_score": {
-    "overall": 0.8378,
+    "overall": 0.8376,
     "components": {
       "feedback_health": 1.0,
       "prediction_accuracy": 0.9412,
       "execution_quality": 1.0,
-      "sentinel_efficiency": 0.0168
+      "sentinel_efficiency": 0.0156
     },
     "weights": {
       "feedback_health": 0.35,
@@ -1066,5 +1123,5 @@
     },
     "formula": "overall = 0.35*feedback + 0.25*(1-brier) + 0.25*exec_quality + 0.15*sentinel_snr"
   },
-  "executive_summary": "KC: 0 decisions, regime=UNKNOWN | CC: 0 decisions, regime=UNKNOWN | NG: 0 decisions, regime=UNKNOWN | No high-priority issues | System health score: 0.84/1.00"
+  "executive_summary": "KC: 13 decisions, regime=UNKNOWN | CC: 7 decisions, regime=UNKNOWN | NG: 12 decisions, regime=UNKNOWN | No high-priority issues | System health score: 0.84/1.00"
 }

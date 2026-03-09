@@ -842,3 +842,111 @@
 2026-03-09 17:27:12,155 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 44% of average (Sev: 5)
 2026-03-09 17:27:12,160 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-03-09 17:28:12,169 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=760, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-09 17:30:12,421 - Orchestrator - INFO - Market Closed: Releasing Sentinel IB connection to pool.
+2026-03-09 17:30:12,422 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_sentinel)...
+2026-03-09 17:30:18,433 - Orchestrator - INFO - Market Closed: Disengaging Microstructure Sentinel
+2026-03-09 17:30:18,437 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_microstructure)...
+2026-03-09 17:33:23,692 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=765, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-09 17:35:00,010 - Engine.CC - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-03-09 17:35:00,013 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
+2026-03-09 17:35:00,021 - Engine.CC - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-03-09 17:38:00 UTC. Waiting for 0.05 hours.
+2026-03-09 17:38:00,066 - Engine.CC - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-03-09 17:38:00,069 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-03-09 17:38:00,070 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
+2026-03-09 17:38:00,070 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-03-09 17:38:00,072 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-09 17:38:00,072 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-03-09 17:38:00,738 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-09 17:38:10,739 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-09 17:38:11,012 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-09 17:38:11,015 - TradeReconciler - INFO - Parsed 4 executions from the Flex Query report.
+2026-03-09 17:38:11,020 - TradeReconciler - WARNING - Flex Query report missing required columns: {'Quantity', 'Symbol', 'DateTime', 'TradePrice'}. Available columns: ["<FlexStatementResponse timestamp='09 March", " 2026 01:38 PM EDT'>"]
+2026-03-09 17:38:11,021 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-03-09 17:38:11,251 - TradeReconciler - WARNING - Flex Query transient error (attempt 1/3): Code 1018 — Too many requests have been made from this token. Please try again shortly.. Retrying in 30s...
+2026-03-09 17:38:23,721 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=770, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-09 17:38:41,412 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 2)
+2026-03-09 17:38:51,414 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-09 17:38:51,644 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-09 17:38:51,647 - TradeReconciler - INFO - Parsed 2 executions from the Flex Query report.
+2026-03-09 17:38:51,658 - TradeReconciler - INFO - Successfully processed 2 trades into the reconciliation DataFrame.
+2026-03-09 17:38:51,660 - TradeReconciler - INFO - Consolidated to 2 unique trades from all reports.
+2026-03-09 17:38:51,661 - TradeReconciler - INFO - Filtered IB trades by commodity CC (prefixes ('CC', 'DC')): 2 -> 0
+2026-03-09 17:38:51,662 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-03-09 17:38:51,662 - TradeReconciler - WARNING - No trade ledger data found.
+2026-03-09 17:38:51,664 - TradeReconciler - WARNING - Local trade ledger is empty. All fetched IB trades will be considered missing.
+2026-03-09 17:38:51,665 - TradeReconciler - INFO - Filtered IB trades from 0 to 0 records within the last 30 days.
+2026-03-09 17:38:51,666 - TradeReconciler - WARNING - IB trades report is empty. All local trades will be marked as superfluous.
+2026-03-09 17:38:51,667 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-03-09 17:38:51,667 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-03-09 17:38:51,667 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-03-09 17:38:51,864 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-09 17:39:01,866 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-09 17:39:01,997 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-09 17:39:02,000 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-03-09 17:39:02,001 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-03-09 17:39:02,001 - TradeReconciler - WARNING - No trade ledger data found.
+2026-03-09 17:39:02,007 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-03-09 17:39:02,008 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-03-09 17:39:02,457 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-09 17:39:02,603 - trading_bot.reconciliation - INFO - No rows required updates.
+2026-03-09 17:39:05,607 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-03-09 17:39:05,607 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-03-09 17:39:05,608 - PerformanceAnalyzer - INFO - No archived trade ledgers found.
+2026-03-09 17:39:05,608 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
+2026-03-09 17:39:05,615 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-03-09 17:39:06,038 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $29,932.55
+2026-03-09 17:39:08,045 - PerformanceAnalyzer - INFO - Successfully fetched 3 execution(s) for today from IB.
+2026-03-09 17:39:11,050 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
+2026-03-09 17:39:11,051 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-03-09 17:39:11,282 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-09 17:39:11,284 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-03-09 17:39:11,294 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-09 17:39:11,310 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1421
+2026-03-09 17:39:11,310 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-03-09 17:39:11,311 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-03-09 17:39:11,316 - Engine.CC - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-03-09 17:50:00 UTC. Waiting for 0.18 hours.
+2026-03-09 17:43:23,749 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=775, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-09 17:48:23,778 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=780, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-09 17:50:00,140 - Engine.CC - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-03-09 17:50:00,142 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-09 17:50:00,142 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-03-09 17:50:00,142 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-09 17:50:00,192 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,192 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,192 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,192 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,193 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,193 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,193 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-09 17:50:00,220 - Orchestrator - WARNING - Brier stall: 56 pending, 0 resolved today (streak: 1 days)
+2026-03-09 17:50:00,221 - Orchestrator - INFO - Running feedback loop health check...
+2026-03-09 17:50:00,221 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
+2026-03-09 17:50:00,227 - Engine.CC - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-03-09 17:53:00 UTC. Waiting for 0.05 hours.
+2026-03-09 17:53:00,186 - Engine.CC - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-03-09 17:53:00,188 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-03-09 17:53:00,243 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change +8.6%, alerts: 82, sentinel trades: 1
+2026-03-09 17:53:00,249 - Engine.CC - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-03-09 17:56:00 UTC. Waiting for 0.05 hours.
+2026-03-09 17:53:23,806 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=785, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-09 17:56:00,014 - Engine.CC - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-03-09 17:56:00,018 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-03-09 17:56:00,018 - Orchestrator - INFO - Scheduled shutdown flag SET — no new scheduled trades will be processed
+2026-03-09 17:56:00,018 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-03-09 17:56:00,019 - trading_bot.connection_pool - INFO - Connecting IB (CC_orchestrator_orders) ID: 439 [REMOTE/PAPER]...
+2026-03-09 17:56:01,372 - trading_bot.connection_pool - INFO - IB (CC_orchestrator_orders) connected successfully with ID 439
+2026-03-09 17:56:01,378 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-09 17:56:01,379 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-03-09 17:56:01,482 - OrderManager - INFO - No open orders found to cancel.
+2026-03-09 17:56:01,482 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_orchestrator_orders)...
+2026-03-09 17:56:04,486 - Orchestrator - INFO - Full shutdown flag SET — system entering SLEEPING state
+2026-03-09 17:56:04,487 - Orchestrator - INFO - --- Stopping position monitoring process (PID: 3370808) ---
+2026-03-09 17:56:10,194 - Orchestrator - INFO - Position monitoring process has been successfully terminated.
+2026-03-09 17:56:15,003 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
+2026-03-09 17:56:15,003 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-03-09 17:56:15,010 - Engine.CC - INFO - Next task 'system_digest' (System Health Digest) scheduled for 2026-03-09 18:00:00 UTC. Waiting for 0.06 hours.
+2026-03-09 18:00:00,003 - Engine.CC - INFO - --- Running scheduled task: system_digest [generate_system_digest_task] ---
+2026-03-09 18:00:00,018 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
+2026-03-09 18:00:00,336 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.18}
+2026-03-09 18:00:00,546 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-09 18:00:00,685 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-09 18:00:00,805 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-09_62d4bbcc20fb (3 commodities, 9 improvement opportunities)
+2026-03-09 18:00:00,818 - Engine.CC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-10 08:00:00 UTC. Waiting for 14.00 hours.
