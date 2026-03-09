@@ -91,8 +91,11 @@ def get_local_active_positions(ledger: pd.DataFrame = None) -> pd.DataFrame:
     # Phantom reconciliation creates synthetic closes (fabricated timestamp,
     # $0 price) when IB shows no position. Later, Flex reconciliation finds
     # the real trade and writes a RECONCILIATION_MISSING entry. Both account
-    # for the same close → double-counting. When both exist for the same
-    # (symbol, action), the synthetic is redundant — drop it.
+    # for the same close → double-counting. When a RECONCILIATION_MISSING
+    # exists for a symbol, ALL synthetic entries for that symbol are
+    # redundant — drop them regardless of action direction. (The phantom
+    # reconciliation creates both legs of a round-trip, so matching only on
+    # (symbol, action) leaves the opposite-direction phantom orphaned.)
     if 'reason' in ledger.columns:
         reasons = ledger['reason'].fillna('')
         synthetic_mask = reasons.str.contains(
@@ -101,15 +104,10 @@ def get_local_active_positions(ledger: pd.DataFrame = None) -> pd.DataFrame:
         recon_mask = reasons.str.contains('RECONCILIATION_MISSING', case=False)
 
         if synthetic_mask.any() and recon_mask.any():
-            # Find (symbol, action) pairs that have RECONCILIATION_MISSING
-            recon_pairs = set(
-                ledger.loc[recon_mask, ['local_symbol', 'action']]
-                .apply(tuple, axis=1)
-            )
-            # Drop synthetics whose (symbol, action) is covered
-            superseded = synthetic_mask & ledger.apply(
-                lambda r: (r['local_symbol'], r['action']) in recon_pairs, axis=1
-            )
+            # Find symbols that have any RECONCILIATION_MISSING entry
+            recon_symbols = set(ledger.loc[recon_mask, 'local_symbol'])
+            # Drop ALL synthetics for those symbols (both action directions)
+            superseded = synthetic_mask & ledger['local_symbol'].isin(recon_symbols)
             if superseded.any():
                 logger.info(
                     f"Dropping {superseded.sum()} synthetic entries superseded "
