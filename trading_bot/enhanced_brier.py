@@ -90,6 +90,73 @@ def normalize_regime(regime_str: str) -> MarketRegime:
     return result
 
 
+def resolve_outcome_for_cycle(
+    actual_trend_direction: str,
+    prediction_type: str = "",
+    volatility_outcome: str = "",
+) -> str:
+    """
+    Determine the correct Brier resolution outcome for a prediction.
+
+    For DIRECTIONAL cycles: use actual_trend_direction as-is.
+    For VOLATILITY cycles where market STAYED_FLAT: resolve as NEUTRAL
+      (rewards agents who correctly predicted range-bound conditions).
+    For VOLATILITY cycles with BIG_MOVE: use actual directional movement
+      (rewards agents who predicted the breakout direction).
+
+    This is the SINGLE SOURCE OF TRUTH for outcome resolution.
+    All resolution paths (enhanced_brier backfill, brier_reconciliation,
+    re-scoring scripts) must use this function.
+
+    Args:
+        actual_trend_direction: BULLISH, BEARISH, or NEUTRAL from reconciliation
+        prediction_type: DIRECTIONAL or VOLATILITY from council_history
+        volatility_outcome: BIG_MOVE or STAYED_FLAT from council_history
+
+    Returns:
+        Resolution outcome: BULLISH, BEARISH, or NEUTRAL.
+        Empty string if unresolvable.
+    """
+    # NaN-safe string conversion: pandas NaN → "NAN", None → "NONE"
+    atd = str(actual_trend_direction).strip().upper() if actual_trend_direction is not None else ""
+    ptype = str(prediction_type).strip().upper() if prediction_type is not None else ""
+    vol_out = str(volatility_outcome).strip().upper() if volatility_outcome is not None else ""
+
+    # Guard against pandas NaN stringification
+    if atd in ("NAN", "NONE", ""):
+        atd = ""
+    if ptype in ("NAN", "NONE", ""):
+        ptype = ""
+    if vol_out in ("NAN", "NONE", ""):
+        vol_out = ""
+
+    if ptype == "VOLATILITY":
+        if vol_out == "STAYED_FLAT":
+            return "NEUTRAL"
+        if vol_out == "BIG_MOVE":
+            # Use directional movement — intentional.
+            # Agents who predicted the breakout direction get rewarded.
+            pass
+        elif vol_out:
+            # Unexpected value — log but fall through to directional
+            logger.warning(
+                f"Unexpected volatility_outcome '{volatility_outcome}' "
+                f"for VOLATILITY cycle. Falling back to directional resolution."
+            )
+
+    # Default path: use directional movement
+    if atd in ("BULLISH", "BEARISH", "NEUTRAL"):
+        return atd
+
+    # Truly unresolvable
+    if atd or ptype or vol_out:
+        logger.warning(
+            f"Unresolvable outcome: atd='{actual_trend_direction}', "
+            f"ptype='{prediction_type}', vol='{volatility_outcome}'"
+        )
+    return ""
+
+
 @dataclass
 class ProbabilisticPrediction:
     """A prediction with full probability distribution."""
@@ -503,13 +570,17 @@ class EnhancedBrierTracker:
         if os.path.exists(council_path):
             try:
                 ch_df = pd.read_csv(council_path, on_bad_lines='warn')
-                # Build cycle_id → actual_trend_direction lookup
+                # Build cycle_id → outcome lookup (volatility-aware)
                 ch_outcomes = {}
                 for _, row in ch_df.iterrows():
                     cid = str(row.get('cycle_id', '')).strip()
-                    atd = str(row.get('actual_trend_direction', '')).strip().upper()
-                    if cid and atd and atd in ('BULLISH', 'BEARISH', 'NEUTRAL'):
-                        ch_outcomes[cid] = atd
+                    atd = str(row.get('actual_trend_direction', '')).strip()
+                    prediction_type = str(row.get('prediction_type', '')).strip()
+                    vol_outcome = str(row.get('volatility_outcome', '')).strip()
+
+                    outcome = resolve_outcome_for_cycle(atd, prediction_type, vol_outcome)
+                    if cid and outcome:
+                        ch_outcomes[cid] = outcome
 
                 for pred in self.predictions:
                     if pred.actual_outcome is not None:

@@ -235,5 +235,74 @@ class TestEnhancedBrierMath(unittest.TestCase):
         self.assertEqual(result, 1.0)
 
 
+    # === Volatility-Aware Resolution Tests ===
+
+    def test_resolve_outcome_for_cycle_directional(self):
+        """Directional cycles use actual_trend_direction unchanged."""
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        assert resolve_outcome_for_cycle("BULLISH", "DIRECTIONAL", "") == "BULLISH"
+        assert resolve_outcome_for_cycle("BEARISH", "DIRECTIONAL", "") == "BEARISH"
+        assert resolve_outcome_for_cycle("NEUTRAL", "DIRECTIONAL", "") == "NEUTRAL"
+
+    def test_resolve_outcome_for_cycle_vol_stayed_flat(self):
+        """VOLATILITY + STAYED_FLAT → always NEUTRAL.
+
+        This is the most business-critical case: an iron condor that profited
+        because the market stayed flat. Without this fix, agents who correctly
+        predicted NEUTRAL get penalized because a tiny price uptick (e.g., +0.3%)
+        resolves the cycle as BULLISH in actual_trend_direction.
+        """
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        # Even if price ticked up (BULLISH), condor staying flat = NEUTRAL
+        assert resolve_outcome_for_cycle("BULLISH", "VOLATILITY", "STAYED_FLAT") == "NEUTRAL"
+        assert resolve_outcome_for_cycle("BEARISH", "VOLATILITY", "STAYED_FLAT") == "NEUTRAL"
+        # Even NEUTRAL direction + STAYED_FLAT = NEUTRAL (no change, but consistent)
+        assert resolve_outcome_for_cycle("NEUTRAL", "VOLATILITY", "STAYED_FLAT") == "NEUTRAL"
+
+    def test_resolve_outcome_for_cycle_vol_big_move(self):
+        """VOLATILITY + BIG_MOVE → use actual direction.
+
+        When the market breaks out, agents who predicted the right direction
+        should be rewarded. Agents who predicted NEUTRAL should be penalized.
+        """
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        assert resolve_outcome_for_cycle("BULLISH", "VOLATILITY", "BIG_MOVE") == "BULLISH"
+        assert resolve_outcome_for_cycle("BEARISH", "VOLATILITY", "BIG_MOVE") == "BEARISH"
+
+    def test_resolve_outcome_for_cycle_missing_fields(self):
+        """Missing/empty fields fall back to directional safely."""
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        assert resolve_outcome_for_cycle("BULLISH", "", "") == "BULLISH"
+        assert resolve_outcome_for_cycle("BEARISH", "VOLATILITY", "") == "BEARISH"
+        assert resolve_outcome_for_cycle("", "VOLATILITY", "BIG_MOVE") == ""
+
+    def test_resolve_outcome_for_cycle_nan_handling(self):
+        """Pandas NaN and None values don't cause incorrect matches."""
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        # float('nan') stringifies to "nan" → should not match any valid outcome
+        assert resolve_outcome_for_cycle("BULLISH", "nan", "nan") == "BULLISH"
+        # None values handled safely
+        assert resolve_outcome_for_cycle("BEARISH", None, None) == "BEARISH"
+        assert resolve_outcome_for_cycle(None, "VOLATILITY", "STAYED_FLAT") == "NEUTRAL"
+
+    def test_resolve_outcome_unexpected_vol_outcome_warns(self):
+        """Unexpected volatility_outcome values emit a warning and fall through."""
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        with self.assertLogs('trading_bot.enhanced_brier', level='WARNING') as cm:
+            result = resolve_outcome_for_cycle("BULLISH", "VOLATILITY", "SOMETHING_WEIRD")
+        # Should fall through to directional
+        assert result == "BULLISH"
+        # Should have logged a warning about unexpected value
+        assert any("Unexpected volatility_outcome" in msg for msg in cm.output)
+
+    def test_resolve_outcome_unresolvable_warns(self):
+        """Completely unresolvable inputs emit a warning and return empty string."""
+        from trading_bot.enhanced_brier import resolve_outcome_for_cycle
+        with self.assertLogs('trading_bot.enhanced_brier', level='WARNING') as cm:
+            result = resolve_outcome_for_cycle("GARBAGE", "VOLATILITY", "BIG_MOVE")
+        assert result == ""
+        assert any("Unresolvable outcome" in msg for msg in cm.output)
+
+
 if __name__ == '__main__':
     unittest.main()
