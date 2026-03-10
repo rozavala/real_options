@@ -22,3 +22,8 @@
 **Vulnerability:** `pages/3_The_Council.py` used `st.markdown(..., unsafe_allow_html=True)` to render custom HTML badges for agent decisions and trigger events.
 **Learning:** Bypassing Streamlit's native HTML sanitization (`unsafe_allow_html=True`) exposes the dashboard to XSS if the data rendered (like agent strings or trigger payloads) contains malicious scripts.
 **Prevention:** Strictly avoid `unsafe_allow_html=True`. Use native, safe Streamlit components like `st.info`, `st.success`, `st.warning`, and `st.error` which automatically sanitize input while providing similar visual hierarchy.
+
+## 2026-03-05 - XML External Entity (XXE) Vulnerability in Parsing Flex Queries
+**Vulnerability:** The script `reconcile_trades.py` parsed potentially untrusted XML from IBKR Flex Queries using the insecure standard library `xml.etree.ElementTree` via `ET.fromstring()`.
+**Learning:** Parsing external XML directly with the standard library opens the application to XML External Entity (XXE) attacks, which can lead to local file disclosure, internal port scanning, or XML bomb denial-of-service, even if the source is ostensibly trusted like a broker API.
+**Prevention:** Always use the `defusedxml` package (e.g., `import defusedxml.ElementTree as ET`) instead of the standard library for any XML parsing tasks involving external data.
