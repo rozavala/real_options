@@ -1835,14 +1835,20 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         """
         Handles trade execution details for each leg, logs the trade, and
         tracks the overall fill status of the combo order.
+
+        For multi-lot orders (qty > 1), IB sends separate fill events per lot.
+        filled_legs tracks fill count per conId to accept all lots.
         """
         order_id = trade.order.orderId
         if order_id in live_orders:
             leg_con_id = fill.contract.conId
             order_details = live_orders[order_id]
+            expected_qty = int(order_details['trade'].order.totalQuantity)
+            current_fills = order_details['filled_legs'].get(leg_con_id, 0)
 
-            if leg_con_id in order_details['filled_legs']:
-                logger.info(f"Duplicate fill event for leg {leg_con_id} in order {order_id}. Ignoring.")
+            if current_fills >= expected_qty:
+                logger.info(f"Duplicate fill event for leg {leg_con_id} in order {order_id} "
+                            f"(already {current_fills}/{expected_qty}). Ignoring.")
                 return
 
             parent_trade = order_details['trade']
@@ -1851,18 +1857,22 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             position_uuid = parent_trade.order.orderRef
             decision_data = order_details.get('decision_data')
 
-            logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Position ID {position_uuid}.")
+            lot_num = current_fills + 1
+            logger.info(f"Fill received for leg {leg_con_id} in order {order_id} "
+                        f"(lot {lot_num}/{expected_qty}). Processing with Position ID {position_uuid}.")
             fill_task = asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid, decision_data, config))
             fill_task.add_done_callback(lambda t: _log_task_exception(t, f"fill_logging_{order_id}"))
             _fill_tasks.append(fill_task)
 
-            order_details['filled_legs'].add(leg_con_id)
+            order_details['filled_legs'][leg_con_id] = lot_num
             order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
 
-            # --- Check if all legs of the combo are now filled ---
-            if len(order_details['filled_legs']) == order_details['total_legs']:
-                logger.info(f"All {order_details['total_legs']} legs of combo order {order_id} are now filled.")
-                order_details['is_filled'] = True # Mark the entire order as filled
+            # --- Check if all legs of the combo are fully filled (all lots) ---
+            total_legs = order_details['total_legs']
+            if (len(order_details['filled_legs']) == total_legs
+                    and all(v >= expected_qty for v in order_details['filled_legs'].values())):
+                logger.info(f"All {total_legs} legs of combo order {order_id} fully filled ({expected_qty} lots).")
+                order_details['is_filled'] = True
 
     def on_error(reqId: int, errorCode: int, errorString: str, contract):
         """
@@ -2318,7 +2328,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 'display_name': display_name,  # FIX-004: Store for timeout logging
                 'is_filled': False,
                 'total_legs': len(contract.comboLegs) if isinstance(contract, Bag) else 1,
-                'filled_legs': set(),
+                'filled_legs': {},  # conId -> fill_count (supports multi-lot orders)
                 'fill_prices': {}, # Stores fill prices by conId
                 'last_update_time': time.time(),
                 'adaptive_ceiling_price': getattr(order, 'adaptive_limit_price', None), # Store ceiling/floor

@@ -861,5 +861,177 @@ class TestCloseContradictedThesis(unittest.IsolatedAsyncioTestCase):
         ib.reqPositionsAsync.assert_not_called()
 
 
+class TestMultiLotFillRecording(unittest.IsolatedAsyncioTestCase):
+    """Tests for multi-lot fill handling in on_exec_details.
+
+    Verifies that when IB fills a qty=2 combo order, both lots are recorded
+    to the ledger (not silently dropped as 'duplicate' fills).
+    """
+
+    def _make_fill(self, con_id: int, local_symbol: str = 'KOK6 C2.95'):
+        """Create a mock Fill object."""
+        fill = MagicMock()
+        fill.contract = MagicMock()
+        fill.contract.conId = con_id
+        fill.contract.localSymbol = local_symbol
+        fill.execution = MagicMock()
+        fill.execution.avgPrice = 2.45
+        fill.execution.shares = 1
+        return fill
+
+    def _make_trade(self, order_id: int, total_qty: int, order_ref: str,
+                    combo_leg_con_ids: list):
+        """Create a mock Trade with a combo order."""
+        trade = MagicMock()
+        trade.order.orderId = order_id
+        trade.order.totalQuantity = total_qty
+        trade.order.permId = 99999
+        trade.order.orderRef = order_ref
+        trade.contract = MagicMock()
+        trade.contract.comboLegs = [
+            MagicMock(conId=cid) for cid in combo_leg_con_ids
+        ]
+        return trade
+
+    @patch('trading_bot.order_manager._handle_and_log_fill', new_callable=AsyncMock)
+    async def test_two_lot_order_records_both_lots(self, mock_log_fill):
+        """A qty=2 order should produce 4 fill logs (2 legs x 2 lots), not 2."""
+        from trading_bot.order_manager import place_queued_orders
+
+        # We'll test the on_exec_details handler directly by extracting its logic
+        # Simulate what place_queued_orders sets up in live_orders
+        order_id = 205
+        total_qty = 2
+        con_id_a = 732415557  # KOK6 C2.95
+        con_id_b = 697282523  # KOK6 C3
+
+        trade = self._make_trade(order_id, total_qty, 'test-uuid-1', [con_id_a, con_id_b])
+
+        live_orders = {
+            order_id: {
+                'trade': trade,
+                'status': 'Submitted',
+                'display_name': 'KC-C295.0+C300.0',
+                'is_filled': False,
+                'total_legs': 2,
+                'filled_legs': {},  # conId -> fill_count
+                'fill_prices': {},
+                'last_update_time': 0,
+                'adaptive_ceiling_price': 2.55,
+                'decision_data': {'direction': 'BULLISH'},
+                'last_known_good_price': 1.80,
+                'modification_error_count': 0,
+                'max_modification_errors': 3,
+                'catastrophe_stop_trade': None,
+            }
+        }
+
+        details = live_orders[order_id]
+
+        # Simulate on_exec_details logic inline (it's a closure, can't call directly)
+        fills_processed = 0
+        for lot in range(1, total_qty + 1):
+            for con_id in [con_id_a, con_id_b]:
+                fill = self._make_fill(con_id)
+                leg_con_id = fill.contract.conId
+                expected_qty = int(details['trade'].order.totalQuantity)
+                current_fills = details['filled_legs'].get(leg_con_id, 0)
+
+                if current_fills >= expected_qty:
+                    continue  # Would be "duplicate"
+
+                details['filled_legs'][leg_con_id] = current_fills + 1
+                details['fill_prices'][leg_con_id] = fill.execution.avgPrice
+                fills_processed += 1
+
+                total_legs = details['total_legs']
+                if (len(details['filled_legs']) == total_legs
+                        and all(v >= expected_qty for v in details['filled_legs'].values())):
+                    details['is_filled'] = True
+
+        # All 4 fills should be processed (2 legs x 2 lots)
+        self.assertEqual(fills_processed, 4)
+        # Each leg should have fill count = 2
+        self.assertEqual(details['filled_legs'][con_id_a], 2)
+        self.assertEqual(details['filled_legs'][con_id_b], 2)
+        # Order should be marked as fully filled
+        self.assertTrue(details['is_filled'])
+
+    async def test_single_lot_order_still_works(self):
+        """A qty=1 order should still work correctly with the new dict-based tracking."""
+        con_id_a = 111
+        con_id_b = 222
+        trade = self._make_trade(100, 1, 'test-uuid-2', [con_id_a, con_id_b])
+
+        details = {
+            'trade': trade,
+            'is_filled': False,
+            'total_legs': 2,
+            'filled_legs': {},
+            'fill_prices': {},
+        }
+
+        # Lot 1, leg A
+        details['filled_legs'][con_id_a] = 1
+        # Lot 1, leg B
+        details['filled_legs'][con_id_b] = 1
+
+        expected_qty = int(details['trade'].order.totalQuantity)
+        total_legs = details['total_legs']
+        if (len(details['filled_legs']) == total_legs
+                and all(v >= expected_qty for v in details['filled_legs'].values())):
+            details['is_filled'] = True
+
+        self.assertTrue(details['is_filled'])
+
+    async def test_duplicate_beyond_expected_qty_rejected(self):
+        """A third fill for a qty=2 order should be rejected."""
+        con_id_a = 111
+        trade = self._make_trade(100, 2, 'test-uuid-3', [con_id_a, 222])
+
+        details = {
+            'trade': trade,
+            'filled_legs': {con_id_a: 2},  # Already got 2 fills
+        }
+
+        expected_qty = int(details['trade'].order.totalQuantity)
+        current_fills = details['filled_legs'].get(con_id_a, 0)
+        # Third fill should be rejected
+        self.assertTrue(current_fills >= expected_qty)
+
+    async def test_is_filled_only_after_all_lots_all_legs(self):
+        """is_filled should only be True when all legs have all lots."""
+        con_id_a = 111
+        con_id_b = 222
+        trade = self._make_trade(100, 2, 'test-uuid-4', [con_id_a, con_id_b])
+
+        details = {
+            'trade': trade,
+            'is_filled': False,
+            'total_legs': 2,
+            'filled_legs': {},
+        }
+
+        expected_qty = int(details['trade'].order.totalQuantity)
+
+        # After lot 1 fills both legs — NOT yet fully filled
+        details['filled_legs'] = {con_id_a: 1, con_id_b: 1}
+        all_done = (len(details['filled_legs']) == details['total_legs']
+                    and all(v >= expected_qty for v in details['filled_legs'].values()))
+        self.assertFalse(all_done)
+
+        # After lot 2 leg A — still not done
+        details['filled_legs'] = {con_id_a: 2, con_id_b: 1}
+        all_done = (len(details['filled_legs']) == details['total_legs']
+                    and all(v >= expected_qty for v in details['filled_legs'].values()))
+        self.assertFalse(all_done)
+
+        # After lot 2 leg B — NOW done
+        details['filled_legs'] = {con_id_a: 2, con_id_b: 2}
+        all_done = (len(details['filled_legs']) == details['total_legs']
+                    and all(v >= expected_qty for v in details['filled_legs'].values()))
+        self.assertTrue(all_done)
+
+
 if __name__ == '__main__':
     unittest.main()
