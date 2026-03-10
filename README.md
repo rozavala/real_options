@@ -138,8 +138,8 @@ Specialized LLM personas that analyze grounded data.
 7.  **Compliance & Risk:**
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration.
-8.  **Execution:** `OrderManager` constructs the order and submits to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
-9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
+8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions, then constructs new orders and submits to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
+9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching and securely parses IBKR Flex Queries via `defusedxml` to prevent XXE attacks. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
 ## Running

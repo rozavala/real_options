@@ -41,7 +41,7 @@ A set of agents that synthesize the analysts' reports.
 ### Tier 4: Execution & Risk Management
 - **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.).
 - **Dynamic Position Sizer:** Calculates optimal trade size.
-- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders.
+- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions.
 
 ## Infrastructure
 
@@ -65,7 +65,7 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action. Emergency closures execute concurrently via true market orders.
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
-4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups.
+4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups. It utilizes secure XML parsing (`defusedxml`) and vectorized lookup dataframes for fast mapping.
 5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.
 
 ### Three-Tier Market State
