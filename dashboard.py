@@ -111,16 +111,16 @@ with fin_col1:
         if live.get("connection_status") == "CONNECTED":
             nlv = live.get("net_liquidation", 0.0)
             st.metric(
-                "Net Liquidation", f"${nlv:,.2f}",
+                "💰 Net Liquidation", f"${nlv:,.2f}",
                 help="Total account value including cash and market value of positions."
             )
         else:
             st.metric(
-                "Net Liquidation", "IB Offline",
+                "💰 Net Liquidation", "IB Offline",
                 help="Connection to Interactive Brokers is offline. Data may be stale."
             )
     except Exception:
-        st.metric("Net Liquidation", "IB Offline", help="Connection to Interactive Brokers is offline.")
+        st.metric("💰 Net Liquidation", "IB Offline", help="Connection to Interactive Brokers is offline.")
 
 with fin_col2:
     try:
@@ -129,16 +129,16 @@ with fin_col2:
             nlv = live.get("net_liquidation", 0.0)
             pnl_pct = (daily_pnl / nlv * 100) if nlv > 0 else 0.0
             st.metric(
-                "Daily P&L", f"${daily_pnl:,.0f}", delta=f"{pnl_pct:+.2f}%",
+                "💵 Daily P&L", f"${daily_pnl:,.0f}", delta=f"{pnl_pct:+.2f}%",
                 help="Total change in account equity since prior day close (as reported by IBKR)."
             )
         else:
             st.metric(
-                "Daily P&L", "IB Offline",
+                "💵 Daily P&L", "IB Offline",
                 help="Connection to Interactive Brokers is offline. Data may be stale."
             )
     except Exception:
-        st.metric("Daily P&L", "IB Offline", help="Connection to Interactive Brokers is offline.")
+        st.metric("💵 Daily P&L", "IB Offline", help="Connection to Interactive Brokers is offline.")
 
 with fin_col3:
     try:
@@ -150,16 +150,16 @@ with fin_col3:
             limit = var_data.get("var_limit", 0)
             utilization = (var_95 / limit * 100) if limit > 0 else 0.0
             st.metric(
-                "Portfolio VaR (95%)", f"${var_95:,.0f}", delta=f"{utilization:.0f}% utilized",
+                "🛡️ Portfolio VaR (95%)", f"${var_95:,.0f}", delta=f"{utilization:.0f}% utilized",
                 help="Value at Risk (95% confidence): Estimated maximum loss over one day based on current portfolio correlations."
             )
         else:
             st.metric(
-                "Portfolio VaR (95%)", "No data",
+                "🛡️ Portfolio VaR (95%)", "No data",
                 help="VaR state file not found. Ensure the VaR calculator has run successfully."
             )
     except Exception:
-        st.metric("Portfolio VaR (95%)", "No data", help="VaR state file not found.")
+        st.metric("🛡️ Portfolio VaR (95%)", "No data", help="VaR state file not found.")
 
 # =====================================================================
 # SECTION 2b: Equity Curve + Drawdown (account-wide from daily_equity.csv)
@@ -456,11 +456,11 @@ for idx, ticker in enumerate(active_commodities):
         last_strategy = last_row.get("strategy_type", "---")
 
         st.metric(
-            "Trades", str(total_trades),
+            "🔢 Trades", str(total_trades),
             help=f"Total number of Council decisions (trades) made for {meta['name']}."
         )
         st.metric(
-            "Win Rate", f"{win_rate:.0f}%", delta=f"{wins}W / {len(resolved) - wins}L",
+            "🎯 Win Rate", f"{win_rate:.0f}%", delta=f"{wins}W / {len(resolved) - wins}L",
             help="Percentage of trades with resolved outcomes that resulted in a win."
         )
         st.caption(f"Last: **{last_decision}** / {last_strategy}")

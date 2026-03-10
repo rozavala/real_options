@@ -229,28 +229,28 @@ with matrix_cols[1]:
 
     with metric_cols[0]:
         st.metric(
-            "Precision",
+            "🎯 Precision",
             f"{confusion['precision']:.1%}",
             help="Precision (Positive Predictive Value): TP / (TP + FP). Measures how many of the AI's bullish/bearish calls were actually correct.",
         )
 
     with metric_cols[1]:
         st.metric(
-            "Recall",
+            "📥 Recall",
             f"{confusion['recall']:.1%}",
             help="Recall (Sensitivity): TP / (TP + FN). Measures the AI's ability to find all profitable opportunities in the market.",
         )
 
     with metric_cols[2]:
         st.metric(
-            "Accuracy",
+            "📈 Accuracy",
             f"{confusion['accuracy']:.1%}",
             help="Accuracy: (TP + TN) / Total. The overall percentage of correct market direction predictions.",
         )
 
     with metric_cols[3]:
         st.metric(
-            "Total Graded",
+            "🔢 Total Graded",
             confusion["total"],
             help="Total number of Master decisions that have been reconciled against actual market outcomes.",
         )
@@ -555,7 +555,7 @@ else:
 
 # === NEW SECTION: Regime-Specific Win Rate ===
 st.markdown("---")
-st.subheader("Regime-Specific Win Rate")
+st.subheader("🎭 Regime-Specific Win Rate")
 st.caption("Does the system perform differently in different market conditions?")
 
 # Load decision_signals.csv for regime data (explicit ticker for commodity-aware path)
@@ -658,7 +658,7 @@ if not _regime_shown:
 
 # === NEW SECTION: Strategy-Specific Win Rate ===
 st.markdown("---")
-st.subheader("Strategy Win Rate Breakdown")
+st.subheader("🛡️ Strategy Win Rate Breakdown")
 st.caption("Which trading strategy is working best?")
 
 _STRATEGY_PRETTY = {
@@ -753,7 +753,7 @@ else:
 
 # === NEW SECTION: Trade Duration Distribution ===
 st.markdown("---")
-st.subheader("Trade Duration: Winners vs Losers")
+st.subheader("⏳ Trade Duration: Winners vs Losers")
 st.caption("Do winning trades differ in holding time from losing trades?")
 
 _duration_shown = False
@@ -784,26 +784,26 @@ if "exit_timestamp" in graded_df.columns and "timestamp" in graded_df.columns:
             with dur_cols[0]:
                 if pd.notna(avg_win_dur):
                     st.metric(
-                        "Avg Winning Duration",
+                        "🎯 Avg Winning Duration",
                         f"{avg_win_dur:.1f}h",
                         help="Average time elapsed from entry to exit for winning trades.",
                     )
                 else:
                     st.metric(
-                        "Avg Winning Duration",
+                        "🎯 Avg Winning Duration",
                         "N/A",
                         help="Average time elapsed from entry to exit for winning trades.",
                     )
             with dur_cols[1]:
                 if pd.notna(avg_loss_dur):
                     st.metric(
-                        "Avg Losing Duration",
+                        "🌊 Avg Losing Duration",
                         f"{avg_loss_dur:.1f}h",
                         help="Average time elapsed from entry to exit for losing trades.",
                     )
                 else:
                     st.metric(
-                        "Avg Losing Duration",
+                        "🌊 Avg Losing Duration",
                         "N/A",
                         help="Average time elapsed from entry to exit for losing trades.",
                     )
@@ -823,7 +823,7 @@ if not _duration_shown:
 
 # === NEW SECTION: Volatility Trade Performance ===
 st.markdown("---")
-st.subheader("Volatility Strategy Performance")
+st.subheader("⚡ Volatility Strategy Performance")
 
 vol_df = (
     graded_df[graded_df["prediction_type"] == "VOLATILITY"]
@@ -843,7 +843,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins / total_vol * 100 if total_vol > 0 else 0
             st.metric(
-                "Win Rate",
+                "📈 Win Rate",
                 f"{win_rate:.1f}%",
                 help="Percentage of Long Straddle trades that resulted in a win.",
             )
@@ -862,7 +862,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins / total_vol * 100 if total_vol > 0 else 0
             st.metric(
-                "Win Rate",
+                "📈 Win Rate",
                 f"{win_rate:.1f}%",
                 help="Percentage of Iron Condor trades that resulted in a win.",
             )

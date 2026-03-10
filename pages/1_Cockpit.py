@@ -90,14 +90,14 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
         with cols[1]:
             if unrealized_pnl is not None:
                 st.metric(
-                    "Unrealized P&L",
+                    "💰 Unrealized P&L",
                     f"${unrealized_pnl:+,.2f}",
                     delta=f"${unrealized_pnl:+,.2f}",
                     delta_color="normal",
                     help="Current open profit/loss on active positions"
                 )
             else:
-                st.metric("Unrealized P&L", "N/A", help="Current open profit/loss on active positions")
+                st.metric("💰 Unrealized P&L", "N/A", help="Current open profit/loss on active positions")
 
         with cols[2]:
             st.metric(
@@ -125,7 +125,7 @@ def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
 
     with cols[0]:
         st.metric(
-            "Net Liquidation",
+            "💰 Net Liquidation",
             f"${net_liq:,.0f}",
             help="Total account value including cash and market value of positions"
         )
@@ -134,21 +134,21 @@ def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
         if net_liq > 0:
             margin_util = (margin / net_liq) * 100
             st.metric(
-                "Margin Util",
+                "🛡️ Margin Util",
                 f"{margin_util:.1f}%",
                 help="Percentage of Net Liquidation currently used for maintenance margin"
             )
         else:
-            st.metric("Margin Util", "N/A", help="Percentage of Net Liquidation currently used for maintenance margin")
+            st.metric("🛡️ Margin Util", "N/A", help="Percentage of Net Liquidation currently used for maintenance margin")
 
     with cols[2]:
         import math
         pnl_help = "Total change in account equity since prior day close (as reported by IBKR)."
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
-            st.metric("Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
+            st.metric("💵 Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
         else:
             st.metric(
-                "Daily P&L",
+                "💵 Daily P&L",
                 f"${daily_pnl:+,.0f}",
                 delta=f"${daily_pnl:+,.0f}",
                 delta_color="normal",
@@ -876,13 +876,13 @@ if config:
             st.caption(f"Portfolio VaR (:{stale_color}[{stale_label}])")
             var_cols = st.columns(4)
             with var_cols[0]:
-                st.metric("VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}", help="Value at Risk (95% confidence): Estimated maximum loss over 1 day in normal market conditions.")
+                st.metric("🛡️ VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}", help="Value at Risk (95% confidence): Estimated maximum loss over 1 day in normal market conditions.")
             with var_cols[1]:
-                st.metric("VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}", help="Value at Risk (99% confidence): Estimated maximum loss over 1 day in extreme market conditions.")
+                st.metric("🛡️ VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}", help="Value at Risk (99% confidence): Estimated maximum loss over 1 day in extreme market conditions.")
             with var_cols[2]:
-                st.metric("Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
+                st.metric("📉 Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
             with var_cols[3]:
-                st.metric("Legs", f"{pos_count} ({', '.join(commodities)})", help="Individual option contract legs held in IB across all active commodities.")
+                st.metric("🔢 Legs", f"{pos_count} ({', '.join(commodities)})", help="Individual option contract legs held in IB across all active commodities.")
 
             # Failure indicator
             if status == "FAILED":
@@ -929,7 +929,7 @@ if config:
     st.caption("Market Benchmarks")
     bench_cols = st.columns(min(1 + len(_all_commodities), 6))
     with bench_cols[0]:
-        st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%", help="Year-to-date performance of the S&P 500 index.")
+        st.metric("🇺🇸 S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%", help="Year-to-date performance of the S&P 500 index.")
     for _bi, _bt in enumerate(_all_commodities):
         if _bi + 1 >= len(bench_cols):
             break
@@ -971,7 +971,7 @@ if config:
 
     # === SECTION: Recent Decisions Feed ===
     st.markdown("---")
-    st.subheader("Recent Decisions")
+    st.subheader("📜 Recent Decisions")
     try:
         if not council_df.empty:
             _recent = council_df.head(10).copy()
@@ -1067,7 +1067,7 @@ if active_theses:
     thesis_cols = st.columns(4)
 
     with thesis_cols[0]:
-        st.metric("Active Positions", len(active_theses), help="Number of currently active positions.")
+        st.metric("📋 Active Positions", len(active_theses), help="Number of currently active positions.")
 
     with thesis_cols[1]:
         # Count by strategy
@@ -1076,17 +1076,17 @@ if active_theses:
             s = t['strategy_type']
             strategy_counts[s] = strategy_counts.get(s, 0) + 1
         dominant = max(strategy_counts.items(), key=lambda x: x[1])[0] if strategy_counts else 'None'
-        st.metric("Dominant Strategy", dominant.replace('_', ' ').title(), help="The most common strategy among active positions.")
+        st.metric("🛡️ Dominant Strategy", dominant.replace('_', ' ').title(), help="The most common strategy among active positions.")
 
     with thesis_cols[2]:
         # Average age
         avg_age = sum(t['age_hours'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Position Age", f"{avg_age:.1f}h", help="Average time elapsed since positions were opened.")
+        st.metric("⏳ Avg Position Age", f"{avg_age:.1f}h", help="Average time elapsed since positions were opened.")
 
     with thesis_cols[3]:
         # Average confidence
         avg_conf = sum(t['confidence'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}", help="Average Council confidence score across all active positions.")
+        st.metric("🎯 Avg Entry Confidence", f"{avg_conf:.0%}", help="Average Council confidence score across all active positions.")
 
     st.markdown("")
 

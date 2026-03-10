@@ -56,7 +56,7 @@ with metric_cols[0]:
         trade_count = council_df['pnl_realized'].notna().sum()
     else:
         trade_count = 0
-    st.metric("Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
+    st.metric("🔢 Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
 
 with metric_cols[1]:
     # Calculate win rate from council history
@@ -64,23 +64,23 @@ with metric_cols[1]:
         reconciled = council_df[pd.notna(council_df['pnl_realized'])]
         if not reconciled.empty:
             win_rate = (reconciled['pnl_realized'] > 0).mean() * 100
-            st.metric("Win Rate", f"{win_rate:.1f}%", help="Percentage of reconciled trades that resulted in a positive P&L.")
+            st.metric("🎯 Win Rate", f"{win_rate:.1f}%", help="Percentage of reconciled trades that resulted in a positive P&L.")
         else:
-            st.metric("Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
+            st.metric("🎯 Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
     else:
-        st.metric("Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
+        st.metric("🎯 Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
 
 with metric_cols[2]:
     # Sum realized P&L from reconciled trades
     if not council_df.empty and 'pnl_realized' in council_df.columns:
         realized_pnl = council_df['pnl_realized'].fillna(0).sum()
         st.metric(
-            "Realized P&L",
+            "💰 Realized P&L",
             f"${realized_pnl:+,.2f}",
             help="Sum of P&L from reconciled trades in council_history"
         )
     else:
-        st.metric("Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
+        st.metric("💰 Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
 
 # Pre-compute graded trades for sections that need it
 graded_fin = grade_decision_quality(council_df) if not council_df.empty else pd.DataFrame()
@@ -195,19 +195,19 @@ if 'prediction_type' in council_df.columns:
     with col1:
         dir_data = type_perf.loc['DIRECTIONAL'] if 'DIRECTIONAL' in type_perf.index else None
         if dir_data is not None:
-            st.metric("Directional P&L", f"${dir_data['Total P&L']:,.2f}", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
+            st.metric("📊 Directional P&L", f"${dir_data['Total P&L']:,.2f}", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
             st.caption(f"{int(dir_data['Trade Count'])} trades | Avg: ${dir_data['Avg P&L']:,.2f}")
         else:
-            st.metric("Directional P&L", "$0.00", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
+            st.metric("📊 Directional P&L", "$0.00", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
             st.caption("No directional trades yet")
 
     with col2:
         vol_data = type_perf.loc['VOLATILITY'] if 'VOLATILITY' in type_perf.index else None
         if vol_data is not None:
-            st.metric("Volatility P&L", f"${vol_data['Total P&L']:,.2f}", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
+            st.metric("⚡ Volatility P&L", f"${vol_data['Total P&L']:,.2f}", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
             st.caption(f"{int(vol_data['Trade Count'])} trades | Avg: ${vol_data['Avg P&L']:,.2f}")
         else:
-            st.metric("Volatility P&L", "$0.00", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
+            st.metric("⚡ Volatility P&L", "$0.00", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
             st.caption("No volatility trades yet")
 else:
     st.info("No trade type data available.")
@@ -231,11 +231,11 @@ if not graded_fin.empty:
             if pd.notna(avg_win) and pd.notna(avg_loss) and avg_loss > 0:
                 _wl_ratio = avg_win / avg_loss
                 st.metric(
-                    "Win/Loss Ratio", f"{_wl_ratio:.2f}",
+                    "⚖️ Win/Loss Ratio", f"{_wl_ratio:.2f}",
                     help=">1.5 means winners are bigger than losers"
                 )
             else:
-                st.metric("Win/Loss Ratio", "N/A", help="Need both winning and losing trades")
+                st.metric("⚖️ Win/Loss Ratio", "N/A", help="Need both winning and losing trades")
         else:
             st.info("Need 10+ graded trades with P&L for Win/Loss ratio.")
     else:

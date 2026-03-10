@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import _relative_time, discover_active_commodities, get_active_theses
 
 st.set_page_config(layout="wide", page_title="Portfolio | Real Options")
-st.title("Portfolio Overview")
+st.title("💼 Portfolio Overview")
 st.caption("Account-wide risk status, position breakdown, and engine health")
 
 DATA_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
@@ -33,7 +33,7 @@ def _load_json(path: str) -> dict:
 
 # === SECTION 1: Portfolio Risk Status ===
 st.markdown("---")
-st.subheader("Portfolio Risk Status")
+st.subheader("🛡️ Portfolio Risk Status")
 
 prg_state = _load_json(os.path.join(DATA_ROOT, "portfolio_risk_state.json"))
 
@@ -52,26 +52,26 @@ if prg_state:
     with cols[0]:
         equity = prg_state.get("current_equity", 0)
         st.metric(
-            "Net Liquidation", f"${equity:,.0f}" if equity else "N/A",
+            "💰 Net Liquidation", f"${equity:,.0f}" if equity else "N/A",
             help="Total unified account value including cash and market value of all positions."
         )
     with cols[1]:
         peak = prg_state.get("peak_equity", 0)
         st.metric(
-            "Peak Equity", f"${peak:,.0f}" if peak else "N/A",
+            "🏔️ Peak Equity", f"${peak:,.0f}" if peak else "N/A",
             help="The highest net liquidation value observed for the account since inception."
         )
     with cols[2]:
         daily_pnl = prg_state.get("daily_pnl", 0)
         st.metric(
-            "Daily P&L", f"${daily_pnl:+,.0f}" if daily_pnl else "$0",
+            "💵 Daily P&L", f"${daily_pnl:+,.0f}" if daily_pnl else "$0",
             help="Account-wide P&L for the current trading day."
         )
     with cols[3]:
         if peak > 0 and equity > 0:
             dd_pct = max(0.0, ((peak - equity) / peak) * 100)
             st.metric(
-                "Drawdown", f"{dd_pct:.2f}%",
+                "🌊 Drawdown", f"{dd_pct:.2f}%",
                 help="Peak-to-trough drawdown: percentage decline from all-time peak equity."
             )
         else:
@@ -85,7 +85,7 @@ else:
 
 # === SECTION 2: Per-Commodity Position Breakdown ===
 st.markdown("---")
-st.subheader("Position Breakdown by Commodity")
+st.subheader("📊 Position Breakdown by Commodity")
 
 # Live thesis count from TMS (not stale portfolio_risk_state.json)
 active_tickers = discover_active_commodities()
@@ -119,7 +119,7 @@ else:
 
 # === SECTION 3: Engine Health ===
 st.markdown("---")
-st.subheader("Engine Health")
+st.subheader("🏥 Engine Health")
 
 if active_tickers:
     cols = st.columns(min(len(active_tickers), 4))
@@ -153,7 +153,7 @@ else:
 
 # === SECTION 4: VaR Utilization ===
 st.markdown("---")
-st.subheader("VaR Utilization")
+st.subheader("📉 VaR Utilization")
 
 var_state = _load_json(os.path.join(DATA_ROOT, "var_state.json"))
 if var_state:
@@ -175,14 +175,14 @@ if var_state:
     cols = st.columns(4)
     with cols[0]:
         st.metric(
-            "VaR (95%)", f"{var_95_pct:.1%}" if var_95_pct else "N/A",
+            "🛡️ VaR (95%)", f"{var_95_pct:.1%}" if var_95_pct else "N/A",
             delta=f"${var_95:,.0f}" if var_95 else None,
             delta_color="off",
             help="Value at Risk (95% confidence): Estimated maximum loss over one day."
         )
     with cols[1]:
         st.metric(
-            "VaR (99%)", f"{var_99_pct:.1%}" if var_99_pct else "N/A",
+            "🛡️ VaR (99%)", f"{var_99_pct:.1%}" if var_99_pct else "N/A",
             delta=f"${var_99:,.0f}" if var_99 else None,
             delta_color="off",
             help="Value at Risk (99% confidence): Estimated maximum loss in extreme conditions."
@@ -191,15 +191,15 @@ if var_state:
         if var_95_pct and var_limit_pct > 0:
             utilization = (var_95_pct / var_limit_pct) * 100
             st.metric(
-                "Utilization", f"{utilization:.0f}%",
+                "📉 Utilization", f"{utilization:.0f}%",
                 help=f"VaR(95%) as percentage of the {var_limit_pct:.0%} limit."
             )
         else:
-            st.metric("Utilization", "N/A", help="VaR utilization not available.")
+            st.metric("📉 Utilization", "N/A", help="VaR utilization not available.")
     with cols[3]:
         commodity_str = ", ".join(commodities) if commodities else "None"
         st.metric(
-            "Legs", f"{pos_count}",
+            "🔢 Legs", f"{pos_count}",
             help=f"Option contract legs across: {commodity_str}"
         )
 
