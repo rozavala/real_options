@@ -313,16 +313,20 @@ class TestCheckThesisCoherence(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestDeferredInvalidation(unittest.IsolatedAsyncioTestCase):
-    """Tests for deferred invalidation + auto-close in fill handler."""
+    """Tests for fill handler behavior with supersedes_trade_ids.
+
+    CONTRADICT closures are now handled immediately in place_queued_orders()
+    before new orders are placed. The fill handler only logs a warning if
+    it receives supersedes_trade_ids (should no longer happen in normal flow).
+    """
 
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
-    @patch('trading_bot.order_manager._auto_close_superseded', new_callable=AsyncMock)
     @patch('trading_bot.tms.TransactiveMemory')
-    async def test_deferred_invalidation_plus_auto_close(
-        self, mock_tms_cls, mock_auto_close, mock_log, mock_record
+    async def test_fill_handler_logs_warning_for_supersedes(
+        self, mock_tms_cls, mock_log, mock_record
     ):
-        """Mock fill callback → old thesis invalidated AND auto-close called."""
+        """Fill with supersedes_trade_ids → warning logged, NO invalidation or auto-close."""
         from trading_bot.order_manager import _handle_and_log_fill, _recorded_thesis_positions
 
         mock_tms = MagicMock()
@@ -356,32 +360,28 @@ class TestDeferredInvalidation(unittest.IsolatedAsyncioTestCase):
 
         _recorded_thesis_positions.discard('new-uuid-1')
 
-        await _handle_and_log_fill(ib, trade, fill, 456, 'new-uuid-1', decision_data, config)
+        with self.assertLogs('OrderManager', level='WARNING') as cm:
+            await _handle_and_log_fill(ib, trade, fill, 456, 'new-uuid-1', decision_data, config)
 
-        # Verify invalidation was called
-        mock_tms.invalidate_thesis.assert_called_once()
-        call_args = mock_tms.invalidate_thesis.call_args
-        self.assertEqual(call_args[0][0], 'old-bear-1')
-        self.assertIn('CONTRADICT', call_args[0][1])
+        # Verify warning was logged about legacy supersedes_trade_ids
+        warning_msgs = [m for m in cm.output if 'supersedes_trade_ids' in m]
+        self.assertTrue(warning_msgs, "Expected warning about supersedes_trade_ids")
 
-        # Verify auto-close was called
-        mock_auto_close.assert_called_once()
+        # NO invalidation or auto-close — handled by place_queued_orders now
+        mock_tms.invalidate_thesis.assert_not_called()
 
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
-    @patch('trading_bot.order_manager._auto_close_superseded', new_callable=AsyncMock)
     @patch('trading_bot.tms.TransactiveMemory')
-    async def test_auto_close_failure_does_not_crash_fill_handler(
-        self, mock_tms_cls, mock_auto_close, mock_log, mock_record
+    async def test_fill_handler_completes_with_supersedes(
+        self, mock_tms_cls, mock_log, mock_record
     ):
-        """_auto_close_superseded raises → fill handler completes, thesis recorded."""
+        """Fill with supersedes_trade_ids still completes and records thesis."""
         from trading_bot.order_manager import _handle_and_log_fill, _recorded_thesis_positions
 
         mock_tms = MagicMock()
         mock_tms.collection = True
         mock_tms_cls.return_value = mock_tms
-
-        mock_auto_close.side_effect = Exception("IB timeout")
 
         ib = MagicMock()
         ib.isConnected.return_value = True
@@ -409,10 +409,9 @@ class TestDeferredInvalidation(unittest.IsolatedAsyncioTestCase):
         config = {'symbol': 'KC', 'exchange': 'NYBOT', 'notifications': {}}
         _recorded_thesis_positions.discard('new-uuid-2')
 
-        # Should not raise
         await _handle_and_log_fill(ib, trade, fill, 457, 'new-uuid-2', decision_data, config)
 
-        # Thesis was still recorded despite auto-close failure
+        # Thesis was still recorded
         mock_record.assert_called_once()
 
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
@@ -459,8 +458,10 @@ class TestDeferredInvalidation(unittest.IsolatedAsyncioTestCase):
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
     @patch('trading_bot.tms.TransactiveMemory')
-    async def test_auto_close_skipped_when_ib_disconnected(self, mock_tms_cls, mock_log, mock_record):
-        """ib.isConnected() returns False → auto-close skipped with warning."""
+    async def test_fill_handler_warning_only_when_ib_disconnected(
+        self, mock_tms_cls, mock_log, mock_record
+    ):
+        """ib.isConnected() False + supersedes_trade_ids → warning only, no invalidation."""
         from trading_bot.order_manager import _handle_and_log_fill, _recorded_thesis_positions
 
         mock_tms = MagicMock()
@@ -495,9 +496,8 @@ class TestDeferredInvalidation(unittest.IsolatedAsyncioTestCase):
 
         await _handle_and_log_fill(ib, trade, fill, 459, 'disconn-uuid', decision_data, config)
 
-        # Invalidation should still be called
-        mock_tms.invalidate_thesis.assert_called_once()
-        # But no auto-close attempt
+        # No invalidation — handled by pending_close flag + audit cycle
+        mock_tms.invalidate_thesis.assert_not_called()
 
 
 class TestAutoCloseSuperseded(unittest.IsolatedAsyncioTestCase):
@@ -574,20 +574,22 @@ class TestAutoCloseSuperseded(unittest.IsolatedAsyncioTestCase):
         ib.reqPositionsAsync.assert_not_called()
 
 
-class TestDedupPreventsSecondAutoClose(unittest.IsolatedAsyncioTestCase):
-    """Verify _processed_supersedes prevents duplicate deferred invalidation."""
+class TestFillHandlerNoLongerAutoCloses(unittest.IsolatedAsyncioTestCase):
+    """Verify fill handler does not perform CONTRADICT invalidation or auto-close.
+
+    CONTRADICT closures are now handled in place_queued_orders before order
+    placement. The fill handler should only log a warning if it receives
+    supersedes_trade_ids (legacy path).
+    """
 
     @patch('trading_bot.order_manager.record_entry_thesis_for_trade', new_callable=AsyncMock)
     @patch('trading_bot.order_manager.log_trade_to_ledger', new_callable=AsyncMock)
-    @patch('trading_bot.order_manager._auto_close_superseded', new_callable=AsyncMock)
     @patch('trading_bot.tms.TransactiveMemory')
-    async def test_second_fill_skips_invalidation(
-        self, mock_tms_cls, mock_auto_close, mock_log, mock_record
+    async def test_multiple_fills_no_invalidation(
+        self, mock_tms_cls, mock_log, mock_record
     ):
-        """Two leg fills with same supersedes_trade_ids → only one invalidation + auto-close."""
-        from trading_bot.order_manager import (
-            _handle_and_log_fill, _recorded_thesis_positions, _processed_supersedes
-        )
+        """Two leg fills with supersedes_trade_ids → warnings only, no invalidation."""
+        from trading_bot.order_manager import _handle_and_log_fill, _recorded_thesis_positions
 
         mock_tms = MagicMock()
         mock_tms.collection = True
@@ -620,32 +622,19 @@ class TestDedupPreventsSecondAutoClose(unittest.IsolatedAsyncioTestCase):
         fill1.execution.avgPrice = 2.00
 
         _recorded_thesis_positions.discard('dedup-uuid')
-        _processed_supersedes.discard('old-bear-dedup')
 
         await _handle_and_log_fill(ib, trade1, fill1, 500, 'dedup-uuid', decision_data, config)
 
-        self.assertEqual(mock_tms.invalidate_thesis.call_count, 1)
-        self.assertEqual(mock_auto_close.call_count, 1)
-
-        # --- Second leg fill (same decision_data ref) ---
-        trade2 = MagicMock()
-        trade2.order.orderId = 201
-        trade2.order.orderRef = 'dedup-uuid'
-        trade2.contract = MagicMock(spec=['comboLegs', 'localSymbol'])
-        trade2.contract.localSymbol = 'COMBO'
-
+        # --- Second leg fill ---
         fill2 = MagicMock()
         fill2.contract = MagicMock()
         fill2.contract.conId = 1002
         fill2.execution.avgPrice = 1.80
 
-        await _handle_and_log_fill(ib, trade2, fill2, 501, 'dedup-uuid', decision_data, config)
+        await _handle_and_log_fill(ib, trade1, fill2, 501, 'dedup-uuid', decision_data, config)
 
-        # Invalidation + auto-close should NOT have been called a second time
-        self.assertEqual(mock_tms.invalidate_thesis.call_count, 1,
-                         "invalidate_thesis called more than once — dedup failed")
-        self.assertEqual(mock_auto_close.call_count, 1,
-                         "_auto_close_superseded called more than once — dedup failed")
+        # No invalidation or auto-close in either fill
+        mock_tms.invalidate_thesis.assert_not_called()
 
 
 class TestCloseSpreadPositionUsesPosContract(unittest.IsolatedAsyncioTestCase):
@@ -739,6 +728,137 @@ class TestCloseSpreadPositionUsesPosContract(unittest.IsolatedAsyncioTestCase):
 
         # Exchange should have been filled from config
         self.assertEqual(leg.contract.exchange, 'NYBOT')
+
+
+class TestCloseContradictedThesis(unittest.IsolatedAsyncioTestCase):
+    """Tests for _close_contradicted_thesis() — the new immediate close path."""
+
+    @patch('trading_bot.order_manager.get_trade_ledger_df')
+    async def test_close_with_aggregated_positions(self, mock_ledger):
+        """IB shows qty=2 (aggregated) but thesis owns qty=1 → closes only thesis portion."""
+        from trading_bot.order_manager import _close_contradicted_thesis
+        import pandas as pd
+
+        ib = MagicMock()
+        ib.isConnected.return_value = True
+
+        # IB shows qty=2 (two theses share same strikes)
+        pos1 = MagicMock()
+        pos1.contract.localSymbol = 'KOK6 C2.95'
+        pos1.position = 2  # Aggregated: 2 long
+        pos2 = MagicMock()
+        pos2.contract.localSymbol = 'KOK6 C3'
+        pos2.position = -2  # Aggregated: 2 short
+        ib.reqPositionsAsync = AsyncMock(return_value=[pos1, pos2])
+
+        # Ledger: this thesis has qty=1 per leg
+        mock_ledger.return_value = pd.DataFrame({
+            'position_id': ['thesis-a', 'thesis-a'],
+            'local_symbol': ['KOK6 C2.95', 'KOK6 C3'],
+            'quantity': [1, 1],
+            'action': ['BUY', 'SELL'],
+        })
+
+        tms = MagicMock()
+        tms.retrieve_thesis.return_value = {'strategy_type': 'BULL_CALL_SPREAD'}
+        config = {'data_dir': '/tmp/test', 'exchange': 'NYBOT', 'notifications': {}}
+
+        with patch('orchestrator._close_spread_position',
+                   new_callable=AsyncMock) as mock_close:
+            mock_close.return_value = True
+
+            result = await _close_contradicted_thesis(ib, 'thesis-a', config, tms)
+
+            self.assertTrue(result)
+            # Verify adjusted legs were passed with thesis-specific quantities
+            call_args = mock_close.call_args
+            legs_passed = call_args[0][1]
+            self.assertEqual(len(legs_passed), 2)
+            # Should have capped quantities to thesis amounts (1, not 2)
+            for leg in legs_passed:
+                self.assertEqual(abs(leg.position), 1)
+
+            # Thesis should be invalidated and pending_close cleared
+            tms.invalidate_thesis.assert_called_once()
+            tms.clear_pending_close.assert_called_once_with('thesis-a')
+
+    @patch('trading_bot.order_manager.get_trade_ledger_df')
+    async def test_close_no_ib_positions_invalidates(self, mock_ledger):
+        """No matching IB positions → invalidate thesis (already closed externally)."""
+        from trading_bot.order_manager import _close_contradicted_thesis
+        import pandas as pd
+
+        ib = MagicMock()
+        ib.isConnected.return_value = True
+        ib.reqPositionsAsync = AsyncMock(return_value=[])
+
+        mock_ledger.return_value = pd.DataFrame({
+            'position_id': ['thesis-b'],
+            'local_symbol': ['KOK6 C2.95'],
+            'quantity': [1],
+            'action': ['BUY'],
+        })
+
+        tms = MagicMock()
+        config = {'data_dir': '/tmp/test'}
+
+        result = await _close_contradicted_thesis(ib, 'thesis-b', config, tms)
+
+        self.assertTrue(result)
+        tms.invalidate_thesis.assert_called_once()
+        tms.clear_pending_close.assert_called_once_with('thesis-b')
+
+    @patch('trading_bot.order_manager.get_trade_ledger_df')
+    async def test_close_failure_preserves_pending_flag(self, mock_ledger):
+        """Close fails → pending_close flag preserved for audit retry."""
+        from trading_bot.order_manager import _close_contradicted_thesis
+        import pandas as pd
+
+        ib = MagicMock()
+        ib.isConnected.return_value = True
+
+        pos = MagicMock()
+        pos.contract.localSymbol = 'KOK6 C2.95'
+        pos.position = 1
+        ib.reqPositionsAsync = AsyncMock(return_value=[pos])
+
+        mock_ledger.return_value = pd.DataFrame({
+            'position_id': ['thesis-c'],
+            'local_symbol': ['KOK6 C2.95'],
+            'quantity': [1],
+            'action': ['BUY'],
+        })
+
+        tms = MagicMock()
+        tms.retrieve_thesis.return_value = {'strategy_type': 'BULL_CALL_SPREAD'}
+        config = {'data_dir': '/tmp/test', 'exchange': 'NYBOT', 'notifications': {}}
+
+        with patch('orchestrator._close_spread_position',
+                   new_callable=AsyncMock) as mock_close:
+            mock_close.return_value = False  # Close failed
+
+            result = await _close_contradicted_thesis(ib, 'thesis-c', config, tms)
+
+            self.assertFalse(result)
+            # Thesis should NOT be invalidated
+            tms.invalidate_thesis.assert_not_called()
+            # pending_close flag should NOT be cleared
+            tms.clear_pending_close.assert_not_called()
+
+    async def test_close_skipped_when_ib_disconnected(self):
+        """IB not connected → returns False, flag preserved."""
+        from trading_bot.order_manager import _close_contradicted_thesis
+
+        ib = MagicMock()
+        ib.isConnected.return_value = False
+
+        tms = MagicMock()
+        config = {'data_dir': '/tmp/test'}
+
+        result = await _close_contradicted_thesis(ib, 'thesis-d', config, tms)
+
+        self.assertFalse(result)
+        ib.reqPositionsAsync.assert_not_called()
 
 
 if __name__ == '__main__':

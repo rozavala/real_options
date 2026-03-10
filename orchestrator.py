@@ -2134,6 +2134,43 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             f"{len(position_groups)} thesis groups"
         )
 
+        # 4.5 === SAFETY NET: Retry pending_close theses ===
+        # These are theses marked CONTRADICT where the immediate close in
+        # place_queued_orders failed (partial fill, timeout, IB disconnection).
+        # The pending_close flag in TMS metadata is the durable record of intent.
+        try:
+            pending = tms.get_pending_close_theses()
+            if pending:
+                logger.warning(
+                    f"Found {len(pending)} theses with pending_close flag — "
+                    f"retrying CONTRADICT close in audit cycle"
+                )
+                from trading_bot.order_manager import _close_contradicted_thesis
+                for item in pending:
+                    tid = item['trade_id']
+                    reason = item['pending_close']
+                    ts = item.get('pending_close_timestamp', '')
+                    logger.info(
+                        f"Retrying pending_close for {tid} "
+                        f"(reason={reason}, flagged_at={ts})")
+                    try:
+                        closed = await _close_contradicted_thesis(
+                            ib, tid, config, tms)
+                        if closed:
+                            logger.info(f"pending_close retry successful for {tid}")
+                            # Remove from position_groups so it's not double-processed
+                            position_groups.pop(tid, None)
+                        else:
+                            logger.warning(
+                                f"pending_close retry failed for {tid}. "
+                                f"Will retry on next audit cycle.")
+                    except Exception as e:
+                        logger.error(
+                            f"pending_close retry error for {tid}: {e}",
+                            exc_info=True)
+        except Exception as e:
+            logger.warning(f"Failed to process pending_close theses in audit: {e}")
+
         # 5. === NEW: Cache active futures (Issue 9 fix) ===
         active_futures_cache = {}
         try:

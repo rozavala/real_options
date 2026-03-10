@@ -594,11 +594,6 @@ async def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str,
 # Module-level set for TMS thesis deduplication
 _recorded_thesis_positions = set()
 
-# Module-level set to prevent duplicate deferred invalidation + auto-close
-# when multiple leg fills trigger _handle_and_log_fill with the same
-# supersedes_trade_ids (same dict ref from decision_data).
-_processed_supersedes = set()
-
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("OrderManager")
@@ -1056,30 +1051,38 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                     continue
 
                 if coherence_action == "CONTRADICT":
-                    # DEFERRED: attach to signal, auto-close happens in fill callback
-                    superseded_ids = [t.get('_metadata', {}).get('trade_id', '')
-                                      for t in conflicting
-                                      if t.get('_metadata', {}).get('trade_id')]
-                    signal['supersedes_trade_ids'] = superseded_ids
-                    signal['supersedes_reason'] = 'CONTRADICT'
-                    for thesis in conflicting:
-                        tid = thesis.get('_metadata', {}).get('trade_id', '')
-                        logger.warning(
-                            f"THESIS CONTRADICT: {tid} ({thesis.get('strategy_type')}) "
-                            f"will be invalidated + auto-closed after new {signal.get('direction')} "
-                            f"order fills on {signal.get('contract_month')}."
-                        )
+                    # IMMEDIATE CLOSE: Mark for closure before new orders are placed.
+                    # The pending_close flag in TMS is the durable record of intent.
+                    # place_queued_orders() will query TMS and close these positions
+                    # BEFORE placing any new orders (eliminates race conditions).
+                    superseded_ids = []
+                    try:
+                        from trading_bot.tms import TransactiveMemory
+                        tms_mark = TransactiveMemory()
+                        for thesis in conflicting:
+                            tid = thesis.get('_metadata', {}).get('trade_id', '')
+                            if tid:
+                                superseded_ids.append(tid)
+                                tms_mark.mark_pending_close(
+                                    tid, 'CONTRADICT', signal.get('direction', ''))
+                                logger.warning(
+                                    f"THESIS CONTRADICT: {tid} ({thesis.get('strategy_type')}) "
+                                    f"marked pending_close — will be closed before new "
+                                    f"{signal.get('direction')} order on {signal.get('contract_month')}."
+                                )
+                    except Exception as e:
+                        logger.error(f"Failed to mark pending_close on contradicted theses: {e}")
                     try:
                         send_pushover_notification(
                             config.get('notifications', {}),
                             "Contradictory Thesis Detected",
                             f"New {signal.get('direction')} on {signal.get('contract_month')} "
                             f"contradicts {', '.join(s[:8] for s in superseded_ids)}. "
-                            f"Old position will be auto-closed after new order fills."
+                            f"Old position will be closed immediately before new order."
                         )
                     except Exception:
                         pass
-                    # Proceed — old thesis stays active until fill
+                    # Proceed to generate new order — close happens in place_queued_orders
 
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
@@ -1462,65 +1465,20 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
             else:
                 logger.debug(f"TMS: Thesis already recorded for {position_uuid}, skipping duplicate.")
 
-        # === DEFERRED THESIS INVALIDATION + AUTO-CLOSE ===
+        # === LEGACY: DEFERRED THESIS INVALIDATION (superseded by immediate close) ===
+        # CONTRADICT closures are now handled immediately in place_queued_orders()
+        # before new orders are placed. This block is retained as a defensive
+        # warning ONLY for any edge case where supersedes_trade_ids might still
+        # be attached (e.g., signals generated before this code change deployed).
         superseded_ids = (decision_data or {}).get('supersedes_trade_ids', [])
         if superseded_ids:
-            _sup_reason = (decision_data or {}).get('supersedes_reason', 'CONTRADICT')
-            _sup_month = (decision_data or {}).get('contract_month', '?')
-            _sup_direction = (decision_data or {}).get('direction', '?')
-            logger.info(
-                f"Fill handler received supersedes_trade_ids: {superseded_ids} "
-                f"(reason: {_sup_reason})")
-
-            try:
-                from trading_bot.tms import TransactiveMemory
-                tms_inv = TransactiveMemory()
-                if not tms_inv.collection:
-                    logger.warning(
-                        "TMS collection unavailable in fill handler — "
-                        "ContextVar may not have propagated. "
-                        "Deferred invalidation skipped; audit cycle will catch it.")
-                else:
-                    for old_tid in superseded_ids:
-                        # Dedup: each leg fill triggers this block independently.
-                        # Only process each superseded trade ID once.
-                        if old_tid in _processed_supersedes:
-                            logger.debug(
-                                f"TMS: Deferred invalidation of {old_tid} already "
-                                f"processed, skipping duplicate.")
-                            continue
-                        _processed_supersedes.add(old_tid)
-
-                        # 1. Invalidate thesis in TMS
-                        tms_inv.invalidate_thesis(
-                            old_tid,
-                            f"{_sup_reason}: replaced by {position_uuid} "
-                            f"({_sup_direction} on {_sup_month})")
-                        logger.info(
-                            f"TMS: Deferred invalidation of {old_tid} — "
-                            f"new thesis {position_uuid} filled.")
-
-                        # 2. Auto-close the old position (check connection first)
-                        try:
-                            if not ib.isConnected():
-                                logger.warning(
-                                    f"Auto-close {old_tid}: IB disconnected. "
-                                    f"Position audit will handle it.")
-                            else:
-                                await _auto_close_superseded(
-                                    ib, old_tid, _sup_reason, config or {}, tms_inv)
-                        except Exception as close_err:
-                            logger.error(
-                                f"Auto-close of {old_tid} failed: {close_err}. "
-                                f"Position audit cycle will retry.",
-                                exc_info=True)
-                            send_pushover_notification(
-                                (config or {}).get('notifications', {}),
-                                "Auto-Close Failed",
-                                f"Failed to close {old_tid[:8]}: {close_err}. "
-                                f"Manual review required.")
-            except Exception as e:
-                logger.error(f"Deferred invalidation failed: {e}", exc_info=True)
+            logger.warning(
+                f"Fill handler received supersedes_trade_ids={superseded_ids} — "
+                f"this should no longer happen. CONTRADICT closures are now "
+                f"handled before order placement. Logging only, NOT auto-closing. "
+                f"The pending_close flag in TMS (if set) will be handled by "
+                f"place_queued_orders or the position audit safety net."
+            )
 
     except Exception as e:
         logger.exception(f"Error processing and logging fill for order {trade.order.orderId}: {e}")
@@ -1607,6 +1565,121 @@ async def _auto_close_superseded(
         logger.info(f"Auto-close {old_trade_id}: successfully closed superseded position.")
 
 
+async def _close_contradicted_thesis(
+    ib: IB, trade_id: str, config: dict, tms: 'TransactiveMemory'
+) -> bool:
+    """Close IB positions for a contradicted thesis immediately.
+
+    Called from place_queued_orders() BEFORE placing new orders, and from
+    the position audit safety net for retry. Key differences from
+    _auto_close_superseded (legacy fill-handler path):
+
+    - Executes at detection time, not gated on a new order fill
+    - Uses thesis-specific quantities (handles IB aggregation correctly)
+    - Invalidates thesis ONLY on successful close (atomic)
+    - Preserves pending_close flag on failure for audit retry
+
+    Returns True if fully closed + invalidated, False otherwise.
+    """
+    if not ib.isConnected():
+        logger.warning(
+            f"CONTRADICT close {trade_id}: IB not connected. "
+            f"pending_close flag will be picked up by audit cycle.")
+        return False
+
+    # 1. Get current IB positions
+    try:
+        positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+    except asyncio.TimeoutError:
+        logger.error(f"CONTRADICT close {trade_id}: reqPositionsAsync timed out")
+        return False
+
+    # 2. Get thesis legs from trade ledger
+    trade_ledger = get_trade_ledger_df(config.get('data_dir'))
+    if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+        logger.warning(f"CONTRADICT close {trade_id}: trade ledger empty/missing")
+        return False
+
+    old_rows = trade_ledger[trade_ledger['position_id'] == trade_id]
+    if old_rows.empty:
+        logger.warning(f"CONTRADICT close {trade_id}: no ledger entries found")
+        return False
+
+    old_symbols = set(old_rows['local_symbol'].unique())
+
+    # 3. Calculate expected quantity per symbol for THIS thesis only
+    expected_qty = {}
+    for _, row in old_rows.iterrows():
+        sym = row.get('local_symbol', '')
+        qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
+        expected_qty[sym] = expected_qty.get(sym, 0) + qty
+
+    # 4. Match IB positions to thesis contracts
+    legs = [p for p in positions
+            if p.contract.localSymbol in old_symbols and p.position != 0]
+
+    if not legs:
+        # No IB positions — already closed (externally or by stale close).
+        # Safe to invalidate thesis and clear flag.
+        logger.info(
+            f"CONTRADICT close {trade_id}: no matching IB positions "
+            f"(may already be closed). Invalidating thesis.")
+        tms.invalidate_thesis(trade_id, "CONTRADICT: position already closed")
+        tms.clear_pending_close(trade_id)
+        return True
+
+    # 5. Handle aggregated positions: cap leg quantities to thesis-specific
+    # amounts. If IB shows qty=2 for a symbol but this thesis only owns
+    # qty=1, we create a lightweight wrapper with the thesis's quantity so
+    # _close_spread_position only closes what belongs to this thesis.
+    from types import SimpleNamespace
+    adjusted_legs = []
+    for leg in legs:
+        sym = leg.contract.localSymbol
+        thesis_qty = expected_qty.get(sym, 0)  # signed: +1 long, -1 short
+        ib_qty = leg.position                   # signed: +2 long, -2 short
+
+        if thesis_qty == 0:
+            continue  # This symbol isn't part of this thesis
+
+        # If IB qty exceeds thesis qty (aggregation), cap to thesis qty
+        if abs(ib_qty) > abs(thesis_qty):
+            logger.info(
+                f"CONTRADICT close {trade_id}: {sym} IB qty={ib_qty}, "
+                f"thesis qty={thesis_qty}. Closing thesis portion only.")
+            adjusted_leg = SimpleNamespace(
+                contract=leg.contract,
+                position=thesis_qty,
+            )
+            adjusted_legs.append(adjusted_leg)
+        else:
+            adjusted_legs.append(leg)
+
+    if not adjusted_legs:
+        logger.warning(f"CONTRADICT close {trade_id}: no legs after adjustment")
+        return False
+
+    # 6. Close via _close_spread_position
+    from orchestrator import _close_spread_position  # Lazy import (established pattern)
+
+    thesis = tms.retrieve_thesis(trade_id)
+    fully_closed = await _close_spread_position(
+        ib, adjusted_legs, trade_id,
+        f"CONTRADICT: direction reversal", config, thesis)
+
+    # 7. Invalidate ONLY on success (atomic with closure)
+    if fully_closed:
+        tms.invalidate_thesis(trade_id, "CONTRADICT: closed on direction reversal")
+        tms.clear_pending_close(trade_id)
+        logger.info(f"CONTRADICT close {trade_id}: fully closed and invalidated.")
+        return True
+    else:
+        logger.warning(
+            f"CONTRADICT close {trade_id}: partial/failed close. "
+            f"pending_close flag preserved for audit cycle retry.")
+        return False
+
+
 async def check_liquidity_conditions(ib: IB, contract, order_size: int, config: dict = None) -> tuple[bool, str]:
     """Check if liquidity conditions are safe for execution.
 
@@ -1676,7 +1749,6 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     # Clear thesis tracking at START of run (not in finally) to avoid racing
     # with fire-and-forget _handle_and_log_fill tasks still inflight
     _recorded_thesis_positions.clear()
-    _processed_supersedes.clear()
 
     # === D3 FIX: Explicit sequential processing ===
     # Use pop_all to atomically get and clear, preventing any race
@@ -1707,6 +1779,44 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         logger.critical(msg, exc_info=True)
         send_pushover_notification(config.get('notifications', {}), "Order Placement Connection Failed", f"{msg}\n{traceback.format_exc()}")
         return  # Fail closed - cannot place orders without connection
+
+    # === CONTRADICT IMMEDIATE CLOSE ===
+    # Close positions marked pending_close BEFORE placing any new orders.
+    # This ensures:
+    # 1. No IB qty aggregation with new orders (eliminates race condition)
+    # 2. Close is not gated on new order filling (eliminates timeout gap)
+    # 3. Thesis invalidation only on successful close (atomicity)
+    try:
+        from trading_bot.tms import TransactiveMemory
+        tms_close = TransactiveMemory()
+        pending = tms_close.get_pending_close_theses()
+        if pending:
+            logger.info(
+                f"Found {len(pending)} theses with pending_close — "
+                f"executing CONTRADICT closures before placing new orders"
+            )
+            for item in pending:
+                tid = item['trade_id']
+                reason = item['pending_close']
+                ts = item.get('pending_close_timestamp', '')
+                logger.info(
+                    f"CONTRADICT close: {tid} (reason={reason}, flagged_at={ts})")
+                try:
+                    closed = await _close_contradicted_thesis(
+                        ib, tid, config, tms_close)
+                    if closed:
+                        logger.info(f"CONTRADICT close successful: {tid[:8]}")
+                    else:
+                        logger.warning(
+                            f"CONTRADICT close failed/partial for {tid[:8]}. "
+                            f"pending_close flag preserved for audit cycle retry.")
+                except Exception as e:
+                    logger.error(
+                        f"CONTRADICT close error for {tid[:8]}: {e}. "
+                        f"pending_close flag preserved for audit cycle retry.",
+                        exc_info=True)
+    except Exception as e:
+        logger.error(f"Failed to process pending_close theses: {e}", exc_info=True)
 
     live_orders = {} # Dictionary to track order status by orderId
     _fill_tasks = []  # Collect fill handler tasks so we can await them before disconnect
