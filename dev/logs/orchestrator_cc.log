@@ -1201,3 +1201,18 @@
 2026-03-10 16:55:01,966 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
 2026-03-10 16:55:04,974 - Engine.CC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-10 17:05:00 UTC. Waiting for 0.17 hours.
 2026-03-10 16:59:47,152 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=635, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-10 17:02:48,334 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 28% of average
+2026-03-10 17:02:48,345 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-10 17:02:48,568 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-10 17:04:48,742 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=640, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-10 17:05:00,002 - Engine.CC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-10 17:05:00,008 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-10 17:05:00,013 - trading_bot.connection_pool - INFO - Connecting IB (CC_orchestrator_orders) ID: 438 [REMOTE/PAPER]...
+2026-03-10 17:05:00,545 - trading_bot.connection_pool - INFO - IB (CC_orchestrator_orders) connected successfully with ID 438
+2026-03-10 17:05:00,550 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-10 17:05:00,550 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-10 17:05:01,137 - OrderManager - INFO - Found 16 live position legs in the IB account.
+2026-03-10 17:05:01,138 - OrderManager - INFO -   Filtered to 0 CC positions with non-zero quantity (from 16 total across all commodities)
+2026-03-10 17:05:01,138 - OrderManager - INFO - No open CC positions to close.
+2026-03-10 17:05:01,138 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_orchestrator_orders)...
+2026-03-10 17:05:04,148 - Engine.CC - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-10 17:15:00 UTC. Waiting for 0.17 hours.
