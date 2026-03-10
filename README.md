@@ -90,6 +90,7 @@ graph TD
 9.  **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry.
 10. **Error Reporter (`scripts/error_reporter.py`):** A standalone telemetry script (decoupled from the orchestrator) that scans system logs, uses fingerprinting to deduplicate errors, intelligently filters out transient operational noise (e.g., 429 rate limits, 503 unavailable, lock timeouts), and auto-generates structured GitHub issues to track true system anomalies.
 11. **Three-Tier Market State Resolver (`trading_bot/utils.py`):** Dynamically dictates the state of each commodity (`Active`, `Passive`, `Sleeping`), allowing continuous 24/7 surveillance of extended sessions (e.g., CME Globex overnight) without the risk of generating unnecessary active cycle trades.
+12. **System Readiness Verifier (`verify_system_readiness.py`):** A comprehensive pre-flight diagnostic script that runs checks across 27 distinct system components, verifying infrastructure, connections, data fallbacks, agent health, and execution pipelines.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
@@ -152,6 +153,9 @@ Specialized LLM personas that analyze grounded data.
 ```bash
 # Install dependencies
 pip install -r requirements.txt
+
+# Run Pre-flight Checks
+python verify_system_readiness.py
 
 # Default: Multi-Commodity Mode (MasterOrchestrator)
 # Spawns isolated CommodityEngine processes for all active tickers defined in config

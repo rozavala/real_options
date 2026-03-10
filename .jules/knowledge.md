@@ -51,6 +51,7 @@ A set of agents that synthesize the analysts' reports.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
 - **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot). Evaluates based on directional accuracy and abstention rate directly from `enhanced_brier.json` (legacy CSV paths have been deprecated).
 - **Error Reporter Pipeline:** A standalone telemetry script (`scripts/error_reporter.py`) decoupled from the orchestrator. It ensures fail-safe operational awareness by parsing system logs, filtering out expected transient noise (e.g., `503 UNAVAILABLE`, `RESOURCE_EXHAUSTED`, rate limits, `CIRCUIT BREAKER`, emergency lock timeouts), and uses fingerprinting to deduplicate and auto-generate structured GitHub issues for true anomalies.
+- **System Readiness Verifier:** A comprehensive pre-flight diagnostic script (`verify_system_readiness.py`) that performs 27 comprehensive component checks (infrastructure, connections, data fallbacks, agent array, and execution pipeline) to diagnose system state before runtime.
 
 ## Knowledge Generation and Memory
 
