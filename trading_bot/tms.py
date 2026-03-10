@@ -716,6 +716,87 @@ class TransactiveMemory:
         except Exception as e:
             logger.error(f"TMS invalidate_thesis failed: {e}")
 
+    def mark_pending_close(self, trade_id: str, reason: str, direction: str = ""):
+        """Mark thesis for deferred close. Survives process restarts.
+
+        Called when a CONTRADICT is detected but the close cannot execute
+        immediately (e.g., no IB connection yet). The pending_close flag is
+        the durable record of close intent, picked up by place_queued_orders
+        and the position audit safety net.
+        """
+        if not self.collection:
+            return
+
+        try:
+            doc_id = f"thesis_{trade_id}"
+            results = self.collection.get(ids=[doc_id], include=['metadatas'])
+            if results and results['metadatas']:
+                meta = results['metadatas'][0]
+                meta['pending_close'] = reason
+                meta['pending_close_timestamp'] = datetime.now(timezone.utc).isoformat()
+                if direction:
+                    meta['pending_close_direction'] = direction
+                self.collection.update(ids=[doc_id], metadatas=[meta])
+                logger.info(
+                    f"TMS: Marked thesis {trade_id} pending_close={reason}"
+                    + (f" (new direction: {direction})" if direction else "")
+                )
+        except Exception as e:
+            logger.error(f"TMS mark_pending_close failed for {trade_id}: {e}")
+
+    def clear_pending_close(self, trade_id: str):
+        """Remove pending_close flag after successful close."""
+        if not self.collection:
+            return
+
+        try:
+            doc_id = f"thesis_{trade_id}"
+            results = self.collection.get(ids=[doc_id], include=['metadatas'])
+            if results and results['metadatas']:
+                meta = results['metadatas'][0]
+                changed = False
+                for key in ('pending_close', 'pending_close_timestamp',
+                            'pending_close_direction'):
+                    if key in meta:
+                        del meta[key]
+                        changed = True
+                if changed:
+                    self.collection.update(ids=[doc_id], metadatas=[meta])
+                    logger.info(f"TMS: Cleared pending_close for {trade_id}")
+        except Exception as e:
+            logger.debug(f"TMS clear_pending_close failed for {trade_id}: {e}")
+
+    def get_pending_close_theses(self) -> list:
+        """Return all active theses with a pending_close flag.
+
+        ChromaDB doesn't support $exists queries, so we scan all active
+        theses and filter in Python. This is fine at our scale (< 50
+        active theses at any time).
+        """
+        if not self.collection:
+            return []
+
+        try:
+            all_active = self.collection.get(
+                where={"active": "true"},
+                include=['metadatas', 'documents']
+            )
+            results = []
+            for i, meta in enumerate(all_active.get('metadatas', [])):
+                if meta.get('pending_close'):
+                    trade_id = meta.get('trade_id', '')
+                    results.append({
+                        'trade_id': trade_id,
+                        'pending_close': meta['pending_close'],
+                        'pending_close_timestamp': meta.get('pending_close_timestamp', ''),
+                        'pending_close_direction': meta.get('pending_close_direction', ''),
+                        'metadata': meta,
+                    })
+            return results
+        except Exception as e:
+            logger.error(f"TMS get_pending_close_theses failed: {e}")
+            return []
+
     def get_all_theses(self) -> list:
         """Returns all theses (active + invalidated) from the TMS."""
         if not self.collection:
