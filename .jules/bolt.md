@@ -31,3 +31,6 @@
 ## 2025-03-05 - Vectorized Ledger Quantity Calculations
 **Learning:** Iterating over `trade_ledger` DataFrames using `.iterrows()` to calculate net quantities across multiple positions or legs is a massive O(N) bottleneck, causing latency spikes in the `orchestrator.py` during periodic reconciliations (taking ~340ms to loop 6000 rows). Using boolean masks `.loc[...]` and `.groupby().sum()` with vectorized `.sum()` brings this computation down to ~3ms (over 100x speedup).
 **Action:** Never use `for _, row in df.iterrows():` for aggregation across DataFrames. Always use pandas `.groupby()`, `.loc`, or `np.where()` for calculation logic.
+## 2025-03-09 - Fast Dictionary Lookup Construction from Dataframes
+**Learning:** Using `for _, row in df.iterrows(): dict[row['key']] = row['val']` to build dictionary lookups is extremely slow in pandas due to O(N) Python iteration overhead and object boxing. Instead, chaining `.dropna(subset=['key', 'val'])` and then using standard `dict(zip(df['key'], df['val']))` is `~40x` faster because it operates on underlying C-arrays and bypasses series instantiation entirely.
+**Action:** Never use `.iterrows()` to build dictionaries from DataFrames. Always use vectorized indexing/`zip` over specific columns.
