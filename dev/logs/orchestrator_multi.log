@@ -5909,3 +5909,198 @@
 2026-03-11 18:00:00,720 - Engine.CC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-12 08:00:00 UTC. Waiting for 14.00 hours.
 2026-03-11 18:00:00,725 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-11_f5227fa9fca2 (3 commodities, 10 improvement opportunities)
 2026-03-11 18:00:00,733 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-12 07:30:00 UTC. Waiting for 13.50 hours.
+2026-03-11 18:05:00,006 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-11 18:05:00,010 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-11 18:05:00,011 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1235 [REMOTE/PAPER]...
+2026-03-11 18:05:00,351 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1235
+2026-03-11 18:05:00,356 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-11 18:05:00,357 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-11 18:05:00,461 - OrderManager - INFO - Found 18 live position legs in the IB account.
+2026-03-11 18:05:00,462 - OrderManager - INFO -   Filtered to 8 NG positions with non-zero quantity (from 18 total across all commodities)
+2026-03-11 18:05:00,496 - OrderManager - INFO - Reconstruction: LNEM6 P3200 | Trade Date: 2026-03-10 | Age: 2 | Qty: 1.0
+2026-03-11 18:05:00,498 - OrderManager - INFO - Reconstruction: LNEM6 P3150 | Trade Date: 2026-03-10 | Age: 2 | Qty: 1.0
+2026-03-11 18:05:00,500 - OrderManager - INFO - Reconstruction: LNEU6 P3500 | Trade Date: 2026-03-10 | Age: 2 | Qty: 2.0
+2026-03-11 18:05:00,502 - OrderManager - INFO - Reconstruction: LNEN6 P3450 | Trade Date: 2026-03-10 | Age: 2 | Qty: 1.0
+2026-03-11 18:05:00,503 - OrderManager - INFO - Reconstruction: LNEN6 P3400 | Trade Date: 2026-03-10 | Age: 2 | Qty: 1.0
+2026-03-11 18:05:00,505 - OrderManager - INFO - Reconstruction: LNEQ6 P3500 | Trade Date: 2026-03-10 | Age: 2 | Qty: 2.0
+2026-03-11 18:05:00,506 - OrderManager - INFO - Reconstruction: LNEQ6 P3550 | Trade Date: 2026-03-10 | Age: 2 | Qty: 2.0
+2026-03-11 18:05:00,508 - OrderManager - INFO - Reconstruction: LNEU6 P3450 | Trade Date: 2026-03-10 | Age: 2 | Qty: 2.0
+2026-03-11 18:05:00,508 - OrderManager - INFO - Processing closure for Position ID a666451a-c4a6-4a6f-b187-3f0a240f46d7 with 2 legs.
+2026-03-11 18:05:00,509 - OrderManager - INFO - Constructed BAG order for Pos ID a666451a-c4a6-4a6f-b187-3f0a240f46d7: ['SELL 1 x 634031481', 'BUY 1 x 634031614']
+2026-03-11 18:05:00,509 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-11 18:05:03,621 - OrderManager - WARNING - Leg 634031614 (LNEM6 P3150): No valid price data
+2026-03-11 18:05:03,622 - OrderManager - WARNING - Limit price is zero for NG
+2026-03-11 18:05:03,622 - OrderManager - WARNING - Invalid limit price for NG. Using Market Order.
+2026-03-11 18:05:03,622 - root - INFO - Assigned new unique OrderRef for tracking: d4544393-2bb2-4c02-9f12-a34a8bcc33ab
+2026-03-11 18:05:03,623 - root - INFO - Placing BUY order for ...
+2026-03-11 18:05:03,624 - root - INFO - Successfully placed order ID 111 for .
+2026-03-11 18:05:03,624 - OrderManager - INFO - Placed close order 111 for Pos ID a666451a-c4a6-4a6f-b187-3f0a240f46d7. Waiting for fill...
+2026-03-11 18:05:07,632 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-11 18:05:07,634 - root - INFO - Logged 2 leg(s) to ledger for position_id a666451a-c4a6-4a6f-b187-3f0a240f46d7 (Stale Position Close)
+2026-03-11 18:05:07,634 - OrderManager - INFO - Successfully closed Combo (Pos ID: a666451a-c4a6-4a6f-b187-3f0a240f46d7). P&L: -129.48000000000002
+2026-03-11 18:05:07,645 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-11 18:05:07,667 - trading_bot.tms - INFO - TMS: Invalidated thesis for a666451a-c4a6-4a6f-b187-3f0a240f46d7: Stale position (>2 days)
+2026-03-11 18:05:07,667 - OrderManager - INFO - TMS: Invalidated thesis for a666451a-c4a6-4a6f-b187-3f0a240f46d7: Stale position (>2 days)
+2026-03-11 18:05:08,673 - OrderManager - INFO - Processing closure for Position ID 3bb81da5-70f2-4fda-9499-85c6361b1374 with 2 legs.
+2026-03-11 18:05:08,674 - OrderManager - INFO - Constructed BAG order for Pos ID 3bb81da5-70f2-4fda-9499-85c6361b1374: ['SELL 1 x 269462137', 'BUY 1 x 650972367']
+2026-03-11 18:05:08,674 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-11 18:05:11,785 - OrderManager - WARNING - Leg 650972367 (LNEU6 P3450): No valid price data
+2026-03-11 18:05:11,786 - OrderManager - WARNING - Limit price is zero for NG
+2026-03-11 18:05:11,786 - OrderManager - WARNING - Invalid limit price for NG. Using Market Order.
+2026-03-11 18:05:11,786 - root - INFO - Assigned new unique OrderRef for tracking: 3eb7ec2e-3063-4495-ae21-8d43c9c7a2f9
+2026-03-11 18:05:11,787 - root - INFO - Placing BUY order for ...
+2026-03-11 18:05:11,787 - root - INFO - Successfully placed order ID 234 for .
+2026-03-11 18:05:11,788 - OrderManager - INFO - Placed close order 234 for Pos ID 3bb81da5-70f2-4fda-9499-85c6361b1374. Waiting for fill...
+2026-03-11 18:05:16,794 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-11 18:05:16,795 - root - INFO - Logged 2 leg(s) to ledger for position_id 3bb81da5-70f2-4fda-9499-85c6361b1374 (Stale Position Close)
+2026-03-11 18:05:16,796 - OrderManager - INFO - Successfully closed Combo (Pos ID: 3bb81da5-70f2-4fda-9499-85c6361b1374). P&L: -398.96000000000004
+2026-03-11 18:05:16,803 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-11 18:05:16,821 - trading_bot.tms - INFO - TMS: Invalidated thesis for 3bb81da5-70f2-4fda-9499-85c6361b1374: Stale position (>2 days)
+2026-03-11 18:05:16,822 - OrderManager - INFO - TMS: Invalidated thesis for 3bb81da5-70f2-4fda-9499-85c6361b1374: Stale position (>2 days)
+2026-03-11 18:05:17,827 - OrderManager - INFO - Processing closure for Position ID 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b with 2 legs.
+2026-03-11 18:05:17,828 - OrderManager - INFO - Constructed BAG order for Pos ID 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b: ['SELL 1 x 639848206', 'BUY 1 x 639847473']
+2026-03-11 18:05:17,828 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-11 18:05:20,943 - OrderManager - WARNING - Leg 639847473 (LNEN6 P3400): No valid price data
+2026-03-11 18:05:20,943 - OrderManager - WARNING - Limit price is zero for NG
+2026-03-11 18:05:20,943 - OrderManager - WARNING - Invalid limit price for NG. Using Market Order.
+2026-03-11 18:05:20,943 - root - INFO - Assigned new unique OrderRef for tracking: 055692ed-1b14-4530-b271-fecae741686a
+2026-03-11 18:05:20,944 - root - INFO - Placing BUY order for ...
+2026-03-11 18:05:20,944 - root - INFO - Successfully placed order ID 239 for .
+2026-03-11 18:05:20,944 - OrderManager - INFO - Placed close order 239 for Pos ID 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b. Waiting for fill...
+2026-03-11 18:05:24,952 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-11 18:05:24,953 - root - INFO - Logged 2 leg(s) to ledger for position_id 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b (Stale Position Close)
+2026-03-11 18:05:24,953 - OrderManager - INFO - Successfully closed Combo (Pos ID: 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b). P&L: -139.48000000000002
+2026-03-11 18:05:24,959 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-11 18:05:24,980 - trading_bot.tms - INFO - TMS: Invalidated thesis for 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b: Stale position (>2 days)
+2026-03-11 18:05:24,981 - OrderManager - INFO - TMS: Invalidated thesis for 1db19543-c3ba-4c2b-9fb4-5eb7254bef4b: Stale position (>2 days)
+2026-03-11 18:05:25,986 - OrderManager - INFO - Processing closure for Position ID 6fabd4b8-74f4-435f-ac72-0031c9d20495 with 2 legs.
+2026-03-11 18:05:25,986 - OrderManager - INFO - Constructed BAG order for Pos ID 6fabd4b8-74f4-435f-ac72-0031c9d20495: ['BUY 1 x 269462097', 'SELL 1 x 644917806']
+2026-03-11 18:05:25,987 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-11 18:05:27,497 - ib_insync.wrapper - ERROR - Error 300, reqId 241: Can't find EId with tickerId:241
+2026-03-11 18:05:29,100 - OrderManager - INFO - Calculated combo limit price: -0.03 (raw: -0.03, slippage: 0.00)
+2026-03-11 18:05:29,100 - OrderManager - INFO - Placing LIMIT order for NG. Price: -0.03 (CREDIT)
+2026-03-11 18:05:29,101 - root - INFO - Assigned new unique OrderRef for tracking: adb21edc-0d96-4fd3-9e95-7278c08e0057
+2026-03-11 18:05:29,101 - root - INFO - Placing BUY order for ...
+2026-03-11 18:05:29,102 - root - INFO - Successfully placed order ID 244 for .
+2026-03-11 18:05:29,102 - OrderManager - INFO - Placed close order 244 for Pos ID 6fabd4b8-74f4-435f-ac72-0031c9d20495. Waiting for fill...
+2026-03-11 18:05:34,107 - OrderManager - INFO - Price walk #1: -0.03 -> -0.03 (CREDIT)
+2026-03-11 18:05:39,116 - OrderManager - INFO - Price walk #2: -0.03 -> -0.03 (CREDIT)
+2026-03-11 18:05:44,124 - OrderManager - INFO - Price walk #3: -0.03 -> -0.03 (CREDIT)
+2026-03-11 18:05:46,128 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-11 18:05:46,129 - root - INFO - Logged 2 leg(s) to ledger for position_id 6fabd4b8-74f4-435f-ac72-0031c9d20495 (Stale Position Close)
+2026-03-11 18:05:46,130 - OrderManager - INFO - Successfully closed Combo (Pos ID: 6fabd4b8-74f4-435f-ac72-0031c9d20495). P&L: -78.96000000000004
+2026-03-11 18:05:46,136 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-11 18:05:46,153 - trading_bot.tms - INFO - TMS: Invalidated thesis for 6fabd4b8-74f4-435f-ac72-0031c9d20495: Stale position (>2 days)
+2026-03-11 18:05:46,154 - OrderManager - INFO - TMS: Invalidated thesis for 6fabd4b8-74f4-435f-ac72-0031c9d20495: Stale position (>2 days)
+2026-03-11 18:05:47,474 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 18:05:47,476 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-11 18:05:50,485 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-11 18:15:00 UTC. Waiting for 0.15 hours.
+2026-03-11 18:15:00,005 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-11 18:15:00,011 - Orchestrator - INFO - --- Fallback Close Attempt (12:45 ET) ---
+2026-03-11 18:15:00,011 - Orchestrator - INFO - This is a retry for any positions the 11:00 primary close failed to handle.
+2026-03-11 18:15:00,012 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-11 18:15:00,013 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1237 [REMOTE/PAPER]...
+2026-03-11 18:15:00,189 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1237
+2026-03-11 18:15:00,196 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-11 18:15:00,196 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-11 18:15:00,300 - OrderManager - INFO - Found 18 live position legs in the IB account.
+2026-03-11 18:15:00,300 - OrderManager - INFO -   Filtered to 0 NG positions with non-zero quantity (from 18 total across all commodities)
+2026-03-11 18:15:00,300 - OrderManager - INFO - No open NG positions to close.
+2026-03-11 18:15:00,301 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-11 18:15:03,313 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-11 18:25:00 UTC. Waiting for 0.17 hours.
+2026-03-11 18:24:25,957 - trading_bot.master_orchestrator - INFO - === Running post-close reconciliation ===
+2026-03-11 18:24:25,957 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-03-11 18:24:26,214 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:24:36,225 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:24:36,398 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:24:36,407 - EquityLogger - INFO - Preserving 20 local equity records not present in Flex Query.
+2026-03-11 18:24:36,410 - EquityLogger - INFO - Successfully synced 28 equity records to data/KC/daily_equity.csv.
+2026-03-11 18:24:36,411 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-03-11 18:24:36,411 - EquityLogger - INFO - Connecting to IB at 100.102.50.16:4002 with clientId 4007...
+2026-03-11 18:24:36,783 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-11 18:24:36,938 - EquityLogger - INFO - Fetched NetLiquidation: $26,727.22
+2026-03-11 18:24:36,944 - EquityLogger - INFO - Updated data/KC/daily_equity.csv with value $26,727.22
+2026-03-11 18:24:39,948 - EquityLogger - INFO - Disconnected from IB.
+2026-03-11 18:24:39,949 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-11 18:24:39,950 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-03-11 18:24:40,228 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:24:50,236 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:24:50,389 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:24:50,391 - TradeReconciler - INFO - Parsed 118 executions from the Flex Query report.
+2026-03-11 18:24:50,411 - TradeReconciler - INFO - Successfully processed 118 trades into the reconciliation DataFrame.
+2026-03-11 18:24:50,411 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-03-11 18:24:50,575 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:25:00,005 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-11 18:25:00,009 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-11 18:25:00,010 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1235 [REMOTE/PAPER]...
+2026-03-11 18:25:00,375 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1235
+2026-03-11 18:25:00,379 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-11 18:25:00,483 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-11 18:25:00,483 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-11 18:25:00,576 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:25:00,723 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:25:00,726 - TradeReconciler - INFO - Parsed 19 executions from the Flex Query report.
+2026-03-11 18:25:00,737 - TradeReconciler - INFO - Successfully processed 19 trades into the reconciliation DataFrame.
+2026-03-11 18:25:00,739 - TradeReconciler - INFO - Consolidated to 137 unique trades from all reports.
+2026-03-11 18:25:00,740 - TradeReconciler - INFO - Filtered IB trades by commodity KC (prefixes ('KC', 'KO')): 137 -> 84
+2026-03-11 18:25:00,740 - TradeReconciler - INFO - Found 19 archived ledger files.
+2026-03-11 18:25:00,770 - TradeReconciler - INFO - Consolidated a total of 134 trades from all ledgers.
+2026-03-11 18:25:00,771 - TradeReconciler - INFO - Excluded 6 synthetic/manual reconciliation entries from comparison.
+2026-03-11 18:25:00,772 - TradeReconciler - INFO - Filtered IB trades from 84 to 84 records within the last 30 days.
+2026-03-11 18:25:00,773 - TradeReconciler - INFO - Filtered local ledger from 128 to 84 records within the last 30 days.
+2026-03-11 18:25:00,901 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-03-11 18:25:00,902 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-03-11 18:25:00,903 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-11 18:25:00,903 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-03-11 18:25:01,077 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:25:03,491 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-11 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-11 18:25:11,082 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:25:11,256 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:25:11,258 - TradeReconciler - INFO - Parsed 118 executions from the Flex Query report.
+2026-03-11 18:25:11,280 - TradeReconciler - INFO - Successfully processed 118 trades into the reconciliation DataFrame.
+2026-03-11 18:25:11,281 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-03-11 18:25:11,486 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:25:21,490 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:25:21,719 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:25:21,721 - TradeReconciler - INFO - Parsed 19 executions from the Flex Query report.
+2026-03-11 18:25:21,731 - TradeReconciler - INFO - Successfully processed 19 trades into the reconciliation DataFrame.
+2026-03-11 18:25:21,733 - TradeReconciler - INFO - Consolidated to 137 unique trades from all reports.
+2026-03-11 18:25:21,734 - TradeReconciler - INFO - Filtered IB trades by commodity CC (prefixes ('CC', 'DC')): 137 -> 0
+2026-03-11 18:25:21,734 - TradeReconciler - INFO - Found 0 archived ledger files.
+2026-03-11 18:25:21,734 - TradeReconciler - WARNING - No trade ledger data found.
+2026-03-11 18:25:21,735 - TradeReconciler - WARNING - Local trade ledger is empty. All fetched IB trades will be considered missing.
+2026-03-11 18:25:21,736 - TradeReconciler - INFO - Filtered IB trades from 0 to 0 records within the last 30 days.
+2026-03-11 18:25:21,736 - TradeReconciler - WARNING - IB trades report is empty. All local trades will be marked as superfluous.
+2026-03-11 18:25:21,736 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-03-11 18:25:21,737 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-11 18:25:21,737 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-03-11 18:25:21,963 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:25:31,967 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:25:32,086 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:25:32,089 - TradeReconciler - INFO - Parsed 118 executions from the Flex Query report.
+2026-03-11 18:25:32,109 - TradeReconciler - INFO - Successfully processed 118 trades into the reconciliation DataFrame.
+2026-03-11 18:25:32,110 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-03-11 18:25:32,291 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-11 18:25:42,298 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-11 18:25:42,414 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-11 18:25:42,417 - TradeReconciler - INFO - Parsed 19 executions from the Flex Query report.
+2026-03-11 18:25:42,427 - TradeReconciler - INFO - Successfully processed 19 trades into the reconciliation DataFrame.
+2026-03-11 18:25:42,429 - TradeReconciler - INFO - Consolidated to 137 unique trades from all reports.
+2026-03-11 18:25:42,430 - TradeReconciler - INFO - Filtered IB trades by commodity NG (prefixes ('NG', 'LNE')): 137 -> 53
+2026-03-11 18:25:42,432 - TradeReconciler - INFO - Loaded 8 trades from the main ledger.
+2026-03-11 18:25:42,432 - TradeReconciler - INFO - Found 8 archived ledger files.
+2026-03-11 18:25:42,450 - TradeReconciler - INFO - Consolidated a total of 53 trades from all ledgers.
+2026-03-11 18:25:42,452 - TradeReconciler - INFO - Filtered IB trades from 53 to 53 records within the last 30 days.
+2026-03-11 18:25:42,453 - TradeReconciler - INFO - Filtered local ledger from 53 to 53 records within the last 30 days.
+2026-03-11 18:25:42,532 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-03-11 18:25:42,533 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-03-11 18:25:42,533 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/KC
+2026-03-11 18:25:42,534 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-11 18:25:42,534 - trading_bot.master_orchestrator - INFO - Brier reconciliation [KC]: 0 resolved
+2026-03-11 18:25:42,534 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/CC
+2026-03-11 18:25:42,534 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-11 18:25:42,534 - trading_bot.master_orchestrator - INFO - Brier reconciliation [CC]: 0 resolved
+2026-03-11 18:25:42,534 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/NG
+2026-03-11 18:25:42,534 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-11 18:25:42,534 - trading_bot.master_orchestrator - INFO - Brier reconciliation [NG]: 0 resolved
+2026-03-11 18:25:42,535 - trading_bot.master_orchestrator - INFO - === Post-close reconciliation complete ===
