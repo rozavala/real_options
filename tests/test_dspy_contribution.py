@@ -68,8 +68,8 @@ class TestComputeMetricScore:
         )
         assert score == 0.5
 
-    def test_zero_contribution_neutral_prediction(self):
-        """Zero contribution + NEUTRAL prediction → rewarded for abstention."""
+    def test_zero_contribution_neutral_on_noise(self):
+        """Zero contribution + NEUTRAL on NEUTRAL outcome → good abstention."""
         score = _compute_metric_score(
             pred_direction="NEUTRAL",
             pred_confidence=0.7,
@@ -79,8 +79,19 @@ class TestComputeMetricScore:
         )
         assert score == pytest.approx(0.4 + 0.2 * 0.7)
 
+    def test_zero_contribution_neutral_on_real_move(self):
+        """Zero contribution + NEUTRAL on directional outcome → missed signal."""
+        score = _compute_metric_score(
+            pred_direction="NEUTRAL",
+            pred_confidence=0.7,
+            actual="BULLISH",
+            contribution_score=0.0,
+            example_direction="NEUTRAL",
+        )
+        assert score == 0.15
+
     def test_zero_contribution_directional_prediction(self):
-        """Zero contribution + directional prediction → 0.3."""
+        """Zero contribution + directional prediction → 0.25."""
         score = _compute_metric_score(
             pred_direction="BULLISH",
             pred_confidence=0.8,
@@ -88,7 +99,7 @@ class TestComputeMetricScore:
             contribution_score=0.0,
             example_direction="NEUTRAL",
         )
-        assert score == 0.3
+        assert score == 0.25
 
     def test_no_contribution_neutral_fallback(self):
         """No contribution data + NEUTRAL → small credit."""
@@ -132,6 +143,28 @@ class TestComputeMetricScore:
             example_direction="BULLISH",
         )
         assert score == pytest.approx(0.7 + 0.3 * 1.0)
+
+    def test_always_neutral_is_suboptimal(self):
+        """Always-NEUTRAL strategy scores lower than selective commitment.
+
+        Given 40% NEUTRAL outcomes and 60% directional, an always-NEUTRAL
+        agent should score worse than one that commits selectively.
+        """
+        # Always-NEUTRAL agent: 0.4 * 0.5 + 0.6 * 0.15 = 0.29
+        always_neutral = (
+            0.4 * _compute_metric_score("NEUTRAL", 0.5, "NEUTRAL", 0.0, "NEUTRAL")
+            + 0.6 * _compute_metric_score("NEUTRAL", 0.5, "BULLISH", 0.0, "NEUTRAL")
+        )
+
+        # Selective agent: commits on directional, abstains on noise.
+        # Gets directional right 50% of the time.
+        selective = (
+            0.4 * _compute_metric_score("NEUTRAL", 0.5, "NEUTRAL", 0.0, "NEUTRAL")
+            + 0.3 * _compute_metric_score("BULLISH", 0.8, "BULLISH", 0.5, "BULLISH")
+            + 0.3 * _compute_metric_score("BULLISH", 0.8, "BEARISH", -0.5, "BULLISH")
+        )
+
+        assert selective > always_neutral
 
 
 # ---------------------------------------------------------------------------
@@ -440,3 +473,41 @@ class TestShouldSuggestEnableMetric:
         }
         suggest, explanation = should_suggest_enable(baseline, optimized, stats, min_for_suggest=100)
         assert suggest is True
+
+
+# ---------------------------------------------------------------------------
+# Abstention ceiling
+# ---------------------------------------------------------------------------
+
+
+class TestAbstentionCeiling:
+    """Test that abstention ceiling config values are respected."""
+
+    def test_ceiling_values_in_config(self):
+        """Config has per-agent max_neutral_rate entries."""
+        import json
+        from pathlib import Path
+        config_path = Path(__file__).resolve().parent.parent / "config.json"
+        with open(config_path) as f:
+            cfg = json.load(f)
+        rates = cfg.get("dspy", {}).get("max_neutral_rate", {})
+        assert rates.get("default") == 0.60
+        assert rates.get("technical") == 0.40
+        assert rates.get("sentiment") == 0.40
+        assert rates.get("volatility") == 0.40
+        assert rates.get("macro") == 0.55
+        assert rates.get("agronomist") == 0.70
+        assert rates.get("geopolitical") == 0.75
+
+    def test_episodic_agents_have_higher_ceiling(self):
+        """Episodic domain agents (agronomist, inventory) get looser ceilings."""
+        import json
+        from pathlib import Path
+        config_path = Path(__file__).resolve().parent.parent / "config.json"
+        with open(config_path) as f:
+            cfg = json.load(f)
+        rates = cfg.get("dspy", {}).get("max_neutral_rate", {})
+        # Episodic agents should have higher ceilings than daily-data agents
+        assert rates["agronomist"] > rates["technical"]
+        assert rates["inventory"] > rates["sentiment"]
+        assert rates["geopolitical"] > rates["macro"]
