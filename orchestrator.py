@@ -27,7 +27,7 @@ from config_loader import load_config
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
-from reconcile_trades import main as run_reconciliation, reconcile_active_positions
+from reconcile_trades import main as run_reconciliation, reconcile_active_positions, get_local_active_positions
 from trading_bot.reconciliation import reconcile_council_history
 from trading_bot.utils import log_council_decision
 from trading_bot.decision_signals import log_decision_signal
@@ -1832,6 +1832,20 @@ async def _close_spread_position(
                     f"  ✅ {action} {qty}x {contract.localSymbol} "
                     f"@ {trade.orderStatus.avgFillPrice}"
                 )
+                # Record close fill to trade ledger
+                try:
+                    from trading_bot.utils import log_trade_to_ledger
+                    await log_trade_to_ledger(
+                        ib, trade,
+                        reason=reason,
+                        position_id=position_id,
+                        config=config
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to log close to ledger for "
+                        f"{contract.localSymbol}: {e}"
+                    )
             else:
                 failed_closes.append({
                     'symbol': contract.localSymbol,
@@ -1958,26 +1972,12 @@ async def _reconcile_state_stores(
         ]
         results['ibkr_positions'] = len(ib_positions)
 
-        # 2. Count open positions in ledger
-        # Group by local_symbol (individual contract), NOT position_id.
-        # Spread trades have BUY+SELL legs under the same position_id that
-        # net to zero — grouping by position_id makes open spreads look closed.
-        # IBKR counts each contract leg as a separate position, so we must too.
-        if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
-            tl_valid = trade_ledger[trade_ledger['local_symbol'].astype(str).str.strip() != ''].copy()
-            # Drop PHANTOM_RECONCILIATION entries — these are synthetic closes
-            # that double-count positions already covered by RECONCILIATION_MISSING.
-            # Matches the filtering in get_local_active_positions().
-            if 'reason' in tl_valid.columns:
-                reasons = tl_valid['reason'].fillna('')
-                phantom_mask = reasons.str.contains('PHANTOM_RECONCILIATION', case=False)
-                if phantom_mask.any():
-                    logger.info(f"State sync: excluding {phantom_mask.sum()} PHANTOM entries from ledger count")
-                    tl_valid = tl_valid[~phantom_mask]
-            if not tl_valid.empty:
-                tl_valid['signed_qty'] = np.where(tl_valid['action'] == 'BUY', tl_valid['quantity'], -tl_valid['quantity'])
-                net_qtys = tl_valid.groupby('local_symbol')['signed_qty'].sum()
-                results['ledger_open'] += (net_qtys != 0).sum()
+        # 2. Count open positions in ledger using canonical filtering logic.
+        # get_local_active_positions handles all edge cases: PHANTOM entries,
+        # Ledger reconciliation synthetics, and RECONCILIATION_MISSING superseding.
+        # Using it ensures the state sync count matches what Flex reconciliation computes.
+        local_active = get_local_active_positions(trade_ledger)
+        results['ledger_open'] = len(local_active)
 
         # 3. Count active theses in TMS
         active_theses = tms.collection.get(
