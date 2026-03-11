@@ -566,7 +566,8 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             # --- Record Contribution Scores ---
             try:
                 _scoring_cfg = config.get("scoring", {})
-                if _scoring_cfg.get("use_contribution_scoring", False):
+                if (_scoring_cfg.get("use_contribution_scoring", False)
+                        or _scoring_cfg.get("accumulate_contribution_scores", False)):
                     _cycle_id = row.get("cycle_id", "")
                     _vote_breakdown_raw = row.get("vote_breakdown", "")
                     _regime = row.get("entry_regime", "NORMAL")

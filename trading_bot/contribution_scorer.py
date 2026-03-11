@@ -76,6 +76,14 @@ class ContributionTracker:
         self.agent_scores: Dict[str, Dict[str, List[float]]] = {}
         self._load()
 
+    @classmethod
+    def create_empty(cls, data_path: str) -> "ContributionTracker":
+        """Create an empty tracker without loading from disk (for migration)."""
+        instance = cls.__new__(cls)
+        instance.data_path = data_path
+        instance.agent_scores = {}
+        return instance
+
     def record_contribution(
         self,
         agent: str,

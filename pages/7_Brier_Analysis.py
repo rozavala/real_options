@@ -319,7 +319,8 @@ except Exception as e:
 
 # === SECTION 5B: Contribution-Based Multipliers ===
 try:
-    from trading_bot.contribution_bridge import is_contribution_scoring_enabled, _get_tracker
+    from trading_bot.contribution_bridge import is_contribution_scoring_enabled
+    from trading_bot.contribution_scorer import ContributionTracker
     _is_contrib = is_contribution_scoring_enabled()
 
     st.markdown("---")
@@ -329,7 +330,8 @@ try:
     else:
         st.caption("**INACTIVE** — Contribution scores computed but Brier multipliers still in use.")
 
-    _contrib_tracker = _get_tracker()
+    _contrib_path = _resolve_data_path_for("contribution_scores.json", ticker)
+    _contrib_tracker = ContributionTracker(data_path=_contrib_path) if os.path.exists(_contrib_path) else None
     if _contrib_tracker:
         _summary = _contrib_tracker.get_summary()
         if _summary:
