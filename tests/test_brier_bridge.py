@@ -37,14 +37,16 @@ class TestConfidenceToProbs(unittest.TestCase):
 
 
 class TestGetAgentReliability(unittest.TestCase):
+    @patch('trading_bot.contribution_bridge.is_contribution_scoring_enabled', return_value=False)
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_falls_back_to_legacy_when_enhanced_unavailable(self, mock_tracker):
+    def test_falls_back_to_legacy_when_enhanced_unavailable(self, mock_tracker, _mock_contrib):
         mock_tracker.return_value = None
         result = get_agent_reliability('agronomist')
         self.assertEqual(result, 1.0)  # Default baseline
 
+    @patch('trading_bot.contribution_bridge.is_contribution_scoring_enabled', return_value=False)
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_returns_enhanced_when_available(self, mock_tracker):
+    def test_returns_enhanced_when_available(self, mock_tracker, _mock_contrib):
         mock_enhanced = MagicMock()
         mock_enhanced.get_agent_reliability.return_value = 1.5
         mock_tracker.return_value = mock_enhanced
@@ -54,8 +56,9 @@ class TestGetAgentReliability(unittest.TestCase):
         result = get_agent_reliability('agronomist', 'HIGH_VOL')
         self.assertEqual(result, 1.5)
 
+    @patch('trading_bot.contribution_bridge.is_contribution_scoring_enabled', return_value=False)
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_bridge_delegates_to_tracker_without_fallback(self, mock_get_tracker):
+    def test_bridge_delegates_to_tracker_without_fallback(self, mock_get_tracker, _mock_contrib):
         """v8.0: Bridge delegates directly to tracker — no NORMAL fallback."""
         mock_tracker = MagicMock()
         mock_get_tracker.return_value = mock_tracker
