@@ -1,60 +1,184 @@
-2026-03-11 04:25:22,540 - Engine.NG - INFO - =============================================
-2026-03-11 04:25:22,541 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
-2026-03-11 04:25:22,541 - Engine.NG - INFO - =============================================
-2026-03-11 04:25:22,541 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,541 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,541 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,541 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,541 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,542 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,542 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,542 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
-2026-03-11 04:25:22,542 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,543 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,543 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,543 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,543 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
-2026-03-11 04:25:22,543 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,543 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,543 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
-2026-03-11 04:25:22,544 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
-2026-03-11 04:25:22,545 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
-2026-03-11 04:25:22,545 - Engine.NG - WARNING - ============================================================
-2026-03-11 04:25:22,545 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-03-11 04:25:22,545 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
-2026-03-11 04:25:22,545 - Engine.NG - WARNING -   Trading Mode: LIVE
-2026-03-11 04:25:22,545 - Engine.NG - WARNING - ============================================================
-2026-03-11 04:25:22,545 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-03-11 04:25:22,545 - Engine.NG - INFO - Drawdown Guard initialized.
-2026-03-11 04:25:22,546 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
-2026-03-11 04:25:22,548 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
-2026-03-11 04:25:22,549 - Orchestrator - INFO - Built session schedule: 17 tasks for NG (09:00-14:30 ET)
-2026-03-11 04:25:22,549 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-03-11 04:25:22,554 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
-2026-03-11 04:25:22,605 - trading_bot.topic_discovery - INFO - Topic Discovery skipped — 12 topics still fresh (file < 12h old). Use force_scan=True to override.
-2026-03-11 04:25:22,606 - Engine.NG - INFO - Startup TopicDiscovery: 12 topics, Topics still fresh
-2026-03-11 04:25:22,606 - Engine.NG - INFO - Staggering sentinel startup by 30s (engine #2)
-2026-03-11 04:25:52,608 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-11 12:15:00 UTC. Waiting for 7.82 hours.
-2026-03-11 04:25:52,609 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-03-11 04:25:52,988 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-03-11 04:25:52,988 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1219 [REMOTE/PAPER]...
-2026-03-11 04:25:52,989 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-03-11 04:25:53,351 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1219
-2026-03-11 04:25:53,357 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-03-11 04:25:53,358 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-03-11 04:25:53,358 - Orchestrator - INFO - 🔄 SENTINEL SAFETY NET: Market open but position monitor not running — starting it now
-2026-03-11 04:25:53,358 - Orchestrator - INFO - Shutdown flags CLEARED — new trading day beginning
-2026-03-11 04:25:53,359 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
-2026-03-11 04:25:53,360 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
-2026-03-11 04:25:53,361 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
-2026-03-11 04:25:53,361 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-03-11 04:25:53,364 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-03-11 04:25:53,543 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-03-11 04:25:53,546 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-03-11 04:25:53,546 - Orchestrator - INFO - Refreshed contract cache: NGK26
-2026-03-11 04:25:53,546 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-03-11 04:25:53,547 - trading_bot.connection_pool - INFO - Connecting IB (NG_microstructure) ID: 1252 [REMOTE/PAPER]...
-2026-03-11 04:25:53,672 - trading_bot.connection_pool - INFO - IB (NG_microstructure) connected successfully with ID 1252
-2026-03-11 04:25:53,678 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-03-11 04:29:59,666 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_state=PASSIVE, market_open=False, trading_day=True
-2026-03-11 04:35:00,863 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 06:35:52,128 - Engine.NG - INFO - =============================================
+2026-03-11 06:35:52,128 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
+2026-03-11 06:35:52,128 - Engine.NG - INFO - =============================================
+2026-03-11 06:35:52,128 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,130 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,130 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,130 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,130 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,131 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,131 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,131 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
+2026-03-11 06:35:52,131 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,132 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,132 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,132 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,132 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
+2026-03-11 06:35:52,132 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,133 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,133 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
+2026-03-11 06:35:52,134 - trading_bot.drawdown_circuit_breaker - INFO - Saved drawdown state is old. Starting fresh.
+2026-03-11 06:35:52,134 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
+2026-03-11 06:35:52,134 - Engine.NG - WARNING - ============================================================
+2026-03-11 06:35:52,134 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-03-11 06:35:52,135 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
+2026-03-11 06:35:52,135 - Engine.NG - WARNING -   Trading Mode: LIVE
+2026-03-11 06:35:52,135 - Engine.NG - WARNING - ============================================================
+2026-03-11 06:35:52,135 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-03-11 06:35:52,135 - Engine.NG - INFO - Drawdown Guard initialized.
+2026-03-11 06:35:52,136 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
+2026-03-11 06:35:52,138 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
+2026-03-11 06:35:52,138 - Orchestrator - INFO - Built session schedule: 17 tasks for NG (09:00-14:30 ET)
+2026-03-11 06:35:52,139 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-03-11 06:35:52,143 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
+2026-03-11 06:35:52,208 - trading_bot.topic_discovery - INFO - Topic Discovery skipped — 12 topics still fresh (file < 12h old). Use force_scan=True to override.
+2026-03-11 06:35:52,208 - Engine.NG - INFO - Startup TopicDiscovery: 12 topics, Topics still fresh
+2026-03-11 06:35:52,208 - Engine.NG - INFO - Staggering sentinel startup by 30s (engine #2)
+2026-03-11 06:36:22,209 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-11 12:15:00 UTC. Waiting for 5.64 hours.
+2026-03-11 06:36:22,210 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-03-11 06:36:22,569 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-03-11 06:36:22,570 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1221 [REMOTE/PAPER]...
+2026-03-11 06:36:22,571 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-03-11 06:36:22,932 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1221
+2026-03-11 06:36:22,936 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-11 06:36:22,936 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-03-11 06:36:22,937 - Orchestrator - INFO - 🔄 SENTINEL SAFETY NET: Market open but position monitor not running — starting it now
+2026-03-11 06:36:22,937 - Orchestrator - INFO - Shutdown flags CLEARED — new trading day beginning
+2026-03-11 06:36:22,938 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
+2026-03-11 06:36:22,939 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
+2026-03-11 06:36:22,940 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
+2026-03-11 06:36:22,940 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-11 06:36:22,943 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-11 06:36:23,099 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-11 06:36:23,103 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-11 06:36:23,103 - Orchestrator - INFO - Refreshed contract cache: NGK26
+2026-03-11 06:36:23,103 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-03-11 06:36:23,104 - trading_bot.connection_pool - INFO - Connecting IB (NG_microstructure) ID: 1255 [REMOTE/PAPER]...
+2026-03-11 06:36:23,421 - trading_bot.connection_pool - INFO - IB (NG_microstructure) connected successfully with ID 1255
+2026-03-11 06:36:23,427 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-11 06:40:30,154 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 06:45:31,378 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 06:50:32,594 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 06:55:33,794 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:00:35,058 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:05:36,240 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:10:38,517 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:15:39,703 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:20:40,995 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:25:42,213 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:30:43,418 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:35:44,596 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:40:46,518 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:45:47,691 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:50:48,889 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=75, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 07:55:50,072 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=80, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:00:51,256 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=85, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:05:52,452 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=90, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:05:52,683 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 31% of average (Sev: 6)
+2026-03-11 08:05:52,688 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 08:10:54,630 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=95, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:15:55,803 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=100, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:20:56,994 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=105, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:25:58,175 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=110, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:25:58,402 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 23% of average
+2026-03-11 08:25:58,408 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 08:25:58,636 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 08:30:59,626 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=115, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:36:00,800 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=120, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:41:03,770 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=125, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:46:04,942 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=130, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:51:06,123 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=135, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 08:56:07,294 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:01:08,462 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:01:08,687 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 25% of average
+2026-03-11 09:01:08,693 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 09:01:08,891 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 09:06:09,850 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:11:13,409 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:14:14,339 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 25% of average
+2026-03-11 09:14:14,339 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-03-11 09:31:08.893510. Skipping.
+2026-03-11 09:16:14,578 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:21:15,742 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=165, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:26:16,909 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=170, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:31:18,072 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=175, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:35:19,228 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 24% of average
+2026-03-11 09:35:19,234 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 09:35:19,563 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 09:36:19,578 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=180, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:41:21,556 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=185, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:46:22,701 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=190, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:51:23,846 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=195, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 09:56:24,998 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=200, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:00:26,504 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 22% of average
+2026-03-11 10:00:26,504 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-03-11 10:05:19.565685. Skipping.
+2026-03-11 10:01:26,514 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=205, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:06:27,668 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=210, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:11:29,879 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=215, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:16:31,110 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=220, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:21:32,279 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=225, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:26:33,453 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=230, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:31:34,649 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=235, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:36:35,812 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=240, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:36:35,812 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-11 10:36:35,815 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-11 10:36:36,025 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-11 10:36:36,027 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-11 10:36:36,028 - Orchestrator - INFO - Refreshed contract cache: NGK26
+2026-03-11 10:39:39,680 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 21% of average
+2026-03-11 10:39:39,686 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 10:39:39,873 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 10:41:40,112 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=245, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:46:41,333 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=250, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:51:42,485 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=255, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 10:56:43,641 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=260, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:01:44,831 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=265, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:06:46,009 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=270, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:08:57,262 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 35% of average (Sev: 6)
+2026-03-11 11:08:57,266 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 11:11:57,734 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=275, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:16:58,900 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=280, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:22:00,063 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=285, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:25:00,993 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 23% of average
+2026-03-11 11:25:00,999 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 11:25:01,354 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 11:27:01,611 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=290, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:32:02,799 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=295, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:37:03,968 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=300, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:42:06,224 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=305, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:47:07,392 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=310, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:52:08,632 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=315, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 11:57:09,837 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=320, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:02:10,987 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=325, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:03:11,445 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 29% of average
+2026-03-11 12:03:11,449 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 12:03:11,736 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-11 12:07:12,434 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=330, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:12:14,603 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=335, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:15:00,001 - Engine.NG - INFO - --- Running scheduled task: start_monitoring [start_monitoring] ---
+2026-03-11 12:15:00,005 - Orchestrator - INFO - Shutdown flags CLEARED — new trading day beginning
+2026-03-11 12:15:00,007 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
+2026-03-11 12:15:00,013 - Engine.NG - INFO - Next task 'process_deferred_triggers' (Process Deferred Triggers) scheduled for 2026-03-11 12:16:00 UTC. Waiting for 0.02 hours.
+2026-03-11 12:15:15,586 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 31% of average (Sev: 6)
+2026-03-11 12:15:15,590 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-11 12:16:00,001 - Engine.NG - INFO - --- Running scheduled task: process_deferred_triggers [process_deferred_triggers] ---
+2026-03-11 12:16:00,008 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
+2026-03-11 12:16:00,013 - Engine.NG - INFO - Next task 'cleanup_orphaned_theses' (Daily Thesis Cleanup) scheduled for 2026-03-11 12:45:00 UTC. Waiting for 0.48 hours.
+2026-03-11 12:17:15,835 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=340, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:22:16,980 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=345, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:27:18,133 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=350, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:32:19,308 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=355, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:37:20,471 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=360, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:42:28,683 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=365, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:45:00,002 - Engine.NG - INFO - --- Running scheduled task: cleanup_orphaned_theses [cleanup_orphaned_theses] ---
+2026-03-11 12:45:00,006 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-03-11 12:45:00,007 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1283 [REMOTE/PAPER]...
+2026-03-11 12:45:00,366 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1283
+2026-03-11 12:45:00,374 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-11 12:45:00,390 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-11 12:45:00,454 - Orchestrator - INFO - Reconciliation: All 4 active theses have matching IB positions ✓
+2026-03-11 12:45:00,455 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-03-11 12:45:00,455 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
+2026-03-11 12:45:03,464 - Engine.NG - INFO - Next task 'signal_open' (Signal: Open) scheduled for 2026-03-11 14:06:00 UTC. Waiting for 1.35 hours.
+2026-03-11 12:47:29,850 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=370, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:52:31,013 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=375, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-11 12:57:32,167 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=380, market_state=PASSIVE, market_open=False, trading_day=True
