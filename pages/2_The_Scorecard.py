@@ -1053,6 +1053,355 @@ if _brier_data and _brier_data.get('predictions'):
 else:
     st.info("No prediction data yet. Enhanced Brier tracker will populate after trading cycles run.")
 
+# === SECTION: Master Strategist Forensics ===
+st.markdown("---")
+st.subheader("🔬 Master Strategist Forensics")
+st.caption("Deep analysis of WHERE and WHY the Master adds or destroys value")
+
+try:
+    from scripts.master_forensics import (
+        prepare_forensic_df,
+        analyze_override_quadrants,
+        analyze_conviction_vs_outcome,
+        analyze_consensus_strength,
+        analyze_by_regime,
+        analyze_thesis_calibration,
+        analyze_by_trigger,
+        analyze_dominant_agent_overrides,
+        analyze_confidence_calibration,
+        analyze_neutral_decisions,
+    )
+
+    forensic_df = prepare_forensic_df(council_df, ticker)
+
+    if forensic_df.empty:
+        st.info("No resolved cycles with actual outcomes available for forensic analysis.")
+    else:
+        # Run all analyses
+        d1 = analyze_override_quadrants(forensic_df)
+        d2 = analyze_conviction_vs_outcome(forensic_df)
+        d3 = analyze_consensus_strength(forensic_df)
+        d4 = analyze_by_regime(forensic_df)
+        d5 = analyze_thesis_calibration(forensic_df)
+        d6 = analyze_by_trigger(forensic_df)
+        d7 = analyze_dominant_agent_overrides(forensic_df)
+        cc = analyze_confidence_calibration(forensic_df)
+        na = analyze_neutral_decisions(forensic_df)
+
+        # --- Top-level KPIs ---
+        if d1.get("total", 0) > 0:
+            kpi_cols = st.columns(4)
+
+            with kpi_cols[0]:
+                st.metric(
+                    "Resolved Cycles",
+                    d1["total"],
+                    help="Total scoreable decisions (non-NEUTRAL master on directional, or vol trades)",
+                )
+
+            with kpi_cols[1]:
+                st.metric(
+                    "Override Rate",
+                    f"{d1['override_rate']:.0f}%",
+                    help="How often the Master deviates from the council vote",
+                )
+
+            with kpi_cols[2]:
+                delta = d1.get("override_vs_aligned_delta")
+                if delta is not None:
+                    delta_color = "normal" if abs(delta) < 5 else ("off" if delta < 0 else "normal")
+                    st.metric(
+                        "Override Delta",
+                        f"{delta:+.1f}pp",
+                        help="Override win rate minus aligned win rate. Positive = overrides add value.",
+                        delta=f"{'destructive' if delta < -10 else 'adds value' if delta > 10 else 'neutral'}",
+                        delta_color=delta_color,
+                    )
+                else:
+                    st.metric("Override Delta", "N/A")
+
+            with kpi_cols[3]:
+                cal_note = cc.get("_calibration_note", "") if cc else ""
+                cal_ok = "CALIBRATED" in cal_note and "MISCALIBRATED" not in cal_note
+                st.metric(
+                    "Confidence",
+                    "Calibrated" if cal_ok else "Miscalibrated",
+                    help="Whether higher confidence predicts better outcomes",
+                )
+
+            # Second KPI row
+            kpi2_cols = st.columns(4)
+            with kpi2_cols[0]:
+                st.metric(
+                    "Aligned Win Rate",
+                    f"{d1['aligned_win_rate']:.0f}%",
+                    help="Win rate when Master follows the council vote",
+                )
+            with kpi2_cols[1]:
+                st.metric(
+                    "Override Win Rate",
+                    f"{d1['override_win_rate']:.0f}%",
+                    help="Win rate when Master deviates from the council vote",
+                )
+            with kpi2_cols[2]:
+                thesis_note = d5.get("_calibration_note", "") if d5 else ""
+                thesis_ok = "CALIBRATED" in thesis_note and "MISCALIBRATED" not in thesis_note
+                st.metric(
+                    "Thesis Calibration",
+                    "Calibrated" if thesis_ok else "Miscalibrated",
+                    help="Whether PROVEN > PLAUSIBLE > SPECULATIVE in win rate",
+                )
+            with kpi2_cols[3]:
+                if na and na.get("total_directional", 0) > 0:
+                    st.metric(
+                        "NEUTRAL Rate",
+                        f"{na['master_neutral_pct']:.0f}%",
+                        help="How often Master says NEUTRAL on directional cycles",
+                    )
+
+            # --- Override Quadrant (2x2 visual) ---
+            with st.expander("Override Quadrant Analysis", expanded=True):
+                quad_data = pd.DataFrame({
+                    "": ["Correct", "Wrong"],
+                    "Aligned (followed vote)": [d1["aligned_correct"], d1["aligned_wrong"]],
+                    "Override (deviated)": [d1["override_correct"], d1["override_wrong"]],
+                })
+                quad_data = quad_data.set_index("")
+
+                fig_quad = go.Figure(data=go.Heatmap(
+                    z=[[d1["aligned_correct"], d1["override_correct"]],
+                       [d1["aligned_wrong"], d1["override_wrong"]]],
+                    x=["Aligned", "Override"],
+                    y=["Correct", "Wrong"],
+                    colorscale="RdYlGn",
+                    text=[[f"{d1['aligned_correct']}", f"{d1['override_correct']}"],
+                          [f"{d1['aligned_wrong']}", f"{d1['override_wrong']}"]],
+                    texttemplate="%{text}",
+                    textfont=dict(size=18),
+                    showscale=False,
+                ))
+                fig_quad.update_layout(
+                    height=250,
+                    margin=dict(l=0, r=0, t=20, b=0),
+                    yaxis=dict(autorange="reversed"),
+                )
+                st.plotly_chart(fig_quad, use_container_width=True)
+
+                delta = d1.get("override_vs_aligned_delta")
+                if delta is not None:
+                    if delta < -10:
+                        st.error(
+                            f"Master overrides are net DESTRUCTIVE ({delta:+.1f}pp). "
+                            "Consider raising conviction threshold for override trades."
+                        )
+                    elif delta > 10:
+                        st.success(f"Master overrides ADD VALUE ({delta:+.1f}pp).")
+                    else:
+                        st.info(f"Master overrides are roughly neutral ({delta:+.1f}pp).")
+
+            # --- Conviction & Consensus ---
+            with st.expander("Conviction & Consensus Strength"):
+                if d2:
+                    st.markdown("**Win Rate by Conviction Level**")
+                    conv_rows = []
+                    for level, data in d2.items():
+                        conv_rows.append({
+                            "Conviction": level,
+                            "Trades": data["count"],
+                            "Wins": data["wins"],
+                            "Win Rate %": data["win_rate"],
+                        })
+                    if conv_rows:
+                        st.dataframe(
+                            pd.DataFrame(conv_rows),
+                            hide_index=True,
+                            use_container_width=True,
+                            column_config={
+                                "Win Rate %": st.column_config.ProgressColumn(
+                                    min_value=0, max_value=100, format="%.0f%%"
+                                ),
+                            },
+                        )
+
+                if d3:
+                    st.markdown("**Win Rate by Consensus Strength**")
+                    cons_rows = []
+                    for band, data in d3.items():
+                        cons_rows.append({
+                            "Consensus": band,
+                            "Trades": data["total"],
+                            "Win Rate %": data["overall_win_rate"],
+                            "Follow Rate %": data["follow_rate"],
+                            "Override WR %": data.get("override_win_rate") or 0,
+                            "Aligned WR %": data.get("aligned_win_rate") or 0,
+                        })
+                    if cons_rows:
+                        st.dataframe(
+                            pd.DataFrame(cons_rows),
+                            hide_index=True,
+                            use_container_width=True,
+                        )
+
+            # --- Regime Breakdown ---
+            with st.expander("Regime Breakdown"):
+                if d4:
+                    regime_rows = []
+                    for regime in sorted(d4.keys()):
+                        data = d4[regime]
+                        regime_rows.append({
+                            "Regime": regime,
+                            "Trades": data["total"],
+                            "Win Rate %": data["win_rate"],
+                            "Override Rate %": data["override_rate"],
+                            "Override WR %": data.get("override_win_rate") or 0,
+                            "Aligned WR %": data.get("aligned_win_rate") or 0,
+                            "Avg Consensus": data["avg_consensus_strength"],
+                        })
+                    regime_df = pd.DataFrame(regime_rows).sort_values("Win Rate %")
+
+                    # Bar chart
+                    fig_reg = go.Figure()
+                    colors = ["#EF553B" if wr < 40 else "#FFA15A" if wr < 55 else "#00CC96"
+                              for wr in regime_df["Win Rate %"]]
+                    fig_reg.add_trace(go.Bar(
+                        y=regime_df["Regime"],
+                        x=regime_df["Win Rate %"],
+                        orientation="h",
+                        marker_color=colors,
+                        text=[f"{wr:.0f}%" for wr in regime_df["Win Rate %"]],
+                        textposition="outside",
+                    ))
+                    fig_reg.add_vline(x=50, line_dash="dash", line_color="gray")
+                    fig_reg.update_layout(
+                        height=max(200, len(regime_df) * 50 + 80),
+                        xaxis=dict(title="Win Rate %", range=[0, max(110, regime_df["Win Rate %"].max() + 15)]),
+                        yaxis=dict(title=""),
+                        margin=dict(l=0, r=0, t=20, b=0),
+                        showlegend=False,
+                    )
+                    st.plotly_chart(fig_reg, use_container_width=True)
+
+                    st.dataframe(regime_df, hide_index=True, use_container_width=True)
+
+                    weak = [r for r, data in d4.items() if data["win_rate"] < 40 and data["total"] >= 5]
+                    if weak:
+                        st.warning(f"Weak regimes (win rate < 40%): **{', '.join(weak)}** — consider regime-aware trade gating.")
+                else:
+                    st.info("Insufficient regime data.")
+
+            # --- Thesis & Confidence Calibration ---
+            with st.expander("Thesis & Confidence Calibration"):
+                cal_cols = st.columns(2)
+
+                with cal_cols[0]:
+                    st.markdown("**Thesis Strength**")
+                    if d5:
+                        thesis_rows = []
+                        for thesis in ["SPECULATIVE", "PLAUSIBLE", "PROVEN"]:
+                            if thesis in d5:
+                                data = d5[thesis]
+                                thesis_rows.append({
+                                    "Thesis": thesis,
+                                    "Trades": data["count"],
+                                    "Win Rate %": data["win_rate"],
+                                    "Avg Conf": f"{data['avg_confidence']:.2f}",
+                                    "Avg Conv": f"{data['avg_conviction']:.2f}",
+                                })
+                        if thesis_rows:
+                            st.dataframe(pd.DataFrame(thesis_rows), hide_index=True, use_container_width=True)
+                            note = d5.get("_calibration_note", "")
+                            if "MISCALIBRATED" in note:
+                                st.warning(note)
+                            elif "CALIBRATED" in note:
+                                st.success(note)
+                    else:
+                        st.info("No thesis data.")
+
+                with cal_cols[1]:
+                    st.markdown("**Confidence Bins**")
+                    if cc:
+                        conf_rows = []
+                        for level in ["low (< 0.50)", "medium (0.50-0.70)", "high (0.70-0.85)", "very_high (>= 0.85)"]:
+                            if level in cc:
+                                data = cc[level]
+                                conf_rows.append({
+                                    "Confidence": level,
+                                    "Trades": data["count"],
+                                    "Win Rate %": data["win_rate"],
+                                    "Avg Conf": f"{data['avg_confidence']:.2f}",
+                                })
+                        if conf_rows:
+                            st.dataframe(pd.DataFrame(conf_rows), hide_index=True, use_container_width=True)
+                            note = cc.get("_calibration_note", "")
+                            if "MISCALIBRATED" in note:
+                                st.warning(note)
+                            elif "CALIBRATED" in note:
+                                st.success(note)
+                    else:
+                        st.info("No confidence data.")
+
+            # --- Trigger Type & Dominant Agent Overrides ---
+            with st.expander("Trigger Type & Agent Override Details"):
+                if d6:
+                    st.markdown("**Trigger Type**")
+                    trigger_rows = []
+                    for trigger, data in d6.items():
+                        trigger_rows.append({
+                            "Trigger": trigger,
+                            "Trades": data["total"],
+                            "Win Rate %": data["win_rate"],
+                            "Override Rate %": data["override_rate"],
+                            "Override WR %": data.get("override_win_rate") or 0,
+                            "Avg Conf": f"{data['avg_confidence']:.2f}",
+                        })
+                    st.dataframe(pd.DataFrame(trigger_rows), hide_index=True, use_container_width=True)
+
+                if d7:
+                    st.markdown("**Dominant Agent Override Analysis**")
+                    st.caption("When Master overrides, which agent's vote is being overridden?")
+                    agent_rows = []
+                    for agent in sorted(d7.keys(), key=lambda a: d7[a]["override_count"], reverse=True):
+                        data = d7[agent]
+                        net = data.get("master_override_net_value", 0)
+                        agent_rows.append({
+                            "Agent": agent,
+                            "Overrides": data["override_count"],
+                            "Master WR %": data["override_win_rate"],
+                            "Vote WR %": data["vote_would_have_won"],
+                            "Net Value (pp)": round(net, 1),
+                        })
+                    if agent_rows:
+                        agent_override_df = pd.DataFrame(agent_rows)
+                        st.dataframe(agent_override_df, hide_index=True, use_container_width=True)
+
+                        destructive = [r for r in agent_rows if r["Net Value (pp)"] < -15]
+                        if destructive:
+                            agents_str = ", ".join(r["Agent"] for r in destructive)
+                            st.warning(f"Master overrides are significantly destructive against: **{agents_str}**")
+
+            # --- NEUTRAL Analysis ---
+            if na and na.get("total_directional", 0) > 0 and na.get("master_neutral_count", 0) > 0:
+                with st.expander("NEUTRAL Decision Analysis"):
+                    neu_cols = st.columns(3)
+                    with neu_cols[0]:
+                        st.metric("NEUTRAL Calls", na["master_neutral_count"],
+                                  help=f"Out of {na['total_directional']} directional cycles")
+                    with neu_cols[1]:
+                        st.metric("NEUTRAL Accuracy", f"{na['neutral_accuracy']:.0f}%",
+                                  help="How often NEUTRAL was correct (market was flat)")
+                    with neu_cols[2]:
+                        st.metric("Directional Win Rate", f"{na['non_neutral_win_rate']:.0f}%",
+                                  help="Win rate when Master commits to a direction")
+                    st.caption(na.get("note", ""))
+
+        else:
+            st.info("Insufficient scoreable decisions for forensic analysis.")
+
+except ImportError:
+    st.info("Forensic analysis module not available.")
+except Exception as e:
+    st.warning(f"Forensic analysis error: {e}")
+
 st.markdown("---")
 
 # === SECTION 4: Decision History Table ===
