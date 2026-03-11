@@ -163,6 +163,25 @@ def record_cycle_contributions(
         )
         scores[agent] = score
 
+    # Record Master as self-assessment (not in vote_breakdown but useful
+    # for dashboard diagnostics: was the final decision correct?)
+    if master_direction:
+        master_score = tracker.record_contribution(
+            agent="master_decision",
+            agent_direction=master_direction,
+            agent_confidence=master_confidence,
+            master_direction=master_direction,
+            actual_outcome=actual_outcome,
+            prediction_type=prediction_type,
+            strategy_type=strategy_type,
+            volatility_outcome=volatility_outcome,
+            regime=regime,
+            influence_weight=1.0,
+            cycle_id=cycle_id,
+            contract=contract,
+        )
+        scores["master_decision"] = master_score
+
     return scores
 
 

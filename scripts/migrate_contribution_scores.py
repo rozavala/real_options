@@ -77,9 +77,7 @@ def migrate_ticker(ticker: str, data_dir: str, dry_run: bool = False) -> dict:
     logger.info(f"{ticker}: Using materiality threshold {threshold:.4%}")
 
     # Create tracker (in-memory, not loading existing file)
-    tracker = ContributionTracker.__new__(ContributionTracker)
-    tracker.data_path = output_path
-    tracker.agent_scores = {}
+    tracker = ContributionTracker.create_empty(output_path)
 
     scored_cycles = 0
     skipped_cycles = 0
@@ -164,6 +162,25 @@ def migrate_ticker(ticker: str, data_dir: str, dry_run: bool = False) -> dict:
             if canonical_regime not in tracker.agent_scores[agent]:
                 tracker.agent_scores[agent][canonical_regime] = []
             tracker.agent_scores[agent][canonical_regime].append(score)
+
+        # Score Master as self-assessment (direction vs outcome)
+        if master_dir and master_dir != "NEUTRAL":
+            master_score = tracker._compute_score(
+                agent_name="master_decision",
+                agent_direction=master_dir,
+                agent_confidence=master_conf,
+                master_direction=master_dir,
+                actual_outcome=actual_outcome,
+                prediction_type=pred_type,
+                strategy_type=strat_type,
+                volatility_outcome=vol_outcome,
+                influence_weight=1.0,
+            )
+            if "master_decision" not in tracker.agent_scores:
+                tracker.agent_scores["master_decision"] = {}
+            if canonical_regime not in tracker.agent_scores["master_decision"]:
+                tracker.agent_scores["master_decision"][canonical_regime] = []
+            tracker.agent_scores["master_decision"][canonical_regime].append(master_score)
 
         scored_cycles += 1
 
