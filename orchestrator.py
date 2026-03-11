@@ -5848,6 +5848,8 @@ async def main(commodity_ticker: str = None):
     from trading_bot.router_metrics import set_data_dir as set_router_metrics_dir
     from trading_bot.agents import set_data_dir as set_agents_dir
     from trading_bot.prompt_trace import set_data_dir as set_prompt_trace_dir
+    from trading_bot.contribution_bridge import set_data_dir as set_contribution_data_dir
+    from trading_bot.contribution_bridge import set_scoring_mode
 
     StateManager.set_data_dir(data_dir)
     set_tracker_dir(data_dir)
@@ -5863,6 +5865,8 @@ async def main(commodity_ticker: str = None):
     set_router_metrics_dir(data_dir)
     set_agents_dir(data_dir)
     set_prompt_trace_dir(data_dir)
+    set_contribution_data_dir(data_dir)
+    set_scoring_mode(config.get("scoring", {}).get("use_contribution_scoring", False))
 
     # E.1: Portfolio VaR — shared data dir (NOT per-commodity)
     from trading_bot.var_calculator import set_var_data_dir

@@ -196,6 +196,10 @@ class CommodityProfile:
     # Cross-commodity correlation basket for MacroContagionSentinel
     cross_commodity_basket: Dict[str, str] = field(default_factory=dict)  # e.g., {'gold': 'GC=F', ...}
 
+    # Scoring: minimum price move to resolve as directional (below = NEUTRAL)
+    # Calibrated from annualized IV: threshold ≈ 0.3 × (IV / sqrt(252))
+    neutral_move_threshold_pct: float = 0.008  # Default 0.8%
+
     # Three-tier market state configuration (Active/Passive/Sleeping)
     market_states: Optional[MarketStatesConfig] = None
 
@@ -407,6 +411,7 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
         concentration_proxies=data.get('concentration_proxies', []),
         concentration_label=data.get('concentration_label', ''),
         cross_commodity_basket=data.get('cross_commodity_basket', {}),
+        neutral_move_threshold_pct=data.get('neutral_move_threshold_pct', 0.008),
         market_states=_parse_market_states(data.get('market_states')),
     )
 
