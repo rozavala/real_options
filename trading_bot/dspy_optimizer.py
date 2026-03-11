@@ -61,10 +61,11 @@ class CouncilDataset:
         """Return {agent_name: [example_dict]} with resolved predictions only.
 
         Reads from enhanced_brier.json (source of truth) and enriches with
-        market context from council_history.csv.
+        market context from council_history.csv and contribution scores.
         Agent names are discovered from the data, not hardcoded.
         Each example_dict has keys: cycle_id, timestamp, direction, confidence,
-        prob_bullish, actual, market_context (from council_history join).
+        prob_bullish, actual, market_context, contribution_score (from
+        contribution_scores.json via council_history join).
         """
         if self._predictions_cache is not None:
             return self._predictions_cache
@@ -111,6 +112,7 @@ class CouncilDataset:
                     "confidence": confidence,
                     "prob_bullish": prob_bullish,
                     "actual": actual,
+                    "contribution_score": None,  # Enriched below if available
                 })
             except (KeyError, ValueError) as e:
                 skipped_rows += 1
@@ -120,7 +122,7 @@ class CouncilDataset:
         if skipped_rows > 0:
             logger.warning(f"Skipped {skipped_rows} malformed predictions in {brier_path}")
 
-        # Load council history for market context (optional enrichment)
+        # Load council history for market context and contribution enrichment
         council_context: dict[str, dict] = {}
         if council_path.exists():
             with open(council_path, "r", newline="") as f:
@@ -131,12 +133,23 @@ class CouncilDataset:
                         council_context[cid] = {
                             "contract": row.get("contract", ""),
                             "entry_price": row.get("entry_price", ""),
+                            "exit_price": row.get("exit_price", ""),
                             "trigger_type": row.get("trigger_type", ""),
                             "thesis_strength": row.get("thesis_strength", ""),
                             "master_decision": row.get("master_decision", ""),
+                            "prediction_type": row.get("prediction_type", "DIRECTIONAL"),
+                            "strategy_type": row.get("strategy_type", ""),
+                            "volatility_outcome": row.get("volatility_outcome", ""),
+                            "actual_trend_direction": row.get("actual_trend_direction", ""),
+                            "vote_breakdown": row.get("vote_breakdown", ""),
                         }
 
-        # Enrich predictions with council context
+        # Build per-agent, per-cycle contribution score lookup from
+        # vote_breakdown in council_history (avoids dependency on
+        # contribution_scores.json file format).
+        contrib_lookup = self._build_contribution_lookup(council_context)
+
+        # Enrich predictions with council context and contribution scores
         for agent, examples in predictions.items():
             for ex in examples:
                 ctx = council_context.get(ex["cycle_id"], {})
@@ -145,9 +158,107 @@ class CouncilDataset:
                     f"Price: {ctx.get('entry_price', 'N/A')}, "
                     f"Trigger: {ctx.get('trigger_type', 'N/A')}"
                 )
+                # Attach contribution score if available
+                score = contrib_lookup.get((agent, ex["cycle_id"]))
+                if score is not None:
+                    ex["contribution_score"] = score
 
         self._predictions_cache = predictions
         return predictions
+
+    def _build_contribution_lookup(
+        self, council_context: dict[str, dict]
+    ) -> dict[tuple[str, str], float]:
+        """Build (agent, cycle_id) → contribution_score lookup.
+
+        Recomputes scores from vote_breakdown + actual outcomes using
+        the contribution scorer, so DSPy doesn't depend on whether
+        the live hook has run.
+        """
+        lookup: dict[tuple[str, str], float] = {}
+        try:
+            from trading_bot.contribution_scorer import ContributionTracker
+            from trading_bot.agent_names import normalize_agent_name
+
+            # Load materiality threshold
+            try:
+                from config.commodity_profiles import get_commodity_profile
+                ticker = self.data_dir.name  # e.g. "KC" from data/KC/
+                profile = get_commodity_profile(ticker)
+                threshold = profile.neutral_move_threshold_pct
+            except Exception:
+                threshold = 0.008
+
+            # Temporary tracker just for _compute_score
+            tracker = ContributionTracker.create_empty("/dev/null")
+
+            for cycle_id, ctx in council_context.items():
+                vb_raw = ctx.get("vote_breakdown", "")
+                if not vb_raw or vb_raw == "":
+                    continue
+                try:
+                    vote_data = json.loads(vb_raw) if isinstance(vb_raw, str) else vb_raw
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if not vote_data or not isinstance(vote_data, list):
+                    continue
+
+                master_dir = (ctx.get("master_decision") or "NEUTRAL").upper().strip()
+                pred_type = (ctx.get("prediction_type") or "DIRECTIONAL").upper().strip()
+                strat_type = (ctx.get("strategy_type") or "").upper().strip()
+                vol_outcome = (ctx.get("volatility_outcome") or "").upper().strip()
+                if vol_outcome in ("NAN", "NONE"):
+                    vol_outcome = ""
+                if pred_type in ("NAN", "NONE"):
+                    pred_type = "DIRECTIONAL"
+                if strat_type in ("NAN", "NONE"):
+                    strat_type = ""
+
+                # Determine actual outcome with materiality threshold
+                raw_trend = (ctx.get("actual_trend_direction") or "").upper().strip()
+                if raw_trend in ("NAN", "NONE", ""):
+                    continue  # Unresolved cycle
+                entry_p = _safe_float(ctx.get("entry_price"), 0)
+                exit_p = _safe_float(ctx.get("exit_price"), 0)
+                if entry_p > 0 and exit_p > 0:
+                    pct_move = abs((exit_p - entry_p) / entry_p)
+                    if pct_move < threshold:
+                        actual_outcome = "NEUTRAL"
+                    else:
+                        actual_outcome = raw_trend if raw_trend in ("BULLISH", "BEARISH") else "NEUTRAL"
+                else:
+                    actual_outcome = raw_trend if raw_trend in ("BULLISH", "BEARISH", "NEUTRAL") else "NEUTRAL"
+
+                for vote in vote_data:
+                    agent = vote.get("agent", "")
+                    if not agent:
+                        continue
+                    agent = normalize_agent_name(agent)
+                    direction = vote.get("direction", "NEUTRAL")
+                    confidence = float(vote.get("confidence", 0.5))
+                    weight = float(vote.get("final_weight", 1.0))
+
+                    score = tracker._compute_score(
+                        agent_name=agent,
+                        agent_direction=direction,
+                        agent_confidence=confidence,
+                        master_direction=master_dir,
+                        actual_outcome=actual_outcome,
+                        prediction_type=pred_type,
+                        strategy_type=strat_type,
+                        volatility_outcome=vol_outcome,
+                        influence_weight=weight,
+                    )
+                    lookup[(agent, cycle_id)] = score
+
+        except ImportError:
+            logger.info("Contribution scorer not available, skipping enrichment")
+        except Exception as e:
+            logger.warning(f"Failed to build contribution lookup: {e}")
+
+        if lookup:
+            logger.info(f"Built contribution lookup: {len(lookup)} (agent, cycle) pairs")
+        return lookup
 
     def stats(self) -> dict:
         """Return per-agent counts, class balance, date range."""
@@ -447,19 +558,42 @@ def optimize_agent(
                 task=f"Analyze as {agent_name}",
             )
 
-    # Metric: directional accuracy (0.7) + calibration (0.3)
-    # NEUTRAL predictions get flat 0.0 — agents must commit to a direction.
-    # Without this, NEUTRAL scores ~0.15 (via calibration credit), same as a
-    # wrong directional call, so the optimizer learns to abstain.
+    # Metric: contribution-aware scoring with Brier fallback.
+    # When contribution scores are available, rewards agents for outputs
+    # that helped the council (positive contribution) and penalizes outputs
+    # that hurt it. NEUTRAL is a valid output when the domain isn't relevant.
+    # Falls back to directional accuracy when contribution data is missing.
     def metric(example, prediction, trace=None):
         pred_dir = prediction.direction
-        if pred_dir == "NEUTRAL":
-            return 0.0  # No credit for abstaining
-        direction_match = 1.0 if pred_dir == example.actual else 0.0
         try:
             pred_conf = float(prediction.confidence)
         except (ValueError, TypeError, AttributeError):
             pred_conf = 0.5
+
+        contribution = getattr(example, "contribution_score", None)
+
+        # Contribution-based metric (preferred when data available)
+        if contribution is not None:
+            if contribution > 0:
+                # Helpful output: reward reproducing similar behavior
+                if pred_dir == example.direction:
+                    return 0.7 + 0.3 * min(1.0, abs(contribution))
+                return 0.2  # Right idea, different execution
+            elif contribution < 0:
+                # Harmful output: penalize reproducing it
+                if pred_dir == example.direction:
+                    return 0.0  # Reproducing the bad call
+                return 0.5  # At least not repeating the mistake
+            else:
+                # Zero contribution (NEUTRAL agent or NEUTRAL outcome)
+                if pred_dir == "NEUTRAL":
+                    return 0.4 + 0.2 * pred_conf  # Reward correct abstention
+                return 0.3  # Forced a direction when it didn't matter
+
+        # Fallback: directional accuracy + calibration (no contribution data)
+        if pred_dir == "NEUTRAL":
+            return 0.15  # Small credit for honest abstention
+        direction_match = 1.0 if pred_dir == example.actual else 0.0
         actual_hit = 1.0 if pred_dir == example.actual else 0.0
         calibration = 1.0 - abs(pred_conf - actual_hit)
         return direction_match * 0.7 + calibration * 0.3
@@ -493,16 +627,14 @@ def optimize_agent(
     val_accuracy = val_correct / val_directional if val_directional else 0.0
     val_abstention = 1.0 - (val_directional / len(valset)) if valset else 0.0
 
-    # Extract optimized instruction and demos (filter out NEUTRAL demos —
-    # they teach abstention rather than directional commitment)
+    # Extract optimized instruction and demos.
+    # NEUTRAL demos are kept — they're valuable examples of correctly
+    # identifying that the agent's domain isn't the market driver.
     instruction = persona_prompt  # BootstrapFewShot selects demos, keeps instruction
     demos = []
     if hasattr(compiled, "predict") and hasattr(compiled.predict, "demos"):
         for demo in compiled.predict.demos:
             direction = getattr(demo, "direction", "")
-            if direction == "NEUTRAL":
-                logger.info(f"[{agent_name}] Filtering out NEUTRAL demo from export")
-                continue
             demos.append({
                 "input": {
                     "market_context": getattr(demo, "market_context", ""),
@@ -533,13 +665,17 @@ def _build_splits(examples: list[dict], train_ratio: float = 0.8) -> tuple:
 
     dspy_examples = []
     for ex in examples:
-        dspy_examples.append(dspy.Example(
-            market_context=ex.get("market_context", ""),
-            direction=ex["direction"],
-            confidence=str(ex.get("confidence", 0.5)),
-            actual=ex["actual"],
-            analysis="",  # Historical analysis text not stored in accuracy CSV
-        ).with_inputs("market_context"))
+        example_kwargs = {
+            "market_context": ex.get("market_context", ""),
+            "direction": ex["direction"],
+            "confidence": str(ex.get("confidence", 0.5)),
+            "actual": ex["actual"],
+            "analysis": "",  # Historical analysis text not stored in accuracy CSV
+        }
+        # Attach contribution score if available (used by metric)
+        if ex.get("contribution_score") is not None:
+            example_kwargs["contribution_score"] = ex["contribution_score"]
+        dspy_examples.append(dspy.Example(**example_kwargs).with_inputs("market_context"))
 
     split = int(len(dspy_examples) * train_ratio)
     return dspy_examples[:split], dspy_examples[split:]
