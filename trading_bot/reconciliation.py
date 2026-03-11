@@ -466,8 +466,23 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             pct_change = (exit_price - entry_price) / entry_price if entry_price != 0 else 0
             abs_pct_change = abs(pct_change)
 
-            # 2. Determine Trend Direction
-            if exit_price > entry_price:
+            # 2. Determine Trend Direction (materiality-aware)
+            # Sub-threshold moves resolve as NEUTRAL to prevent grading noise.
+            # Threshold is commodity-specific, calibrated from annualized IV.
+            try:
+                from config.commodity_profiles import get_active_profile
+                _profile = get_active_profile(config)
+                _threshold = _profile.neutral_move_threshold_pct
+            except Exception:
+                _threshold = 0.008  # Safe default
+
+            if abs_pct_change < _threshold:
+                trend = 'NEUTRAL'
+                logger.info(
+                    f"Materiality filter: {abs_pct_change:.4%} < {_threshold:.4%} "
+                    f"threshold → resolving as NEUTRAL"
+                )
+            elif exit_price > entry_price:
                 trend = 'BULLISH'
             elif exit_price < entry_price:
                 trend = 'BEARISH'
@@ -547,6 +562,44 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                             actual=trend,
                             reasoning=str(reasoning)
                         )
+
+            # --- Record Contribution Scores ---
+            try:
+                _scoring_cfg = config.get("scoring", {})
+                if _scoring_cfg.get("use_contribution_scoring", False):
+                    _cycle_id = row.get("cycle_id", "")
+                    _vote_breakdown_raw = row.get("vote_breakdown", "")
+                    _regime = row.get("entry_regime", "NORMAL")
+                    _master_conf = float(row.get("master_confidence", 0.5) or 0.5)
+
+                    if _vote_breakdown_raw and _cycle_id:
+                        import json as _json
+                        _vote_data = (
+                            _json.loads(_vote_breakdown_raw)
+                            if isinstance(_vote_breakdown_raw, str)
+                            else _vote_breakdown_raw
+                        )
+                        if _vote_data and isinstance(_vote_data, list):
+                            from trading_bot.contribution_bridge import record_cycle_contributions
+                            _contrib_scores = record_cycle_contributions(
+                                vote_breakdown=_vote_data,
+                                master_direction=decision,
+                                master_confidence=_master_conf,
+                                actual_outcome=trend,
+                                prediction_type=prediction_type or "DIRECTIONAL",
+                                strategy_type=strategy_type or "",
+                                volatility_outcome=vol_outcome or "",
+                                regime=str(_regime),
+                                cycle_id=_cycle_id,
+                                contract=contract_str,
+                            )
+                            if _contrib_scores:
+                                logger.info(
+                                    f"Contribution scores for {contract_str}: "
+                                    f"{_json.dumps({k: round(v, 3) for k, v in _contrib_scores.items()})}"
+                                )
+            except Exception as e:
+                logger.warning(f"Contribution scoring failed (non-fatal): {e}")
 
             updates_made = True
             logger.info(

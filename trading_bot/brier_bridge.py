@@ -163,16 +163,19 @@ def auto_orphan_enhanced_brier(max_age_hours: float = 168.0) -> int:
 
 def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int = 20) -> float:
     """
-    Rolling reliability multiplier from Enhanced Brier scores.
+    Rolling reliability multiplier.
 
-    Delegates to EnhancedBrierTracker.get_agent_reliability() which
-    implements the Brier-to-multiplier conversion internally.
+    Routes to Contribution-based or Enhanced Brier scoring based on
+    scoring mode flag (set during orchestrator init).
 
-    Returns multiplier in [0.1, 2.0]:
-    - Brier ~0.0  → 2.0x (excellent calibration)
-    - Brier ~0.25 → 1.0x (average / insufficient data)
-    - Brier ~0.5  → 0.1x (poor calibration)
+    Returns multiplier in [0.1, 2.0].
     """
+    # Route to contribution scoring if enabled
+    from trading_bot.contribution_bridge import is_contribution_scoring_enabled
+    if is_contribution_scoring_enabled():
+        from trading_bot.contribution_bridge import get_contribution_reliability
+        return get_contribution_reliability(agent_name, regime)
+
     try:
         from trading_bot.agent_names import normalize_agent_name
         agent_name = normalize_agent_name(agent_name)

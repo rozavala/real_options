@@ -317,6 +317,55 @@ except ImportError as e:
 except Exception as e:
     st.error(f"Error loading reliability data: {e}")
 
+# === SECTION 5B: Contribution-Based Multipliers ===
+try:
+    from trading_bot.contribution_bridge import is_contribution_scoring_enabled, _get_tracker
+    _is_contrib = is_contribution_scoring_enabled()
+
+    st.markdown("---")
+    st.subheader("🔄 Contribution-Based Multipliers")
+    if _is_contrib:
+        st.caption("**ACTIVE** — These multipliers drive council voting weights.")
+    else:
+        st.caption("**INACTIVE** — Contribution scores computed but Brier multipliers still in use.")
+
+    _contrib_tracker = _get_tracker()
+    if _contrib_tracker:
+        _summary = _contrib_tracker.get_summary()
+        if _summary:
+            _rows = []
+            for agent, regimes in _summary.items():
+                for regime, info in regimes.items():
+                    _mult = info["multiplier"]
+                    _status = (
+                        "🟢 Trusted" if _mult > 1.2
+                        else "🔴 Distrusted" if _mult < 0.8
+                        else "⚪ Baseline"
+                    )
+                    _rows.append({
+                        "Agent": _DISPLAY_NAMES.get(agent, agent),
+                        "Regime": regime,
+                        "Multiplier": _mult,
+                        "Avg Score": info["avg_score"],
+                        "Samples": info["total_scores"],
+                        "Status": _status,
+                    })
+            if _rows:
+                st.dataframe(
+                    pd.DataFrame(_rows).sort_values(["Agent", "Regime"]),
+                    hide_index=True, width="stretch",
+                )
+            else:
+                st.info("No contribution data yet. Run migration script or wait for reconciliation.")
+        else:
+            st.info("Contribution tracker has no data.")
+    else:
+        st.info("Contribution tracker not initialized. Check scoring config.")
+except ImportError:
+    pass  # Module not yet deployed
+except Exception as e:
+    st.warning(f"Contribution display error: {e}")
+
 
 # === SECTION 6: AGENT INFLUENCE OVER TIME (Learning Trajectory) ===
 st.markdown("---")
