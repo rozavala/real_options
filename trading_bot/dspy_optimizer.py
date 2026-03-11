@@ -292,6 +292,20 @@ class CouncilDataset:
             dates = [ex["timestamp"][:10] for ex in examples if ex["timestamp"]]
             all_dates.extend(dates)
 
+            # Contribution-aware metric score (baseline = historical predictions)
+            metric_scores = [
+                _compute_metric_score(
+                    pred_direction=ex["direction"],
+                    pred_confidence=ex.get("confidence", 0.5),
+                    actual=ex["actual"],
+                    contribution_score=ex.get("contribution_score"),
+                    example_direction=ex["direction"],
+                )
+                for ex in examples
+            ]
+            avg_metric = sum(metric_scores) / len(metric_scores) if metric_scores else 0.0
+            contrib_count = sum(1 for ex in examples if ex.get("contribution_score") is not None)
+
             result[agent] = {
                 "total": total,
                 "directional_total": len(directional),
@@ -299,6 +313,8 @@ class CouncilDataset:
                 "directional_accuracy": directional_accuracy,
                 "abstention_rate": abstention_rate,
                 "brier_score": brier,
+                "avg_metric_score": avg_metric,
+                "contribution_coverage": contrib_count / total if total > 0 else 0.0,
                 "bullish": bullish,
                 "bearish": bearish,
                 "neutral": neutral,
@@ -360,6 +376,48 @@ def _class_balance(directions: list[str]) -> float:
     total = sum(primary.values())
     min_count = min(primary.values())
     return min_count / total
+
+
+def _compute_metric_score(
+    pred_direction: str,
+    pred_confidence: float,
+    actual: str,
+    contribution_score: float | None = None,
+    example_direction: str = "",
+) -> float:
+    """Contribution-aware metric score for a single prediction.
+
+    Used by the DSPy optimizer metric, baseline evaluation, and validation.
+
+    Args:
+        pred_direction: Predicted direction (BULLISH/BEARISH/NEUTRAL).
+        pred_confidence: Predicted confidence (0.0-1.0).
+        actual: Actual outcome (BULLISH/BEARISH/NEUTRAL).
+        contribution_score: From contribution scorer (None if unavailable).
+        example_direction: Historical direction from training example
+            (used to check if prediction matches the known-good/bad call).
+    """
+    if contribution_score is not None:
+        if contribution_score > 0:
+            if pred_direction == example_direction:
+                return 0.7 + 0.3 * min(1.0, abs(contribution_score))
+            return 0.2
+        elif contribution_score < 0:
+            if pred_direction == example_direction:
+                return 0.0
+            return 0.5
+        else:
+            if pred_direction == "NEUTRAL":
+                return 0.4 + 0.2 * pred_confidence
+            return 0.3
+
+    # Fallback: directional accuracy + calibration
+    if pred_direction == "NEUTRAL":
+        return 0.15
+    direction_match = 1.0 if pred_direction == actual else 0.0
+    actual_hit = 1.0 if pred_direction == actual else 0.0
+    calibration = 1.0 - abs(pred_confidence - actual_hit)
+    return direction_match * 0.7 + calibration * 0.3
 
 
 # ---------------------------------------------------------------------------
@@ -426,23 +484,32 @@ def should_suggest_enable(
             f"Need >= {min_for_suggest} examples/agent. Short: {', '.join(insufficient)}"
         )
 
-    # 2 & 4. Improvement checks
+    # 2 & 4. Improvement checks (prefer contribution metric, fall back to directional)
     avg_improvement = 0.0
     pct_improved = 0.0
     improvements = []
+    using_metric = False
     common_agents = set(baseline.keys()) & set(optimized.keys())
     for agent in common_agents:
-        base_acc = baseline[agent].get("directional_accuracy", 0)
-        opt_acc = optimized[agent].get("directional_accuracy", 0)
-        improvements.append(opt_acc - base_acc)
+        # Use contribution-aware metric when available on both sides
+        base_metric = baseline[agent].get("avg_metric_score")
+        opt_metric = optimized[agent].get("avg_metric_score")
+        if base_metric is not None and opt_metric is not None:
+            improvements.append(opt_metric - base_metric)
+            using_metric = True
+        else:
+            base_acc = baseline[agent].get("directional_accuracy", 0)
+            opt_acc = optimized[agent].get("directional_accuracy", 0)
+            improvements.append(opt_acc - base_acc)
 
     if improvements:
         avg_improvement = sum(improvements) / len(improvements) * 100
         pct_improved = sum(1 for d in improvements if d > 0) / len(improvements)
+        metric_label = "metric" if using_metric else "directional"
 
         if avg_improvement < MIN_IMPROVEMENT_PCT:
             reasons.append(
-                f"Average improvement {avg_improvement:.1f}% < {MIN_IMPROVEMENT_PCT}% threshold"
+                f"Average {metric_label} improvement {avg_improvement:.1f}% < {MIN_IMPROVEMENT_PCT}% threshold"
             )
         if pct_improved < MIN_AGENTS_IMPROVED_RATIO:
             reasons.append(
@@ -529,6 +596,19 @@ def optimize_agent(
     baseline_correct = sum(1 for ex in directional_examples if ex["direction"] == ex["actual"])
     baseline_accuracy = baseline_correct / len(directional_examples) if directional_examples else 0.0
 
+    # Compute baseline contribution metric from raw examples
+    baseline_metric_scores = [
+        _compute_metric_score(
+            pred_direction=ex["direction"],
+            pred_confidence=ex.get("confidence", 0.5),
+            actual=ex["actual"],
+            contribution_score=ex.get("contribution_score"),
+            example_direction=ex["direction"],
+        )
+        for ex in examples
+    ]
+    baseline_metric = sum(baseline_metric_scores) / len(baseline_metric_scores) if baseline_metric_scores else 0.0
+
     # Build dspy.Example list
     trainset, valset = _build_splits(examples)
 
@@ -558,45 +638,20 @@ def optimize_agent(
                 task=f"Analyze as {agent_name}",
             )
 
-    # Metric: contribution-aware scoring with Brier fallback.
-    # When contribution scores are available, rewards agents for outputs
-    # that helped the council (positive contribution) and penalizes outputs
-    # that hurt it. NEUTRAL is a valid output when the domain isn't relevant.
-    # Falls back to directional accuracy when contribution data is missing.
+    # Metric: contribution-aware scoring with directional fallback.
+    # Delegates to _compute_metric_score (shared with baseline eval).
     def metric(example, prediction, trace=None):
-        pred_dir = prediction.direction
         try:
             pred_conf = float(prediction.confidence)
         except (ValueError, TypeError, AttributeError):
             pred_conf = 0.5
-
-        contribution = getattr(example, "contribution_score", None)
-
-        # Contribution-based metric (preferred when data available)
-        if contribution is not None:
-            if contribution > 0:
-                # Helpful output: reward reproducing similar behavior
-                if pred_dir == example.direction:
-                    return 0.7 + 0.3 * min(1.0, abs(contribution))
-                return 0.2  # Right idea, different execution
-            elif contribution < 0:
-                # Harmful output: penalize reproducing it
-                if pred_dir == example.direction:
-                    return 0.0  # Reproducing the bad call
-                return 0.5  # At least not repeating the mistake
-            else:
-                # Zero contribution (NEUTRAL agent or NEUTRAL outcome)
-                if pred_dir == "NEUTRAL":
-                    return 0.4 + 0.2 * pred_conf  # Reward correct abstention
-                return 0.3  # Forced a direction when it didn't matter
-
-        # Fallback: directional accuracy + calibration (no contribution data)
-        if pred_dir == "NEUTRAL":
-            return 0.15  # Small credit for honest abstention
-        direction_match = 1.0 if pred_dir == example.actual else 0.0
-        actual_hit = 1.0 if pred_dir == example.actual else 0.0
-        calibration = 1.0 - abs(pred_conf - actual_hit)
-        return direction_match * 0.7 + calibration * 0.3
+        return _compute_metric_score(
+            pred_direction=prediction.direction,
+            pred_confidence=pred_conf,
+            actual=example.actual,
+            contribution_score=getattr(example, "contribution_score", None),
+            example_direction=example.direction,
+        )
 
     # Run BootstrapFewShot (demo counts configurable via config.dspy)
     dspy_cfg = config.get("dspy", {})
@@ -611,12 +666,24 @@ def optimize_agent(
     module = AgentPredictor()
     compiled = optimizer.compile(module, trainset=trainset)
 
-    # Evaluate on validation set (directional accuracy only)
+    # Evaluate on validation set (contribution metric + directional accuracy)
     val_directional = 0
     val_correct = 0
+    val_metric_scores = []
     for ex in valset:
         try:
             pred = compiled(market_context=ex.market_context)
+            try:
+                pred_conf = float(pred.confidence)
+            except (ValueError, TypeError, AttributeError):
+                pred_conf = 0.5
+            val_metric_scores.append(_compute_metric_score(
+                pred_direction=pred.direction,
+                pred_confidence=pred_conf,
+                actual=ex.actual,
+                contribution_score=getattr(ex, "contribution_score", None),
+                example_direction=ex.direction,
+            ))
             if pred.direction != "NEUTRAL":
                 val_directional += 1
                 if pred.direction == ex.actual:
@@ -626,6 +693,7 @@ def optimize_agent(
 
     val_accuracy = val_correct / val_directional if val_directional else 0.0
     val_abstention = 1.0 - (val_directional / len(valset)) if valset else 0.0
+    val_metric = sum(val_metric_scores) / len(val_metric_scores) if val_metric_scores else 0.0
 
     # Extract optimized instruction and demos.
     # NEUTRAL demos are kept — they're valuable examples of correctly
@@ -649,7 +717,9 @@ def optimize_agent(
     # Save
     result = {
         "baseline_directional_accuracy": baseline_accuracy,
+        "baseline_metric": baseline_metric,
         "directional_accuracy": val_accuracy,
+        "avg_metric_score": val_metric,
         "abstention_rate": val_abstention,
         "n_demos": len(demos),
         "instruction": instruction,
@@ -720,7 +790,9 @@ def export_optimized_prompt(
         "optimized_at": datetime.now(timezone.utc).isoformat(),
         "n_training_examples": result.get("n_demos", 0),
         "baseline_directional_accuracy": result.get("baseline_directional_accuracy", None),
+        "baseline_metric": result.get("baseline_metric", None),
         "optimized_directional_accuracy": result.get("directional_accuracy", None),
+        "optimized_metric": result.get("avg_metric_score", None),
         "optimized_abstention_rate": result.get("abstention_rate", None),
         "instruction": instruction,
         "demos": result.get("demos", []),
@@ -780,6 +852,7 @@ def evaluate_baseline(stats: dict) -> dict[str, dict]:
     for agent, info in stats.get("agents", {}).items():
         result[agent] = {
             "directional_accuracy": info["directional_accuracy"],
+            "avg_metric_score": info.get("avg_metric_score"),
             "abstention_rate": info["abstention_rate"],
             "brier_score": info["brier_score"],
             "n_examples": info["total"],

@@ -70,15 +70,27 @@ def print_eval_table(stats: dict, readiness: dict, min_examples: int):
               f"{total_neutral/total_all:.0%} NEUTRAL")
     print()
 
-    # Header
-    fmt = "{:<20} {:>8} {:>10} {:>11} {:>7}  {}"
-    print(fmt.format("Agent", "Examples", "Dir. Acc.", "Abstention", "Brier", "Ready?"))
-    print("-" * 85)
+    # Check if contribution metrics are available
+    has_metric = any(
+        info.get("avg_metric_score") is not None
+        for info in agents_info.values()
+    )
 
-    # Sort by directional accuracy ascending (worst first)
+    # Header
+    if has_metric:
+        fmt = "{:<20} {:>8} {:>10} {:>8} {:>11} {:>7}  {}"
+        print(fmt.format("Agent", "Examples", "Dir. Acc.", "Metric", "Abstention", "Brier", "Ready?"))
+        print("-" * 95)
+    else:
+        fmt = "{:<20} {:>8} {:>10} {:>11} {:>7}  {}"
+        print(fmt.format("Agent", "Examples", "Dir. Acc.", "Abstention", "Brier", "Ready?"))
+        print("-" * 85)
+
+    # Sort by metric score (or directional accuracy) ascending (worst first)
+    sort_key = "avg_metric_score" if has_metric else "directional_accuracy"
     sorted_agents = sorted(
         agents_info.items(),
-        key=lambda x: x[1].get("directional_accuracy", 0),
+        key=lambda x: x[1].get(sort_key, 0),
     )
 
     for agent, info in sorted_agents:
@@ -90,14 +102,25 @@ def print_eval_table(stats: dict, readiness: dict, min_examples: int):
         if info["directional_accuracy"] < 0.30:
             flag = " <-- worst"
 
-        print(fmt.format(
-            agent,
-            f"{dir_total}/{info['total']}",
-            f"{info['directional_accuracy']:.1%}",
-            f"{info['abstention_rate']:.1%}",
-            f"{info['brier_score']:.2f}",
-            f"{ready_str} ({reason}){flag}",
-        ))
+        if has_metric:
+            print(fmt.format(
+                agent,
+                f"{dir_total}/{info['total']}",
+                f"{info['directional_accuracy']:.1%}",
+                f"{info.get('avg_metric_score', 0):.3f}",
+                f"{info['abstention_rate']:.1%}",
+                f"{info['brier_score']:.2f}",
+                f"{ready_str} ({reason}){flag}",
+            ))
+        else:
+            print(fmt.format(
+                agent,
+                f"{dir_total}/{info['total']}",
+                f"{info['directional_accuracy']:.1%}",
+                f"{info['abstention_rate']:.1%}",
+                f"{info['brier_score']:.2f}",
+                f"{ready_str} ({reason}){flag}",
+            ))
 
     print()
     print("Run with --optimize to generate improved prompts.")
@@ -112,13 +135,26 @@ def print_optimization_results(
     min_for_suggest: int,
 ):
     """Print before/after comparison and recommendation."""
-    print(f"\n{'='*56}")
+    print(f"\n{'='*70}")
     print(f"  Optimization Results ({ticker})")
-    print(f"{'='*56}\n")
+    print(f"{'='*70}\n")
 
-    fmt = "{:<20} {:>8} {:>8} {:>10} {:>11}  {:>5}"
-    print(fmt.format("Agent", "Before", "After", "Delta", "Abstention", "Demos"))
-    print("-" * 75)
+    # Check if contribution metrics are available
+    has_metric = any(
+        opt.get("avg_metric_score") is not None
+        for opt in optimized_results.values()
+        if not opt.get("skipped")
+    )
+
+    if has_metric:
+        fmt = "{:<20} {:>8} {:>8} {:>7} {:>8} {:>8} {:>7} {:>5}"
+        print(fmt.format("Agent", "Dir.Bef", "Dir.Aft", "D.Delt",
+                          "Met.Bef", "Met.Aft", "M.Delt", "Demos"))
+        print("-" * 85)
+    else:
+        fmt = "{:<20} {:>8} {:>8} {:>10} {:>11}  {:>5}"
+        print(fmt.format("Agent", "Before", "After", "Delta", "Abstention", "Demos"))
+        print("-" * 75)
 
     for agent in sorted(optimized_results.keys()):
         opt = optimized_results[agent]
@@ -129,17 +165,25 @@ def print_optimization_results(
         base_acc = baseline.get(agent, {}).get("directional_accuracy", 0)
         opt_acc = opt.get("directional_accuracy", 0)
         delta = opt_acc - base_acc
-        delta_str = f"{delta:+.1%}"
-        abstention = opt.get("abstention_rate", 0)
 
-        print(fmt.format(
-            agent,
-            f"{base_acc:.1%}",
-            f"{opt_acc:.1%}",
-            delta_str,
-            f"{abstention:.1%}",
-            opt.get("n_demos", 0),
-        ))
+        if has_metric:
+            base_met = baseline.get(agent, {}).get("avg_metric_score") or 0
+            opt_met = opt.get("avg_metric_score") or 0
+            met_delta = opt_met - base_met
+            print(fmt.format(
+                agent,
+                f"{base_acc:.1%}", f"{opt_acc:.1%}", f"{delta:+.1%}",
+                f"{base_met:.3f}", f"{opt_met:.3f}", f"{met_delta:+.3f}",
+                opt.get("n_demos", 0),
+            ))
+        else:
+            abstention = opt.get("abstention_rate", 0)
+            print(fmt.format(
+                agent,
+                f"{base_acc:.1%}", f"{opt_acc:.1%}", f"{delta:+.1%}",
+                f"{abstention:.1%}",
+                opt.get("n_demos", 0),
+            ))
 
     print(f"\nOptimized prompts saved to {output_dir}/{ticker}/")
 
