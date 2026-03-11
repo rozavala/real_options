@@ -407,9 +407,22 @@ def _compute_metric_score(
                 return 0.0
             return 0.5
         else:
+            # Zero contribution: actual was NEUTRAL, agent was NEUTRAL, or
+            # Master was NEUTRAL. Distinguish "correct abstention on noise"
+            # from "missed a real market move."
             if pred_direction == "NEUTRAL":
-                return 0.4 + 0.2 * pred_confidence
-            return 0.3
+                if actual == "NEUTRAL":
+                    # Market noise — correctly identified nothing was happening
+                    return 0.4 + 0.2 * pred_confidence
+                else:
+                    # Market moved significantly but agent had no opinion.
+                    # Better than being actively wrong (0.0) but worse than
+                    # committing correctly (0.7+) or identifying noise (0.4+).
+                    return 0.15
+            else:
+                # Agent forced a direction but contribution was still 0
+                # (e.g., aligned with Master but outcome was NEUTRAL)
+                return 0.25
 
     # Fallback: directional accuracy + calibration
     if pred_direction == "NEUTRAL":
@@ -694,6 +707,25 @@ def optimize_agent(
     val_accuracy = val_correct / val_directional if val_directional else 0.0
     val_abstention = 1.0 - (val_directional / len(valset)) if valset else 0.0
     val_metric = sum(val_metric_scores) / len(val_metric_scores) if val_metric_scores else 0.0
+
+    # Abstention ceiling: reject optimization if NEUTRAL rate exceeds
+    # per-agent ceiling. Different agents have different domain frequencies.
+    max_neutral_rates = dspy_cfg.get("max_neutral_rate", {})
+    default_ceiling = max_neutral_rates.get("default", 0.60)
+    agent_ceiling = max_neutral_rates.get(agent_name, default_ceiling)
+    if val_abstention > agent_ceiling:
+        logger.warning(
+            f"[{agent_name}] Abstention rate {val_abstention:.0%} exceeds "
+            f"ceiling {agent_ceiling:.0%} — rejecting optimization"
+        )
+        return {
+            "directional_accuracy": 0.0,
+            "avg_metric_score": 0.0,
+            "abstention_rate": val_abstention,
+            "n_demos": 0,
+            "skipped": True,
+            "reason": f"abstention {val_abstention:.0%} > ceiling {agent_ceiling:.0%}",
+        }
 
     # Extract optimized instruction and demos.
     # NEUTRAL demos are kept — they're valuable examples of correctly
