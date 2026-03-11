@@ -36,14 +36,17 @@ logger = logging.getLogger(__name__)
 # DATA LOADING & PREP
 # ============================================================================
 
-def load_resolved_cycles(ticker: str, data_dir: str = "data") -> pd.DataFrame:
-    """Load council_history.csv and filter to resolved, scoreable cycles."""
-    csv_path = os.path.join(data_dir, ticker, "council_history.csv")
-    if not os.path.exists(csv_path):
-        logger.warning(f"No council_history.csv for {ticker}")
+def prepare_forensic_df(df: pd.DataFrame, ticker: str = "KC") -> pd.DataFrame:
+    """Apply forensic data prep to a council history DataFrame.
+
+    Normalizes fields, applies materiality threshold, derives vote direction,
+    classifies master correctness & overrides. Can be used on an already-loaded
+    DataFrame (e.g. from the dashboard with date filtering applied).
+    """
+    if "actual_trend_direction" not in df.columns:
         return pd.DataFrame()
 
-    df = pd.read_csv(csv_path)
+    df = df.copy()
 
     # Filter to resolved cycles
     df["actual_trend_direction"] = df["actual_trend_direction"].astype(str).str.strip().str.upper()
@@ -53,14 +56,22 @@ def load_resolved_cycles(ticker: str, data_dir: str = "data") -> pd.DataFrame:
     if df.empty:
         return df
 
-    # Normalize key fields
+    # Normalize key fields (defensive: columns may not exist in all DataFrames)
     df["master_decision"] = df["master_decision"].astype(str).str.strip().str.upper()
-    df["prediction_type"] = df["prediction_type"].fillna("DIRECTIONAL").astype(str).str.strip().str.upper()
-    df["trigger_type"] = df["trigger_type"].fillna("SCHEDULED").astype(str).str.strip().str.upper()
-    df["thesis_strength"] = df["thesis_strength"].fillna("UNKNOWN").astype(str).str.strip().str.upper()
-    df["entry_regime"] = df["entry_regime"].fillna("NORMAL").astype(str).str.strip().str.upper()
-    df["strategy_type"] = df["strategy_type"].fillna("").astype(str).str.strip().str.upper()
-    df["volatility_outcome"] = df["volatility_outcome"].fillna("").astype(str).str.strip().str.upper()
+
+    _defaults = {
+        "prediction_type": "DIRECTIONAL",
+        "trigger_type": "SCHEDULED",
+        "thesis_strength": "UNKNOWN",
+        "entry_regime": "NORMAL",
+        "strategy_type": "",
+        "volatility_outcome": "",
+    }
+    for col, default in _defaults.items():
+        if col not in df.columns:
+            df[col] = default
+        else:
+            df[col] = df[col].fillna(default).astype(str).str.strip().str.upper()
 
     # Clean NaN-like string values in entry_regime
     df.loc[df["entry_regime"].isin(["NAN", "NONE", ""]), "entry_regime"] = "NORMAL"
@@ -128,8 +139,29 @@ def load_resolved_cycles(ticker: str, data_dir: str = "data") -> pd.DataFrame:
     # Parse vote_breakdown for per-agent analysis
     df["vote_data"] = df.get("vote_breakdown", pd.Series(dtype=str)).apply(_safe_parse_json)
 
-    logger.info(f"{ticker}: {len(df)} resolved cycles loaded (threshold: {threshold:.4%})")
     return df
+
+
+def load_resolved_cycles(ticker: str, data_dir: str = "data") -> pd.DataFrame:
+    """Load council_history.csv and filter to resolved, scoreable cycles."""
+    csv_path = os.path.join(data_dir, ticker, "council_history.csv")
+    if not os.path.exists(csv_path):
+        logger.warning(f"No council_history.csv for {ticker}")
+        return pd.DataFrame()
+
+    df = pd.read_csv(csv_path)
+    result = prepare_forensic_df(df, ticker)
+
+    if not result.empty:
+        try:
+            from config.commodity_profiles import get_commodity_profile
+            profile = get_commodity_profile(ticker)
+            threshold = profile.neutral_move_threshold_pct
+        except Exception:
+            threshold = 0.008
+        logger.info(f"{ticker}: {len(result)} resolved cycles loaded (threshold: {threshold:.4%})")
+
+    return result
 
 
 def _safe_parse_json(raw):
