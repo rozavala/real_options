@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Wed Mar 11 03:00:04 UTC 2026
+Timestamp: Wed Mar 11 13:00:04 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  03:00:04 up 58 days,  9:23,  2 users,  load average: 0.26, 0.10, 0.02
+Uptime:  13:00:04 up 58 days, 19:23,  2 users,  load average: 0.02, 0.04, 0.00
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,18 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.5Gi       391Mi        36Mi       1.1Gi       1.3Gi
-Swap:          4.0Gi       890Mi       3.1Gi
+Mem:           3.8Gi       2.7Gi       239Mi        29Mi       1.1Gi       1.1Gi
+Swap:          4.0Gi       944Mi       3.1Gi
 
 === LOAD AVERAGE ===
-0.26 0.10 0.02 2/803 1865908
+0.02 0.04 0.00 1/890 1877959
 
 === PROCESS STATUS ===
 Trading processes:
-console  1841139  0.4 10.7 1941116 432752 ?      Ssl  Mar10   5:29 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1841139  0.4  9.8 1950052 394864 ?      Ssl  Mar10   7:58 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  1871849  0.0  7.2 1362104 289244 ?      Sl   08:15   0:08 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1185121  0.2  0.8 2896520 34388 ?       Sl   Feb17  90:54 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
+console  1185121  0.2  0.8 2896520 34388 ?       Sl   Feb17  92:36 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,13 +36,13 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors:
-2026-03-10 16:00:57,053 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-03-10 16:01:32,798 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-03-10 16:01:44,538 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
-2026-03-10 16:02:06,093 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for macro: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 2026-03-10 16:02:28,056 - trading_bot.router_metrics - WARNING - Fallback event: macro openai -> gemini. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 2026-03-10 16:03:15,585 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 10.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 2026-03-10 16:03:27,038 - trading_bot.heterogeneous_router - WARNING - Attempt 2 failed for generate, retrying in 20.0s: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 2026-03-10 16:03:48,567 - trading_bot.heterogeneous_router - WARNING - openai/gpt-5.2 failed for master: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 2026-03-10 16:04:30,478 - trading_bot.router_metrics - WARNING - Fallback event: master openai -> anthropic. Reason: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 2026-03-10 16:04:58,419 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade exemplifies the 'value trap' fallacy: anchoring on a single dramatic signal (8.0 std dev spread anomaly) while dismissing contradictory evidence through selective reasoning. Critical ignored data: (1) Agronomist explicitly warned that 100-200mm rain during grain-filling poses 'severe threats' to quality/infrastructure, yet we labeled this NEUTRAL tag as vindicating our bearish view; (2) Three separate agents (Geopolitical 0.8, Supply Chain 0.8, Sentiment 0.65) assigned BULLISH tags with specificity on export bottlenecks, but we dismissed these as 'backward-looking' despite using equally historical data (February exports) for our own thesis; (3) The weighted vote was NEUTRAL (0.52 confidence, -0.089 score)—barely bearish—yet we escalated this to 0.7 confidence BEARISH through subjective reweighting. We engaged in CONFIRMATION CASCADE: interpreting the Sentinel alert as validation, then filtering all subsequent evidence through a bearish lens. The prudent action is to WAIT for the March 9-16 weather outcome and monitor for CONAB harvest revisions. If the rainfall proves benign and inventories continue building, the bearish thesis strengthens with actual evidence. Entering now in an illiquid contract (17 lots!) with conflicting fundamental signals and active weather threats violates basic risk management. The 'asymmetric downside risk' we cited applies equally to our SHORT position if weather damages materialize.
+2026-03-11 11:05:42,337 - trading_bot.agents - ERROR - Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'Deadline expired before operation could complete.', 'status': 'UNAVAILABLE'}}
+2026-03-11 11:05:54,215 - trading_bot.agents - ERROR - Model call failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'Deadline expired before operation could complete.', 'status': 'UNAVAILABLE'}}
+2026-03-11 11:32:57,239 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: SPECULATIVE (conf=0.45) | Catalyst: Competing supply signals: a critical Central Highlands droug
+2026-03-11 11:33:10,896 - ib_insync.wrapper - ERROR - Error 162, reqId 28: Historical Market Data Service error message:No data of type EODChart is available for the exchange 'NYBOT' and the security type 'Futures Options' and '2 d' and '1 day', contract: Contract(secType='FOP', conId=731667767, symbol='KC', lastTradeDateOrContractMonth='20260410', strike=277.5, right='P', multiplier='37500', exchange='NYBOT', currency='USD', localSymbol='KOK6 P2.775', tradingClass='KO')
