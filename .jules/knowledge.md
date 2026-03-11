@@ -47,7 +47,7 @@ A set of agents that synthesize the analysts' reports.
 
 - **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas). Notifications are isolated per commodity ticker via ContextVar.
 - **Commodity Engine:** Runs the per-commodity loop.
-- **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI.
+- **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
 - **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot). Evaluates based on directional accuracy and abstention rate directly from `enhanced_brier.json` (legacy CSV paths have been deprecated).
 - **Error Reporter Pipeline:** A standalone telemetry script (`scripts/error_reporter.py`) decoupled from the orchestrator. It ensures fail-safe operational awareness by parsing system logs, filtering out expected transient noise (e.g., `503 UNAVAILABLE`, `RESOURCE_EXHAUSTED`, rate limits, `CIRCUIT BREAKER`, emergency lock timeouts), and uses fingerprinting to deduplicate and auto-generate structured GitHub issues for true anomalies.
