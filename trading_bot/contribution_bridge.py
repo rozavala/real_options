@@ -36,8 +36,23 @@ def set_scoring_mode(use_contribution: bool):
 
 
 def is_contribution_scoring_enabled() -> bool:
-    """Check if contribution scoring is active."""
-    return _use_contribution_scoring is True
+    """Check if contribution scoring is active.
+
+    Falls back to reading config.json when the flag hasn't been set
+    (e.g. dashboard runs in a separate process from the orchestrator).
+    """
+    global _use_contribution_scoring
+    if _use_contribution_scoring is not None:
+        return _use_contribution_scoring
+    # Fallback: read from config.json (dashboard context)
+    try:
+        import json
+        with open("config.json", "r") as f:
+            cfg = json.load(f)
+        _use_contribution_scoring = cfg.get("scoring", {}).get("use_contribution_scoring", False)
+        return _use_contribution_scoring
+    except Exception:
+        return False
 
 
 def _get_tracker(data_dir: str = None):
