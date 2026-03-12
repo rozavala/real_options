@@ -172,13 +172,15 @@ class TestCockpitUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        f"Metric '{label}' in Cockpit is missing 'help' tooltip",
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help,
+                            f"Metric '{label}' in Cockpit is missing 'help' tooltip",
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(
@@ -233,12 +235,14 @@ class TestDashboardUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help, f"Metric '{label}' is missing 'help' tooltip"
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help, f"Metric '{label}' is missing 'help' tooltip"
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(found, f"Could not find metric '{metric}' in dashboard.py")
@@ -334,13 +338,15 @@ class TestPortfolioUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        f"Metric '{label}' in Portfolio is missing 'help' tooltip",
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help,
+                            f"Metric '{label}' in Portfolio is missing 'help' tooltip",
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(
@@ -427,13 +433,15 @@ class TestCouncilUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        f"Metric '{label}' in Council is missing 'help' tooltip",
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help,
+                            f"Metric '{label}' in Council is missing 'help' tooltip",
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(
@@ -476,13 +484,15 @@ class TestSignalOverlayUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        f"Metric '{label}' in Signal Overlay is missing 'help' tooltip",
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help,
+                            f"Metric '{label}' in Signal Overlay is missing 'help' tooltip",
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(
@@ -515,13 +525,15 @@ class TestBrierAnalysisUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        f"Metric '{label}' in Brier Analysis is missing 'help' tooltip",
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help,
+                            f"Metric '{label}' in Brier Analysis is missing 'help' tooltip",
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(
@@ -562,13 +574,15 @@ class TestScorecardUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                if label in found_metrics:
-                    found_metrics[label] = True
-                    has_help = any(kw.arg == "help" for kw in node.keywords)
-                    self.assertTrue(
-                        has_help,
-                        f"Metric '{label}' in Scorecard is missing 'help' tooltip",
-                    )
+                # Use substring matching to handle emojis/icons
+                for target in target_metrics:
+                    if label and target in label:
+                        found_metrics[target] = True
+                        has_help = any(kw.arg == "help" for kw in node.keywords)
+                        self.assertTrue(
+                            has_help,
+                            f"Metric '{label}' in Scorecard is missing 'help' tooltip",
+                        )
 
         for metric, found in found_metrics.items():
             self.assertTrue(

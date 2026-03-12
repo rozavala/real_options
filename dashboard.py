@@ -64,7 +64,7 @@ st.title("\U0001f4ca Real Options Portfolio")
 # =====================================================================
 active_commodities = discover_active_commodities()
 
-st.markdown("### Portfolio Health")
+st.markdown("### 💓 Portfolio Health")
 health_cols = st.columns(max(len(active_commodities), 1))
 
 for idx, ticker in enumerate(active_commodities):
@@ -96,7 +96,7 @@ for idx, ticker in enumerate(active_commodities):
 # SECTION 2: Financial Summary — NLV, Daily P&L, Portfolio VaR
 # =====================================================================
 st.markdown("---")
-st.markdown("### Financial Summary")
+st.markdown("### 💰 Financial Summary")
 
 fin_col1, fin_col2, fin_col3 = st.columns(3)
 
@@ -111,16 +111,16 @@ with fin_col1:
         if live.get("connection_status") == "CONNECTED":
             nlv = live.get("net_liquidation", 0.0)
             st.metric(
-                "Net Liquidation", f"${nlv:,.2f}",
+                "💰 Net Liquidation", f"${nlv:,.2f}",
                 help="Total account value including cash and market value of positions."
             )
         else:
             st.metric(
-                "Net Liquidation", "IB Offline",
+                "💰 Net Liquidation", "IB Offline",
                 help="Connection to Interactive Brokers is offline. Data may be stale."
             )
     except Exception:
-        st.metric("Net Liquidation", "IB Offline", help="Connection to Interactive Brokers is offline.")
+        st.metric("💰 Net Liquidation", "IB Offline", help="Connection to Interactive Brokers is offline.")
 
 with fin_col2:
     try:
@@ -165,7 +165,7 @@ with fin_col3:
 # SECTION 2b: Equity Curve + Drawdown (account-wide from daily_equity.csv)
 # =====================================================================
 st.markdown("---")
-st.markdown("### Equity Curve")
+st.markdown("### 📈 Equity Curve")
 
 # Always load from KC — equity_logger only runs for primary commodity but
 # records account-wide NLV.
@@ -271,7 +271,7 @@ else:
 # SECTION 2c: Risk Metrics — Sharpe Ratio, Max Drawdown
 # =====================================================================
 st.markdown("---")
-st.markdown("### Risk Metrics")
+st.markdown("### 🛡️ Risk Metrics")
 
 if not equity_df.empty and len(equity_df) >= 10:
     eq_sorted = equity_df.sort_values('timestamp').copy()
@@ -315,7 +315,7 @@ else:
 # SECTION 2d: Monthly Returns Heatmap
 # =====================================================================
 st.markdown("---")
-st.markdown("### Monthly Returns")
+st.markdown("### 📅 Monthly Returns")
 st.caption("Calendar view of monthly performance")
 
 if not equity_df.empty:
@@ -357,7 +357,7 @@ else:
 # SECTION 2e: Benchmark Comparison
 # =====================================================================
 st.markdown("---")
-st.markdown("### Benchmark Comparison")
+st.markdown("### 📊 Benchmark Comparison")
 
 if not equity_df.empty:
     starting_capital = get_starting_capital(config) if config else 50000.0
@@ -420,11 +420,12 @@ else:
 # SECTION 3: Per-Commodity Cards — trade count, last decision, win rate
 # =====================================================================
 st.markdown("---")
-st.markdown("### Commodity Summary")
+st.markdown("### 📦 Commodity Summary")
 
 # Build a merged df to derive date bounds for the single page-level picker
 _all_council = {t: load_council_history_for_commodity(t) for t in active_commodities}
-_reference_df = pd.concat([d for d in _all_council.values() if not d.empty], ignore_index=True) if _all_council else pd.DataFrame()
+_valid_council_dfs = [d for d in _all_council.values() if not d.empty]
+_reference_df = pd.concat(_valid_council_dfs, ignore_index=True) if _valid_council_dfs else pd.DataFrame()
 _home_dates = date_range_picker(_reference_df, key='home')
 
 card_cols = st.columns(max(len(active_commodities), 1))
@@ -460,7 +461,7 @@ for idx, ticker in enumerate(active_commodities):
             help=f"Total number of Council decisions (trades) made for {meta['name']}."
         )
         st.metric(
-            "Win Rate", f"{win_rate:.0f}%", delta=f"{wins}W / {len(resolved) - wins}L",
+            "🎯 Win Rate", f"{win_rate:.0f}%", delta=f"{wins}W / {len(resolved) - wins}L",
             help="Percentage of trades with resolved outcomes that resulted in a win."
         )
         st.caption(f"Last: **{last_decision}** / {last_strategy}")
@@ -469,7 +470,7 @@ for idx, ticker in enumerate(active_commodities):
 # SECTION 4: Recent Activity Feed — merged council history (top 10)
 # =====================================================================
 st.markdown("---")
-st.markdown("### Recent Activity")
+st.markdown("### 📜 Recent Activity")
 
 try:
     all_dfs = [d for d in _all_council.values() if not d.empty]
@@ -564,7 +565,7 @@ except Exception:
 # SECTION 5: Navigation
 # =====================================================================
 st.markdown("---")
-st.markdown("### Navigate")
+st.markdown("### 🧭 Navigate")
 
 if hasattr(st, "page_link"):
     col1, col2 = st.columns(2)
