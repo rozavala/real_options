@@ -81,7 +81,7 @@ graph TD
 
 1.  **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor. Spawns and monitors `CommodityEngine` processes for each active ticker. Manages **Shared Services** (Equity Polling, Macro Research, Post-Close Reconciliation, System Health Digest) to prevent API redundancy.
 2.  **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity. Manages its own Sentinels, Council, and Schedule. Ensures strict data isolation.
-3.  **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM requests to the best-fit provider (Gemini, OpenAI, Anthropic, xAI) based on the agent's role.
+3.  **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM requests to the best-fit provider based on the agent's role (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 4.  **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches Council decisions based on market state vectors. Prevents redundant LLM calls.
 5.  **Transactive Memory System (`trading_bot/tms.py`):** ChromaDB-based vector store for "institutional memory" across cycles.
 6.  **Brier Bridge (`trading_bot/brier_bridge.py`):** Tracks agent accuracy using an Enhanced Probabilistic Brier Score system to weight agent opinions dynamically.

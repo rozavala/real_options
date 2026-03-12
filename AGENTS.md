@@ -15,7 +15,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 
 -   **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor for multi-commodity operations. Manages shared services (Equity, Macro, VaR).
 -   **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity (ticker).
--   **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM calls to different providers (Gemini, OpenAI, Anthropic, xAI).
+-   **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM calls to different providers. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 -   **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches decisions to avoid redundant API calls.
 -   **Sentinels (`trading_bot/sentinels.py`):** Monitor external events (Price, Weather, News, Polymarket, Macro). Must implement graceful rate-limiting and API spend-cap circuit breakers to control costs autonomously.
 -   **Council (`trading_bot/agents.py`):** Specialized agents that debate and decide on trades.
