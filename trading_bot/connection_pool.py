@@ -309,9 +309,111 @@ class IBConnectionPool:
                            f"Next retry backoff: {cls._reconnect_backoff[purpose]}s")
                 raise e
 
+    # Connections that place/cancel orders — only these need the disconnect guard.
+    # Non-order connections (sentinel, microstructure, audit, etc.) skip the guard.
+    ORDER_BEARING_PURPOSES = {
+        'orchestrator_orders', 'dashboard_orders', 'dashboard_close',
+        'emergency', 'deferred', 'monitor',
+    }
+    DISCONNECT_GUARD_TIMEOUT = 120  # Hard ceiling: 2 minutes max wait
+    TERMINAL_ORDER_STATES = {'Filled', 'Cancelled', 'Inactive', 'ApiCancelled', 'Error'}
+
+    @classmethod
+    async def _drain_pending_orders(cls, ib: IB, purpose: str):
+        """Ensure no orders are in non-terminal state before disconnecting.
+
+        For order-bearing connections only. Sends cancel requests for any
+        pending orders and waits (up to DISCONNECT_GUARD_TIMEOUT) for them
+        to reach terminal state. This prevents the bug where IBKR fills an
+        order after the system has already disconnected, causing missed
+        fill callbacks and corrupted local state.
+        """
+        try:
+            pending = []
+            for trade in ib.openTrades():
+                status = trade.orderStatus.status
+                if status not in cls.TERMINAL_ORDER_STATES:
+                    pending.append(trade)
+                    logger.warning(
+                        f"DISCONNECT GUARD [{purpose}]: Order {trade.order.orderId} "
+                        f"still in state '{status}'. Sending cancel before disconnect."
+                    )
+                    ib.cancelOrder(trade.order)
+
+            if not pending:
+                logger.info(f"DISCONNECT GUARD [{purpose}]: No pending orders. Safe to disconnect.")
+                return
+
+            logger.info(
+                f"DISCONNECT GUARD [{purpose}]: Waiting for {len(pending)} order(s) "
+                f"to reach terminal state (timeout={cls.DISCONNECT_GUARD_TIMEOUT}s)..."
+            )
+
+            # Send Pushover alert
+            try:
+                from notifications import send_pushover_notification
+                send_pushover_notification(
+                    {},  # Will use env vars
+                    f"Disconnect Guard Active",
+                    f"Connection '{purpose}' has {len(pending)} non-terminal order(s). "
+                    f"Holding disconnect up to {cls.DISCONNECT_GUARD_TIMEOUT}s. "
+                    f"Orders: {[t.order.orderId for t in pending]}",
+                    priority=0
+                )
+            except Exception:
+                pass
+
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + cls.DISCONNECT_GUARD_TIMEOUT
+            while pending and loop.time() < deadline:
+                await asyncio.sleep(0.5)
+                still_pending = []
+                for trade in pending:
+                    current_status = trade.orderStatus.status
+                    if current_status in cls.TERMINAL_ORDER_STATES:
+                        logger.info(
+                            f"DISCONNECT GUARD [{purpose}]: Order "
+                            f"{trade.order.orderId} -> '{current_status}'."
+                        )
+                    else:
+                        still_pending.append(trade)
+                pending = still_pending
+
+            if pending:
+                logger.critical(
+                    f"DISCONNECT GUARD [{purpose}]: {len(pending)} order(s) STILL "
+                    f"non-terminal after {cls.DISCONNECT_GUARD_TIMEOUT}s! "
+                    f"Disconnecting anyway. "
+                    f"Orders: {[t.order.orderId for t in pending]}. "
+                    f"RECONCILIATION WILL BE NEEDED."
+                )
+            else:
+                logger.info(f"DISCONNECT GUARD [{purpose}]: All orders terminal. Safe to disconnect.")
+
+        except Exception as e:
+            logger.error(
+                f"DISCONNECT GUARD [{purpose}]: Exception during guard check: {e}. "
+                f"Proceeding with disconnect."
+            )
+
+    @classmethod
+    def _is_order_bearing(cls, purpose: str) -> bool:
+        """Check if a connection purpose is order-bearing (needs disconnect guard)."""
+        # Strip commodity prefix (e.g., "KC_orchestrator_orders" -> "orchestrator_orders")
+        base = purpose
+        if '_' in purpose:
+            prefix = purpose.split('_')[0]
+            if prefix in COMMODITY_ID_OFFSET:
+                base = purpose[len(prefix) + 1:]
+        return base in cls.ORDER_BEARING_PURPOSES
+
     @classmethod
     async def release_connection(cls, purpose: str):
-        """Releases a specific connection from the pool."""
+        """Releases a specific connection from the pool.
+
+        For order-bearing connections, drains pending orders before disconnecting
+        to prevent missed fill callbacks.
+        """
         purpose = _resolve_purpose(purpose)
         if purpose not in cls._locks:
             cls._locks[purpose] = asyncio.Lock()
@@ -320,22 +422,33 @@ class IBConnectionPool:
             ib = cls._instances.pop(purpose, None)
             if ib:
                 if ib.isConnected():
+                    # Disconnect guard for order-bearing connections
+                    if cls._is_order_bearing(purpose):
+                        await cls._drain_pending_orders(ib, purpose)
+                    else:
+                        logger.debug(
+                            f"DISCONNECT GUARD: Connection '{purpose}' is not "
+                            f"order-bearing. Direct disconnect."
+                        )
                     logger.info(f"Disconnecting IB ({purpose})...")
                     ib.disconnect()
-                    # === NEW: Give Gateway time to cleanup ===
                     await asyncio.sleep(3.0)
                 # Reset backoff when explicitly released
                 cls._reconnect_backoff[purpose] = 5.0
 
     @classmethod
     async def release_all(cls):
-        """Release all pooled connections with proper cleanup."""
+        """Release all pooled connections with proper cleanup.
+
+        Order-bearing connections get the disconnect guard; others disconnect directly.
+        """
         for name, ib in list(cls._instances.items()):
             try:
                 if ib and ib.isConnected():
-                    # Disconnect synchronously to avoid async cleanup issues
+                    if cls._is_order_bearing(name):
+                        await cls._drain_pending_orders(ib, name)
                     ib.disconnect()
-                    await asyncio.sleep(0.1)  # Small delay for transport cleanup
+                    await asyncio.sleep(0.1)
             except Exception as e:
                 logger.warning(f"Connection cleanup failed for {name}: {e}")
             finally:
@@ -344,6 +457,5 @@ class IBConnectionPool:
         cls._instances.clear()
         cls._reconnect_backoff.clear()
 
-        # Force garbage collection to clean up any orphaned references
         import gc
         gc.collect()
