@@ -29,7 +29,6 @@ from dashboard_utils import (
     calculate_rolling_win_rate,
     get_active_theses,
     get_current_market_regime,
-    get_commodity_profile,
     load_task_schedule_status,
     load_deduplicator_metrics,
     _resolve_data_path,
@@ -1129,7 +1128,7 @@ with ctrl_cols[0]:
     st.caption("No active cooldown")
 
 with ctrl_cols[1]:
-    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt")
+    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt", help="Check this to enable the 'EMERGENCY HALT' button, which immediately cancels all unfilled orders across all positions.")
     if st.button(
         "🛑 EMERGENCY HALT",
         type="primary",
@@ -1162,7 +1161,7 @@ with ctrl_cols[1]:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
-    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh")
+    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh", help="Check this to enable the 'Refresh All Data' button, which clears application cache and forces a full data reload from external sources.")
     if st.button(
         "🔄 Refresh All Data",
         width="stretch",

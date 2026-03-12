@@ -349,6 +349,37 @@ class TestPortfolioUX(unittest.TestCase):
 
 
 class TestUtilitiesUX(unittest.TestCase):
+    def test_utilities_checkbox_tooltips(self):
+        """Verify that all checkboxes in pages/5_Utilities.py have help tooltips."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "5_Utilities.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "checkbox"
+            ):
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+                elif isinstance(node.args[0], ast.JoinedStr):
+                    # Handle f-strings if any
+                    label = "f-string"
+
+                if label:
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(
+                        has_help,
+                        f"Checkbox '{label}' in Utilities is missing 'help' tooltip",
+                    )
+
     def test_utilities_safety_interlocks(self):
         """Verify that high-impact buttons in pages/5_Utilities.py have safety interlocks."""
         file_path = os.path.join(
