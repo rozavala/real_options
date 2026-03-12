@@ -5,9 +5,9 @@ Protects against aggregate portfolio losses that individual position stops miss.
 Halts trading for the day if intraday P&L drops below configurable thresholds.
 
 Thresholds (default):
-- WARNING: -2.0% intraday -> Pushover alert
-- HALT:    -4.0% intraday -> Block new trades
-- PANIC:   -6.0% intraday -> Close ALL positions
+- WARNING: -3.0% intraday -> Pushover alert
+- HALT:    -6.0% intraday -> Block new trades
+- PANIC:   -9.0% intraday -> Close ALL positions
 """
 
 import csv
@@ -56,10 +56,10 @@ class DrawdownGuard:
         self.config = config.get('drawdown_circuit_breaker', {})
         self.notification_config = config.get('notifications', {})
         self.enabled = self.config.get('enabled', False)
-        self.warning_pct = self.config.get('warning_pct', 2.0)
-        self.halt_pct = self.config.get('halt_pct', 4.0)
-        self.panic_pct = self.config.get('panic_pct', 6.0)
-        self.recovery_pct = self.config.get('recovery_pct', 3.0)
+        self.warning_pct = self.config.get('warning_pct', 3.0)
+        self.halt_pct = self.config.get('halt_pct', 6.0)
+        self.panic_pct = self.config.get('panic_pct', 9.0)
+        self.recovery_pct = self.config.get('recovery_pct', 3.5)
         self.recovery_hold_minutes = self.config.get('recovery_hold_minutes', 30)
         self._recovery_start = None
         self._panic_is_live = False  # Only True after update_pnl() freshly evaluates PANIC
