@@ -1031,6 +1031,23 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         vol_level = routed['vol_level']
         reason = routed['reason']
 
+        # Align council_history log with actual execution outcome.
+        # The log vars (prediction_type_log, strategy_type_log) were set from the
+        # Master's original direction BEFORE the conviction gate and route_strategy().
+        # Update them so the audit trail reflects what actually executed.
+        prediction_type_log = prediction_type
+        vol_level_log = vol_level
+        if prediction_type == 'VOLATILITY' and vol_level == 'LOW':
+            strategy_type_log = 'IRON_CONDOR'
+        elif prediction_type == 'VOLATILITY' and vol_level == 'HIGH':
+            strategy_type_log = 'LONG_STRADDLE'
+        elif routed['direction'] in ('BULLISH',):
+            strategy_type_log = 'BULL_CALL_SPREAD'
+        elif routed['direction'] in ('BEARISH',):
+            strategy_type_log = 'BEAR_PUT_SPREAD'
+        else:
+            strategy_type_log = 'NONE'
+
         logger.info(f"Router decision: {prediction_type}/{vol_level} for {contract.localSymbol}")
 
         # Construct final signal object
