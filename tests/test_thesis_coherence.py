@@ -653,6 +653,15 @@ class TestCloseSpreadPositionUsesPosContract(unittest.IsolatedAsyncioTestCase):
             side_effect=AssertionError("qualifyContractsAsync should NOT be called"))
         ib.isConnected.return_value = True
         ib.reqAllOpenOrdersAsync = AsyncMock(return_value=[])
+        # New: _close_spread_position now verifies via reqPositionsAsync
+        ib.reqPositionsAsync = AsyncMock(return_value=[])
+        # New: BAG close attempts market data (will fail gracefully with NaN)
+        mock_ticker = MagicMock()
+        mock_ticker.bid = float('nan')
+        mock_ticker.ask = float('nan')
+        mock_ticker.last = float('nan')
+        ib.reqMktData = MagicMock(return_value=mock_ticker)
+        ib.cancelMktData = MagicMock()
 
         # Build fake position legs with correct contracts
         leg1 = MagicMock()
@@ -701,6 +710,15 @@ class TestCloseSpreadPositionUsesPosContract(unittest.IsolatedAsyncioTestCase):
         ib = MagicMock()
         ib.isConnected.return_value = True
         ib.reqAllOpenOrdersAsync = AsyncMock(return_value=[])
+        # New: _close_spread_position now verifies via reqPositionsAsync
+        ib.reqPositionsAsync = AsyncMock(return_value=[])
+        # New: single-leg close attempts market data (will fail gracefully with NaN)
+        mock_ticker = MagicMock()
+        mock_ticker.bid = float('nan')
+        mock_ticker.ask = float('nan')
+        mock_ticker.last = float('nan')
+        ib.reqMktData = MagicMock(return_value=mock_ticker)
+        ib.cancelMktData = MagicMock()
 
         leg = MagicMock()
         leg.contract = MagicMock()
