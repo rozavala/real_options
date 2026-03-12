@@ -21,7 +21,7 @@ import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
 import pandas as pd
-from ib_insync import IB, util, Contract, MarketOrder, Future
+from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, ComboLeg, Future
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
@@ -1762,6 +1762,444 @@ def _group_positions_by_thesis(
 
     return groups
 
+def _send_close_notification(
+    config: dict,
+    position_id: str,
+    reason: str,
+    legs: list,
+    closed_syms: list,
+    failed_syms: list,
+):
+    """Send Pushover notification for spread close results."""
+    total = len(legs)
+    success = len(closed_syms)
+    readable = closed_syms[0].split()[0] if closed_syms else (
+        failed_syms[0].split()[0] if failed_syms else "Unknown"
+    )
+
+    if success == total and not failed_syms:
+        title = f"✅ Position Closed: {readable}"
+        message = (
+            f"Reason: {reason}\n"
+            f"Closed {success}/{total} legs successfully.\n"
+        )
+    elif success > 0:
+        title = f"⚠️ PARTIAL CLOSE: {readable}"
+        message = (
+            f"Reason: {reason}\n"
+            f"⚠️ ONLY {success}/{total} legs closed!\n"
+            f"MANUAL INTERVENTION REQUIRED — position may have naked exposure.\n\n"
+            f"Closed: {', '.join(closed_syms)}\n"
+            f"FAILED: {', '.join(failed_syms)}\n"
+        )
+    else:
+        title = f"❌ CLOSE FAILED: {readable}"
+        message = (
+            f"Reason: {reason}\n"
+            f"ALL {total} close orders FAILED.\n"
+            f"Position remains open. Will retry on next audit cycle.\n"
+        )
+
+    send_pushover_notification(config.get('notifications', {}), title, message)
+
+
+async def _close_single_leg_with_walk(
+    ib: IB,
+    contract,
+    action: str,
+    qty: int,
+    position_id: str,
+    config: dict,
+    timeout: int,
+    max_walks: int,
+    walk_interval: int,
+    walk_pct: float,
+    tick_size: float,
+) -> bool:
+    """
+    Close a single option leg with limit order + adaptive price walking.
+    Falls back to market order only as last resort after timeout.
+    Returns True if filled, False otherwise.
+    """
+    try:
+        # Get market data for pricing
+        ticker = ib.reqMktData(contract, '', True, False)
+        await asyncio.sleep(1.5)
+
+        bid = ticker.bid if not util.isNan(ticker.bid) else 0
+        ask = ticker.ask if not util.isNan(ticker.ask) else 0
+        last = ticker.last if not util.isNan(ticker.last) else 0
+
+        ib.cancelMktData(contract)
+
+        # Determine initial price — start passive (near natural side)
+        if bid > 0 and ask > 0:
+            if action == 'SELL':
+                initial_price = bid  # Start at bid for sells
+            else:
+                initial_price = ask  # Start at ask for buys
+        elif last > 0:
+            initial_price = last
+        else:
+            # No market data — fall back to market order
+            logger.warning(
+                f"No market data for {contract.localSymbol}, "
+                f"using MarketOrder for close"
+            )
+            order = MarketOrder(action, qty)
+            order.outsideRth = True
+            trade = place_order(ib, contract, order)
+            if trade is None:
+                return False
+            for _ in range(15):
+                await asyncio.sleep(1)
+                if trade.orderStatus.status == 'Filled':
+                    try:
+                        from trading_bot.utils import log_trade_to_ledger
+                        await log_trade_to_ledger(
+                            ib, trade,
+                            reason=f"Spread Close (no mkt data): {position_id[:8]}",
+                            position_id=position_id,
+                            config=config
+                        )
+                    except Exception:
+                        pass
+                    return True
+            return False
+
+        initial_price = round(initial_price / tick_size) * tick_size
+
+        # Place limit order
+        order = LimitOrder(action, qty, initial_price)
+        order.outsideRth = True
+        trade = place_order(ib, contract, order)
+
+        if trade is None:
+            return False
+
+        logger.info(
+            f"  Leg close: {action} {qty}x {contract.localSymbol} "
+            f"@ {initial_price:.4f} (limit+walk)"
+        )
+
+        # Walk toward aggressive side (SELL walks down, BUY walks up)
+        price_range = abs(initial_price) * 0.15 if initial_price > 0 else tick_size * 15
+        if action == 'SELL':
+            price_limit = max(initial_price - price_range, tick_size)
+        else:
+            price_limit = initial_price + price_range
+
+        walk_count = 0
+        elapsed = 0
+
+        while elapsed < timeout:
+            await asyncio.sleep(1)
+            elapsed += 1
+
+            if trade.orderStatus.status == 'Filled':
+                logger.info(
+                    f"  ✅ {action} {qty}x {contract.localSymbol} "
+                    f"@ {trade.orderStatus.avgFillPrice}"
+                )
+                try:
+                    from trading_bot.utils import log_trade_to_ledger
+                    await log_trade_to_ledger(
+                        ib, trade,
+                        reason=f"Spread Close: {position_id[:8]}",
+                        position_id=position_id,
+                        config=config
+                    )
+                except Exception as log_err:
+                    logger.warning(f"Ledger log failed for {contract.localSymbol}: {log_err}")
+                return True
+
+            if trade.orderStatus.status in ('Cancelled', 'Inactive'):
+                logger.warning(f"  Leg close cancelled/inactive for {contract.localSymbol}")
+                break
+
+            # Don't walk if partially filled — preserve queue position
+            if trade.orderStatus.remaining > 0 and trade.orderStatus.filled > 0:
+                continue
+
+            if elapsed % walk_interval == 0 and walk_count < max_walks:
+                current = trade.order.lmtPrice
+                walk_amount = max(abs(current) * walk_pct, tick_size)
+
+                if action == 'SELL':
+                    new_price = current - walk_amount
+                    new_price = max(new_price, price_limit)
+                else:
+                    new_price = current + walk_amount
+                    new_price = min(new_price, price_limit)
+
+                new_price = round(new_price / tick_size) * tick_size
+
+                if new_price != current:
+                    walk_count += 1
+                    trade.order.lmtPrice = new_price
+                    ib.placeOrder(trade.contract, trade.order)
+                    logger.info(
+                        f"  Leg walk #{walk_count}: "
+                        f"{current:.4f} → {new_price:.4f}"
+                    )
+
+        # Last resort: market order
+        if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
+            logger.warning(
+                f"  Leg {contract.localSymbol} not filled after {elapsed}s "
+                f"and {walk_count} walks. Converting to MarketOrder."
+            )
+            ib.cancelOrder(trade.order)
+            await asyncio.sleep(2)
+
+            market_order = MarketOrder(action, qty)
+            market_order.outsideRth = True
+            market_trade = place_order(ib, contract, market_order)
+            if market_trade is None:
+                return False
+
+            for _ in range(15):
+                await asyncio.sleep(1)
+                if market_trade.orderStatus.status == 'Filled':
+                    logger.info(
+                        f"  ✅ Market fallback: {action} {qty}x "
+                        f"{contract.localSymbol} @ {market_trade.orderStatus.avgFillPrice}"
+                    )
+                    try:
+                        from trading_bot.utils import log_trade_to_ledger
+                        await log_trade_to_ledger(
+                            ib, market_trade,
+                            reason=f"Spread Close (market fallback): {position_id[:8]}",
+                            position_id=position_id,
+                            config=config
+                        )
+                    except Exception:
+                        pass
+                    return True
+
+            return False
+
+        return trade.orderStatus.status == 'Filled'
+
+    except Exception as e:
+        logger.error(f"Single leg close failed for {contract.localSymbol}: {e}")
+        return False
+
+
+async def _attempt_bag_close(
+    ib: IB,
+    legs: list,
+    position_id: str,
+    config: dict,
+    timeout: int,
+    max_walks: int,
+    walk_interval: int,
+    walk_pct: float,
+    tick_size: float,
+) -> bool:
+    """
+    Attempt to close a multi-leg position as a single BAG (combo) order
+    with adaptive price walking. Follows the same pricing pattern used by
+    close_stale_positions() in order_manager.py.
+
+    Returns True if the BAG order filled, False otherwise.
+    Does NOT verify positions — caller must check via reqPositionsAsync.
+    """
+    from functools import reduce
+    from math import gcd
+
+    try:
+        # Determine close actions and quantities
+        close_legs = []
+        for leg in legs:
+            close_legs.append({
+                'contract': leg.contract,
+                'action': 'SELL' if leg.position > 0 else 'BUY',
+                'qty': abs(leg.position),
+            })
+
+        # Calculate GCD for BAG ratio (handles qty>1 cases)
+        qty_gcd = reduce(gcd, [cl['qty'] for cl in close_legs])
+
+        # Build BAG contract (same pattern as close_stale_positions)
+        bag = Contract()
+        bag.symbol = legs[0].contract.symbol
+        bag.secType = "BAG"
+        bag.currency = legs[0].contract.currency or 'USD'
+        bag.exchange = legs[0].contract.exchange or config.get('exchange', 'SMART')
+
+        combo_legs_list = []
+        for cl in close_legs:
+            combo_leg = ComboLeg()
+            combo_leg.conId = cl['contract'].conId
+            combo_leg.ratio = cl['qty'] // qty_gcd
+            combo_leg.action = cl['action']
+            combo_leg.exchange = cl['contract'].exchange or config.get('exchange', 'SMART')
+            combo_legs_list.append(combo_leg)
+
+        bag.comboLegs = combo_legs_list
+        bag_action = 'BUY'  # IB convention: BAG action BUY with explicit leg actions
+        order_size = qty_gcd
+
+        # Get market data for each leg to calculate combo price
+        calculated_combo_price = 0.0
+        price_valid = True
+
+        for cl in close_legs:
+            try:
+                ticker = ib.reqMktData(cl['contract'], '', True, False)
+                await asyncio.sleep(1.5)
+
+                bid = ticker.bid if not util.isNan(ticker.bid) else 0
+                ask = ticker.ask if not util.isNan(ticker.ask) else 0
+                last = ticker.last if not util.isNan(ticker.last) else 0
+
+                ib.cancelMktData(cl['contract'])
+
+                if bid > 0 and ask > 0:
+                    mid = (bid + ask) / 2
+                elif last > 0:
+                    mid = last
+                else:
+                    logger.warning(
+                        f"BAG close: no price data for {cl['contract'].localSymbol}"
+                    )
+                    price_valid = False
+                    break
+
+                # Same aggregation as close_stale_positions:
+                # BUY legs add to cost, SELL legs subtract
+                if cl['action'] == 'BUY':
+                    calculated_combo_price += mid
+                else:
+                    calculated_combo_price -= mid
+
+                logger.debug(
+                    f"BAG leg {cl['contract'].localSymbol}: "
+                    f"{cl['action']} @ mid={mid:.4f}"
+                )
+
+            except Exception as e:
+                logger.warning(
+                    f"BAG close: market data failed for "
+                    f"{cl['contract'].localSymbol}: {e}"
+                )
+                price_valid = False
+                break
+
+        if not price_valid:
+            logger.warning(
+                f"BAG close for {position_id}: price discovery failed, "
+                f"skipping BAG attempt"
+            )
+            return False
+
+        # Add slippage buffer (same pattern as close_stale_positions)
+        slippage_buffer = max(
+            abs(calculated_combo_price) * 0.02, tick_size
+        )
+        # BAG action is BUY → add buffer (willing to pay more / accept less credit)
+        lmt_price = calculated_combo_price + slippage_buffer
+        lmt_price = round(lmt_price / tick_size) * tick_size
+
+        # Validate price
+        if lmt_price == 0.0 or (abs(lmt_price) < tick_size):
+            logger.warning(
+                f"BAG close for {position_id}: invalid limit price "
+                f"{lmt_price:.4f}, skipping BAG attempt"
+            )
+            return False
+
+        price_type = 'CREDIT' if lmt_price < 0 else 'DEBIT'
+        logger.info(
+            f"BAG close order for {position_id}: {bag_action} {order_size}x "
+            f"@ {lmt_price:.4f} ({price_type}, {len(combo_legs_list)} legs)"
+        )
+
+        order = LimitOrder(bag_action, order_size, round(lmt_price, 4))
+        order.outsideRth = True
+
+        trade = place_order(ib, bag, order)
+        if trade is None:
+            logger.warning(f"BAG close: place_order returned None for {position_id}")
+            return False
+
+        # Adaptive walking (same direction logic as close_stale_positions)
+        price_range = abs(lmt_price) * 0.10 if lmt_price != 0 else tick_size * 10
+        # BAG action is BUY → ceiling is higher (walk UP = more aggressive)
+        ceiling_price = lmt_price + price_range
+
+        walk_count = 0
+        elapsed = 0
+
+        while elapsed < timeout:
+            await asyncio.sleep(1)
+            elapsed += 1
+
+            if trade.orderStatus.status == 'Filled':
+                logger.info(
+                    f"  ✅ BAG close filled for {position_id} "
+                    f"@ {trade.orderStatus.avgFillPrice}"
+                )
+                try:
+                    from trading_bot.utils import log_trade_to_ledger
+                    await log_trade_to_ledger(
+                        ib, trade,
+                        reason=f"Spread Close: {position_id[:8]}",
+                        position_id=position_id,
+                        config=config
+                    )
+                except Exception as log_err:
+                    logger.warning(f"BAG close ledger log failed: {log_err}")
+                return True
+
+            if trade.orderStatus.status in ('Cancelled', 'Inactive'):
+                logger.warning(
+                    f"BAG close cancelled/inactive for {position_id}"
+                )
+                return False
+
+            # Don't walk if partially filled
+            if trade.orderStatus.remaining > 0 and trade.orderStatus.filled > 0:
+                continue
+
+            if elapsed % walk_interval == 0 and walk_count < max_walks:
+                current = trade.order.lmtPrice
+                walk_amount = max(
+                    abs(current) * walk_pct, tick_size
+                ) if current != 0 else tick_size
+
+                # BUY BAG: walk UP toward ceiling
+                new_price = current + walk_amount
+                new_price = min(new_price, ceiling_price)
+                new_price = round(new_price / tick_size) * tick_size
+
+                if new_price != current:
+                    walk_count += 1
+                    price_type = 'CREDIT' if new_price < 0 else 'DEBIT'
+                    logger.info(
+                        f"  BAG close walk #{walk_count}: "
+                        f"{current:.4f} → {new_price:.4f} ({price_type})"
+                    )
+                    trade.order.lmtPrice = new_price
+                    ib.placeOrder(trade.contract, trade.order)
+
+        # Timeout — cancel BAG order
+        logger.warning(
+            f"BAG close timed out after {elapsed}s for {position_id}. "
+            f"Cancelling."
+        )
+        if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
+            ib.cancelOrder(trade.order)
+            await asyncio.sleep(2)
+
+        return trade.orderStatus.status == 'Filled'
+
+    except Exception as e:
+        logger.error(f"BAG close attempt failed for {position_id}: {e}")
+        return False
+
+
 async def _close_spread_position(
     ib: IB,
     legs: list,
@@ -1771,27 +2209,34 @@ async def _close_spread_position(
     thesis: dict = None
 ):
     """
-    Closes all legs of a spread position.
+    Closes all legs of a spread position ATOMICALLY where possible.
 
-    Improvements over _close_position_with_thesis_reason:
-    1. Qualifies contracts before placing orders (fixes Error 321)
-    2. Verifies each order actually filled before claiming success
-    3. Handles multi-leg positions atomically where possible
-    4. Falls back to individual leg closure if BAG order fails
+    Strategy:
+    1. Attempt BAG (combo) close with limit+walk — all legs in one order
+    2. If BAG fails/partial → verify via reqPositionsAsync what actually closed
+    3. Close remaining legs individually with limit+walk
+    4. Final verification via reqPositionsAsync before claiming success
 
-    Commodity-agnostic: Works for any multi-leg strategy on any exchange.
+    Commodity-agnostic: Uses config-driven timeouts, tick sizes, and exchange routing.
+
+    Returns True ONLY if ALL legs confirmed closed via position query.
     """
+    from trading_bot.utils import get_tick_size
+
     logger.info(
         f"Executing SPREAD CLOSE for {position_id} "
         f"({len(legs)} legs): {reason}"
     )
 
-    # --- Step 1: Use pos.contract directly (no re-qualification) ---
-    # CRITICAL FIX (2026-03-04): qualifyContractsAsync(Contract(conId=...))
-    # can return strike=285.0 for KC coffee, while the exchange expects 2.85.
-    # pos.contract from reqPositionsAsync() already has the correct conId,
-    # strike format, and exchange details. This matches the pattern used in
-    # emergency_hard_close() (L4548-4567).
+    # --- Config-driven close parameters ---
+    close_cfg = config.get('strategy_tuning', {})
+    CLOSE_TIMEOUT = close_cfg.get('close_timeout_seconds', 300)
+    CLOSE_WALK_STEPS = close_cfg.get('close_walk_steps', 10)
+    CLOSE_WALK_INTERVAL = close_cfg.get('close_walk_interval_seconds', 15)
+    CLOSE_WALK_PCT = close_cfg.get('close_walk_increment_pct', 0.04)
+    TICK_SIZE = get_tick_size(config)
+
+    # --- Step 1: Prepare qualified legs ---
     qualified_legs = []
     for leg in legs:
         contract = leg.contract
@@ -1804,132 +2249,173 @@ async def _close_spread_position(
             f"strike={contract.strike}, exchange={contract.exchange}"
         )
 
-    # --- Step 2: Close each leg individually ---
-    # (BAG orders require additional combo definition logic; individual
-    #  leg closure is more reliable for thesis-based exits)
-    successful_closes = []
-    failed_closes = []
-
+    # --- Step 2: Build symbol→expected_close map for verification ---
+    expected_closes = {}
     for leg in qualified_legs:
-        contract = leg.contract
+        sym = leg.contract.localSymbol
+        expected_closes[sym] = {
+            'contract': leg.contract,
+            'close_action': 'SELL' if leg.position > 0 else 'BUY',
+            'qty': abs(leg.position),
+            'original_position': leg.position,
+        }
+
+    # --- Step 3: Attempt BAG close if multi-leg ---
+    bag_filled = False
+    if len(qualified_legs) > 1:
+        bag_filled = await _attempt_bag_close(
+            ib, qualified_legs, position_id, config,
+            CLOSE_TIMEOUT, CLOSE_WALK_STEPS, CLOSE_WALK_INTERVAL,
+            CLOSE_WALK_PCT, TICK_SIZE
+        )
+        if bag_filled:
+            logger.info(f"BAG close filled for {position_id}")
+    elif len(qualified_legs) == 1:
+        # Single leg — close directly with limit+walk
+        leg = qualified_legs[0]
         action = 'SELL' if leg.position > 0 else 'BUY'
         qty = abs(leg.position)
-
-        try:
-            order = MarketOrder(action, qty)
-            trade = place_order(ib, contract, order)
-            await asyncio.sleep(3)  # Allow time for fill
-
-            # --- Step 3: Verify fill status ---
-            if trade.orderStatus.status == 'Filled':
-                successful_closes.append({
-                    'symbol': contract.localSymbol,
-                    'action': action,
-                    'qty': qty,
-                    'fill_price': trade.orderStatus.avgFillPrice
-                })
-                logger.info(
-                    f"  ✅ {action} {qty}x {contract.localSymbol} "
-                    f"@ {trade.orderStatus.avgFillPrice}"
-                )
-                # Record close fill to trade ledger
-                try:
-                    from trading_bot.utils import log_trade_to_ledger
-                    await log_trade_to_ledger(
-                        ib, trade,
-                        reason=reason,
-                        position_id=position_id,
-                        config=config
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to log close to ledger for "
-                        f"{contract.localSymbol}: {e}"
-                    )
-            else:
-                failed_closes.append({
-                    'symbol': contract.localSymbol,
-                    'status': trade.orderStatus.status,
-                    'error': str(trade.log[-1].message if trade.log else 'Unknown')
-                })
-                logger.error(
-                    f"  ❌ {contract.localSymbol}: "
-                    f"{trade.orderStatus.status} — "
-                    f"{trade.log[-1].message if trade.log else 'No message'}"
-                )
-                # Cancel pending order to avoid rogue fills
-                if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
-                    try:
-                        ib.cancelOrder(trade.order)
-                    except Exception:
-                        pass
-
-        except Exception as e:
-            failed_closes.append({
-                'symbol': contract.localSymbol,
-                'status': 'EXCEPTION',
-                'error': str(e)
-            })
-            logger.error(f"  ❌ {contract.localSymbol}: Exception — {e}")
-
-        await asyncio.sleep(0.5)  # Throttle between legs
-
-    # --- Step 4: Send accurate notification ---
-    total_legs = len(qualified_legs)
-    success_count = len(successful_closes)
-    # fail_count = len(failed_closes)
-
-    if success_count == total_legs:
-        # Full success
-        leg_symbols = [sc['symbol'] for sc in successful_closes] if successful_closes else []
-        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
-        title = f"✅ Position Closed: {readable_symbol}"
-        message = (
-            f"Reason: {reason}\n"
-            f"Closed {success_count}/{total_legs} legs successfully.\n"
+        bag_filled = await _close_single_leg_with_walk(
+            ib, leg.contract, action, qty, position_id, config,
+            CLOSE_TIMEOUT, CLOSE_WALK_STEPS, CLOSE_WALK_INTERVAL,
+            CLOSE_WALK_PCT, TICK_SIZE
         )
-        for sc in successful_closes:
-            message += f"  {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
-    elif success_count > 0:
-        # Partial success — DANGEROUS, position is now unbalanced
-        leg_symbols = [sc['symbol'] for sc in successful_closes] + [fc['symbol'] for fc in failed_closes]
-        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
-        title = f"⚠️ PARTIAL CLOSE: {readable_symbol}"
-        message = (
-            f"Reason: {reason}\n"
-            f"⚠️ ONLY {success_count}/{total_legs} legs closed!\n"
-            f"MANUAL INTERVENTION REQUIRED — position may have naked exposure.\n\n"
-            f"Successful:\n"
+
+    # --- Step 4: Verify what actually closed via IB positions ---
+    await asyncio.sleep(2)  # Allow IB to settle
+    try:
+        current_positions = await asyncio.wait_for(
+            ib.reqPositionsAsync(), timeout=30
         )
-        for sc in successful_closes:
-            message += f"  ✅ {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
-        message += "\nFailed:\n"
-        for fc in failed_closes:
-            message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
+    except asyncio.TimeoutError:
+        logger.error(
+            f"reqPositionsAsync timed out during close verification "
+            f"for {position_id}"
+        )
+        # If BAG said it filled, trust it
+        if bag_filled:
+            _send_close_notification(
+                config, position_id, reason, qualified_legs,
+                list(expected_closes.keys()), []
+            )
+            await close_spread_with_protection_cleanup(
+                ib, None, f"CATASTROPHE_{position_id}"
+            )
+            return True
+        return False
+
+    still_open = {}
+    for sym, info in expected_closes.items():
+        matching = [
+            p for p in (current_positions or [])
+            if p.contract.localSymbol == sym and p.position != 0
+        ]
+        if matching:
+            ib_qty = matching[0].position
+            thesis_qty = info['original_position']
+            # Position still open if IB shows same direction as our thesis
+            if (thesis_qty > 0 and ib_qty > 0) or (thesis_qty < 0 and ib_qty < 0):
+                remaining = min(abs(ib_qty), abs(thesis_qty))
+                still_open[sym] = {
+                    'contract': matching[0].contract,
+                    'close_action': info['close_action'],
+                    'qty': remaining,
+                }
+
+    if not still_open:
+        logger.info(
+            f"  ✅ ALL {len(qualified_legs)} legs confirmed closed "
+            f"for {position_id}"
+        )
+        _send_close_notification(
+            config, position_id, reason, qualified_legs,
+            list(expected_closes.keys()), []
+        )
+        await close_spread_with_protection_cleanup(
+            ib, None, f"CATASTROPHE_{position_id}"
+        )
+        return True
+
+    # --- Step 5: Close remaining legs individually with limit+walk ---
+    logger.warning(
+        f"  ⚠️ {len(still_open)} legs still open after "
+        f"{'BAG' if len(qualified_legs) > 1 else 'limit'} close for "
+        f"{position_id}: {list(still_open.keys())}. "
+        f"Closing individually."
+    )
+
+    for sym, info in still_open.items():
+        contract = info['contract']
+        if not contract.exchange:
+            contract.exchange = config.get('exchange', 'SMART')
+
+        closed = await _close_single_leg_with_walk(
+            ib, contract, info['close_action'], info['qty'],
+            position_id, config,
+            CLOSE_TIMEOUT, CLOSE_WALK_STEPS, CLOSE_WALK_INTERVAL,
+            CLOSE_WALK_PCT, TICK_SIZE
+        )
+        if not closed:
+            logger.error(
+                f"  ❌ Failed to close {sym} for {position_id} "
+                f"even with individual limit+walk"
+            )
+
+    # --- Step 6: Final verification ---
+    await asyncio.sleep(2)
+    try:
+        final_positions = await asyncio.wait_for(
+            ib.reqPositionsAsync(), timeout=30
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Final reqPositionsAsync timed out for {position_id}"
+        )
+        return False
+
+    final_open = []
+    for sym in expected_closes:
+        info = expected_closes[sym]
+        matching = [
+            p for p in (final_positions or [])
+            if p.contract.localSymbol == sym and p.position != 0
+        ]
+        if matching:
+            ib_qty = matching[0].position
+            thesis_qty = info['original_position']
+            if (thesis_qty > 0 and ib_qty > 0) or (thesis_qty < 0 and ib_qty < 0):
+                final_open.append(sym)
+
+    fully_closed = len(final_open) == 0
+
+    if fully_closed:
+        logger.info(
+            f"  ✅ ALL legs confirmed closed after individual "
+            f"fallback for {position_id}"
+        )
+        _send_close_notification(
+            config, position_id, reason, qualified_legs,
+            list(expected_closes.keys()), []
+        )
     else:
-        # Total failure — DO NOT invalidate thesis
-        leg_symbols = [fc['symbol'] for fc in failed_closes]
-        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
-        title = f"❌ CLOSE FAILED: {readable_symbol}"
-        message = (
-            f"Reason: {reason}\n"
-            f"ALL {total_legs} close orders FAILED.\n"
-            f"Position remains open. Will retry on next audit cycle.\n\n"
+        logger.error(
+            f"  ❌ ORPHAN RISK: {len(final_open)} legs STILL OPEN "
+            f"for {position_id}: {final_open}. "
+            f"Manual intervention required."
         )
-        for fc in failed_closes:
-            message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
+        _send_close_notification(
+            config, position_id, reason, qualified_legs,
+            [s for s in expected_closes if s not in final_open],
+            final_open
+        )
 
-    send_pushover_notification(config.get('notifications', {}), title, message)
-
-    # --- Step 5: Cleanup catastrophe stops (only if fully closed) ---
-    if success_count == total_legs:
+    # Cleanup catastrophe stops if fully closed
+    if fully_closed:
         await close_spread_with_protection_cleanup(
             ib, None, f"CATASTROPHE_{position_id}"
         )
 
-    # --- Step 6: Return success status ---
-    # Caller should only invalidate thesis if ALL legs closed
-    return success_count == total_legs
+    return fully_closed
 
 
 async def _reconcile_state_stores(

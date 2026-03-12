@@ -3208,10 +3208,12 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                 # IB Algo does NOT support BAG orders - must use custom logic
 
                 fill_detected = False
-                INITIAL_TIMEOUT_SECONDS = 45
-                PRICE_WALK_INTERVAL = 5  # Walk price every 5 seconds
-                MAX_WALKS = 6  # Maximum price adjustments
-                WALK_INCREMENT_PCT = 0.01  # 1% per walk
+                # Config-driven close timeouts (H2 fix: parity with entry patience)
+                _close_cfg = config.get('strategy_tuning', {})
+                INITIAL_TIMEOUT_SECONDS = _close_cfg.get('close_timeout_seconds', 300)
+                PRICE_WALK_INTERVAL = _close_cfg.get('close_walk_interval_seconds', 15)
+                MAX_WALKS = _close_cfg.get('close_walk_steps', 10)
+                WALK_INCREMENT_PCT = _close_cfg.get('close_walk_increment_pct', 0.04)
 
                 is_limit_order = isinstance(order, LimitOrder)
                 initial_price = order.lmtPrice if is_limit_order else 0.0
