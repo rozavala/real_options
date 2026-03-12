@@ -939,6 +939,21 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
         final_direction = final_data["action"]
 
+        # === H6-A: CONVICTION GATE ===
+        # Suppress low-conviction directional signals that lack multi-agent consensus.
+        # Weighted score near zero means agents are split or dominated by a single voice.
+        _min_score = config.get('strategy', {}).get('min_weighted_score_magnitude', 0.20)
+        _ws = weighted_result.get('weighted_score', 0.0)
+        if final_direction in ('BULLISH', 'BEARISH') and abs(_ws) < _min_score:
+            logger.warning(
+                f"CONVICTION GATE: Suppressing {final_direction} signal for {contract_name}. "
+                f"|weighted_score|={abs(_ws):.4f} < threshold={_min_score}. "
+                f"Overriding to NEUTRAL (no trade)."
+            )
+            final_direction = 'NEUTRAL'
+            final_data["action"] = 'NEUTRAL'
+            final_data["reason"] += f" [CONVICTION GATE: |score|={abs(_ws):.4f} < {_min_score}]"
+
         # v7.0 SAFETY: Default to BEARISH (expensive) when vol data is missing.
         # Rationale: On a $50K account, assume worst-case (expensive options)
         # rather than neutral. Fail-safe, not fail-neutral.
@@ -996,6 +1011,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
         from trading_bot.strategy_router import route_strategy
 
+        # Resolve trigger_type to string for router
+        _trigger_str = trigger_type.value if hasattr(trigger_type, 'value') else str(trigger_type)
+
         routed = route_strategy(
             direction=final_direction,
             confidence=final_data["confidence"],
@@ -1006,6 +1024,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
             reasoning=final_data["reason"],
             agent_data=agent_data,
             mode="scheduled",
+            trigger_type=_trigger_str,
         )
 
         prediction_type = routed['prediction_type']

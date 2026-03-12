@@ -199,6 +199,7 @@ def route_strategy(
     reasoning: str,
     agent_data: dict,
     mode: str = "scheduled",
+    trigger_type: str = "SCHEDULED",
 ) -> dict:
     """
     Unified strategy routing for both scheduled and emergency cycles.
@@ -236,8 +237,21 @@ def route_strategy(
         agent_conflict_score = calculate_agent_conflict(agent_data, mode=mode)
         imminent_catalyst = detect_imminent_catalyst(agent_data, mode=mode)
 
+        # === H7-B: SENTINEL IC SUPPRESSION ===
+        # Sentinels detect market disruption. Selling premium during disruption
+        # (short gamma/vega) is structurally dangerous. Suppress IC when a
+        # sentinel triggered the cycle AND vol is expensive (BEARISH = high IV).
+        _is_sentinel_trigger = trigger_type.upper() not in ('SCHEDULED', 'MANUAL')
+        _sentinel_ic_blocked = _is_sentinel_trigger and vol_sentiment == 'BEARISH'
+        if _sentinel_ic_blocked:
+            logger.info(
+                f"H7-B: IC SUPPRESSED on sentinel trigger ({trigger_type}) "
+                f"with expensive vol. Falling through to NO TRADE."
+            )
+
         # PATH 1: IRON CONDOR — sell premium in range when vol is expensive
-        if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':
+        # H7-B: Only allow if NOT blocked by sentinel suppression
+        if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH' and not _sentinel_ic_blocked:
             prediction_type = "VOLATILITY"
             vol_level = "LOW"
             prefix = "Emergency " if mode == "emergency" else ""
