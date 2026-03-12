@@ -123,7 +123,7 @@ Specialized LLM personas that analyze grounded data.
 *   **Devil's Advocate:** Runs a pre-mortem check.
 *   **Compliance Guardian (`trading_bot/compliance.py`):** Deterministic veto power based on risk limits.
 *   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide **Full Revaluation Historical Simulation VaR** (95%/99%) using Black-Scholes repricing. Captures gamma risk and non-linearities.
-*   **Drawdown Circuit Breaker (`trading_bot/drawdown_circuit_breaker.py`):** Monitors intraday P&L drops from the previous day's close and enforces configurable halt/panic thresholds to protect the portfolio.
+*   **Drawdown Circuit Breaker (`trading_bot/drawdown_circuit_breaker.py`):** Monitors intraday P&L drops from the previous day's close and enforces multi-commodity-aware halt/panic thresholds (e.g., 3% warning, 6% halt, 9% panic) to protect the portfolio from bid-ask widening noise.
 *   **AI Risk Agent:** Embedded in the Risk Guard. **L1 Interpreter** provides narrative risk analysis, and **L2 Scenario Architect** generates stress scenarios (e.g., "Commodity Crash", "IV Spike").
 *   **Dynamic Position Sizer (`trading_bot/position_sizer.py`):** Calculates trade size based on conviction (Kelly Criterion adjusted by Volatility).
 
@@ -137,8 +137,8 @@ Specialized LLM personas that analyze grounded data.
 6.  **Validation:** Devil's Advocate challenges.
 7.  **Compliance & Risk:**
     *   **Portfolio Risk Guard** calculates new VaR impact.
-    *   **Compliance Guardian** checks VaR limits, margin, and concentration.
-8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions, then constructs new orders and submits to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
+    *   **Compliance Guardian** checks VaR limits, margin, and concentration. Also enforces a **Conviction Gate** (suppressing low-conviction signals) and **Sentinel IC Suppression** (blocking short premium positions during sentinel-triggered high-volatility events).
+8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions. Multi-leg positions (e.g., spreads) are closed atomically via single BAG (combo) orders to prevent orphaned legs, falling back to sequential closures only if necessary. All exits use limit orders with adaptive price walking. New orders are constructed and submitted to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Emergency closures execute as concurrent market orders.
 9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching and securely parses IBKR Flex Queries via `defusedxml` to prevent XXE attacks. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
