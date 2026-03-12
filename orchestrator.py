@@ -458,11 +458,18 @@ def _route_emergency_strategy(decision: dict, market_context: dict, agent_report
         imminent_catalyst = _detect_emergency_catalyst(agent_reports)
 
         # PATH 1: IRON CONDOR — sell premium in range when vol is expensive
+        # H7-B: Emergency path is ALWAYS a sentinel trigger. Selling premium
+        # (short gamma/vega) during market disruption is structurally dangerous.
+        # Suppress IC when vol is expensive — same check as strategy_router.py.
         if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':
-            prediction_type = "VOLATILITY"
-            vol_level = "LOW"
-            reason = "Emergency Iron Condor: Range-bound + expensive vol (sell premium)"
-            logger.info(f"EMERGENCY STRATEGY: IRON_CONDOR | regime={regime}, vol={vol_sentiment}")
+            reason = (
+                f"H7-B: Emergency IC SUPPRESSED — sentinel trigger with expensive vol. "
+                f"(vol={vol_sentiment}, regime={regime}, conflict={agent_conflict_score:.2f})"
+            )
+            logger.info(
+                f"H7-B: EMERGENCY IC SUPPRESSED — sentinel trigger with expensive vol. "
+                f"regime={regime}, vol={vol_sentiment}. Falling through to NO TRADE."
+            )
 
         # PATH 2: LONG STRADDLE — expect big move, options not expensive
         elif (imminent_catalyst or agent_conflict_score > 0.6) and vol_sentiment != 'BEARISH':

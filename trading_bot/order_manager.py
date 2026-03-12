@@ -157,6 +157,9 @@ async def _reconcile_working_orders(ib: IB, config: dict) -> float:
         return 0.0
 
 
+# Track phantom order IDs (Error 10147) to avoid repeated cancel attempts
+_known_phantom_order_ids: set = set()
+
 async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
     """Cancel any CATASTROPHE_ stop orders whose parent spread is no longer active.
 
@@ -188,6 +191,7 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
 
         to_cancel = []
         skipped_other = 0
+        skipped_phantom = 0
         for trade in open_orders:
             ref = trade.order.orderRef or ''
             if not ref.startswith('CATASTROPHE_'):
@@ -203,12 +207,20 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
             status = getattr(trade.orderStatus, 'status', '')
             if status in ('Cancelled', 'Inactive', 'ApiCancelled', 'Filled'):
                 continue
+            # Skip orders already identified as phantom (Error 10147 on prior attempt)
+            if trade.order.orderId in _known_phantom_order_ids:
+                skipped_phantom += 1
+                continue
             to_cancel.append(trade)
 
         if skipped_other > 0:
             logger.info(
                 f"Catastrophe stop cleanup: skipped {skipped_other} stop(s) "
                 f"belonging to other commodities"
+            )
+        if skipped_phantom > 0:
+            logger.debug(
+                f"Catastrophe stop cleanup: skipped {skipped_phantom} known phantom order(s)"
             )
 
         if not to_cancel:
@@ -281,9 +293,14 @@ async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
                 genuinely_phantom = phantom
 
             if genuinely_phantom > 0:
+                # Add to known phantom set so we don't retry on subsequent cycles
+                for t in phantom_trades:
+                    if t not in (detected_fills or []):
+                        _known_phantom_order_ids.add(t.order.orderId)
                 logger.info(
                     f"Catastrophe stop cleanup: {genuinely_phantom} phantom GTC order(s) "
-                    f"not found on IBKR (verified — no matching fills or positions)"
+                    f"not found on IBKR (verified — no matching fills or positions). "
+                    f"Silenced for future cycles."
                 )
 
         if confirmed > 0:
@@ -2234,85 +2251,104 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             is_directional = decision_data.get('prediction_type') == 'DIRECTIONAL'
 
             if enable_protection and is_directional and isinstance(contract, Bag):
-                # We need the underlying contract. Ideally passed or inferred.
-                # In define_directional_strategy, we have future_contract.
-                # But here we only have 'contract' (the BAG).
-                # We need to re-fetch or infer the underlying future.
-                # For safety, let's extract the symbol and expiry from the BAG or first leg.
-                # Or better, pass 'future_contract' in decision_data? No.
-                # We can construct it.
-
-                # Fetch first leg details
+                # NLV gate: only place catastrophe stops when account can afford margin
+                _skip_cat_stop = False
                 try:
-                    underlying_future = None
-
-                    # --- Primary: Extract from decision_data pipeline (BUG-6 Fix) ---
-                    if isinstance(decision_data, dict):
-                        strategy_def = decision_data.get('strategy_def')
-                        # Amendment C: Explicit None guard
-                        if strategy_def and isinstance(strategy_def, dict):
-                            future_contract = strategy_def.get('future_contract')
-                            if future_contract is not None:
-                                underlying_future = future_contract
-                                logger.info(f"Catastrophe stop: Resolved underlying future from strategy_def: {underlying_future}")
-
-                    # --- Fallback: Resolve from first leg's underConId ---
-                    if underlying_future is None:
-                        leg1_conid = contract.comboLegs[0].conId
-                        leg_details = await asyncio.wait_for(
-                            ib.reqContractDetailsAsync(Contract(conId=leg1_conid)), timeout=10
+                    from config import get_active_profile
+                    _profile = get_active_profile(config)
+                    _nlv_min = _profile.catastrophe_stop_nlv_minimum
+                    _account_values = ib.accountValues()
+                    _nlv = None
+                    for av in _account_values:
+                        if av.tag == 'NetLiquidation' and av.currency == 'USD':
+                            _nlv = float(av.value)
+                            break
+                    if _nlv is not None and _nlv < _nlv_min:
+                        logger.info(
+                            f"CATASTROPHE STOP: Disabled. NLV=${_nlv:,.0f} < "
+                            f"minimum=${_nlv_min:,.0f}. Spread routes with defined max loss only."
                         )
-
-                        if leg_details:
-                            # BUG-6 Fix: Use underConId, NOT option expiry
-                            # Option expiry != Future expiry for FOPs
-                            under_conid = leg_details[0].underConId
-                            if under_conid:
-                                underlying_future = Contract(conId=under_conid)
-                                await asyncio.wait_for(ib.qualifyContractsAsync(underlying_future), timeout=10)
-                                logger.info(f"Catastrophe stop: Resolved underlying future from underConId: {underlying_future}")
-                            else:
-                                # Last ditch: try constructing from symbol if underConId missing (risky but better than nothing?)
-                                # Actually, without underConId or strategy_def, we can't reliably guess the future contract month
-                                # because option expiry is different. Failsafe to standard order.
-                                pass
-
-                    if underlying_future is None:
-                        raise ValueError("Could not resolve underlying future for catastrophe protection")
-
-                    # Entry Price for Stop Calculation
-                    # Use 'price' from decision_data (snapshot price at signal generation)
-                    # or 'market_trend_pct' logic?
-                    # decision_data['price'] is reliable enough.
-                    entry_price_ref = decision_data.get('price')
-                    if not entry_price_ref:
-                         # Fallback to current ticker last
-                         entry_price_ref = ticker.last
-
-                    is_bullish = decision_data.get('direction') == 'BULLISH'
-
-                    trade, stop_trade = await place_directional_spread_with_protection(
-                        ib=ib,
-                        combo_contract=contract,
-                        combo_order=order,
-                        underlying_contract=underlying_future,
-                        entry_price=entry_price_ref,
-                        stop_distance_pct=config.get('catastrophe_protection', {}).get('stop_distance_pct', 0.03),
-                        is_bullish_strategy=is_bullish
-                    )
-                    # Store stop_trade so timeout handler can cancel it if spread never fills
-                    _catastrophe_stop_trade = stop_trade
-                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
+                        _skip_cat_stop = True
+                    elif _nlv is not None:
+                        logger.info(
+                            f"CATASTROPHE STOP: Enabled. NLV=${_nlv:,.0f} >= "
+                            f"minimum=${_nlv_min:,.0f}"
+                        )
+                    else:
+                        logger.warning("CATASTROPHE STOP: NLV unavailable. Defaulting to disabled (fail-closed).")
+                        _skip_cat_stop = True
                 except Exception as e:
-                    logger.error(f"Failed to place protected order, falling back to standard: {e}")
-                    send_pushover_notification(
-                        config.get('notifications', {}),
-                        "CATASTROPHE STOP FAILED",
-                        f"Protection failed for {display_name}: {e}\nOrder placed WITHOUT stop protection.",
-                        priority=1
-                    )
+                    logger.warning(f"CATASTROPHE STOP: NLV check failed ({e}). Defaulting to disabled (fail-closed).")
+                    _skip_cat_stop = True
+
+                if _skip_cat_stop:
+                    # Place spread without catastrophe stop
                     trade = place_order(ib, contract, order)
-                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [UNPROTECTED FALLBACK]")
+                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [No Cat Stop - NLV Gate]")
+                else:
+                    # Fetch first leg details
+                    try:
+                        underlying_future = None
+
+                        # --- Primary: Extract from decision_data pipeline (BUG-6 Fix) ---
+                        if isinstance(decision_data, dict):
+                            strategy_def = decision_data.get('strategy_def')
+                            # Amendment C: Explicit None guard
+                            if strategy_def and isinstance(strategy_def, dict):
+                                future_contract = strategy_def.get('future_contract')
+                                if future_contract is not None:
+                                    underlying_future = future_contract
+                                    logger.info(f"Catastrophe stop: Resolved underlying future from strategy_def: {underlying_future}")
+
+                        # --- Fallback: Resolve from first leg's underConId ---
+                        if underlying_future is None:
+                            leg1_conid = contract.comboLegs[0].conId
+                            leg_details = await asyncio.wait_for(
+                                ib.reqContractDetailsAsync(Contract(conId=leg1_conid)), timeout=10
+                            )
+
+                            if leg_details:
+                                # BUG-6 Fix: Use underConId, NOT option expiry
+                                # Option expiry != Future expiry for FOPs
+                                under_conid = leg_details[0].underConId
+                                if under_conid:
+                                    underlying_future = Contract(conId=under_conid)
+                                    await asyncio.wait_for(ib.qualifyContractsAsync(underlying_future), timeout=10)
+                                    logger.info(f"Catastrophe stop: Resolved underlying future from underConId: {underlying_future}")
+                                else:
+                                    pass
+
+                        if underlying_future is None:
+                            raise ValueError("Could not resolve underlying future for catastrophe protection")
+
+                        entry_price_ref = decision_data.get('price')
+                        if not entry_price_ref:
+                            entry_price_ref = ticker.last
+
+                        is_bullish = decision_data.get('direction') == 'BULLISH'
+
+                        trade, stop_trade = await place_directional_spread_with_protection(
+                            ib=ib,
+                            combo_contract=contract,
+                            combo_order=order,
+                            underlying_contract=underlying_future,
+                            entry_price=entry_price_ref,
+                            stop_distance_pct=config.get('catastrophe_protection', {}).get('stop_distance_pct', 0.03),
+                            is_bullish_strategy=is_bullish
+                        )
+                        # Store stop_trade so timeout handler can cancel it if spread never fills
+                        _catastrophe_stop_trade = stop_trade
+                        log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
+                    except Exception as e:
+                        logger.error(f"Failed to place protected order, falling back to standard: {e}")
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "CATASTROPHE STOP FAILED",
+                            f"Protection failed for {display_name}: {e}\nOrder placed WITHOUT stop protection.",
+                            priority=1
+                        )
+                        trade = place_order(ib, contract, order)
+                        log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [UNPROTECTED FALLBACK]")
             else:
                 trade = place_order(ib, contract, order)
                 log_order_event(trade, trade.orderStatus.status, market_state_message)
@@ -3287,8 +3323,14 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     market_order.outsideRth = True
                     market_trade = place_order(ib, trade.contract, market_order)
 
-                    # Brief wait for market fill
-                    for _ in range(15):
+                    # Wait for market fill (profile-driven timeout, was hardcoded 15s)
+                    try:
+                        from config import get_active_profile
+                        _mkt_timeout = get_active_profile(config).market_order_fallback_timeout_seconds
+                    except Exception:
+                        _mkt_timeout = 60
+                    logger.info(f"Market order fallback: waiting up to {_mkt_timeout}s for fill")
+                    for _ in range(_mkt_timeout):
                         await asyncio.sleep(1)
                         if market_trade.orderStatus.status == OrderStatus.Filled:
                             trade = market_trade
@@ -3297,7 +3339,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             break
 
                     if not fill_detected:
-                        logger.error(f"CRITICAL: Market order {market_trade.order.orderId} also failed to fill!")
+                        logger.error(f"CRITICAL: Market order {market_trade.order.orderId} not filled after {_mkt_timeout}s!")
 
                 if fill_detected and trade.orderStatus.status == OrderStatus.Filled:
                     # Log to ledger.

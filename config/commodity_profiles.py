@@ -196,6 +196,12 @@ class CommodityProfile:
     # Cross-commodity correlation basket for MacroContagionSentinel
     cross_commodity_basket: Dict[str, str] = field(default_factory=dict)  # e.g., {'gold': 'GC=F', ...}
 
+    # Close execution: market order fallback timeout after adaptive walking exhaustion
+    market_order_fallback_timeout_seconds: int = 60  # Default 60s (was hardcoded 15s)
+
+    # Catastrophe stop: NLV gate — only place naked futures stops when account can afford margin
+    catastrophe_stop_nlv_minimum: float = 100000.0  # Default: disabled until NLV supports it
+
     # Scoring: minimum price move to resolve as directional (below = NEUTRAL)
     # Calibrated from annualized IV: threshold ≈ 0.3 × (IV / sqrt(252))
     neutral_move_threshold_pct: float = 0.008  # Default 0.8%
