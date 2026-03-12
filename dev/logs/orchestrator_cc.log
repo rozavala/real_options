@@ -2129,3 +2129,45 @@
 2026-03-12 16:17:09,099 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-03-12 16:21:11,017 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=690, market_state=ACTIVE, market_open=True, trading_day=True
 2026-03-12 16:26:16,161 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=695, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-12 16:31:18,336 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=700, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-12 16:36:20,497 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=705, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-12 16:41:23,047 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=710, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-12 16:44:26,115 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=7)
+2026-03-12 16:44:26,160 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-03-12 16:44:26,165 - Orchestrator - INFO - Emergency cycle BLOCKED (daily trading cutoff 12:12 ET): MacroContagionSentinel — deferring to tomorrow
+2026-03-12 16:44:26,169 - trading_bot.state_manager - INFO - Queued deferred trigger from MacroContagionSentinel
+2026-03-12 16:44:26,393 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-12 16:44:28,309 - trading_bot.topic_discovery - INFO - Bulk fetched 600 active events from Polymarket (3 pages)
+2026-03-12 16:44:35,143 - trading_bot.topic_discovery - INFO -   Area 'US Monetary Policy': 10 candidates — ['How many Fed rate cuts in 2026?', 'Fed decisions (Dec-Mar)', 'How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?']
+2026-03-12 16:44:35,258 - trading_bot.topic_discovery - INFO -   Area 'Trade Policy': 4 candidates — ['Will Trump create a tariff dividend by March 31?', 'Which countries will Trump make new trade deals with before ', 'Which countries will Trump make new trade deals with before ', 'Will Trump create a tariff dividend by March 31?']
+2026-03-12 16:44:35,323 - trading_bot.topic_discovery - INFO -   Area 'US Economic Health': 2 candidates — ['US recession by end of 2026?', 'Canada recession before 2027?']
+2026-03-12 16:44:35,324 - trading_bot.topic_discovery - INFO -   Area 'Brazil Economy': not applicable to CC, skipping
+2026-03-12 16:44:35,324 - trading_bot.topic_discovery - INFO -   Area 'LatAm Geopolitics': not applicable to CC, skipping
+2026-03-12 16:44:35,325 - trading_bot.topic_discovery - INFO -   Area 'Energy Geopolitics': not applicable to CC, skipping
+2026-03-12 16:44:41,850 - trading_bot.topic_discovery - INFO -   Area 'Fed Leadership': 5 candidates — ['How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?']
+2026-03-12 16:44:41,867 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-12 16:44:41,887 - trading_bot.topic_discovery - INFO - Saved 9 discovered topics to /home/rodrigo/real_options/data/CC/discovered_topics.json
+2026-03-12 16:44:41,887 - trading_bot.topic_discovery - INFO - Topic Discovery: Topics: +0 added, -1 removed
+2026-03-12 16:44:41,888 - trading_bot.topic_discovery - INFO - Topic Discovery complete: 9 topics from 21 raw candidates. Areas: [US Monetary Policy=10, Trade Policy=4, US Economic Health=2, Fed Leadership=5]. LLM calls: 12
+2026-03-12 16:44:41,888 - Orchestrator - INFO - TopicDiscovery: 9 topics, Topics: +0 added, -1 removed
+2026-03-12 16:44:41,891 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 36% of average (Sev: 6)
+2026-03-12 16:44:41,897 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-12 16:45:41,906 - root - INFO - Fetching 1 active futures contracts for CC on NYBOT...
+2026-03-12 16:45:41,909 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-12 16:45:41,971 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-03-12 16:45:41,971 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-12 16:45:41,971 - Orchestrator - INFO - Refreshed contract cache: CCK6
+2026-03-12 16:46:46,657 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=715, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-12 16:51:58,909 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=720, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-12 16:55:00,010 - Engine.CC - INFO - --- Running scheduled task: audit_pre_close [run_position_audit_cycle] ---
+2026-03-12 16:55:00,014 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-03-12 16:55:00,014 - trading_bot.connection_pool - INFO - Connecting IB (CC_audit) ID: 466 [REMOTE/PAPER]...
+2026-03-12 16:55:01,274 - trading_bot.connection_pool - INFO - IB (CC_audit) connected successfully with ID 466
+2026-03-12 16:55:01,280 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-12 16:55:01,643 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-12 16:55:01,882 - Orchestrator - INFO - State stores reconciled: 0 thesis groups (0 legs) across all stores
+2026-03-12 16:55:02,176 - Orchestrator - INFO - No open positions to audit.
+2026-03-12 16:55:02,178 - Orchestrator - INFO - Phantom ledger reconciliation skipped (disabled)
+2026-03-12 16:55:02,178 - trading_bot.connection_pool - INFO - Disconnecting IB (CC_audit)...
+2026-03-12 16:55:05,188 - Engine.CC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-12 17:05:00 UTC. Waiting for 0.17 hours.
+2026-03-12 16:57:01,087 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=725, market_state=ACTIVE, market_open=True, trading_day=True
