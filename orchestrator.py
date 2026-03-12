@@ -4206,6 +4206,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                         reasoning=decision.get('reasoning', ''),
                         agent_data=current_reports,
                         mode="emergency",
+                        trigger_type=trigger.source if hasattr(trigger, 'source') else 'EMERGENCY',
                     )
 
                     if routed['prediction_type'] != routed_shadow['prediction_type'] or \
