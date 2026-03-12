@@ -13,6 +13,7 @@ import traceback
 from collections import defaultdict
 from ib_insync import *
 from datetime import timezone
+import numpy as np
 
 from config_loader import load_config
 from notifications import send_pushover_notification
@@ -338,7 +339,6 @@ async def _check_positions_for_catastrophe_fills(
     tracked_symbols = set()
     if not ledger.empty and 'local_symbol' in ledger.columns:
         # ⚡ Bolt: Vectorized net quantity calculation is ~100x faster than iterrows()
-        import numpy as np
         signed_qty = np.where(ledger['action'] == 'BUY', ledger['quantity'], -ledger['quantity'])
         net_qty = ledger.assign(signed_qty=signed_qty).groupby('local_symbol')['signed_qty'].sum()
         tracked_symbols = set(net_qty[net_qty != 0].index)
@@ -1518,7 +1518,6 @@ async def _auto_close_superseded(
     old_symbols = set(old_rows['local_symbol'].unique())
 
     # 3. Calculate expected quantity per symbol for THIS thesis only
-    import numpy as np
     # ⚡ Bolt: Vectorized net quantity calculation is ~100x faster than iterrows()
     signed_qty = np.where(old_rows['action'] == 'BUY', old_rows['quantity'], -old_rows['quantity'])
     expected_qty = old_rows.assign(signed_qty=signed_qty).groupby('local_symbol')['signed_qty'].sum().to_dict()
@@ -1606,7 +1605,6 @@ async def _close_contradicted_thesis(
     old_symbols = set(old_rows['local_symbol'].unique())
 
     # 3. Calculate expected quantity per symbol for THIS thesis only
-    import numpy as np
     # ⚡ Bolt: Vectorized net quantity calculation is ~100x faster than iterrows()
     signed_qty = np.where(old_rows['action'] == 'BUY', old_rows['quantity'], -old_rows['quantity'])
     expected_qty = old_rows.assign(signed_qty=signed_qty).groupby('local_symbol')['signed_qty'].sum().to_dict()
