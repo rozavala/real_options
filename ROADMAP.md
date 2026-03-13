@@ -43,6 +43,7 @@
 | E.3 Liquidity-Aware Execution | **Done.** `order_manager.py:check_liquidity_conditions()` — pre-execution bid/ask depth analysis using a Hybrid Tick/Percentage Liquidity Filter (replacing the pure-ratio model), BAG combo leg liquidity aggregation, per-order spread logging. Remaining VWAP/TWAP only matters at much larger position sizes ($500K+). |
 | G.6 3rd Commodity (NG) | **Done.** Natural Gas (NG) launched Feb 27. Commodity profile created, systemd service installed, data dirs initialized. Running live alongside KC and CC. |
 | **Schedule Optimization** | **Done.** Reduced signal frequency from 4 to 3 cycles per session (20%, 62%, 80%) to eliminate illiquid pre-open window and reduce cost. |
+| **Execution Scaling** | **Done.** Introduced atomic BAG combo closes for multi-leg option positions with limit-and-walk fallback. Widened Drawdown circuit breaker thresholds (6% halt, 9% panic) to account for multi-commodity mark-to-market bid-ask noise. Added Conviction Gate to suppress weak signals, and Sentinel IC suppression. |
 
 ---
 

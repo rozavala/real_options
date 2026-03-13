@@ -39,9 +39,9 @@ A set of agents that synthesize the analysts' reports.
 - **Devil's Advocate:** Performs a pre-mortem to identify risks in the master strategy.
 
 ### Tier 4: Execution & Risk Management
-- **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.).
+- **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.), the Conviction Gate (blocking weak signals, e.g., |weighted_score| < 0.20), and Sentinel IC Suppression (blocking short premium positions during sentinel-triggered high-volatility events).
 - **Dynamic Position Sizer:** Calculates optimal trade size.
-- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions.
+- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking.
 
 ## Infrastructure
 
@@ -65,7 +65,7 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action. Emergency closures execute concurrently via true market orders.
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
-4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups. It utilizes secure XML parsing (`defusedxml`) and vectorized lookup dataframes for fast mapping.
+4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups. It utilizes secure XML parsing (`defusedxml`) and vectorized lookup dataframes for fast mapping. Drawdown circuit breaker thresholds are sized to be multi-commodity aware (e.g. 6% halt, 9% panic) to filter out bid-ask widening mark-to-market noise.
 5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.
 
 ### Three-Tier Market State
