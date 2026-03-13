@@ -364,6 +364,14 @@ def find_untracked_ibkr_positions(live_data: dict, active_theses: list, ticker: 
     if not portfolio_items:
         return []
 
+    # Filter portfolio to this commodity's symbol prefixes
+    # Futures use ticker directly, options use exchange-specific prefixes
+    _IBKR_SYMBOL_PREFIXES = {
+        "KC": ("KC", "KO"), "CC": ("CC", "DC"),
+        "SB": ("SB", "SO"), "NG": ("NG", "LNE"),
+    }
+    prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,)) if ticker else None
+
     # Collect position_ids from active theses
     thesis_pids = {t.get('position_id') for t in (active_theses or [])}
 
@@ -384,6 +392,9 @@ def find_untracked_ibkr_positions(live_data: dict, active_theses: list, ticker: 
             continue
         local_sym = getattr(item.contract, 'localSymbol', None)
         if not local_sym:
+            continue
+        # Skip positions belonging to other commodities
+        if prefixes and not local_sym.startswith(prefixes):
             continue
         pid = symbol_to_pid.get(local_sym)
         if pid and pid in thesis_pids:
