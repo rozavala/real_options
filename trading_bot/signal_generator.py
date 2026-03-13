@@ -30,6 +30,7 @@ from trading_bot.strategy_router import (
     detect_imminent_catalyst,
 )
 from trading_bot.prompt_trace import PromptTraceCollector, PromptTraceRecord, hash_persona
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 logger = logging.getLogger(__name__)
 
@@ -568,6 +569,22 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     f"multiplier={conviction_multiplier}, adj_confidence={decision['confidence']}"
                 )
 
+                # --- Funnel: COUNCIL_DECISION ---
+                log_funnel_event(
+                    cycle_id=cycle_id,
+                    contract=contract_name,
+                    stage=FunnelStage.COUNCIL_DECISION,
+                    outcome="PASS" if master_dir != "NEUTRAL" else "INFO",
+                    detail=(
+                        f"direction={master_dir}, confidence={decision['confidence']:.2f}, "
+                        f"conviction_mult={conviction_multiplier}, vote={vote_dir}, "
+                        f"thesis={decision.get('thesis_strength', 'N/A')}, "
+                        f"weighted_score={weighted_result.get('weighted_score', 0):.4f}"
+                    ),
+                    price_snapshot=market_ctx.get('price'),
+                    regime=regime_for_voting or 'UNKNOWN',
+                )
+
                 # === Devil's Advocate Check (Emergency Only — v7.0) ===
                 # DA is skipped for scheduled cycles to prevent excessive vetoing.
                 # Scheduled cycles already have: 7 agents + debate + compliance.
@@ -591,6 +608,17 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
                     else:
                         logger.info("DA CHECK PASSED for emergency cycle.")
+
+                    # --- Funnel: DA_REVIEW ---
+                    log_funnel_event(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        stage=FunnelStage.DA_REVIEW,
+                        outcome="BLOCK" if not da_review.get('proceed', True) else "PASS",
+                        detail=da_review.get('recommendation', '')[:200],
+                        price_snapshot=market_ctx.get('price'),
+                        regime=regime_for_voting or 'UNKNOWN',
+                    )
 
                     # --- R3: Propagate Bypass Flag ---
                     if da_review.get('da_bypassed'):
@@ -656,6 +684,17 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                             "Compliance Veto Triggered",
                             f"Trade for {contract_name} blocked.\nReason: {compliance_reason}"
                         )
+
+                    # --- Funnel: COMPLIANCE_AUDIT ---
+                    log_funnel_event(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        stage=FunnelStage.COMPLIANCE_AUDIT,
+                        outcome="BLOCK" if not audit.get('approved', True) else "PASS",
+                        detail=compliance_reason if not audit.get('approved', True) else "Approved",
+                        price_snapshot=market_ctx.get('price'),
+                        regime=regime_for_voting or 'UNKNOWN',
+                    )
 
                 # --- E.2: PRICE SANITY CHECK (The "Fat Finger" Guardrail) ---
                 # Robust extraction of price
@@ -945,6 +984,16 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         _min_score = config.get('strategy', {}).get('min_weighted_score_magnitude', 0.20)
         _ws = weighted_result.get('weighted_score', 0.0)
         if final_direction in ('BULLISH', 'BEARISH') and abs(_ws) < _min_score:
+            # --- Funnel: CONVICTION_GATE (BLOCK) ---
+            log_funnel_event(
+                cycle_id=cycle_id,
+                contract=contract_name,
+                stage=FunnelStage.CONVICTION_GATE,
+                outcome="BLOCK",
+                detail=f"weighted_score={abs(_ws):.4f}, threshold={_min_score}, direction={final_direction}",
+                price_snapshot=market_ctx.get('price'),
+                regime=regime_for_voting or 'UNKNOWN',
+            )
             logger.warning(
                 f"CONVICTION GATE: Suppressing {final_direction} signal for {contract_name}. "
                 f"|weighted_score|={abs(_ws):.4f} < threshold={_min_score}. "
@@ -953,6 +1002,17 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
             final_direction = 'NEUTRAL'
             final_data["action"] = 'NEUTRAL'
             final_data["reason"] += f" [CONVICTION GATE: |score|={abs(_ws):.4f} < {_min_score}]"
+        elif final_direction in ('BULLISH', 'BEARISH'):
+            # --- Funnel: CONVICTION_GATE (PASS) ---
+            log_funnel_event(
+                cycle_id=cycle_id,
+                contract=contract_name,
+                stage=FunnelStage.CONVICTION_GATE,
+                outcome="PASS",
+                detail=f"weighted_score={abs(_ws):.4f}, threshold={_min_score}, direction={final_direction}",
+                price_snapshot=market_ctx.get('price'),
+                regime=regime_for_voting or 'UNKNOWN',
+            )
 
         # v7.0 SAFETY: Default to BEARISH (expensive) when vol data is missing.
         # Rationale: On a $50K account, assume worst-case (expensive options)
@@ -1050,6 +1110,17 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
         logger.info(f"Router decision: {prediction_type}/{vol_level} for {contract.localSymbol}")
 
+        # --- Funnel: STRATEGY_SELECTION ---
+        log_funnel_event(
+            cycle_id=cycle_id,
+            contract=contract_name,
+            stage=FunnelStage.STRATEGY_SELECTION,
+            outcome="PASS" if strategy_type_log != 'NONE' else "INFO",
+            detail=f"prediction_type={prediction_type_log}, strategy={strategy_type_log}, vol_level={vol_level_log}",
+            price_snapshot=market_ctx.get('price'),
+            regime=regime_log if 'regime_log' in dir() else regime,
+        )
+
         # Construct final signal object
         if prediction_type == "VOLATILITY":
             return {
@@ -1068,7 +1139,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 # v7.0: Carry forward for Phase 5 position sizing
                 "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE',
                 "conviction_multiplier": decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
-                "_agent_reports": reports
+                "_agent_reports": reports,
+                "_cycle_id": cycle_id,
             }
         else:
             return {
@@ -1086,7 +1158,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 # v7.0: Carry forward for Phase 5 position sizing
                 "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE',
                 "conviction_multiplier": decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
-                "_agent_reports": reports
+                "_agent_reports": reports,
+                "_cycle_id": cycle_id,
             }
 
     # 5. Execute for all contracts

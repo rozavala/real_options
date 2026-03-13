@@ -159,6 +159,7 @@ def configure_legacy_modules(data_dir: str):
         ("trading_bot.router_metrics", None, "set_data_dir"),
         ("trading_bot.agents", None, "set_data_dir"),
         ("trading_bot.prompt_trace", None, "set_data_dir"),
+        ("trading_bot.execution_funnel", None, "set_data_dir"),
     ]
 
     os.makedirs(data_dir, exist_ok=True)

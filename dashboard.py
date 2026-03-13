@@ -589,6 +589,8 @@ if hasattr(st, "page_link"):
                       help="API costs, budget utilization, provider health, latency", width="stretch")
         st.page_link("pages/9_Portfolio.py", label="Portfolio", icon="\U0001f4ca",
                       help="Account-wide risk status, cross-commodity positions, engine health", width="stretch")
+        st.page_link("pages/10_The_Funnel.py", label="The Funnel", icon="\U0001f52c",
+                      help="Where does alpha leak? Signal-to-trade conversion, execution efficiency, $ impact", width="stretch")
 else:
     st.markdown("""
     Use the sidebar to navigate between pages:
