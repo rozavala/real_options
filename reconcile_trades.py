@@ -154,9 +154,12 @@ async def reconcile_active_positions(config: dict):
     # 1b. Filter to active commodity symbol
     # IBKR uses different symbol prefixes for futures vs options:
     # KC futures = "KC*", KC options = "KO*"; CC futures = "CC*", CC options = "DC*"
-    # NG futures = "NG*", NG options = "LNE*" (NYMEX convention)
+    # NG futures = "NG*", NG monthly options = "LNE*", NG weekly options = "LN1"-"LN5" (week number)
     ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
-    _IBKR_SYMBOL_PREFIXES = {"KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO"), "NG": ("NG", "LNE")}
+    _IBKR_SYMBOL_PREFIXES = {
+        "KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO"),
+        "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
+    }
     prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,))
     if not ib_positions.empty:
         pre_count = len(ib_positions)
@@ -855,9 +858,12 @@ async def main(lookback_days: int = None, config: dict = None):
     # --- 3b. Filter to active commodity symbol ---
     # The IBKR Flex Query returns ALL account trades. Filter to only trades
     # matching the active commodity. IBKR uses different prefixes for futures
-    # vs options: KC/"KO*"; CC/"DC*"; SB/"SO*"; NG/"LNE*" (NYMEX convention)
+    # vs options: KC/"KO*"; CC/"DC*"; SB/"SO*"; NG monthly="LNE*", NG weekly="LN1"-"LN5"
     ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
-    _IBKR_SYMBOL_PREFIXES = {"KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO"), "NG": ("NG", "LNE")}
+    _IBKR_SYMBOL_PREFIXES = {
+        "KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO"),
+        "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
+    }
     prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,))
     pre_filter_count = len(ib_trades_df)
     # ⚡ Bolt: Vectorized str.startswith with tuple is ~4x faster than .apply(lambda) for prefix filtering

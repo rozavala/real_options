@@ -368,7 +368,8 @@ def find_untracked_ibkr_positions(live_data: dict, active_theses: list, ticker: 
     # Futures use ticker directly, options use exchange-specific prefixes
     _IBKR_SYMBOL_PREFIXES = {
         "KC": ("KC", "KO"), "CC": ("CC", "DC"),
-        "SB": ("SB", "SO"), "NG": ("NG", "LNE"),
+        "SB": ("SB", "SO"),
+        "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
     }
     prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,)) if ticker else None
 
