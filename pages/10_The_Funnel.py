@@ -23,7 +23,7 @@ from dashboard_utils import (
     get_config,
     _resolve_data_path_for,
 )
-from _date_filter import date_range_filter
+from _date_filter import date_range_picker, apply_date_filter
 
 # --- Page Config ---
 st.set_page_config(page_title="The Funnel", page_icon="🔬", layout="wide")
@@ -63,8 +63,8 @@ def load_order_events(ticker: str) -> pd.DataFrame:
 
 
 # --- Sidebar Filters ---
-from _commodity_selector import render_commodity_selector
-ticker = render_commodity_selector()
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
 
 funnel_df = load_funnel_data(ticker)
 council_df = load_council_history(ticker)
@@ -74,18 +74,12 @@ if funnel_df.empty and council_df.empty:
     st.code("python scripts/backfill_execution_funnel.py --all --data-dir /home/rodrigo/real_options/data")
     st.stop()
 
-# Date filter
-combined_ts = pd.concat([
-    funnel_df['timestamp'] if not funnel_df.empty and 'timestamp' in funnel_df.columns else pd.Series(dtype='datetime64[ns, UTC]'),
-    council_df['timestamp'] if not council_df.empty and 'timestamp' in council_df.columns else pd.Series(dtype='datetime64[ns, UTC]'),
-])
-
-if not combined_ts.empty:
-    start_date, end_date = date_range_filter(combined_ts)
-    if not funnel_df.empty and 'timestamp' in funnel_df.columns:
-        funnel_df = funnel_df[(funnel_df['timestamp'] >= start_date) & (funnel_df['timestamp'] <= end_date)]
-    if not council_df.empty and 'timestamp' in council_df.columns:
-        council_df = council_df[(council_df['timestamp'] >= start_date) & (council_df['timestamp'] <= end_date)]
+# Date filter — one picker, applied to both DataFrames (same pattern as Financials)
+_anchor_df = funnel_df if not funnel_df.empty else council_df
+_funnel_dates = date_range_picker(_anchor_df, key='funnel')
+if _funnel_dates:
+    funnel_df = apply_date_filter(funnel_df, *_funnel_dates)
+    council_df = apply_date_filter(council_df, *_funnel_dates)
 
 # Source filter
 if not funnel_df.empty and 'source' in funnel_df.columns:
