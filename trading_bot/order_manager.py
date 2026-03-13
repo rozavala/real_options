@@ -695,12 +695,7 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
             f"Holding-time gate: Only {remaining_hours:.1f}h until weekly close "
             f"(minimum: {min_holding_hours}h). Skipping order generation."
         )
-        send_pushover_notification(
-            config.get('notifications', {}),
-            "📅 Order Gen Skipped",
-            f"Weekly close in {remaining_hours:.1f}h — below {min_holding_hours}h minimum. "
-            f"No new positions today."
-        )
+        # Pushover removed — routine Friday behavior, not actionable
         return
 
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")

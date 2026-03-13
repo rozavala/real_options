@@ -356,19 +356,8 @@ class IBConnectionPool:
                 f"to reach terminal state (timeout={cls.DISCONNECT_GUARD_TIMEOUT}s)..."
             )
 
-            # Send Pushover alert
-            try:
-                from notifications import send_pushover_notification
-                send_pushover_notification(
-                    {},  # Will use env vars
-                    f"Disconnect Guard Active",
-                    f"Connection '{purpose}' has {len(pending)} non-terminal order(s). "
-                    f"Holding disconnect up to {cls.DISCONNECT_GUARD_TIMEOUT}s. "
-                    f"Orders: {[t.order.orderId for t in pending]}",
-                    priority=0
-                )
-            except Exception:
-                pass
+            # Pushover removed — routine when orders are active at disconnect.
+            # The CRITICAL log at the end of timeout still fires for real failures.
 
             loop = asyncio.get_running_loop()
             deadline = loop.time() + cls.DISCONNECT_GUARD_TIMEOUT
