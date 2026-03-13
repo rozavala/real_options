@@ -717,7 +717,7 @@ else:
 
 # === SECTION 6: Prompt Provenance ===
 st.markdown("---")
-st.subheader("Prompt Provenance")
+st.subheader("🏗️ Prompt Provenance")
 st.caption("Model routing fidelity, prompt source tracking, and persona drift detection")
 
 traces_df = load_prompt_traces(ticker=ticker)

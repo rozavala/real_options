@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import _relative_time, discover_active_commodities, get_active_theses
 
 st.set_page_config(layout="wide", page_title="Portfolio | Real Options")
-st.title("Portfolio Overview")
+st.title("💼 Portfolio Overview")
 st.caption("Account-wide risk status, position breakdown, and engine health")
 
 DATA_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
