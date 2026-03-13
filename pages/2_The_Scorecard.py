@@ -1118,7 +1118,7 @@ try:
                         delta_color=delta_color,
                     )
                 else:
-                    st.metric("Override Delta", "N/A")
+                    st.metric("Override Delta", "N/A", help="Override win rate minus aligned win rate. Positive = overrides add value.")
 
             with kpi_cols[3]:
                 cal_note = cc.get("_calibration_note", "") if cc else ""
