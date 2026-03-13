@@ -1,761 +1,106 @@
-2026-03-13 17:34:31,460 - Engine.KC - INFO - =============================================
-2026-03-13 17:34:31,460 - Engine.KC - INFO - === Starting CommodityEngine [KC] ===
-2026-03-13 17:34:31,460 - Engine.KC - INFO - =============================================
-2026-03-13 17:34:31,460 - Engine.KC - INFO - Data directory: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,461 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,461 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,461 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,461 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,462 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,462 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,462 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:34:31,462 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,462 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,462 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,463 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,464 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/KC/research_provenance.log
-2026-03-13 17:34:31,464 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,468 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,469 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/KC
-2026-03-13 17:34:31,599 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (-1.26%), starting_equity=0 (will re-derive from prev close)
-2026-03-13 17:34:31,599 - trading_bot.data_dir_context - INFO - EngineRuntime set for [KC]
-2026-03-13 17:34:31,599 - Engine.KC - WARNING - ============================================================
-2026-03-13 17:34:31,600 - Engine.KC - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-03-13 17:34:31,600 - Engine.KC - WARNING -   Client IDs: DEV range (10-79)
-2026-03-13 17:34:31,601 - Engine.KC - WARNING -   Trading Mode: LIVE
-2026-03-13 17:34:31,601 - Engine.KC - WARNING - ============================================================
-2026-03-13 17:34:31,601 - Engine.KC - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-03-13 17:34:31,601 - Engine.KC - INFO - Drawdown Guard initialized.
-2026-03-13 17:34:31,602 - Engine.KC - INFO - Expiry filter window: 45-365 DTE
-2026-03-13 17:34:31,777 - Engine.KC - INFO - Market Closed. Deferred triggers will remain queued.
-2026-03-13 17:34:31,778 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
-2026-03-13 17:34:31,779 - Engine.KC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-03-13 17:34:31,786 - Engine.KC - WARNING - LATE START DETECTED: 11 scheduled tasks already passed:\n  - 03:30 ET: start_monitoring\n  - 03:31 ET: process_deferred_triggers\n  - 04:00 ET: cleanup_orphaned_theses\n  - 06:06 ET: signal_open\n  - 08:52 ET: audit_mid_session\n  - 09:59 ET: signal_early\n  - 11:39 ET: signal_mid\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close
-2026-03-13 17:34:31,790 - Orchestrator - INFO - --- Recovery: Evaluating 11 missed tasks ---
-2026-03-13 17:34:31,791 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-03-13 17:34:31,791 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-03-13 17:34:31,791 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:00 ET)
-2026-03-13 17:34:31,791 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-03-13 17:34:31,792 - trading_bot.connection_pool - INFO - Connecting IB (KC_cleanup) ID: 82 [REMOTE/PAPER]...
-2026-03-13 17:34:31,984 - trading_bot.connection_pool - INFO - IB (KC_cleanup) connected successfully with ID 82
-2026-03-13 17:34:32,033 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-03-13 17:34:32,219 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:34:32,500 - Orchestrator - WARNING - Reconciliation: Found 1 orphaned theses (active in TMS, no IB position): ['30c9a0c8-6c32-448c-a991-f16209b18c14']
-2026-03-13 17:34:32,577 - trading_bot.tms - INFO - TMS: Invalidated thesis for 30c9a0c8-6c32-448c-a991-f16209b18c14: Reconciliation: position closed externally or expired
-2026-03-13 17:34:32,578 - Orchestrator - INFO - Reconciliation: Invalidated ghost thesis 30c9a0c8-6c32-448c-a991-f16209b18c14
-2026-03-13 17:34:32,939 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:34:32,941 - Orchestrator - INFO - Thesis cleanup complete: 1 orphaned theses invalidated
-2026-03-13 17:34:33,260 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:34:33,262 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_cleanup)...
-2026-03-13 17:34:36,275 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-03-13 17:34:42,278 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-03-13 17:34:42,278 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
-2026-03-13 17:34:42,279 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-03-13 17:34:42,279 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-03-13 17:34:42,280 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
-2026-03-13 17:34:42,281 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
-2026-03-13 17:34:42,281 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
-2026-03-13 17:34:42,281 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-03-13 17:34:42,281 - Orchestrator - INFO - System restarted with 11 missed tasks.\n✅ 1 recovered | ⏭️ 7 skipped | ✔️ 3 already ran
-2026-03-13 17:34:42,542 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:34:43,089 - Engine.KC - INFO - Running TopicDiscoveryAgent on startup...
-2026-03-13 17:34:43,171 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-03-13 17:34:45,634 - trading_bot.topic_discovery - INFO - Bulk fetched 600 active events from Polymarket (3 pages)
-2026-03-13 17:34:52,576 - trading_bot.topic_discovery - INFO -   Area 'US Monetary Policy': 11 candidates — ['How many Fed rate cuts in 2026?', 'Fed decisions (Dec-Mar)', 'How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'What will Fed Rate hit before 2027?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?']
-2026-03-13 17:34:53,108 - trading_bot.topic_discovery - INFO -   Area 'Trade Policy': 4 candidates — ['Will Trump create a tariff dividend by March 31?', 'Which countries will Trump make new trade deals with before ', 'Which countries will Trump make new trade deals with before ', 'Will Trump create a tariff dividend by March 31?']
-2026-03-13 17:34:53,205 - trading_bot.topic_discovery - INFO -   Area 'US Economic Health': 2 candidates — ['US recession by end of 2026?', 'Canada recession before 2027?']
-2026-03-13 17:34:53,252 - trading_bot.topic_discovery - INFO -   Area 'Brazil Economy': 6 candidates — ['Brazil Presidential Election', 'Will any presidential candidate win outright in the first ro', "Which candidates will advance to Brazil's presidential runof", 'Brazil Presidential Election', 'Will any presidential candidate win outright in the first ro', "Which candidates will advance to Brazil's presidential runof"]
-2026-03-13 17:35:01,380 - trading_bot.topic_discovery - INFO -   Area 'LatAm Geopolitics': 5 candidates — ['Colombia Chamber of Representatives Election Winner', 'Colombia Presidential Election 1st round winner?', 'Colombia Presidential Election', 'Will any presidential candidate win outright in the first ro', 'Will the U.S. invade Venezuela by...?']
-2026-03-13 17:35:01,380 - trading_bot.topic_discovery - INFO -   Area 'Energy Geopolitics': not applicable to KC, skipping
-2026-03-13 17:35:04,978 - trading_bot.topic_discovery - INFO -   Area 'Fed Leadership': 3 candidates — ['How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)']
-2026-03-13 17:35:04,996 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:35:05,001 - trading_bot.topic_discovery - INFO - Topic Discovery complete: 12 topics from 31 raw candidates. Areas: [US Monetary Policy=11, Trade Policy=4, US Economic Health=2, Brazil Economy=6, LatAm Geopolitics=5, Fed Leadership=3]. LLM calls: 15
-2026-03-13 17:35:05,004 - Engine.KC - INFO - Startup TopicDiscovery: 12 topics, No changes
-2026-03-13 17:35:05,031 - Engine.KC - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-03-13 17:38:00 UTC. Waiting for 0.05 hours.
-2026-03-13 17:35:05,032 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-03-13 17:35:05,499 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-03-13 17:35:07,636 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
-2026-03-13 17:35:21,909 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:38:00,002 - Engine.KC - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
-2026-03-13 17:38:00,006 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
-2026-03-13 17:38:00,007 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
-2026-03-13 17:38:00,210 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 17:38:10,212 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 17:38:10,406 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 17:38:10,414 - EquityLogger - INFO - Preserving 20 local equity records not present in Flex Query.
-2026-03-13 17:38:10,421 - EquityLogger - INFO - Successfully synced 29 equity records to /home/rodrigo/real_options/data/KC/daily_equity.csv.
-2026-03-13 17:38:10,426 - Orchestrator - WARNING - ⚠️ Equity data is 24.6 hours stale.
-2026-03-13 17:38:10,673 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:38:10,675 - Orchestrator - INFO - --- Starting trade reconciliation ---
-2026-03-13 17:38:10,675 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-03-13 17:38:10,676 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-03-13 17:38:10,885 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 17:38:20,887 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 17:38:21,038 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 17:38:21,042 - TradeReconciler - INFO - Parsed 143 executions from the Flex Query report.
-2026-03-13 17:38:21,075 - TradeReconciler - INFO - Successfully processed 143 trades into the reconciliation DataFrame.
-2026-03-13 17:38:21,076 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-03-13 17:38:21,258 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 17:38:31,259 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 17:38:31,409 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 17:38:31,414 - TradeReconciler - INFO - Parsed 12 executions from the Flex Query report.
-2026-03-13 17:38:31,427 - TradeReconciler - INFO - Successfully processed 12 trades into the reconciliation DataFrame.
-2026-03-13 17:38:31,432 - TradeReconciler - INFO - Consolidated to 155 unique trades from all reports.
-2026-03-13 17:38:31,434 - TradeReconciler - INFO - Filtered IB trades by commodity KC (prefixes ('KC', 'KO')): 155 -> 94
-2026-03-13 17:38:31,436 - TradeReconciler - INFO - Loaded 6 trades from the main ledger.
-2026-03-13 17:38:31,437 - TradeReconciler - INFO - Found 21 archived ledger files.
-2026-03-13 17:38:31,472 - TradeReconciler - INFO - Consolidated a total of 146 trades from all ledgers.
-2026-03-13 17:38:31,475 - TradeReconciler - INFO - Excluded 6 synthetic/manual reconciliation entries from comparison.
-2026-03-13 17:38:31,478 - TradeReconciler - INFO - Filtered IB trades from 94 to 94 records within the last 30 days.
-2026-03-13 17:38:31,480 - TradeReconciler - INFO - Filtered local ledger from 140 to 96 records within the last 30 days.
-2026-03-13 17:38:31,676 - TradeReconciler - INFO - Reconciliation complete. Found 2 trade(s) missing from local ledger. Found 4 superfluous trade(s) in local ledger.
-2026-03-13 17:38:31,678 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
-2026-03-13 17:38:31,686 - TradeReconciler - INFO - Resolved position_id for KON6 P2.8: 3e278143-1fb5-4eb4-940e-767a54... → 70b7dd7d-6c2e-45cc-8e2f-c1f3a1...
-2026-03-13 17:38:31,687 - TradeReconciler - INFO - Resolved position_id for KON6 P2.85: 3e278143-1fb5-4eb4-940e-767a54... → 70b7dd7d-6c2e-45cc-8e2f-c1f3a1...
-2026-03-13 17:38:31,690 - TradeReconciler - INFO - Successfully wrote 2 missing trade(s) to '/home/rodrigo/real_options/data/KC/archive_ledger/trade_ledger_missing_trades.csv'.
-2026-03-13 17:38:31,692 - TradeReconciler - INFO - Successfully wrote 4 superfluous local trade(s) to '/home/rodrigo/real_options/data/KC/archive_ledger/superfluous_local_trades.csv'.
-2026-03-13 17:38:31,693 - Orchestrator - WARNING - Trade reconciliation found discrepancies.
-2026-03-13 17:38:31,899 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:38:31,904 - TradeReconciler - INFO - Starting Active Position Reconciliation...
-2026-03-13 17:38:32,158 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 17:38:42,160 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 17:38:42,284 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 17:38:42,290 - TradeReconciler - INFO - Parsed 4 positions from the Flex Query report.
-2026-03-13 17:38:42,292 - TradeReconciler - INFO - Filtered IB positions by commodity KC (prefixes ('KC', 'KO')): 4 -> 2
-2026-03-13 17:38:42,295 - TradeReconciler - INFO - Loaded 6 trades from the main ledger.
-2026-03-13 17:38:42,296 - TradeReconciler - INFO - Found 21 archived ledger files.
-2026-03-13 17:38:42,341 - TradeReconciler - INFO - Consolidated a total of 144 trades from all ledgers.
-2026-03-13 17:38:42,344 - TradeReconciler - INFO - Dropping 6 synthetic entries superseded by RECONCILIATION_MISSING
-2026-03-13 17:38:42,351 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'KON6 P2.85', 'KOK6 P2.875', 'KON6 P2.8', 'KOK6 P2.825'}
-2026-03-13 17:38:42,356 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
-2026-03-13 17:38:42,357 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
-2026-03-13 17:38:42,635 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:38:42,635 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-03-13 17:38:42,636 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'openai', 'anthropic']
-2026-03-13 17:38:42,686 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 08:19:10.134986+00:00: KCK6 (202605) (NEUTRAL)
-2026-03-13 17:38:42,687 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Fri 11:19 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:38:42,873 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.78% move within 1.50% threshold. P&L: 2.87
-2026-03-13 17:38:42,877 - trading_bot.contribution_scorer - INFO - Loaded contribution scores for 9 agents from /home/rodrigo/real_options/data/KC/contribution_scores.json
-2026-03-13 17:38:42,884 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.679 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,889 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.045 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,896 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.033 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,900 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.144 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,906 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.078 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,911 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.081 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,915 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.165 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,923 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.083 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,928 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.50) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.375 [regime=RANGE_BOUND]
-2026-03-13 17:38:42,930 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": -0.679, "macro": 0.045, "geopolitical": -0.033, "supply_chain": -0.144, "inventory": -0.078, "sentiment": -0.081, "technical": -0.165, "volatility": -0.083, "master_decision": 0.375}
-2026-03-13 17:38:42,930 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 287.40 -> Exit 285.15 (0.78% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8740
-2026-03-13 17:38:52,484 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.87)
-2026-03-13 17:38:52,497 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.21}
-2026-03-13 17:38:52,497 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
-2026-03-13 17:38:52,617 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 08:46:03.301194+00:00: KCK6 (202605) (NEUTRAL)
-2026-03-13 17:38:52,618 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Fri 11:46 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:38:52,783 - trading_bot.reconciliation - INFO - CONDOR WIN: 0.78% move within 1.50% threshold. P&L: 2.87
-2026-03-13 17:38:52,790 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.679 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,799 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.045 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,806 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.029 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,811 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.136 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,816 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.074 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,821 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.077 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,826 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.157 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,832 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.074 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,837 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.60) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.400 [regime=RANGE_BOUND]
-2026-03-13 17:38:52,837 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": -0.679, "macro": 0.045, "geopolitical": -0.029, "supply_chain": -0.136, "inventory": -0.074, "sentiment": -0.077, "technical": -0.157, "volatility": -0.074, "master_decision": 0.4}
-2026-03-13 17:38:52,838 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 287.40 -> Exit 285.15 (0.78% move) | Strategy: IRON_CONDOR | Outcome: STAYED_FLAT | P&L: 2.8740
-2026-03-13 17:38:58,541 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.87)
-2026-03-13 17:38:58,542 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual STAYED_FLAT -> CORRECT
-2026-03-13 17:38:58,683 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 10:09:43.772992+00:00: KCK6 (202605) (BEARISH)
-2026-03-13 17:38:58,684 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Fri 13:09 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:38:58,868 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:38:59,422 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCK6 (202605)
-2026-03-13 17:38:59,429 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.338 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,433 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,439 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,445 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.900 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,452 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.539 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,456 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.846 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,463 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,466 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.417 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,470 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=RANGE_BOUND]
-2026-03-13 17:38:59,471 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.338, "macro": 0.0, "geopolitical": 0.0, "supply_chain": -0.9, "inventory": 0.539, "sentiment": 0.846, "technical": 0.0, "volatility": -0.417, "master_decision": 0.45}
-2026-03-13 17:38:59,471 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 291.70 -> Exit 285.15 (2.25% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 6.5500
-2026-03-13 17:39:04,503 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($6.55)
-2026-03-13 17:39:04,504 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:39:04,631 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 10:10:40.278482+00:00: KCN6 (202607) (BEARISH)
-2026-03-13 17:39:04,632 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Fri 13:10 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:39:04,814 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:39:05,368 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCN6 (202607)
-2026-03-13 17:39:05,374 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:39:05,379 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:05,384 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.544 [regime=HIGH_VOL]
-2026-03-13 17:39:05,390 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:39:05,396 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.759 [regime=HIGH_VOL]
-2026-03-13 17:39:05,403 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.648 [regime=HIGH_VOL]
-2026-03-13 17:39:05,409 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.363 [regime=HIGH_VOL]
-2026-03-13 17:39:05,416 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.810 [regime=HIGH_VOL]
-2026-03-13 17:39:05,423 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:39:05,426 - trading_bot.reconciliation - INFO - Contribution scores for KCN6 (202607): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.544, "supply_chain": -0.433, "inventory": 0.759, "sentiment": 0.648, "technical": 0.363, "volatility": 0.81, "master_decision": 0.45}
-2026-03-13 17:39:05,426 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 286.10 -> Exit 279.40 (2.34% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 6.7000
-2026-03-13 17:39:10,746 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) WIN ($6.70)
-2026-03-13 17:39:10,746 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:39:10,879 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 10:11:50.172882+00:00: KCU6 (202609) (BEARISH)
-2026-03-13 17:39:10,880 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Fri 13:11 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:39:11,058 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:39:11,526 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCU6 (202609)
-2026-03-13 17:39:11,531 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:39:11,534 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:11,537 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.499 [regime=HIGH_VOL]
-2026-03-13 17:39:11,540 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:39:11,543 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.713 [regime=HIGH_VOL]
-2026-03-13 17:39:11,546 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.558 [regime=HIGH_VOL]
-2026-03-13 17:39:11,548 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.363 [regime=HIGH_VOL]
-2026-03-13 17:39:11,551 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.742 [regime=HIGH_VOL]
-2026-03-13 17:39:11,556 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:39:11,556 - trading_bot.reconciliation - INFO - Contribution scores for KCU6 (202609): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.499, "supply_chain": -0.433, "inventory": 0.713, "sentiment": 0.558, "technical": 0.363, "volatility": 0.742, "master_decision": 0.45}
-2026-03-13 17:39:11,557 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 280.00 -> Exit 273.45 (2.34% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 6.5500
-2026-03-13 17:39:19,253 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) WIN ($6.55)
-2026-03-13 17:39:19,254 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:39:19,388 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 10:12:51.716020+00:00: KCZ6 (202612) (BEARISH)
-2026-03-13 17:39:19,389 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Fri 13:12 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:39:19,563 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:39:20,034 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCZ6 (202612)
-2026-03-13 17:39:20,039 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:39:20,042 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:20,046 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.499 [regime=HIGH_VOL]
-2026-03-13 17:39:20,049 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:39:20,053 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.713 [regime=HIGH_VOL]
-2026-03-13 17:39:20,056 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.558 [regime=HIGH_VOL]
-2026-03-13 17:39:20,059 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.363 [regime=HIGH_VOL]
-2026-03-13 17:39:20,064 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.742 [regime=HIGH_VOL]
-2026-03-13 17:39:20,068 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:39:20,068 - trading_bot.reconciliation - INFO - Contribution scores for KCZ6 (202612): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.499, "supply_chain": -0.433, "inventory": 0.713, "sentiment": 0.558, "technical": 0.363, "volatility": 0.742, "master_decision": 0.45}
-2026-03-13 17:39:20,068 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 273.75 -> Exit 267.30 (2.36% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 6.4500
-2026-03-13 17:39:23,024 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_state=SLEEPING, market_open=False, trading_day=True
-2026-03-13 17:39:25,758 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) WIN ($6.45)
-2026-03-13 17:39:25,758 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:39:25,899 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 12:47:25.504587+00:00: KCK6 (202605) (NEUTRAL)
-2026-03-13 17:39:25,900 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Fri 15:47 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:39:26,065 - trading_bot.reconciliation - INFO - CONDOR LOSS: 3.94% move exceeds 1.50% threshold. P&L: -7.25
-2026-03-13 17:39:26,072 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.194 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,076 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.412 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,079 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.384 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,082 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.557 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,085 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.306 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,087 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.775 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,090 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.825 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,093 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.590 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,095 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.50) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.375 [regime=RANGE_BOUND]
-2026-03-13 17:39:26,095 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.194, "macro": -0.412, "geopolitical": 0.384, "supply_chain": 0.557, "inventory": 0.306, "sentiment": 0.775, "technical": 0.825, "volatility": 0.59, "master_decision": -0.375}
-2026-03-13 17:39:26,095 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 296.85 -> Exit 285.15 (3.94% move) | Strategy: IRON_CONDOR | Outcome: BIG_MOVE | P&L: -7.2473
-2026-03-13 17:39:32,871 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-7.25)
-2026-03-13 17:39:32,872 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual BIG_MOVE -> INCORRECT
-2026-03-13 17:39:33,003 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 12:50:45.504376+00:00: KCK6 (202605) (NEUTRAL)
-2026-03-13 17:39:33,004 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Fri 15:50 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:39:33,171 - trading_bot.reconciliation - INFO - CONDOR LOSS: 3.60% move exceeds 1.50% threshold. P&L: -6.21
-2026-03-13 17:39:33,175 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.679 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,179 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.272 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,183 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.190 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,186 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.825 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,191 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.453 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,196 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.407 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,202 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.825 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,210 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.470 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,213 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.50) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.375 [regime=RANGE_BOUND]
-2026-03-13 17:39:33,213 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": -0.679, "macro": -0.272, "geopolitical": 0.19, "supply_chain": 0.825, "inventory": 0.453, "sentiment": 0.407, "technical": 0.825, "volatility": 0.47, "master_decision": -0.375}
-2026-03-13 17:39:33,214 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 295.80 -> Exit 285.15 (3.60% move) | Strategy: IRON_CONDOR | Outcome: BIG_MOVE | P&L: -6.2130
-2026-03-13 17:39:41,382 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) LOSS ($-6.21)
-2026-03-13 17:39:41,383 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_IRON_CONDOR predicted LOW_VOL, actual BIG_MOVE -> INCORRECT
-2026-03-13 17:39:41,505 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:02:36.155304+00:00: KCK6 (202605) (BEARISH)
-2026-03-13 17:39:41,677 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:41,682 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:41,686 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:41,690 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:39:41,694 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.713 [regime=HIGH_VOL]
-2026-03-13 17:39:41,699 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.648 [regime=HIGH_VOL]
-2026-03-13 17:39:41,705 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:41,710 - trading_bot.contribution_scorer - INFO - Contribution: volatility (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:41,715 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:39:41,715 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": -0.433, "inventory": 0.713, "sentiment": 0.648, "technical": 0.0, "volatility": 0.0, "master_decision": 0.45}
-2026-03-13 17:39:41,716 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 294.00 -> Exit 285.15 (3.01% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 8.8500
-2026-03-13 17:39:48,236 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($8.85)
-2026-03-13 17:39:48,237 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:39:48,365 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:03:14.517947+00:00: KCN6 (202607) (NEUTRAL)
-2026-03-13 17:39:48,538 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:39:48,951 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
-2026-03-13 17:39:48,958 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:39:49,333 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCN6 (202607)
-2026-03-13 17:39:49,337 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,340 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,343 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,346 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,349 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,351 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,354 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,357 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,359 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:39:49,360 - trading_bot.reconciliation - INFO - Contribution scores for KCN6 (202607): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 17:39:49,360 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 288.05 -> Exit 279.40 (3.00% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 17:40:04,817 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) FLAT ($0.00)
-2026-03-13 17:40:04,818 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 17:40:04,940 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:05:00.262865+00:00: KCU6 (202609) (BEARISH)
-2026-03-13 17:40:05,139 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:40:05,622 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCU6 (202609)
-2026-03-13 17:40:05,626 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:40:05,631 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:05,634 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.499 [regime=HIGH_VOL]
-2026-03-13 17:40:05,637 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:40:05,640 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.713 [regime=HIGH_VOL]
-2026-03-13 17:40:05,643 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.594 [regime=HIGH_VOL]
-2026-03-13 17:40:05,646 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:05,648 - trading_bot.contribution_scorer - INFO - Contribution: volatility (NEUTRAL, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:05,651 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:40:05,651 - trading_bot.reconciliation - INFO - Contribution scores for KCU6 (202609): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.499, "supply_chain": -0.433, "inventory": 0.713, "sentiment": 0.594, "technical": 0.0, "volatility": 0.0, "master_decision": 0.45}
-2026-03-13 17:40:05,652 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 281.65 -> Exit 273.45 (2.91% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 8.2000
-2026-03-13 17:40:10,742 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) WIN ($8.20)
-2026-03-13 17:40:10,743 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:40:10,864 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:05:21.940945+00:00: KCZ6 (202612) (BEARISH)
-2026-03-13 17:40:11,044 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:40:11,471 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCZ6 (202612)
-2026-03-13 17:40:11,475 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:40:11,478 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:11,481 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.499 [regime=HIGH_VOL]
-2026-03-13 17:40:11,483 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:40:11,486 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.713 [regime=HIGH_VOL]
-2026-03-13 17:40:11,489 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.594 [regime=HIGH_VOL]
-2026-03-13 17:40:11,492 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.363 [regime=HIGH_VOL]
-2026-03-13 17:40:11,495 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.742 [regime=HIGH_VOL]
-2026-03-13 17:40:11,498 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:40:11,498 - trading_bot.reconciliation - INFO - Contribution scores for KCZ6 (202612): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.499, "supply_chain": -0.433, "inventory": 0.713, "sentiment": 0.594, "technical": 0.363, "volatility": 0.742, "master_decision": 0.45}
-2026-03-13 17:40:11,498 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 275.85 -> Exit 267.30 (3.10% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 8.5500
-2026-03-13 17:40:20,244 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) WIN ($8.55)
-2026-03-13 17:40:20,244 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:40:20,368 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 15:45:04.342089+00:00: KCK6 (202605) (BEARISH)
-2026-03-13 17:40:20,368 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Fri 18:45 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:40:20,540 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:40:20,545 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:20,551 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:20,556 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:40:20,564 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.759 [regime=HIGH_VOL]
-2026-03-13 17:40:20,569 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.648 [regime=HIGH_VOL]
-2026-03-13 17:40:20,574 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:20,579 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.742 [regime=HIGH_VOL]
-2026-03-13 17:40:20,584 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:40:20,584 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.9, "macro": 0.0, "geopolitical": 0.0, "supply_chain": -0.433, "inventory": 0.759, "sentiment": 0.648, "technical": 0.0, "volatility": 0.742, "master_decision": 0.45}
-2026-03-13 17:40:20,585 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 293.45 -> Exit 285.15 (2.83% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 8.3000
-2026-03-13 17:40:27,881 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($8.30)
-2026-03-13 17:40:27,882 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:40:28,010 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 15:45:30.486845+00:00: KCN6 (202607) (NEUTRAL)
-2026-03-13 17:40:28,010 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Fri 18:45 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:40:28,184 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:40:28,615 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCN6 (202607)
-2026-03-13 17:40:28,623 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:40:29,085 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCN6 (202607)
-2026-03-13 17:40:29,092 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,095 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,098 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,102 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,106 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,112 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,117 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,121 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,127 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:29,127 - trading_bot.reconciliation - INFO - Contribution scores for KCN6 (202607): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 17:40:29,128 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 288.05 -> Exit 279.40 (3.00% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 17:40:40,592 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) FLAT ($0.00)
-2026-03-13 17:40:40,592 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 17:40:40,717 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 15:45:39.925698+00:00: KCU6 (202609) (BEARISH)
-2026-03-13 17:40:40,717 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Fri 18:45 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:40:40,889 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:40:40,892 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:40,895 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.473 [regime=HIGH_VOL]
-2026-03-13 17:40:40,897 - trading_bot.contribution_scorer - INFO - Contribution: inventory (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:40,900 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.648 [regime=HIGH_VOL]
-2026-03-13 17:40:40,903 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:40,905 - trading_bot.contribution_scorer - INFO - Contribution: volatility (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:40,908 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:40:40,908 - trading_bot.reconciliation - INFO - Contribution scores for KCU6 (202609): {"agronomist": 0.9, "macro": 0.0, "supply_chain": -0.473, "inventory": 0.0, "sentiment": 0.648, "technical": 0.0, "volatility": 0.0, "master_decision": 0.45}
-2026-03-13 17:40:40,908 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 281.65 -> Exit 273.45 (2.91% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 8.2000
-2026-03-13 17:40:46,066 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) WIN ($8.20)
-2026-03-13 17:40:46,067 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:40:46,193 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 15:47:48.774144+00:00: KCZ6 (202612) (BEARISH)
-2026-03-13 17:40:46,194 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Fri 18:47 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:40:46,370 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:40:46,756 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on KCZ6 (202612)
-2026-03-13 17:40:46,764 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:40:46,768 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:46,772 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.473 [regime=HIGH_VOL]
-2026-03-13 17:40:46,775 - trading_bot.contribution_scorer - INFO - Contribution: inventory (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:40:46,779 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.594 [regime=HIGH_VOL]
-2026-03-13 17:40:46,784 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.363 [regime=HIGH_VOL]
-2026-03-13 17:40:46,789 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.742 [regime=HIGH_VOL]
-2026-03-13 17:40:46,793 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:40:46,793 - trading_bot.reconciliation - INFO - Contribution scores for KCZ6 (202612): {"agronomist": 0.9, "macro": 0.0, "supply_chain": -0.473, "inventory": 0.0, "sentiment": 0.594, "technical": 0.363, "volatility": -0.742, "master_decision": 0.45}
-2026-03-13 17:40:46,794 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 276.30 -> Exit 267.30 (3.26% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 9.0000
-2026-03-13 17:40:54,823 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) WIN ($9.00)
-2026-03-13 17:40:54,824 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:40:54,959 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 08:17:52.018417+00:00: KCK6 (202605) (NEUTRAL)
-2026-03-13 17:40:54,960 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Sat 11:17 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:40:55,273 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,276 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,279 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,281 - trading_bot.contribution_scorer - INFO - Contribution: inventory (NEUTRAL, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,284 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,287 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,290 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,293 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:40:55,294 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.0, "macro": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 17:40:55,294 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 291.90 -> Exit 285.15 (2.31% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 17:41:04,737 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) FLAT ($0.00)
-2026-03-13 17:41:04,738 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 17:41:04,861 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 09:33:49.781365+00:00: KCK6 (202605) (NEUTRAL)
-2026-03-13 17:41:04,862 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Sat 12:33 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:41:05,029 - trading_bot.reconciliation - INFO - Materiality filter: 0.5753% < 0.6000% threshold → resolving as NEUTRAL
-2026-03-13 17:41:05,032 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,035 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,038 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,041 - trading_bot.contribution_scorer - INFO - Contribution: inventory (NEUTRAL, conf=0.55) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,044 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,047 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,051 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,054 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.50) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=RANGE_BOUND]
-2026-03-13 17:41:05,054 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.0, "macro": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 17:41:05,054 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 286.80 -> Exit 285.15 (0.58% move) | Strategy: NONE | Outcome: NEUTRAL | P&L: 0.0000
-2026-03-13 17:41:24,469 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) FLAT ($0.00)
-2026-03-13 17:41:24,469 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual NEUTRAL
-2026-03-13 17:41:24,597 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:02:39.789353+00:00: KCK6 (202605) (BEARISH)
-2026-03-13 17:41:24,598 - trading_bot.reconciliation - INFO - Exit time adjusted for KCK6 (202605): default Sat 17:02 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:41:24,765 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:41:24,770 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:24,774 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:24,778 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.473 [regime=HIGH_VOL]
-2026-03-13 17:41:24,783 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.709 [regime=HIGH_VOL]
-2026-03-13 17:41:24,787 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.586 [regime=HIGH_VOL]
-2026-03-13 17:41:24,791 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:24,795 - trading_bot.contribution_scorer - INFO - Contribution: volatility (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:24,798 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:41:24,799 - trading_bot.reconciliation - INFO - Contribution scores for KCK6 (202605): {"agronomist": 0.9, "macro": 0.0, "geopolitical": 0.0, "supply_chain": -0.473, "inventory": 0.709, "sentiment": 0.586, "technical": 0.0, "volatility": 0.0, "master_decision": 0.45}
-2026-03-13 17:41:24,799 - trading_bot.reconciliation - INFO - Reconciled KCK6 (202605): Entry 288.00 -> Exit 285.15 (0.99% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 2.8500
-2026-03-13 17:41:30,431 - trading_bot.trade_journal - INFO - Trade journal entry created: KCK6 (202605) WIN ($2.85)
-2026-03-13 17:41:30,432 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:41:30,566 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:03:31.941827+00:00: KCN6 (202607) (NEUTRAL)
-2026-03-13 17:41:30,566 - trading_bot.reconciliation - INFO - Exit time adjusted for KCN6 (202607): default Sat 17:03 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:41:30,742 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:41:31,108 - trading_bot.tms - INFO - TMS: meteorologist insight cues -> ['fundamentalist']
-2026-03-13 17:41:31,109 - trading_bot.reconciliation - INFO - Stored reflexion lesson for meteorologist on KCN6 (202607)
-2026-03-13 17:41:31,115 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,118 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,122 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,125 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,128 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,131 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,134 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,137 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,140 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:31,141 - trading_bot.reconciliation - INFO - Contribution scores for KCN6 (202607): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 17:41:31,141 - trading_bot.reconciliation - INFO - Reconciled KCN6 (202607): Entry 282.05 -> Exit 279.40 (0.94% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 17:41:40,063 - trading_bot.trade_journal - INFO - Trade journal entry created: KCN6 (202607) FLAT ($0.00)
-2026-03-13 17:41:40,063 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 17:41:40,188 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:04:51.527351+00:00: KCU6 (202609) (BEARISH)
-2026-03-13 17:41:40,189 - trading_bot.reconciliation - INFO - Exit time adjusted for KCU6 (202609): default Sat 17:04 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:41:40,362 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:41:40,710 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on KCU6 (202609)
-2026-03-13 17:41:40,715 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 17:41:40,721 - trading_bot.contribution_scorer - INFO - Contribution: macro (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.597 [regime=HIGH_VOL]
-2026-03-13 17:41:40,726 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.576 [regime=HIGH_VOL]
-2026-03-13 17:41:40,731 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.433 [regime=HIGH_VOL]
-2026-03-13 17:41:40,737 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.709 [regime=HIGH_VOL]
-2026-03-13 17:41:40,742 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.586 [regime=HIGH_VOL]
-2026-03-13 17:41:40,748 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:40,753 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.709 [regime=HIGH_VOL]
-2026-03-13 17:41:40,759 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 17:41:40,760 - trading_bot.reconciliation - INFO - Contribution scores for KCU6 (202609): {"agronomist": 0.9, "macro": 0.597, "geopolitical": -0.576, "supply_chain": -0.433, "inventory": 0.709, "sentiment": 0.586, "technical": 0.0, "volatility": 0.709, "master_decision": 0.45}
-2026-03-13 17:41:40,760 - trading_bot.reconciliation - INFO - Reconciled KCU6 (202609): Entry 275.15 -> Exit 273.45 (0.62% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 1.7000
-2026-03-13 17:41:45,890 - trading_bot.trade_journal - INFO - Trade journal entry created: KCU6 (202609) WIN ($1.70)
-2026-03-13 17:41:45,891 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 17:41:46,016 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:05:17.164142+00:00: KCZ6 (202612) (BEARISH)
-2026-03-13 17:41:46,017 - trading_bot.reconciliation - INFO - Exit time adjusted for KCZ6 (202612): default Sat 17:05 UTC → actual Fri 17:05 UTC (weekly close policy)
-2026-03-13 17:41:46,225 - trading_bot.reconciliation - INFO - Materiality filter: 0.5025% < 0.6000% threshold → resolving as NEUTRAL
-2026-03-13 17:41:46,229 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,232 - trading_bot.contribution_scorer - INFO - Contribution: macro (BEARISH, conf=0.55) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,235 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,238 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,241 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,243 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,246 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,252 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.55) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,256 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 17:41:46,257 - trading_bot.reconciliation - INFO - Contribution scores for KCZ6 (202612): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 17:41:46,257 - trading_bot.reconciliation - INFO - Reconciled KCZ6 (202612): Entry 268.65 -> Exit 267.30 (0.50% move) | Strategy: BEAR_PUT_SPREAD | Outcome: NEUTRAL | P&L: 1.3500
-2026-03-13 17:41:51,314 - trading_bot.trade_journal - INFO - Trade journal entry created: KCZ6 (202612) WIN ($1.35)
-2026-03-13 17:41:51,314 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual NEUTRAL
-2026-03-13 17:41:51,578 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
-2026-03-13 17:41:54,582 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
-2026-03-13 17:41:54,583 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
-2026-03-13 17:41:54,584 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
-2026-03-13 17:41:54,589 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_184219.csv
-2026-03-13 17:41:54,593 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260310_v2.csv
-2026-03-13 17:41:54,597 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260306_184242.csv
-2026-03-13 17:41:54,600 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260220_190604.csv
-2026-03-13 17:41:54,604 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260225_190604.csv
-2026-03-13 17:41:54,607 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260129_190559.csv
-2026-03-13 17:41:54,611 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260130_190602.csv
-2026-03-13 17:41:54,614 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260202_190601.csv
-2026-03-13 17:41:54,618 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260309_173854.csv
-2026-03-13 17:41:54,622 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260217_190602.csv
-2026-03-13 17:41:54,625 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260302_183856.csv
-2026-03-13 17:41:54,629 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260213_190603.csv
-2026-03-13 17:41:54,633 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260312_174012.csv
-2026-03-13 17:41:54,637 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260305_184116.csv
-2026-03-13 17:41:54,640 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260303_184230.csv
-2026-03-13 17:41:54,643 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260310_174136.csv
-2026-03-13 17:41:54,646 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260311_174036.csv
-2026-03-13 17:41:54,649 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260203_190605.csv
-2026-03-13 17:41:54,652 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_v2.csv
-2026-03-13 17:41:54,656 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
-2026-03-13 17:41:54,660 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260311_v2.csv
-2026-03-13 17:41:54,667 - PerformanceAnalyzer - INFO - Consolidated a total of 144 trade records.
-2026-03-13 17:41:54,674 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
-2026-03-13 17:41:54,881 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $24,562.35
-2026-03-13 17:41:56,893 - PerformanceAnalyzer - INFO - Successfully fetched 18 execution(s) for today from IB.
-2026-03-13 17:41:59,896 - PerformanceAnalyzer - INFO - Loading daily_equity.csv for equity curve.
-2026-03-13 17:41:59,899 - PerformanceAnalyzer - INFO - Dynamic Starting Capital from History: $43,588.97
-2026-03-13 17:41:59,901 - PerformanceAnalyzer - INFO - Calculated LTD Total P&L (Equity): $-19,026.62
-2026-03-13 17:42:00,646 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
-2026-03-13 17:42:00,874 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 17:42:01,219 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
-2026-03-13 17:42:01,222 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/data/KC/archive_ledger/trade_ledger_20260313_174201.csv'
-2026-03-13 17:42:01,231 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
-2026-03-13 17:42:01,236 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=2439
-2026-03-13 17:42:01,236 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
-2026-03-13 17:42:01,236 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
-2026-03-13 17:42:01,243 - Engine.KC - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-03-13 17:50:00 UTC. Waiting for 0.13 hours.
-2026-03-13 17:44:23,055 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_state=SLEEPING, market_open=False, trading_day=True
-2026-03-13 17:49:23,087 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_state=SLEEPING, market_open=False, trading_day=True
-2026-03-13 17:50:00,002 - Engine.KC - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
-2026-03-13 17:50:00,006 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
-2026-03-13 17:50:00,007 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-03-13 17:50:00,042 - trading_bot.enhanced_brier - INFO - Loaded 1960 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
-2026-03-13 17:50:00,044 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
-2026-03-13 17:50:00,159 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,159 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,159 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-282af940) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,160 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-2a2b5879) → NEUTRAL
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,161 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-9d91339d) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,162 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-3d09b141) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,163 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-b767a7bb) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-992b601a) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-992b601a) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-992b601a) → BEARISH
-2026-03-13 17:50:00,164 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-992b601a) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-992b601a) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,165 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-3384158d) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-97c0591c) → BEARISH
-2026-03-13 17:50:00,166 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-7a30a0fb) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,167 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-3b349fc3) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,168 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-f4e612a9) → BEARISH
-2026-03-13 17:50:00,169 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,170 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,170 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,170 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,170 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,170 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,170 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-5905437f) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,171 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-2706eb14) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,172 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-bb277f59) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,173 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-2f5a2145) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,174 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-2e32f122) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,175 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-ced4872c) → BEARISH
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-24a32368) → NEUTRAL
-2026-03-13 17:50:00,176 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-c08a8fac) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,177 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-35c4117a) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,178 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=KC-3359f3b6) → BEARISH
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=KC-2c737333) → NEUTRAL
-2026-03-13 17:50:00,179 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=KC-2c737333) → NEUTRAL
-2026-03-13 17:50:00,180 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=KC-2c737333) → NEUTRAL
-2026-03-13 17:50:00,180 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=KC-2c737333) → NEUTRAL
-2026-03-13 17:50:00,180 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=KC-2c737333) → NEUTRAL
-2026-03-13 17:50:00,223 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 0 created from CSV, 184 resolved from council_history
-2026-03-13 17:50:00,225 - Orchestrator - INFO - Enhanced Brier backfill: 184 predictions caught up from CSV
-2026-03-13 17:50:00,250 - Orchestrator - INFO - Brier reconciliation: 184 predictions resolved today
-2026-03-13 17:50:00,250 - Orchestrator - INFO - Running feedback loop health check...
-2026-03-13 17:50:00,251 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
-2026-03-13 17:50:00,257 - Engine.KC - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-03-13 17:53:00 UTC. Waiting for 0.05 hours.
-2026-03-13 17:53:00,002 - Engine.KC - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
-2026-03-13 17:53:00,008 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
-2026-03-13 17:53:00,666 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:53:00,667 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 17:53:00,756 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -4.0%, alerts: 10, sentinel trades: 3
-2026-03-13 17:53:00,762 - Engine.KC - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-03-13 17:56:00 UTC. Waiting for 0.05 hours.
-2026-03-13 17:54:23,123 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_state=SLEEPING, market_open=False, trading_day=True
-2026-03-13 17:56:00,001 - Engine.KC - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
-2026-03-13 17:56:00,006 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
-2026-03-13 17:56:00,006 - Orchestrator - INFO - Scheduled shutdown flag SET — no new scheduled trades will be processed
-2026-03-13 17:56:00,006 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
-2026-03-13 17:56:00,007 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 37 [REMOTE/PAPER]...
-2026-03-13 17:56:00,374 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 37
-2026-03-13 17:56:00,379 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-03-13 17:56:00,380 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
-2026-03-13 17:56:00,482 - OrderManager - INFO - No open orders found to cancel.
-2026-03-13 17:56:00,482 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [KC_orchestrator_orders]: No pending orders. Safe to disconnect.
-2026-03-13 17:56:00,482 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
-2026-03-13 17:56:03,486 - Orchestrator - INFO - Full shutdown flag SET — system entering SLEEPING state
-2026-03-13 17:56:03,486 - Orchestrator - INFO - --- Stopping position monitoring process (PID: 3667311) ---
-2026-03-13 17:56:07,230 - Orchestrator - INFO - Position monitoring process has been successfully terminated.
-2026-03-13 17:56:07,558 - Orchestrator - INFO - Connection pool released — no stale connections for Gateway restart
-2026-03-13 17:56:07,558 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
-2026-03-13 17:56:07,565 - Engine.KC - INFO - Next task 'system_digest' (System Health Digest) scheduled for 2026-03-13 18:00:00 UTC. Waiting for 0.06 hours.
-2026-03-13 18:00:00,021 - Engine.KC - INFO - --- Running scheduled task: system_digest [generate_system_digest_task] ---
-2026-03-13 18:00:00,028 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
-2026-03-13 18:00:00,140 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.41}
-2026-03-13 18:00:00,238 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
-2026-03-13 18:00:00,309 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.05}
-2026-03-13 18:00:00,356 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-13_dc0884ab464c (3 commodities, 11 improvement opportunities)
-2026-03-13 18:00:00,363 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-16 07:30:00 UTC. Waiting for 61.50 hours.
+2026-03-13 18:32:48,133 - Engine.KC - INFO - =============================================
+2026-03-13 18:32:48,133 - Engine.KC - INFO - === Starting CommodityEngine [KC] ===
+2026-03-13 18:32:48,134 - Engine.KC - INFO - =============================================
+2026-03-13 18:32:48,134 - Engine.KC - INFO - Data directory: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,134 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,134 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,134 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,135 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,135 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,135 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,135 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/KC/tms
+2026-03-13 18:32:48,136 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,136 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,136 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,137 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,137 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/KC/research_provenance.log
+2026-03-13 18:32:48,137 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,143 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,143 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/KC
+2026-03-13 18:32:48,150 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (-1.26%), starting_equity=0 (will re-derive from prev close)
+2026-03-13 18:32:48,150 - trading_bot.data_dir_context - INFO - EngineRuntime set for [KC]
+2026-03-13 18:32:48,150 - Engine.KC - WARNING - ============================================================
+2026-03-13 18:32:48,151 - Engine.KC - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-03-13 18:32:48,151 - Engine.KC - WARNING -   Client IDs: DEV range (10-79)
+2026-03-13 18:32:48,151 - Engine.KC - WARNING -   Trading Mode: LIVE
+2026-03-13 18:32:48,151 - Engine.KC - WARNING - ============================================================
+2026-03-13 18:32:48,151 - Engine.KC - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-03-13 18:32:48,151 - Engine.KC - INFO - Drawdown Guard initialized.
+2026-03-13 18:32:48,152 - Engine.KC - INFO - Expiry filter window: 45-365 DTE
+2026-03-13 18:32:48,316 - Engine.KC - INFO - Market Closed. Deferred triggers will remain queued.
+2026-03-13 18:32:48,317 - Orchestrator - INFO - Built session schedule: 17 tasks for KC (04:15-13:30 ET)
+2026-03-13 18:32:48,317 - Engine.KC - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-03-13 18:32:48,321 - Engine.KC - WARNING - LATE START DETECTED: 17 scheduled tasks already passed:\n  - 03:30 ET: start_monitoring\n  - 03:31 ET: process_deferred_triggers\n  - 04:00 ET: cleanup_orphaned_theses\n  - 06:06 ET: signal_open\n  - 08:52 ET: audit_mid_session\n  - 09:59 ET: signal_early\n  - 11:39 ET: signal_mid\n  - 12:55 ET: audit_pre_close\n  - 13:05 ET: close_stale_primary\n  - 13:15 ET: close_stale_fallback\n  - 13:25 ET: emergency_hard_close\n  - 13:35 ET: log_equity_snapshot\n  - 13:38 ET: reconcile_and_analyze\n  - 13:50 ET: brier_reconciliation\n  - 13:53 ET: sentinel_effectiveness\n  - 13:56 ET: eod_shutdown\n  - 14:00 ET: system_digest
+2026-03-13 18:32:48,324 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
+2026-03-13 18:32:48,324 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-03-13 18:32:48,324 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-03-13 18:32:48,324 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 04:00 ET)
+2026-03-13 18:32:48,324 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-03-13 18:32:48,325 - trading_bot.connection_pool - INFO - Connecting IB (KC_cleanup) ID: 82 [REMOTE/PAPER]...
+2026-03-13 18:32:48,461 - trading_bot.connection_pool - INFO - IB (KC_cleanup) connected successfully with ID 82
+2026-03-13 18:32:48,487 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-13 18:32:48,630 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-13 18:32:48,846 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-03-13 18:32:48,846 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_cleanup)...
+2026-03-13 18:32:51,851 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-03-13 18:32:57,856 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-03-13 18:32:57,856 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-03-13 18:32:57,857 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-03-13 18:32:57,857 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-03-13 18:32:57,857 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-03-13 18:32:57,857 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-03-13 18:32:57,858 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-03-13 18:32:57,858 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-03-13 18:32:57,858 - Orchestrator - INFO - 🔄 RECOVERY: Running missed log_equity_snapshot [log_equity_snapshot] (was scheduled 13:35 ET)
+2026-03-13 18:32:57,859 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-03-13 18:32:57,859 - EquityLogger - INFO - Connecting to IB at 100.102.50.16:4002 with clientId 9004...
+2026-03-13 18:32:58,285 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-13 18:32:58,441 - EquityLogger - INFO - Fetched NetLiquidation: $24,562.35
+2026-03-13 18:32:58,452 - EquityLogger - INFO - Updated /home/rodrigo/real_options/data/KC/daily_equity.csv with value $24,562.35
+2026-03-13 18:33:01,454 - EquityLogger - INFO - Disconnected from IB.
+2026-03-13 18:33:01,459 - Orchestrator - INFO - ✅ RECOVERY: log_equity_snapshot completed
+2026-03-13 18:33:07,461 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-03-13 18:33:07,462 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 13:50 ET)
+2026-03-13 18:33:07,462 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-13 18:33:07,462 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-03-13 18:33:07,506 - trading_bot.enhanced_brier - INFO - Loaded 1960 predictions from /home/rodrigo/real_options/data/KC/enhanced_brier.json
+2026-03-13 18:33:07,523 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.41}
+2026-03-13 18:33:07,524 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-13 18:33:07,699 - Orchestrator - INFO - Brier reconciliation: 184 predictions resolved today
+2026-03-13 18:33:07,699 - Orchestrator - INFO - Running feedback loop health check...
+2026-03-13 18:33:07,700 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
+2026-03-13 18:33:07,706 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
+2026-03-13 18:33:13,708 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
+2026-03-13 18:33:13,708 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
+2026-03-13 18:33:13,709 - Orchestrator - INFO - 🔄 RECOVERY: Running missed system_digest [generate_system_digest_task] (was scheduled 14:00 ET)
+2026-03-13 18:33:13,712 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
+2026-03-13 18:33:13,829 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.41}
+2026-03-13 18:33:13,938 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-13 18:33:14,023 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.05}
+2026-03-13 18:33:14,070 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-13_dd4fadd52be5 (3 commodities, 11 improvement opportunities)
+2026-03-13 18:33:14,078 - Orchestrator - INFO - ✅ RECOVERY: system_digest completed
+2026-03-13 18:33:20,082 - Orchestrator - INFO - System restarted with 17 missed tasks.\n✅ 4 recovered | ⏭️ 7 skipped | ✔️ 6 already ran
+2026-03-13 18:33:20,279 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-13 18:33:20,282 - Engine.KC - INFO - Running TopicDiscoveryAgent on startup...
+2026-03-13 18:33:20,323 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-03-13 18:33:22,154 - trading_bot.topic_discovery - INFO - Bulk fetched 600 active events from Polymarket (3 pages)
+2026-03-13 18:33:28,534 - trading_bot.topic_discovery - INFO -   Area 'US Monetary Policy': 11 candidates — ['How many Fed rate cuts in 2026?', 'Fed decisions (Dec-Mar)', 'How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'What will Fed Rate hit before 2027?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?']
+2026-03-13 18:33:28,671 - trading_bot.topic_discovery - INFO -   Area 'Trade Policy': 4 candidates — ['Will Trump create a tariff dividend by March 31?', 'Which countries will Trump make new trade deals with before ', 'Which countries will Trump make new trade deals with before ', 'Will Trump create a tariff dividend by March 31?']
+2026-03-13 18:33:28,763 - trading_bot.topic_discovery - INFO -   Area 'US Economic Health': 2 candidates — ['US recession by end of 2026?', 'Canada recession before 2027?']
+2026-03-13 18:33:28,798 - trading_bot.topic_discovery - INFO -   Area 'Brazil Economy': 6 candidates — ['Brazil Presidential Election', 'Will any presidential candidate win outright in the first ro', "Which candidates will advance to Brazil's presidential runof", 'Brazil Presidential Election', 'Will any presidential candidate win outright in the first ro', "Which candidates will advance to Brazil's presidential runof"]
+2026-03-13 18:33:35,009 - trading_bot.topic_discovery - INFO -   Area 'LatAm Geopolitics': 5 candidates — ['Colombia Chamber of Representatives Election Winner', 'Colombia Presidential Election 1st round winner?', 'Colombia Presidential Election', 'Will any presidential candidate win outright in the first ro', 'Will the U.S. invade Venezuela by...?']
+2026-03-13 18:33:35,010 - trading_bot.topic_discovery - INFO -   Area 'Energy Geopolitics': not applicable to KC, skipping
+2026-03-13 18:33:39,033 - trading_bot.topic_discovery - INFO -   Area 'Fed Leadership': 3 candidates — ['How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)']
+2026-03-13 18:33:39,044 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-13 18:33:39,049 - trading_bot.topic_discovery - INFO - Topic Discovery complete: 12 topics from 31 raw candidates. Areas: [US Monetary Policy=11, Trade Policy=4, US Economic Health=2, Brazil Economy=6, LatAm Geopolitics=5, Fed Leadership=3]. LLM calls: 15
+2026-03-13 18:33:39,050 - Engine.KC - INFO - Startup TopicDiscovery: 12 topics, No changes
+2026-03-13 18:33:39,078 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-16 07:30:00 UTC. Waiting for 60.94 hours.
+2026-03-13 18:33:39,080 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-03-13 18:33:39,605 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-03-13 18:33:41,588 - trading_bot.rate_limiter - INFO - GlobalRateLimiter initialized: ['gemini', 'openai', 'anthropic', 'xai']
+2026-03-13 18:34:05,743 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-13 18:38:06,046 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-13 18:43:06,085 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-13 18:48:06,113 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-13 18:53:06,146 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_state=SLEEPING, market_open=False, trading_day=True
+2026-03-13 18:56:06,171 - Orchestrator - INFO - State transition: PASSIVE → SLEEPING — full shutdown engaged
