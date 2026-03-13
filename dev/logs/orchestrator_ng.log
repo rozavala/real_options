@@ -1,691 +1,116 @@
-2026-03-13 18:32:50,636 - Engine.NG - INFO - =============================================
-2026-03-13 18:32:50,636 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
-2026-03-13 18:32:50,636 - Engine.NG - INFO - =============================================
-2026-03-13 18:32:50,636 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,637 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,637 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,637 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,637 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,637 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,637 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,638 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:32:50,638 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,638 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,638 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,638 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,638 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
-2026-03-13 18:32:50,638 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,639 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,639 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
-2026-03-13 18:32:50,639 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%), starting_equity=0 (will re-derive from prev close)
-2026-03-13 18:32:50,640 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
-2026-03-13 18:32:50,640 - Engine.NG - WARNING - ============================================================
-2026-03-13 18:32:50,640 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
-2026-03-13 18:32:50,640 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
-2026-03-13 18:32:50,640 - Engine.NG - WARNING -   Trading Mode: LIVE
-2026-03-13 18:32:50,640 - Engine.NG - WARNING - ============================================================
-2026-03-13 18:32:50,640 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
-2026-03-13 18:32:50,640 - Engine.NG - INFO - Drawdown Guard initialized.
-2026-03-13 18:32:50,641 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
-2026-03-13 18:32:50,642 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
-2026-03-13 18:32:50,643 - Orchestrator - INFO - Built session schedule: 17 tasks for NG (09:00-14:30 ET)
-2026-03-13 18:32:50,643 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
-2026-03-13 18:32:50,651 - Engine.NG - WARNING - LATE START DETECTED: 11 scheduled tasks already passed:\n  - 08:15 ET: start_monitoring\n  - 08:16 ET: process_deferred_triggers\n  - 08:45 ET: cleanup_orphaned_theses\n  - 10:06 ET: signal_open\n  - 11:45 ET: audit_mid_session\n  - 12:24 ET: signal_early\n  - 13:24 ET: signal_mid\n  - 13:55 ET: audit_pre_close\n  - 14:05 ET: close_stale_primary\n  - 14:15 ET: close_stale_fallback\n  - 14:25 ET: emergency_hard_close
-2026-03-13 18:32:50,653 - Orchestrator - INFO - --- Recovery: Evaluating 11 missed tasks ---
-2026-03-13 18:32:50,653 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
-2026-03-13 18:32:50,653 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
-2026-03-13 18:32:50,654 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 08:45 ET)
-2026-03-13 18:32:50,654 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
-2026-03-13 18:32:50,654 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1284 [REMOTE/PAPER]...
-2026-03-13 18:32:50,984 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1284
-2026-03-13 18:32:50,994 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
-2026-03-13 18:32:51,018 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:32:51,118 - Orchestrator - INFO - Thesis cleanup: no orphans found
-2026-03-13 18:32:51,119 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
-2026-03-13 18:32:54,127 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
-2026-03-13 18:33:00,131 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
-2026-03-13 18:33:00,131 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
-2026-03-13 18:33:00,131 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
-2026-03-13 18:33:00,131 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
-2026-03-13 18:33:00,132 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
-2026-03-13 18:33:00,132 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
-2026-03-13 18:33:00,132 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
-2026-03-13 18:33:00,132 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
-2026-03-13 18:33:00,132 - Orchestrator - INFO - System restarted with 11 missed tasks.\n✅ 1 recovered | ⏭️ 7 skipped | ✔️ 3 already ran
-2026-03-13 18:33:00,444 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 18:33:00,978 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
-2026-03-13 18:33:01,059 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
-2026-03-13 18:33:03,784 - trading_bot.topic_discovery - INFO - Bulk fetched 600 active events from Polymarket (3 pages)
-2026-03-13 18:33:11,004 - trading_bot.topic_discovery - INFO -   Area 'US Monetary Policy': 11 candidates — ['How many Fed rate cuts in 2026?', 'Fed decisions (Dec-Mar)', 'How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'What will Fed Rate hit before 2027?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?']
-2026-03-13 18:33:11,595 - trading_bot.topic_discovery - INFO -   Area 'Trade Policy': 4 candidates — ['Will Trump create a tariff dividend by March 31?', 'Which countries will Trump make new trade deals with before ', 'Which countries will Trump make new trade deals with before ', 'Will Trump create a tariff dividend by March 31?']
-2026-03-13 18:33:11,663 - trading_bot.topic_discovery - INFO -   Area 'US Economic Health': 2 candidates — ['US recession by end of 2026?', 'Canada recession before 2027?']
-2026-03-13 18:33:11,664 - trading_bot.topic_discovery - INFO -   Area 'Brazil Economy': not applicable to NG, skipping
-2026-03-13 18:33:11,664 - trading_bot.topic_discovery - INFO -   Area 'LatAm Geopolitics': not applicable to NG, skipping
-2026-03-13 18:33:11,697 - trading_bot.topic_discovery - INFO -   Area 'Energy Geopolitics': 27 candidates — ['NATO/EU troops fighting in Ukraine by...?', 'Ukraine recognizes Russian sovereignty over its territory by', 'Ukraine election called by...?', 'Ukraine election held by...?', 'Will Russia capture Kostyantynivka by...?', 'US x Russia military clash by...?', 'Will Russia invade a NATO country by...?', 'Will Russia capture Sumy by...?', 'Putin out as President of Russia by end of 2026?', 'Russia x Ukraine ceasefire by March 31, 2026?', 'Will Russia capture Lyman by...?', 'Russia x Ukraine ceasefire by end of 2026?', 'Zelenskyy out as Ukraine president by end of 2026?', 'U.S. x Russia Nuclear deal by...?', 'Will Russia capture Rodynske by...?', 'NATO x Russia military clash by...?', 'Will Ukraine recapture Crimean territory by June 30, 2026?', 'Will Trump send Tomahawk to Ukraine by...?', 'Israel x Hamas ceasefire cancelled by...?', 'Israel x Hamas Ceasefire Phase II by...?', 'Will Iran close the Strait of Hormuz by...?', 'US-Iran nuclear deal before 2027?', 'Will the U.S. invade Iran before 2027?', 'Iran nuclear test before 2027?', 'Will Iran withdraw from the NPT before 2027?', 'Iran Nuke before 2027?', 'Will Iran close the Strait of Hormuz by...?']
-2026-03-13 18:33:21,687 - trading_bot.topic_discovery - INFO -   Area 'Fed Leadership': 6 candidates — ['How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'What will Fed Rate hit before 2027?']
-2026-03-13 18:33:21,695 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:33:21,698 - trading_bot.topic_discovery - INFO - Topic Discovery complete: 12 topics from 50 raw candidates. Areas: [US Monetary Policy=11, Trade Policy=4, US Economic Health=2, Energy Geopolitics=27, Fed Leadership=6]. LLM calls: 13
-2026-03-13 18:33:21,699 - Engine.NG - INFO - Startup TopicDiscovery: 12 topics, No changes
-2026-03-13 18:33:21,715 - Engine.NG - INFO - Staggering sentinel startup by 15s (engine #1)
-2026-03-13 18:33:36,721 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-13 18:35:00 UTC. Waiting for 0.02 hours.
-2026-03-13 18:33:36,721 - Orchestrator - INFO - --- Starting Sentinel Array ---
-2026-03-13 18:33:37,086 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
-2026-03-13 18:33:37,088 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1221 [REMOTE/PAPER]...
-2026-03-13 18:33:37,089 - trading_bot.self_healing - INFO - Self-Healing Monitor started
-2026-03-13 18:33:37,230 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1221
-2026-03-13 18:33:37,238 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-03-13 18:33:37,238 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
-2026-03-13 18:33:37,239 - Orchestrator - INFO - 🔄 SENTINEL SAFETY NET: Market open but position monitor not running — starting it now
-2026-03-13 18:33:37,239 - Orchestrator - INFO - Shutdown flags CLEARED — new trading day beginning
-2026-03-13 18:33:37,243 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
-2026-03-13 18:33:37,243 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
-2026-03-13 18:33:37,247 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
-2026-03-13 18:33:37,248 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
-2026-03-13 18:33:37,253 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
-2026-03-13 18:33:37,452 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
-2026-03-13 18:33:37,458 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
-2026-03-13 18:33:37,458 - Orchestrator - INFO - Refreshed contract cache: NGK26
-2026-03-13 18:33:37,458 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
-2026-03-13 18:33:37,472 - trading_bot.connection_pool - INFO - Connecting IB (NG_microstructure) ID: 1252 [REMOTE/PAPER]...
-2026-03-13 18:33:37,688 - trading_bot.connection_pool - INFO - IB (NG_microstructure) connected successfully with ID 1252
-2026-03-13 18:33:37,696 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-03-13 18:35:00,002 - Engine.NG - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
-2026-03-13 18:35:00,008 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
-2026-03-13 18:35:00,014 - Engine.NG - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-03-13 18:38:00 UTC. Waiting for 0.05 hours.
-2026-03-13 18:37:54,489 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_state=PASSIVE, market_open=False, trading_day=True
-2026-03-13 18:38:00,002 - Engine.NG - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
-2026-03-13 18:38:00,005 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
-2026-03-13 18:38:00,006 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
-2026-03-13 18:38:00,006 - Orchestrator - INFO - --- Starting trade reconciliation ---
-2026-03-13 18:38:00,006 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
-2026-03-13 18:38:00,006 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
-2026-03-13 18:38:00,277 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 18:38:10,279 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 18:38:10,503 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 18:38:10,507 - TradeReconciler - INFO - Parsed 143 executions from the Flex Query report.
-2026-03-13 18:38:10,530 - TradeReconciler - INFO - Successfully processed 143 trades into the reconciliation DataFrame.
-2026-03-13 18:38:10,531 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
-2026-03-13 18:38:10,792 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 18:38:20,793 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 18:38:21,037 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 18:38:21,040 - TradeReconciler - INFO - Parsed 12 executions from the Flex Query report.
-2026-03-13 18:38:21,053 - TradeReconciler - INFO - Successfully processed 12 trades into the reconciliation DataFrame.
-2026-03-13 18:38:21,057 - TradeReconciler - INFO - Consolidated to 155 unique trades from all reports.
-2026-03-13 18:38:21,058 - TradeReconciler - INFO - Filtered IB trades by commodity NG (prefixes ('NG', 'LNE', 'LN1', 'LN2', 'LN3', 'LN4', 'LN5')): 155 -> 61
-2026-03-13 18:38:21,061 - TradeReconciler - INFO - Loaded 2 trades from the main ledger.
-2026-03-13 18:38:21,062 - TradeReconciler - INFO - Found 11 archived ledger files.
-2026-03-13 18:38:21,089 - TradeReconciler - INFO - Consolidated a total of 59 trades from all ledgers.
-2026-03-13 18:38:21,091 - TradeReconciler - INFO - Filtered IB trades from 61 to 61 records within the last 30 days.
-2026-03-13 18:38:21,092 - TradeReconciler - INFO - Filtered local ledger from 59 to 59 records within the last 30 days.
-2026-03-13 18:38:21,188 - TradeReconciler - INFO - Reconciliation complete. Found 2 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
-2026-03-13 18:38:21,190 - TradeReconciler - INFO - Discrepancies found. Writing to output files.
-2026-03-13 18:38:21,196 - TradeReconciler - INFO - Resolved position_id for LN4H6 C3150: 57205441... → bb966038-d486-4fbe-bbe2-5645fa...
-2026-03-13 18:38:21,196 - TradeReconciler - INFO - Resolved position_id for LN4H6 P3150: 57205441... → bb966038-d486-4fbe-bbe2-5645fa...
-2026-03-13 18:38:21,199 - TradeReconciler - INFO - Successfully wrote 2 missing trade(s) to '/home/rodrigo/real_options/data/NG/archive_ledger/trade_ledger_missing_trades.csv'.
-2026-03-13 18:38:21,199 - Orchestrator - WARNING - Trade reconciliation found discrepancies.
-2026-03-13 18:38:21,393 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 18:38:21,396 - TradeReconciler - INFO - Starting Active Position Reconciliation...
-2026-03-13 18:38:21,573 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
-2026-03-13 18:38:31,575 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
-2026-03-13 18:38:31,692 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
-2026-03-13 18:38:31,695 - TradeReconciler - INFO - Parsed 4 positions from the Flex Query report.
-2026-03-13 18:38:31,696 - TradeReconciler - INFO - Filtered IB positions by commodity NG (prefixes ('NG', 'LNE', 'LN1', 'LN2', 'LN3', 'LN4', 'LN5')): 4 -> 2
-2026-03-13 18:38:31,698 - TradeReconciler - INFO - Loaded 2 trades from the main ledger.
-2026-03-13 18:38:31,699 - TradeReconciler - INFO - Found 12 archived ledger files.
-2026-03-13 18:38:31,723 - TradeReconciler - INFO - Consolidated a total of 61 trades from all ledgers.
-2026-03-13 18:38:31,729 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'LN4H6 P3150', 'LNEM6 P3250', 'LN4H6 C3150', 'LNEM6 P3300'}
-2026-03-13 18:38:31,734 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
-2026-03-13 18:38:31,735 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
-2026-03-13 18:38:32,144 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:32,144 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
-2026-03-13 18:38:32,145 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'anthropic', 'gemini', 'openai']
-2026-03-13 18:38:32,177 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:09:37.700230+00:00: NGK26 (202604) (BEARISH)
-2026-03-13 18:38:32,354 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:32,893 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
-2026-03-13 18:38:32,896 - trading_bot.contribution_scorer - INFO - Loaded contribution scores for 9 agents from /home/rodrigo/real_options/data/NG/contribution_scores.json
-2026-03-13 18:38:32,899 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:38:32,901 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:32,903 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:32,904 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.661 [regime=HIGH_VOL]
-2026-03-13 18:38:32,906 - trading_bot.contribution_scorer - INFO - Contribution: inventory (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:32,907 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.557 [regime=HIGH_VOL]
-2026-03-13 18:38:32,908 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:32,910 - trading_bot.contribution_scorer - INFO - Contribution: volatility (NEUTRAL, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:32,911 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 18:38:32,911 - trading_bot.reconciliation - INFO - Contribution scores for NGK26 (202604): {"agronomist": 0.9, "macro": 0.0, "geopolitical": 0.0, "supply_chain": -0.661, "inventory": 0.0, "sentiment": -0.557, "technical": 0.0, "volatility": 0.0, "master_decision": 0.45}
-2026-03-13 18:38:32,911 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 3.21 -> Exit 3.14 (2.31% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0740
-2026-03-13 18:38:41,213 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.07)
-2026-03-13 18:38:41,222 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.05}
-2026-03-13 18:38:41,223 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:38:41,351 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:10:22.253437+00:00: NGM26 (202605) (NEUTRAL)
-2026-03-13 18:38:41,527 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:41,860 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
-2026-03-13 18:38:41,867 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:42,193 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGM26 (202605)
-2026-03-13 18:38:42,196 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,197 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,199 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,200 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,202 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,204 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,205 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,207 - trading_bot.contribution_scorer - INFO - Contribution: volatility (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,209 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.60) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:38:42,209 - trading_bot.reconciliation - INFO - Contribution scores for NGM26 (202605): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:38:42,210 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.35 -> Exit 3.13 (6.57% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 18:38:51,805 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) FLAT ($0.00)
-2026-03-13 18:38:51,806 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 18:38:51,933 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:11:51.984595+00:00: NGN26 (202606) (NEUTRAL)
-2026-03-13 18:38:52,099 - trading_bot.reconciliation - INFO - STRADDLE WIN: 9.16% move exceeds 1.80% threshold. Net P&L: 0.26
-2026-03-13 18:38:52,107 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:52,420 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGN26 (202606)
-2026-03-13 18:38:52,427 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:52,774 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGN26 (202606)
-2026-03-13 18:38:52,780 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:38:53,188 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
-2026-03-13 18:38:53,191 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.900 [regime=HIGH_VOL]
-2026-03-13 18:38:53,194 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.652 [regime=HIGH_VOL]
-2026-03-13 18:38:53,197 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.606 [regime=HIGH_VOL]
-2026-03-13 18:38:53,200 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.507 [regime=HIGH_VOL]
-2026-03-13 18:38:53,202 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.523 [regime=HIGH_VOL]
-2026-03-13 18:38:53,204 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=-0.408 [regime=HIGH_VOL]
-2026-03-13 18:38:53,206 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.55) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.728 [regime=HIGH_VOL]
-2026-03-13 18:38:53,209 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=VOLATILITY → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 18:38:53,210 - trading_bot.reconciliation - INFO - Contribution scores for NGN26 (202606): {"agronomist": -0.9, "macro": 0.652, "supply_chain": -0.606, "inventory": -0.507, "sentiment": -0.523, "technical": -0.408, "volatility": 0.728, "master_decision": 0.45}
-2026-03-13 18:38:53,210 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.59 -> Exit 3.26 (9.16% move) | Strategy: LONG_STRADDLE | Outcome: BIG_MOVE | P&L: 0.2644
-2026-03-13 18:39:00,833 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.26)
-2026-03-13 18:39:00,834 - trading_bot.brier_scoring - INFO - Recorded volatility prediction: Strategy_LONG_STRADDLE predicted HIGH_VOL, actual BIG_MOVE -> CORRECT
-2026-03-13 18:39:00,972 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:12:00.947356+00:00: NGQ26 (202607) (NEUTRAL)
-2026-03-13 18:39:01,153 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:01,561 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
-2026-03-13 18:39:01,570 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:02,000 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGQ26 (202607)
-2026-03-13 18:39:02,008 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:02,352 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGQ26 (202607)
-2026-03-13 18:39:02,356 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,359 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,360 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,362 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,363 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,365 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,367 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,368 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,370 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.60) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:02,370 - trading_bot.reconciliation - INFO - Contribution scores for NGQ26 (202607): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:39:02,370 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.67 -> Exit 3.52 (4.17% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 18:39:17,179 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) FLAT ($0.00)
-2026-03-13 18:39:17,180 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 18:39:17,304 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 14:12:22.985824+00:00: NGU26 (202608) (NEUTRAL)
-2026-03-13 18:39:17,484 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:17,827 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGU26 (202608)
-2026-03-13 18:39:17,835 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:18,210 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGU26 (202608)
-2026-03-13 18:39:18,218 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:18,598 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGU26 (202608)
-2026-03-13 18:39:18,601 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,603 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,606 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,608 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,611 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,613 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,616 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,618 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,621 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:18,622 - trading_bot.reconciliation - INFO - Contribution scores for NGU26 (202608): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:39:18,622 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.66 -> Exit 3.60 (1.61% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 18:39:31,777 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) FLAT ($0.00)
-2026-03-13 18:39:31,780 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 18:39:31,906 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 15:39:13.069588+00:00: NGK26 (202604) (NEUTRAL)
-2026-03-13 18:39:32,075 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 3.25 -> Exit 3.14 (3.45% move) | Strategy: NONE | Outcome: BEARISH | P&L: 0.0000
-2026-03-13 18:39:39,601 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
-2026-03-13 18:39:39,602 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual BEARISH
-2026-03-13 18:39:39,733 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 16:27:17.909560+00:00: NGK26 (202604) (BEARISH)
-2026-03-13 18:39:39,734 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Fri 19:27 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:39:39,909 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:40,264 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGK26 (202604)
-2026-03-13 18:39:40,270 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:40,612 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGK26 (202604)
-2026-03-13 18:39:40,621 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:40,974 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGK26 (202604)
-2026-03-13 18:39:40,977 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:39:40,980 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:40,982 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.511 [regime=HIGH_VOL]
-2026-03-13 18:39:40,986 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.661 [regime=HIGH_VOL]
-2026-03-13 18:39:40,987 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.507 [regime=HIGH_VOL]
-2026-03-13 18:39:40,990 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.557 [regime=HIGH_VOL]
-2026-03-13 18:39:40,991 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:40,992 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.846 [regime=HIGH_VOL]
-2026-03-13 18:39:40,994 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.56) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.390 [regime=HIGH_VOL]
-2026-03-13 18:39:40,994 - trading_bot.reconciliation - INFO - Contribution scores for NGK26 (202604): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.511, "supply_chain": -0.661, "inventory": 0.507, "sentiment": -0.557, "technical": 0.0, "volatility": -0.846, "master_decision": 0.39}
-2026-03-13 18:39:40,995 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 3.19 -> Exit 3.14 (1.63% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0520
-2026-03-13 18:39:47,511 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.05)
-2026-03-13 18:39:47,512 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:39:47,639 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 16:30:24.502334+00:00: NGM26 (202605) (BEARISH)
-2026-03-13 18:39:47,640 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Fri 19:30 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:39:47,817 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:48,269 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
-2026-03-13 18:39:48,282 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:48,747 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGM26 (202605)
-2026-03-13 18:39:48,757 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:49,204 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGM26 (202605)
-2026-03-13 18:39:49,209 - trading_bot.contribution_scorer - INFO - Contribution: macro (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.652 [regime=HIGH_VOL]
-2026-03-13 18:39:49,212 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.511 [regime=HIGH_VOL]
-2026-03-13 18:39:49,215 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.661 [regime=HIGH_VOL]
-2026-03-13 18:39:49,218 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.507 [regime=HIGH_VOL]
-2026-03-13 18:39:49,221 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.523 [regime=HIGH_VOL]
-2026-03-13 18:39:49,223 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:49,226 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.775 [regime=HIGH_VOL]
-2026-03-13 18:39:49,229 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.56) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.390 [regime=HIGH_VOL]
-2026-03-13 18:39:49,229 - trading_bot.reconciliation - INFO - Contribution scores for NGM26 (202605): {"macro": 0.652, "geopolitical": -0.511, "supply_chain": -0.661, "inventory": 0.507, "sentiment": -0.523, "technical": 0.0, "volatility": -0.775, "master_decision": 0.39}
-2026-03-13 18:39:49,230 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.32 -> Exit 3.13 (5.75% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1910
-2026-03-13 18:39:57,761 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.19)
-2026-03-13 18:39:57,762 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:39:57,891 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 16:31:25.074482+00:00: NGN26 (202606) (BEARISH)
-2026-03-13 18:39:57,892 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Fri 19:31 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:39:58,069 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:58,489 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
-2026-03-13 18:39:58,495 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:58,879 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGN26 (202606)
-2026-03-13 18:39:58,889 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:39:59,308 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
-2026-03-13 18:39:59,311 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:39:59,314 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:59,318 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.558 [regime=HIGH_VOL]
-2026-03-13 18:39:59,320 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.606 [regime=HIGH_VOL]
-2026-03-13 18:39:59,323 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.477 [regime=HIGH_VOL]
-2026-03-13 18:39:59,327 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:39:59,329 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.408 [regime=HIGH_VOL]
-2026-03-13 18:39:59,332 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.775 [regime=HIGH_VOL]
-2026-03-13 18:39:59,335 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 18:39:59,335 - trading_bot.reconciliation - INFO - Contribution scores for NGN26 (202606): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.558, "supply_chain": -0.606, "inventory": 0.477, "sentiment": 0.0, "technical": -0.408, "volatility": -0.775, "master_decision": 0.45}
-2026-03-13 18:39:59,336 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.56 -> Exit 3.26 (8.51% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.3030
-2026-03-13 18:40:06,977 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.30)
-2026-03-13 18:40:06,978 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:40:07,117 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 16:32:53.777747+00:00: NGQ26 (202607) (BEARISH)
-2026-03-13 18:40:07,118 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Fri 19:32 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:40:07,296 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:07,703 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGQ26 (202607)
-2026-03-13 18:40:07,717 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:08,128 - trading_bot.reconciliation - INFO - Stored reflexion lesson for technical on NGQ26 (202607)
-2026-03-13 18:40:08,136 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:08,567 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGQ26 (202607)
-2026-03-13 18:40:08,570 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:40:08,572 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:08,575 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:08,576 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.606 [regime=HIGH_VOL]
-2026-03-13 18:40:08,578 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.477 [regime=HIGH_VOL]
-2026-03-13 18:40:08,579 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.523 [regime=HIGH_VOL]
-2026-03-13 18:40:08,580 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.408 [regime=HIGH_VOL]
-2026-03-13 18:40:08,582 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.846 [regime=HIGH_VOL]
-2026-03-13 18:40:08,584 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 18:40:08,584 - trading_bot.reconciliation - INFO - Contribution scores for NGQ26 (202607): {"agronomist": 0.9, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.606, "inventory": 0.477, "sentiment": -0.523, "technical": -0.408, "volatility": -0.846, "master_decision": 0.45}
-2026-03-13 18:40:08,584 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.65 -> Exit 3.52 (3.70% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1350
-2026-03-13 18:40:14,544 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.13)
-2026-03-13 18:40:14,545 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:40:14,670 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-12 16:36:03.085060+00:00: NGU26 (202608) (BEARISH)
-2026-03-13 18:40:14,671 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Fri 19:36 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:40:14,835 - trading_bot.reconciliation - INFO - Materiality filter: 0.8264% < 1.2000% threshold → resolving as NEUTRAL
-2026-03-13 18:40:14,838 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,841 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,843 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,845 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,846 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,848 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,850 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,851 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,853 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:14,853 - trading_bot.reconciliation - INFO - Contribution scores for NGU26 (202608): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:40:14,854 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.63 -> Exit 3.60 (0.83% move) | Strategy: BEAR_PUT_SPREAD | Outcome: NEUTRAL | P&L: 0.0300
-2026-03-13 18:40:20,961 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) WIN ($0.03)
-2026-03-13 18:40:20,961 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual NEUTRAL
-2026-03-13 18:40:21,087 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 13:35:03.822784+00:00: NGK26 (202604) (NEUTRAL)
-2026-03-13 18:40:21,088 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Sat 16:35 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:40:21,257 - trading_bot.reconciliation - INFO - Materiality filter: 0.6329% < 1.2000% threshold → resolving as NEUTRAL
-2026-03-13 18:40:21,261 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,265 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,268 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,271 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (NEUTRAL, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,273 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,276 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.55) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,279 - trading_bot.contribution_scorer - INFO - Contribution: technical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,281 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,284 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.50) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:21,285 - trading_bot.reconciliation - INFO - Contribution scores for NGK26 (202604): {"sentiment": 0.0, "agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:40:21,285 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 3.16 -> Exit 3.14 (0.63% move) | Strategy: NONE | Outcome: NEUTRAL | P&L: 0.0000
-2026-03-13 18:40:35,883 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
-2026-03-13 18:40:35,883 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual NEUTRAL
-2026-03-13 18:40:36,010 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:09:25.889148+00:00: NGK26 (202604) (BEARISH)
-2026-03-13 18:40:36,011 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Sat 17:09 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:40:36,176 - trading_bot.reconciliation - INFO - Materiality filter: 0.3810% < 1.2000% threshold → resolving as NEUTRAL
-2026-03-13 18:40:36,179 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,181 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,183 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,184 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,186 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,188 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,191 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,193 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,195 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:36,195 - trading_bot.reconciliation - INFO - Contribution scores for NGK26 (202604): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:40:36,195 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 3.15 -> Exit 3.14 (0.38% move) | Strategy: BEAR_PUT_SPREAD | Outcome: NEUTRAL | P&L: 0.0120
-2026-03-13 18:40:45,781 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) WIN ($0.01)
-2026-03-13 18:40:45,782 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual NEUTRAL
-2026-03-13 18:40:45,919 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:10:38.079179+00:00: NGM26 (202605) (BEARISH)
-2026-03-13 18:40:45,920 - trading_bot.reconciliation - INFO - Exit time adjusted for NGM26 (202605): default Sat 17:10 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:40:46,093 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:46,467 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGM26 (202605)
-2026-03-13 18:40:46,474 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:46,854 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGM26 (202605)
-2026-03-13 18:40:46,863 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:47,211 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGM26 (202605)
-2026-03-13 18:40:47,213 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:40:47,215 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:47,217 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.558 [regime=HIGH_VOL]
-2026-03-13 18:40:47,219 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.661 [regime=HIGH_VOL]
-2026-03-13 18:40:47,221 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.507 [regime=HIGH_VOL]
-2026-03-13 18:40:47,222 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.557 [regime=HIGH_VOL]
-2026-03-13 18:40:47,224 - trading_bot.contribution_scorer - INFO - Contribution: technical (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:47,226 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.728 [regime=HIGH_VOL]
-2026-03-13 18:40:47,227 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.56) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.390 [regime=HIGH_VOL]
-2026-03-13 18:40:47,228 - trading_bot.reconciliation - INFO - Contribution scores for NGM26 (202605): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.558, "supply_chain": -0.661, "inventory": 0.507, "sentiment": -0.557, "technical": 0.0, "volatility": -0.728, "master_decision": 0.39}
-2026-03-13 18:40:47,228 - trading_bot.reconciliation - INFO - Reconciled NGM26 (202605): Entry 3.27 -> Exit 3.13 (4.22% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.1380
-2026-03-13 18:40:57,187 - trading_bot.trade_journal - INFO - Trade journal entry created: NGM26 (202605) WIN ($0.14)
-2026-03-13 18:40:57,188 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:40:57,317 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:11:52.852288+00:00: NGN26 (202606) (BEARISH)
-2026-03-13 18:40:57,317 - trading_bot.reconciliation - INFO - Exit time adjusted for NGN26 (202606): default Sat 17:11 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:40:57,578 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:57,937 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGN26 (202606)
-2026-03-13 18:40:57,944 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:58,315 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGN26 (202606)
-2026-03-13 18:40:58,324 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:40:58,692 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGN26 (202606)
-2026-03-13 18:40:58,694 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:40:58,696 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:40:58,698 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.511 [regime=HIGH_VOL]
-2026-03-13 18:40:58,699 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.661 [regime=HIGH_VOL]
-2026-03-13 18:40:58,701 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.507 [regime=HIGH_VOL]
-2026-03-13 18:40:58,702 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.608 [regime=HIGH_VOL]
-2026-03-13 18:40:58,704 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.408 [regime=HIGH_VOL]
-2026-03-13 18:40:58,706 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.775 [regime=HIGH_VOL]
-2026-03-13 18:40:58,707 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 18:40:58,707 - trading_bot.reconciliation - INFO - Contribution scores for NGN26 (202606): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.511, "supply_chain": -0.661, "inventory": 0.507, "sentiment": -0.608, "technical": 0.408, "volatility": -0.775, "master_decision": 0.45}
-2026-03-13 18:40:58,708 - trading_bot.reconciliation - INFO - Reconciled NGN26 (202606): Entry 3.51 -> Exit 3.26 (7.09% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.2490
-2026-03-13 18:41:06,893 - trading_bot.trade_journal - INFO - Trade journal entry created: NGN26 (202606) WIN ($0.25)
-2026-03-13 18:41:06,893 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:41:07,021 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:12:02.960239+00:00: NGQ26 (202607) (BEARISH)
-2026-03-13 18:41:07,022 - trading_bot.reconciliation - INFO - Exit time adjusted for NGQ26 (202607): default Sat 17:12 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:41:07,193 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:41:07,552 - trading_bot.reconciliation - INFO - Stored reflexion lesson for geopolitical on NGQ26 (202607)
-2026-03-13 18:41:07,563 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:41:07,898 - trading_bot.reconciliation - INFO - Stored reflexion lesson for sentiment on NGQ26 (202607)
-2026-03-13 18:41:07,905 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:41:08,294 - trading_bot.reconciliation - INFO - Stored reflexion lesson for volatility on NGQ26 (202607)
-2026-03-13 18:41:08,297 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.900 [regime=HIGH_VOL]
-2026-03-13 18:41:08,300 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:08,303 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.511 [regime=HIGH_VOL]
-2026-03-13 18:41:08,306 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.661 [regime=HIGH_VOL]
-2026-03-13 18:41:08,309 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.507 [regime=HIGH_VOL]
-2026-03-13 18:41:08,312 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.608 [regime=HIGH_VOL]
-2026-03-13 18:41:08,313 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.408 [regime=HIGH_VOL]
-2026-03-13 18:41:08,315 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.55) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=-0.728 [regime=HIGH_VOL]
-2026-03-13 18:41:08,318 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=BEARISH | pred_type=DIRECTIONAL → score=+0.450 [regime=HIGH_VOL]
-2026-03-13 18:41:08,318 - trading_bot.reconciliation - INFO - Contribution scores for NGQ26 (202607): {"agronomist": 0.9, "macro": 0.0, "geopolitical": -0.511, "supply_chain": -0.661, "inventory": 0.507, "sentiment": -0.608, "technical": 0.408, "volatility": -0.728, "master_decision": 0.45}
-2026-03-13 18:41:08,318 - trading_bot.reconciliation - INFO - Reconciled NGQ26 (202607): Entry 3.59 -> Exit 3.52 (2.06% move) | Strategy: BEAR_PUT_SPREAD | Outcome: BEARISH | P&L: 0.0740
-2026-03-13 18:41:14,193 - trading_bot.trade_journal - INFO - Trade journal entry created: NGQ26 (202607) WIN ($0.07)
-2026-03-13 18:41:14,193 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual BEARISH
-2026-03-13 18:41:14,315 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 14:12:40.579041+00:00: NGU26 (202608) (BEARISH)
-2026-03-13 18:41:14,315 - trading_bot.reconciliation - INFO - Exit time adjusted for NGU26 (202608): default Sat 17:12 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:41:14,482 - trading_bot.reconciliation - INFO - Materiality filter: 0.6145% < 1.2000% threshold → resolving as NEUTRAL
-2026-03-13 18:41:14,485 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,488 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.55) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,490 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,492 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,495 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,497 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,499 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,501 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,503 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (BEARISH, conf=0.80) | Master=BEARISH | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:14,503 - trading_bot.reconciliation - INFO - Contribution scores for NGU26 (202608): {"agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "sentiment": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:41:14,504 - trading_bot.reconciliation - INFO - Reconciled NGU26 (202608): Entry 3.58 -> Exit 3.60 (0.61% move) | Strategy: BEAR_PUT_SPREAD | Outcome: NEUTRAL | P&L: -0.0220
-2026-03-13 18:41:23,078 - trading_bot.trade_journal - INFO - Trade journal entry created: NGU26 (202608) LOSS ($-0.02)
-2026-03-13 18:41:23,078 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted BEARISH vs Actual NEUTRAL
-2026-03-13 18:41:23,205 - trading_bot.reconciliation - INFO - Reconciling trade from 2026-03-13 15:40:46.087230+00:00: NGK26 (202604) (NEUTRAL)
-2026-03-13 18:41:23,206 - trading_bot.reconciliation - INFO - Exit time adjusted for NGK26 (202604): default Sat 18:40 UTC → actual Fri 18:05 UTC (weekly close policy)
-2026-03-13 18:41:23,371 - trading_bot.reconciliation - INFO - Materiality filter: 0.0637% < 1.2000% threshold → resolving as NEUTRAL
-2026-03-13 18:41:23,375 - trading_bot.contribution_scorer - INFO - Contribution: sentiment (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,378 - trading_bot.contribution_scorer - INFO - Contribution: agronomist (NEUTRAL, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,382 - trading_bot.contribution_scorer - INFO - Contribution: macro (NEUTRAL, conf=0.55) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,385 - trading_bot.contribution_scorer - INFO - Contribution: geopolitical (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,390 - trading_bot.contribution_scorer - INFO - Contribution: supply_chain (BULLISH, conf=0.80) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,393 - trading_bot.contribution_scorer - INFO - Contribution: inventory (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,396 - trading_bot.contribution_scorer - INFO - Contribution: technical (BEARISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,399 - trading_bot.contribution_scorer - INFO - Contribution: volatility (BULLISH, conf=0.65) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,401 - trading_bot.contribution_scorer - INFO - Contribution: master_decision (NEUTRAL, conf=0.50) | Master=NEUTRAL | Outcome=NEUTRAL | pred_type=DIRECTIONAL → score=+0.000 [regime=HIGH_VOL]
-2026-03-13 18:41:23,402 - trading_bot.reconciliation - INFO - Contribution scores for NGK26 (202604): {"sentiment": 0.0, "agronomist": 0.0, "macro": 0.0, "geopolitical": 0.0, "supply_chain": 0.0, "inventory": 0.0, "technical": 0.0, "volatility": 0.0, "master_decision": 0.0}
-2026-03-13 18:41:23,402 - trading_bot.reconciliation - INFO - Reconciled NGK26 (202604): Entry 3.14 -> Exit 3.14 (0.06% move) | Strategy: NONE | Outcome: NEUTRAL | P&L: 0.0000
-2026-03-13 18:41:35,292 - trading_bot.trade_journal - INFO - Trade journal entry created: NGK26 (202604) FLAT ($0.00)
-2026-03-13 18:41:35,292 - trading_bot.reconciliation - INFO - Recorded Brier for master: Predicted NEUTRAL vs Actual NEUTRAL
-2026-03-13 18:41:35,462 - trading_bot.reconciliation - INFO - Successfully updated council_history.csv with reconciliation results.
-2026-03-13 18:41:38,465 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
-2026-03-13 18:41:38,465 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
-2026-03-13 18:41:38,466 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
-2026-03-13 18:41:38,471 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_v2.csv
-2026-03-13 18:41:38,477 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260311_184006.csv
-2026-03-13 18:41:38,481 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_194006.csv
-2026-03-13 18:41:38,485 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260305_194013.csv
-2026-03-13 18:41:38,488 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_194136.csv
-2026-03-13 18:41:38,492 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260310_184130.csv
-2026-03-13 18:41:38,496 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260305_v2.csv
-2026-03-13 18:41:38,499 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260312_183841.csv
-2026-03-13 18:41:38,504 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_v2.csv
-2026-03-13 18:41:38,508 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
-2026-03-13 18:41:38,511 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260227_v2.csv
-2026-03-13 18:41:38,515 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260313_v2.csv
-2026-03-13 18:41:38,521 - PerformanceAnalyzer - INFO - Consolidated a total of 61 trade records.
-2026-03-13 18:41:38,526 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
-2026-03-13 18:41:38,724 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $24,562.35
-2026-03-13 18:41:40,734 - PerformanceAnalyzer - INFO - Successfully fetched 18 execution(s) for today from IB.
-2026-03-13 18:41:44,452 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
-2026-03-13 18:41:44,642 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
-2026-03-13 18:41:44,909 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
-2026-03-13 18:41:44,911 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/data/NG/archive_ledger/trade_ledger_20260313_184144.csv'
-2026-03-13 18:41:44,920 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
-2026-03-13 18:41:44,922 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1196
-2026-03-13 18:41:44,923 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
-2026-03-13 18:41:44,923 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
-2026-03-13 18:41:44,931 - Engine.NG - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-03-13 18:50:00 UTC. Waiting for 0.14 hours.
-2026-03-13 18:42:55,676 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_state=PASSIVE, market_open=False, trading_day=True
-2026-03-13 18:47:56,862 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=15, market_state=PASSIVE, market_open=False, trading_day=True
-2026-03-13 18:50:00,001 - Engine.NG - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
-2026-03-13 18:50:00,006 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
-2026-03-13 18:50:00,007 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
-2026-03-13 18:50:00,020 - trading_bot.enhanced_brier - INFO - Loaded 1008 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
-2026-03-13 18:50:00,022 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
-2026-03-13 18:50:00,074 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,075 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,075 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,076 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,076 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,076 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,077 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,077 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,077 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-12b3e4ad) → BEARISH
-2026-03-13 18:50:00,077 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,078 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,078 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,078 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,078 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,078 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,078 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,079 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,079 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-0cee4647) → BEARISH
-2026-03-13 18:50:00,079 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,079 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,079 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,079 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,080 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,080 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,080 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,081 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,081 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-1d985c44) → BEARISH
-2026-03-13 18:50:00,081 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,082 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,082 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,082 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,082 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,082 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-7339007f) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,083 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,084 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,084 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,084 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-63a24f9a) → BEARISH
-2026-03-13 18:50:00,084 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,084 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,084 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,085 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,085 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,085 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,085 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,086 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-44f0b0a5) → BEARISH
-2026-03-13 18:50:00,086 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,086 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,086 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,087 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,087 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,087 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,087 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,087 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,087 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-7dd9281e) → BEARISH
-2026-03-13 18:50:00,088 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,088 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,088 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,088 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,088 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,088 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,089 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,089 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,089 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-85994f7c) → BEARISH
-2026-03-13 18:50:00,089 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,089 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,089 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,090 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,090 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,090 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-95ed7152) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,091 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,092 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,092 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,092 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,092 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,092 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-dee67360) → BEARISH
-2026-03-13 18:50:00,092 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,093 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,093 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,093 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-3fd7f643) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,094 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,095 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,095 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-22fc6d32) → NEUTRAL
-2026-03-13 18:50:00,095 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,095 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,095 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,095 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,096 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,096 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,096 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,097 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,097 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-25b210b9) → NEUTRAL
-2026-03-13 18:50:00,097 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,098 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,098 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,098 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,098 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,098 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-a14b6aa1) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,099 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,100 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,100 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,100 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,100 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-61ddc369) → BEARISH
-2026-03-13 18:50:00,100 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,101 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,101 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,101 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: master_decision (cycle=NG-1d88051b) → BEARISH
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-e9022ee2) → NEUTRAL
-2026-03-13 18:50:00,102 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-e9022ee2) → NEUTRAL
-2026-03-13 18:50:00,103 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-e9022ee2) → NEUTRAL
-2026-03-13 18:50:00,103 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-e9022ee2) → NEUTRAL
-2026-03-13 18:50:00,103 - trading_bot.enhanced_brier - INFO - Resolved from council_history: sentiment (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,103 - trading_bot.enhanced_brier - INFO - Resolved from council_history: agronomist (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,104 - trading_bot.enhanced_brier - INFO - Resolved from council_history: macro (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,104 - trading_bot.enhanced_brier - INFO - Resolved from council_history: geopolitical (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,105 - trading_bot.enhanced_brier - INFO - Resolved from council_history: supply_chain (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,105 - trading_bot.enhanced_brier - INFO - Resolved from council_history: inventory (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,105 - trading_bot.enhanced_brier - INFO - Resolved from council_history: technical (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,105 - trading_bot.enhanced_brier - INFO - Resolved from council_history: volatility (cycle=NG-d8401739) → NEUTRAL
-2026-03-13 18:50:00,142 - trading_bot.enhanced_brier - INFO - Enhanced Brier backfill complete: 0 resolved from CSV, 0 created from CSV, 152 resolved from council_history
-2026-03-13 18:50:00,143 - Orchestrator - INFO - Enhanced Brier backfill: 152 predictions caught up from CSV
-2026-03-13 18:50:00,152 - Orchestrator - INFO - Brier reconciliation: 152 predictions resolved today
-2026-03-13 18:50:00,152 - Orchestrator - INFO - Running feedback loop health check...
-2026-03-13 18:50:00,152 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
-2026-03-13 18:50:00,158 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-03-13 18:53:00 UTC. Waiting for 0.05 hours.
-2026-03-13 18:52:58,064 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_state=PASSIVE, market_open=False, trading_day=True
-2026-03-13 18:53:00,002 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
-2026-03-13 18:53:00,007 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
-2026-03-13 18:53:00,787 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 18:53:00,787 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/KC
-2026-03-13 18:53:00,891 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change +0.7%, alerts: 141, sentinel trades: 2
-2026-03-13 18:53:00,898 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-03-13 18:56:00 UTC. Waiting for 0.05 hours.
-2026-03-13 18:56:00,001 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
-2026-03-13 18:56:00,007 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
-2026-03-13 18:56:00,008 - Orchestrator - INFO - Scheduled shutdown flag SET — no new scheduled trades will be processed
-2026-03-13 18:56:00,008 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
-2026-03-13 18:56:00,008 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1239 [REMOTE/PAPER]...
-2026-03-13 18:56:00,141 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1239
-2026-03-13 18:56:00,149 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
-2026-03-13 18:56:00,149 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
-2026-03-13 18:56:00,251 - OrderManager - INFO - No open orders found to cancel.
-2026-03-13 18:56:00,252 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
-2026-03-13 18:56:00,252 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
-2026-03-13 18:56:03,255 - Orchestrator - INFO - Market entering PASSIVE state — position monitor stays alive, emergency cycles remain enabled
-2026-03-13 18:56:03,256 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
-2026-03-13 18:56:03,261 - Engine.NG - INFO - Next task 'system_digest' (System Health Digest) scheduled for 2026-03-13 19:00:00 UTC. Waiting for 0.07 hours.
-2026-03-13 18:56:59,052 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
-2026-03-13 18:56:59,053 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_microstructure)...
-2026-03-13 19:00:00,011 - Engine.NG - INFO - --- Running scheduled task: system_digest [generate_system_digest_task] ---
-2026-03-13 19:00:00,015 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
-2026-03-13 19:00:00,150 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.41}
-2026-03-13 19:00:00,286 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
-2026-03-13 19:00:00,390 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.29}
-2026-03-13 19:00:00,463 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-13_186219ee02e2 (3 commodities, 11 improvement opportunities)
-2026-03-13 19:00:00,475 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-16 12:15:00 UTC. Waiting for 65.25 hours.
+2026-03-13 19:49:34,612 - Engine.NG - INFO - =============================================
+2026-03-13 19:49:34,612 - Engine.NG - INFO - === Starting CommodityEngine [NG] ===
+2026-03-13 19:49:34,612 - Engine.NG - INFO - =============================================
+2026-03-13 19:49:34,612 - Engine.NG - INFO - Data directory: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,612 - trading_bot.state_manager - INFO - StateManager data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,613 - trading_bot.task_tracker - INFO - TaskTracker data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,613 - trading_bot.decision_signals - INFO - DecisionSignals data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,613 - OrderManager - INFO - OrderManager capital state dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,613 - trading_bot.sentinel_stats - INFO - SentinelStats data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,614 - trading_bot.utils - INFO - Utils data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,614 - trading_bot.tms - INFO - TMS default path set to: /home/rodrigo/real_options/data/NG/tms
+2026-03-13 19:49:34,614 - trading_bot.brier_bridge - INFO - BrierBridge data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,614 - trading_bot.brier_scoring - INFO - BrierScoring data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,614 - trading_bot.weighted_voting - INFO - WeightedVoting data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,614 - trading_bot.router_metrics - INFO - RouterMetrics data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,615 - trading_bot.agents - INFO - Agents provenance log set to: /home/rodrigo/real_options/data/NG/research_provenance.log
+2026-03-13 19:49:34,615 - trading_bot.prompt_trace - INFO - PromptTrace data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,615 - trading_bot.data_dir_context - INFO - Engine data_dir set to: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,615 - trading_bot.data_dir_context - INFO - Legacy data directories configured for: /home/rodrigo/real_options/data/NG
+2026-03-13 19:49:34,616 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%), starting_equity=0 (will re-derive from prev close)
+2026-03-13 19:49:34,616 - trading_bot.data_dir_context - INFO - EngineRuntime set for [NG]
+2026-03-13 19:49:34,617 - Engine.NG - WARNING - ============================================================
+2026-03-13 19:49:34,617 - Engine.NG - WARNING -   IB GATEWAY: REMOTE/PAPER (100.102.50.16)
+2026-03-13 19:49:34,617 - Engine.NG - WARNING -   Client IDs: DEV range (10-79)
+2026-03-13 19:49:34,617 - Engine.NG - WARNING -   Trading Mode: LIVE
+2026-03-13 19:49:34,617 - Engine.NG - WARNING - ============================================================
+2026-03-13 19:49:34,617 - Engine.NG - INFO - Budget Guard initialized. Daily limit: $15.0
+2026-03-13 19:49:34,617 - Engine.NG - INFO - Drawdown Guard initialized.
+2026-03-13 19:49:34,618 - Engine.NG - INFO - Expiry filter window: 14-180 DTE
+2026-03-13 19:49:34,620 - Engine.NG - INFO - Market Closed. Deferred triggers will remain queued.
+2026-03-13 19:49:34,621 - Orchestrator - INFO - Built session schedule: 17 tasks for NG (09:00-14:30 ET)
+2026-03-13 19:49:34,621 - Engine.NG - INFO - Environment: DEV. Applying 0 minute 'Civil War' avoidance offset.
+2026-03-13 19:49:34,629 - Engine.NG - WARNING - LATE START DETECTED: 17 scheduled tasks already passed:\n  - 08:15 ET: start_monitoring\n  - 08:16 ET: process_deferred_triggers\n  - 08:45 ET: cleanup_orphaned_theses\n  - 10:06 ET: signal_open\n  - 11:45 ET: audit_mid_session\n  - 12:24 ET: signal_early\n  - 13:24 ET: signal_mid\n  - 13:55 ET: audit_pre_close\n  - 14:05 ET: close_stale_primary\n  - 14:15 ET: close_stale_fallback\n  - 14:25 ET: emergency_hard_close\n  - 14:35 ET: log_equity_snapshot\n  - 14:38 ET: reconcile_and_analyze\n  - 14:50 ET: brier_reconciliation\n  - 14:53 ET: sentinel_effectiveness\n  - 14:56 ET: eod_shutdown\n  - 15:00 ET: system_digest
+2026-03-13 19:49:34,634 - Orchestrator - INFO - --- Recovery: Evaluating 17 missed tasks ---
+2026-03-13 19:49:34,634 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: start_monitoring — market closed
+2026-03-13 19:49:34,634 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: process_deferred_triggers — market closed
+2026-03-13 19:49:34,635 - Orchestrator - INFO - 🔄 RECOVERY: Running missed cleanup_orphaned_theses [cleanup_orphaned_theses] (was scheduled 08:45 ET)
+2026-03-13 19:49:34,635 - Orchestrator - INFO - --- AUTOMATED THESIS CLEANUP ---
+2026-03-13 19:49:34,636 - trading_bot.connection_pool - INFO - Connecting IB (NG_cleanup) ID: 1283 [REMOTE/PAPER]...
+2026-03-13 19:49:35,005 - trading_bot.connection_pool - INFO - IB (NG_cleanup) connected successfully with ID 1283
+2026-03-13 19:49:35,016 - chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2026-03-13 19:49:35,033 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-13 19:49:35,093 - Orchestrator - INFO - Thesis cleanup: no orphans found
+2026-03-13 19:49:35,093 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_cleanup)...
+2026-03-13 19:49:38,098 - Orchestrator - INFO - ✅ RECOVERY: cleanup_orphaned_theses completed
+2026-03-13 19:49:44,102 - Orchestrator - INFO - ✅ ALREADY RAN: signal_open completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:44,103 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_mid_session — market closed
+2026-03-13 19:49:44,103 - Orchestrator - INFO - ✅ ALREADY RAN: signal_early completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:44,103 - Orchestrator - INFO - ✅ ALREADY RAN: signal_mid completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:44,103 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: audit_pre_close — market closed
+2026-03-13 19:49:44,103 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_primary — market closed
+2026-03-13 19:49:44,103 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: close_stale_fallback — market closed
+2026-03-13 19:49:44,104 - Orchestrator - INFO - ⏭️ RECOVERY SKIP: emergency_hard_close — market closed
+2026-03-13 19:49:44,104 - Orchestrator - INFO - ✅ ALREADY RAN: log_equity_snapshot completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:44,104 - Orchestrator - INFO - ✅ ALREADY RAN: reconcile_and_analyze completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:44,104 - Orchestrator - INFO - 🔄 RECOVERY: Running missed brier_reconciliation [run_brier_reconciliation] (was scheduled 14:50 ET)
+2026-03-13 19:49:44,104 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-13 19:49:44,104 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-03-13 19:49:44,115 - trading_bot.enhanced_brier - INFO - Loaded 1008 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-13 19:49:44,122 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.29}
+2026-03-13 19:49:44,122 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-13 19:49:44,173 - Orchestrator - INFO - Brier reconciliation: 152 predictions resolved today
+2026-03-13 19:49:44,173 - Orchestrator - INFO - Running feedback loop health check...
+2026-03-13 19:49:44,173 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
+2026-03-13 19:49:44,176 - Orchestrator - INFO - ✅ RECOVERY: brier_reconciliation completed
+2026-03-13 19:49:50,182 - Orchestrator - INFO - ✅ ALREADY RAN: sentinel_effectiveness completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:50,182 - Orchestrator - INFO - ✅ ALREADY RAN: eod_shutdown completed earlier today (before restart). Skipping re-execution.
+2026-03-13 19:49:50,182 - Orchestrator - INFO - 🔄 RECOVERY: Running missed system_digest [generate_system_digest_task] (was scheduled 15:00 ET)
+2026-03-13 19:49:50,183 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
+2026-03-13 19:49:50,320 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.41}
+2026-03-13 19:49:50,435 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-13 19:49:50,526 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.29}
+2026-03-13 19:49:50,584 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-13_18f6b3b516bf (3 commodities, 11 improvement opportunities)
+2026-03-13 19:49:50,588 - Orchestrator - INFO - ✅ RECOVERY: system_digest completed
+2026-03-13 19:49:56,591 - Orchestrator - INFO - System restarted with 17 missed tasks.\n✅ 3 recovered | ⏭️ 7 skipped | ✔️ 7 already ran
+2026-03-13 19:49:56,810 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-13 19:49:56,812 - Engine.NG - INFO - Running TopicDiscoveryAgent on startup...
+2026-03-13 19:49:56,848 - trading_bot.topic_discovery - INFO - Starting Topic Discovery Scan...
+2026-03-13 19:49:58,830 - trading_bot.topic_discovery - INFO - Bulk fetched 600 active events from Polymarket (3 pages)
+2026-03-13 19:50:05,030 - trading_bot.topic_discovery - INFO -   Area 'US Monetary Policy': 11 candidates — ['How many Fed rate cuts in 2026?', 'Fed decisions (Dec-Mar)', 'How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'What will Fed Rate hit before 2027?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?']
+2026-03-13 19:50:05,592 - trading_bot.topic_discovery - INFO -   Area 'Trade Policy': 4 candidates — ['Will Trump create a tariff dividend by March 31?', 'Which countries will Trump make new trade deals with before ', 'Which countries will Trump make new trade deals with before ', 'Will Trump create a tariff dividend by March 31?']
+2026-03-13 19:50:05,710 - trading_bot.topic_discovery - INFO -   Area 'US Economic Health': 3 candidates — ['US recession by end of 2026?', 'Canada recession before 2027?', 'Negative GDP growth in 2026?']
+2026-03-13 19:50:05,711 - trading_bot.topic_discovery - INFO -   Area 'Brazil Economy': not applicable to NG, skipping
+2026-03-13 19:50:05,711 - trading_bot.topic_discovery - INFO -   Area 'LatAm Geopolitics': not applicable to NG, skipping
+2026-03-13 19:50:05,743 - trading_bot.topic_discovery - INFO -   Area 'Energy Geopolitics': 27 candidates — ['NATO/EU troops fighting in Ukraine by...?', 'Ukraine recognizes Russian sovereignty over its territory by', 'Ukraine election called by...?', 'Ukraine election held by...?', 'Will Russia capture Kostyantynivka by...?', 'US x Russia military clash by...?', 'Will Russia invade a NATO country by...?', 'Will Russia capture Sumy by...?', 'Putin out as President of Russia by end of 2026?', 'Russia x Ukraine ceasefire by March 31, 2026?', 'Will Russia capture Lyman by...?', 'Russia x Ukraine ceasefire by end of 2026?', 'Zelenskyy out as Ukraine president by end of 2026?', 'U.S. x Russia Nuclear deal by...?', 'Will Russia capture Rodynske by...?', 'NATO x Russia military clash by...?', 'Will Ukraine recapture Crimean territory by June 30, 2026?', 'Will Trump send Tomahawk to Ukraine by...?', 'Israel x Hamas ceasefire cancelled by...?', 'Israel x Hamas Ceasefire Phase II by...?', 'Will Iran close the Strait of Hormuz by...?', 'US-Iran nuclear deal before 2027?', 'Will the U.S. invade Iran before 2027?', 'Iran nuclear test before 2027?', 'Will Iran withdraw from the NPT before 2027?', 'Iran Nuke before 2027?', 'Will Iran close the Strait of Hormuz by...?']
+2026-03-13 19:50:12,896 - trading_bot.topic_discovery - INFO -   Area 'Fed Leadership': 6 candidates — ['How many Fed rate cuts in 2026?', 'Fed decision in March?', 'Fed decisions (Dec-Mar)', 'Fed decision in April?', 'Fed emergency rate cut before 2027?', 'What will Fed Rate hit before 2027?']
+2026-03-13 19:50:12,905 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-13 19:50:12,909 - trading_bot.topic_discovery - INFO - Saved 12 discovered topics to /home/rodrigo/real_options/data/NG/discovered_topics.json
+2026-03-13 19:50:12,909 - trading_bot.topic_discovery - INFO - Topic Discovery: Topics: +1 added, -1 removed
+2026-03-13 19:50:12,909 - trading_bot.topic_discovery - INFO - Topic Discovery complete: 12 topics from 51 raw candidates. Areas: [US Monetary Policy=11, Trade Policy=4, US Economic Health=3, Energy Geopolitics=27, Fed Leadership=6]. LLM calls: 13
+2026-03-13 19:50:12,909 - Engine.NG - INFO - Startup TopicDiscovery: 12 topics, Topics: +1 added, -1 removed
+2026-03-13 19:50:12,923 - Engine.NG - INFO - Staggering sentinel startup by 15s (engine #1)
+2026-03-13 19:50:27,934 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-16 12:15:00 UTC. Waiting for 64.41 hours.
+2026-03-13 19:50:27,934 - Orchestrator - INFO - --- Starting Sentinel Array ---
+2026-03-13 19:50:28,293 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-03-13 19:50:28,293 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1217 [REMOTE/PAPER]...
+2026-03-13 19:50:28,293 - trading_bot.self_healing - INFO - Self-Healing Monitor started
+2026-03-13 19:50:28,661 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1217
+2026-03-13 19:50:28,668 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-13 19:50:28,668 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-03-13 19:50:28,668 - Orchestrator - INFO - 🔄 SENTINEL SAFETY NET: Market open but position monitor not running — starting it now
+2026-03-13 19:50:28,668 - Orchestrator - INFO - Shutdown flags CLEARED — new trading day beginning
+2026-03-13 19:50:28,670 - Orchestrator - INFO - Market is closed (weekend/holiday). Skipping position monitoring startup.
+2026-03-13 19:50:28,670 - Orchestrator - INFO - SENTINEL SAFETY NET: First market-open transition — processing deferred triggers
+2026-03-13 19:50:28,671 - Orchestrator - INFO - Market is closed. Skipping deferred trigger processing.
+2026-03-13 19:50:28,671 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-13 19:50:28,674 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-13 19:50:28,852 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-13 19:50:28,876 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-13 19:50:28,884 - Orchestrator - INFO - Refreshed contract cache: NGK26
+2026-03-13 19:50:28,884 - Orchestrator - INFO - Market Open: Engaging Microstructure Sentinel
+2026-03-13 19:50:28,885 - trading_bot.connection_pool - INFO - Connecting IB (NG_microstructure) ID: 1255 [REMOTE/PAPER]...
+2026-03-13 19:50:29,103 - trading_bot.connection_pool - INFO - IB (NG_microstructure) connected successfully with ID 1255
+2026-03-13 19:50:29,112 - trading_bot.utils - INFO - 🛠️ FORCE_DELAYED_DATA enabled: Using Delayed Market Data (Type 3)
+2026-03-13 19:54:51,118 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=5, market_state=PASSIVE, market_open=False, trading_day=True
+2026-03-13 19:59:52,376 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=10, market_state=PASSIVE, market_open=False, trading_day=True
