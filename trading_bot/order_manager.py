@@ -3406,13 +3406,18 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
             try:
                 verify_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
-                remaining = [p for p in (verify_positions or []) if p.position != 0]
+                # Filter to this commodity only — IB returns ALL positions across commodities.
+                # Without this filter, KC engine would try to close NG/CC positions.
+                remaining = [
+                    p for p in (verify_positions or [])
+                    if p.position != 0 and p.contract.symbol == commodity_symbol
+                ]
 
                 if remaining:
                     remaining_symbols = [p.contract.localSymbol for p in remaining]
                     logger.critical(
                         f"⚠️ POST-CLOSE VERIFICATION FAILED: "
-                        f"{len(remaining)} positions still open: {remaining_symbols}"
+                        f"{len(remaining)} {commodity_symbol} positions still open: {remaining_symbols}"
                     )
 
                     # RETRY: Attempt individual market orders for each remaining leg
@@ -3441,10 +3446,13 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                                 f"{pos.contract.localSymbol} (RETRY FAILED: {retry_e})"
                             )
 
-                    # Re-verify after retries
+                    # Re-verify after retries (filtered to this commodity)
                     await asyncio.sleep(5)
                     final_check = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
-                    final_remaining = [p for p in (final_check or []) if p.position != 0]
+                    final_remaining = [
+                        p for p in (final_check or [])
+                        if p.position != 0 and p.contract.symbol == commodity_symbol
+                    ]
 
                     if final_remaining:
                         final_symbols = [p.contract.localSymbol for p in final_remaining]
