@@ -1645,3 +1645,56 @@
 2026-03-13 13:25:29,815 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_state=ACTIVE, market_open=True, trading_day=True
 2026-03-13 13:28:32,786 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 37% of average (Sev: 6)
 2026-03-13 13:28:32,790 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-13 13:30:33,055 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:31:37,146 - Orchestrator - INFO - MacroContagionSentinel: trigger detected (source=MacroContagionSentinel, severity=7)
+2026-03-13 13:31:37,185 - trading_bot.state_manager - INFO - Logged sentinel event from MacroContagionSentinel to history.
+2026-03-13 13:31:37,186 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by MacroContagionSentinel: Cross-Commodity Contagion: Cocoa correlating with Gold/Silver (0.83) (Cycle: CC-08d653df)
+2026-03-13 13:31:37,411 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-13 13:31:37,514 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-13 13:31:37,514 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-03-13 13:31:37,514 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-03-13 13:31:37,522 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/CC/tms
+2026-03-13 13:31:37,537 - trading_bot.enhanced_brier - INFO - Loaded 1648 predictions from /home/rodrigo/real_options/data/CC/enhanced_brier.json
+2026-03-13 13:31:37,538 - trading_bot.agents - INFO - Loaded commodity profile: Cocoa
+2026-03-13 13:31:37,539 - trading_bot.observability - INFO - HallucinationDetector initialized for Cocoa: 4 port tokens, 6 producer tokens
+2026-03-13 13:31:37,539 - trading_bot.observability - INFO - ObservabilityHub initialized for Cocoa
+2026-03-13 13:31:37,539 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-13 13:31:37,539 - trading_bot.agents - INFO - Trading Council initialized for Cocoa. Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-13 13:31:37,539 - root - INFO - Fetching 2 active futures contracts for CC on NYBOT...
+2026-03-13 13:31:37,543 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-13 13:31:37,606 - root - INFO - Skipping contract CCH6 (Exp: 20260316): Expires < 45 days.
+2026-03-13 13:31:37,607 - root - INFO - Found 9 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-13 13:31:37,607 - Orchestrator - INFO - Targeting contract: CCK6 (202605)
+2026-03-13 13:31:41,724 - trading_bot.market_data_provider - INFO - Building market context for CCK6 (202605)...
+2026-03-13 13:31:42,197 - trading_bot.market_data_provider - INFO - Market context for CCK6 (202605): price=3351.00, sma_200=6137.03, regime=RANGE_BOUND, vol_5d=0.0279
+2026-03-13 13:31:42,198 - Orchestrator - INFO - Emergency market context: price=3351.0, regime=RANGE_BOUND
+2026-03-13 13:31:42,199 - trading_bot.agents - INFO - Running Specialized Cycle triggered by MacroContagionSentinel...
+2026-03-13 13:31:42,200 - trading_bot.agents - INFO - Routing to macro (Reason: Default routing)
+2026-03-13 13:31:42,201 - trading_bot.agents - INFO - Waking up macro...
+2026-03-13 13:31:42,583 - trading_bot.agents - INFO - Retrieved 3 TMS insights for macro.
+2026-03-13 13:31:42,584 - trading_bot.agents - INFO - [macro] Phase 1: Gathering grounded data...
+2026-03-13 13:32:22,044 - trading_bot.agents - WARNING - [macro] Output validation issues: ["Possible hallucination: 4 numbers not in grounded data: ['400000', '118', '8311']"]
+2026-03-13 13:32:22,045 - trading_bot.agents - WARNING - [macro] Validation issues: ["Possible hallucination: 4 numbers not in grounded data: ['400000', '118', '8311']"]
+2026-03-13 13:32:22,045 - trading_bot.heterogeneous_router - INFO - Cache INVALIDATED 1 entries for macro
+2026-03-13 13:32:42,760 - trading_bot.weighted_voting - INFO - Market Regime Detected: RANGE_BOUND
+2026-03-13 13:32:42,761 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"agronomist": "domain=0.5 \u00d7 reliability=0.6 = 0.24", "macro": "domain=3.0 \u00d7 reliability=0.8 = 2.32", "geopolitical": "domain=2.0 \u00d7 reliability=1.1 = 1.74", "supply_chain": "domain=1.0 \u00d7 reliability=0.6 = 0.48", "inventory": "domain=0.5 \u00d7 reliability=0.6 = 0.23", "sentiment": "domain=2.0 \u00d7 reliability=0.6 = 1.02", "technical": "domain=2.2 \u00d7 reliability=1.0 = 1.81", "volatility": "domain=1.4 \u00d7 reliability=0.7 = 0.82"}
+2026-03-13 13:32:42,762 - trading_bot.weighted_voting - INFO - Weighted Vote: BEARISH (score=-0.339, dominant=geopolitical)
+2026-03-13 13:32:42,762 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "agronomist",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.59,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.24,\n    "contribution": -0.191\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 3.0,\n    "reliability_mult": 0.77,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "mismatch_discount": 1.0,\n    "final_weight": 2.32,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.0,\n    "reliability_mult": 1.08,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 1.74,\n    "contribution": -1.394\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.6,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.48,\n    "contribution": -0.386\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.56,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.23,\n    "contribution": -0.146\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BEARISH",\n    "confidence": 0.8,\n    "domain_weight": 2.0,\n    "reliability_mult": 0.63,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 1.02,\n    "contribution": -0.815\n  },\n  {\n    "agent": "technical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 2.25,\n    "reliability_mult": 0.99,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 1.81,\n    "contribution": 0.0\n  },\n  {\n    "agent": "volatility",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.4,\n    "reliability_mult": 0.72,\n    "staleness_weight": 0.81,\n    "age_hours": 2.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.82,\n    "contribution": 0.0\n  }\n]
+2026-03-13 13:34:00,983 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Broad-based evidence of improving/ample supply and inventory
+2026-03-13 13:34:37,584 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED WITH THIS TRADE IN ITS CURRENT FORM. The bearish thesis is intellectually coherent but operationally compromised by four compounding risks: (1) the trade is crowded — speculative shorts are already elevated, providing asymmetric squeeze risk with minimal incremental bearish positioning upside; (2) the macro correlation regime (0.83 to precious metals) makes this trade vulnerable to a risk-on flip that has nothing to do with West African rainfall; (3) the technical setup explicitly argues against fresh shorts — RSI divergence, oversold recovery, and key resistance at $3,470–$3,500 suggest a bounce precedes any continuation lower; (4) the confidence is 0.68 on a RANGE_BOUND market, which statistically argues for mean-reversion trades, not directional shorts. If this trade is to be taken at all, wait for price to reject $3,470–$3,500 resistance with confirming volume, reducing entry risk and validating the technical short setup. Current entry at $3,351 is buying into the middle of a range with no margin of safety. The 0.80 confidence rating on this bearish thesis is materially overstated given the crowded positioning, macro regime instability, and stale demand data. Risk-adjusted, this does not clear the bar.
+2026-03-13 13:34:37,586 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-03-13 13:34:37,587 - Orchestrator - INFO - H7-B: EMERGENCY IC SUPPRESSED — sentinel trigger with expensive vol. regime=RANGE_BOUND, vol=BEARISH. Falling through to NO TRADE.
+2026-03-13 13:34:37,588 - trading_bot.strategy_router - INFO - H7-B: IC SUPPRESSED on sentinel trigger (MacroContagionSentinel) with expensive vol. Falling through to NO TRADE.
+2026-03-13 13:34:37,588 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=RANGE_BOUND
+2026-03-13 13:34:37,588 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-13 13:34:37,590 - root - INFO - Logged council decision for CCK6 (202605)
+2026-03-13 13:34:37,593 - trading_bot.decision_signals - INFO - Decision signal logged: CCK6 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-03-13 13:34:37,765 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-03-13 13:34:37,769 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-13 13:35:37,895 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:40:40,932 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:45:43,984 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:50:47,028 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:50:47,251 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 34% of average (Sev: 6)
+2026-03-13 13:50:47,256 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-13 13:55:50,095 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_state=ACTIVE, market_open=True, trading_day=True

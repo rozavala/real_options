@@ -232,3 +232,65 @@
 2026-03-13 13:21:45,988 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-03-13 13:22:45,998 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=470, market_state=ACTIVE, market_open=True, trading_day=True
 2026-03-13 13:27:48,157 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=475, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:31:50,927 - Orchestrator - INFO - WeatherSentinel: trigger detected (source=WeatherSentinel, severity=7)
+2026-03-13 13:31:50,966 - trading_bot.state_manager - INFO - Logged sentinel event from WeatherSentinel to history.
+2026-03-13 13:31:51,041 - trading_bot.drawdown_circuit_breaker - INFO - DrawdownGuard initialized from live NLV: $25,939.12 (no daily_equity.csv available)
+2026-03-13 13:31:51,042 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by WeatherSentinel: DROUGHT in Permian Basin: 28.1mm (NEUTRAL, INFRASTRUCTURE stage) (Cycle: NG-22fc6d32)
+2026-03-13 13:31:51,365 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-13 13:31:51,380 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-13 13:31:51,520 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-13 13:31:51,521 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-03-13 13:31:51,521 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-03-13 13:31:51,527 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-13 13:31:51,537 - trading_bot.enhanced_brier - INFO - Loaded 952 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-13 13:31:51,539 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-03-13 13:31:51,539 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-03-13 13:31:51,539 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-03-13 13:31:51,539 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-13 13:31:51,539 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-13 13:31:51,540 - root - INFO - Fetching 2 active futures contracts for NG on NYMEX...
+2026-03-13 13:31:51,544 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-13 13:31:51,724 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-13 13:31:51,726 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-13 13:31:51,726 - Orchestrator - INFO - Targeting contract: NGK26 (202604)
+2026-03-13 13:31:57,802 - trading_bot.market_data_provider - INFO - Building market context for NGK26 (202604)...
+2026-03-13 13:31:58,370 - trading_bot.market_data_provider - INFO - Market context for NGK26 (202604): price=3.16, sma_200=3.52013, regime=HIGH_VOLATILITY, vol_5d=0.0347
+2026-03-13 13:31:58,371 - Orchestrator - INFO - Emergency market context: price=3.159, regime=HIGH_VOLATILITY
+2026-03-13 13:31:58,371 - trading_bot.agents - INFO - Running Specialized Cycle triggered by WeatherSentinel...
+2026-03-13 13:31:58,372 - trading_bot.agents - INFO - Routing to agronomist (Reason: Matched: WeatherSentinel/drought)
+2026-03-13 13:31:58,372 - trading_bot.agents - INFO - Waking up agronomist...
+2026-03-13 13:31:58,635 - trading_bot.agents - INFO - Retrieved 1 TMS insights for agronomist.
+2026-03-13 13:31:58,635 - trading_bot.agents - INFO - [agronomist] Phase 1: Gathering grounded data...
+2026-03-13 13:32:51,406 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=480, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:32:51,406 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-13 13:32:51,410 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai
+2026-03-13 13:32:51,536 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-13 13:32:51,539 - root - INFO - Found 152 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-13 13:32:51,539 - Orchestrator - INFO - Refreshed contract cache: NGK26
+2026-03-13 13:33:00,618 - trading_bot.weighted_voting - INFO - Market Regime Detected: HIGH_VOLATILITY
+2026-03-13 13:33:00,619 - trading_bot.contribution_scorer - INFO - Loaded contribution scores for 9 agents from /home/rodrigo/real_options/data/NG/contribution_scores.json
+2026-03-13 13:33:00,620 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"sentiment": "domain=1.0 \u00d7 reliability=0.9 = 0.15", "agronomist": "domain=4.5 \u00d7 reliability=1.1 = 4.89", "macro": "domain=1.0 \u00d7 reliability=1.1 = 0.18", "geopolitical": "domain=0.5 \u00d7 reliability=0.8 = 0.07", "supply_chain": "domain=1.5 \u00d7 reliability=1.0 = 0.25", "inventory": "domain=1.5 \u00d7 reliability=0.8 = 0.21", "technical": "domain=1.0 \u00d7 reliability=0.9 = 0.17", "volatility": "domain=3.0 \u00d7 reliability=0.8 = 0.43"}
+2026-03-13 13:33:00,620 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.028, dominant=volatility)
+2026-03-13 13:33:00,620 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "sentiment",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 0.9,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.15,\n    "contribution": 0.0\n  },\n  {\n    "agent": "agronomist",\n    "direction": "NEUTRAL",\n    "confidence": 0.8,\n    "domain_weight": 4.5,\n    "reliability_mult": 1.09,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "mismatch_discount": 1.0,\n    "final_weight": 4.89,\n    "contribution": 0.0\n  },\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.05,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.18,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "NEUTRAL",\n    "confidence": 0.65,\n    "domain_weight": 0.5,\n    "reliability_mult": 0.83,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.07,\n    "contribution": 0.0\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.98,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.25,\n    "contribution": -0.164\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.82,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.21,\n    "contribution": -0.116\n  },\n  {\n    "agent": "technical",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 1.0499999999999998,\n    "reliability_mult": 0.94,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.17,\n    "contribution": 0.11\n  },\n  {\n    "agent": "volatility",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 3.0,\n    "reliability_mult": 0.84,\n    "staleness_weight": 0.17,\n    "age_hours": 20.9,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.43,\n    "contribution": 0.345\n  }\n]
+2026-03-13 13:34:30,363 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: Looser domestic balance into shoulder season: record/high pr
+2026-03-13 13:35:03,815 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED with a 0.8-confidence bearish directional position on NGK26. The pre-mortem exposes four critical vulnerabilities that collectively make this trade asymmetrically dangerous: (1) CROWDED SHORT BIAS — the -206,400 net short CFTC position means we are not contrarian, we are joining a crowded consensus trade where the pain trade is violently higher. The 'squeeze risk' was acknowledged but dismissed as 'non-linear' rather than recognized as a position-sizing veto. (2) CONFIRMATION BIAS — we selected the Permabear framework as 'more grounded' but the agent voting was genuinely split: Technical (BULLISH, 0.65), Volatility (BULLISH, 0.80), Sentiment (NEUTRAL, 0.65), Geopolitical (NEUTRAL, 0.65), Macro (NEUTRAL, 0.65). The WEIGHTED CONSENSUS was NEUTRAL at 0.63 — yet we overrode it to BEARISH 0.80. This is a red flag. We pattern-matched to a supply/storage framework and discounted the geopolitical/volatility regime signals. (3) CVOL AT 98.53 IS A STRUCTURAL VETO — trading short delta into a 98th-percentile volatility environment without defined options-based risk is reckless. Elevated CVOL means realized moves can exceed 2x normal daily ranges; a 3-day adverse move could breach risk limits before the thesis resolves. (4) DATA STALENESS — all agent reports are 20.9 hours old in a geopolitically active market where Qatar/Hormuz developments can materially change overnight. The 38 Bcf storage signal is already priced; the next catalyst is unknown and skewed toward bullish surprises given geopolitical optionality. If conviction exists, the ONLY acceptable expression is via defined-risk put spreads or ratio structures that cap loss in a squeeze scenario, with position size at 25% of normal — NOT outright futures short at full size.
+2026-03-13 13:35:03,819 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.0)
+2026-03-13 13:35:03,820 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-13 13:35:03,821 - trading_bot.strategy_router - INFO - H7-B: IC SUPPRESSED on sentinel trigger (WeatherSentinel) with expensive vol. Falling through to NO TRADE.
+2026-03-13 13:35:03,821 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=HIGH_VOLATILITY
+2026-03-13 13:35:03,821 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-13 13:35:03,823 - root - INFO - Logged council decision for NGK26 (202604)
+2026-03-13 13:35:03,829 - trading_bot.decision_signals - INFO - Decision signal logged: NGK26 (202604) → NEUTRAL (DIRECTIONAL/NONE)
+2026-03-13 13:35:03,955 - trading_bot.enhanced_brier - INFO - Loaded 952 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-13 13:35:03,992 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-03-13 13:35:03,996 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-13 13:37:59,694 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=485, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:43:01,816 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=490, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:43:02,080 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 18% of average
+2026-03-13 13:43:02,089 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-13 13:43:02,320 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-13 13:48:04,197 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:53:06,291 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:58:08,381 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=505, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-13 13:59:14,944 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 18% of average
+2026-03-13 13:59:14,944 - Orchestrator - INFO - MicrostructureSentinel cooldown active until 2026-03-13 14:13:02.323098. Skipping.
