@@ -129,16 +129,16 @@ with fin_col2:
             nlv = live.get("net_liquidation", 0.0)
             pnl_pct = (daily_pnl / nlv * 100) if nlv > 0 else 0.0
             st.metric(
-                "Daily P&L", f"${daily_pnl:,.0f}", delta=f"{pnl_pct:+.2f}%",
+                "💵 Daily P&L", f"${daily_pnl:,.0f}", delta=f"{pnl_pct:+.2f}%",
                 help="Total change in account equity since prior day close (as reported by IBKR)."
             )
         else:
             st.metric(
-                "Daily P&L", "IB Offline",
+                "💵 Daily P&L", "IB Offline",
                 help="Connection to Interactive Brokers is offline. Data may be stale."
             )
     except Exception:
-        st.metric("Daily P&L", "IB Offline", help="Connection to Interactive Brokers is offline.")
+        st.metric("💵 Daily P&L", "IB Offline", help="Connection to Interactive Brokers is offline.")
 
 with fin_col3:
     try:
@@ -150,16 +150,16 @@ with fin_col3:
             limit = var_data.get("var_limit", 0)
             utilization = (var_95 / limit * 100) if limit > 0 else 0.0
             st.metric(
-                "Portfolio VaR (95%)", f"${var_95:,.0f}", delta=f"{utilization:.0f}% utilized",
+                "⚖️ Portfolio VaR (95%)", f"${var_95:,.0f}", delta=f"{utilization:.0f}% utilized",
                 help="Value at Risk (95% confidence): Estimated maximum loss over one day based on current portfolio correlations."
             )
         else:
             st.metric(
-                "Portfolio VaR (95%)", "No data",
+                "⚖️ Portfolio VaR (95%)", "No data",
                 help="VaR state file not found. Ensure the VaR calculator has run successfully."
             )
     except Exception:
-        st.metric("Portfolio VaR (95%)", "No data", help="VaR state file not found.")
+        st.metric("⚖️ Portfolio VaR (95%)", "No data", help="VaR state file not found.")
 
 # =====================================================================
 # SECTION 2b: Equity Curve + Drawdown (account-wide from daily_equity.csv)
@@ -296,16 +296,16 @@ if not equity_df.empty and len(equity_df) >= 10:
             daily_mean = _daily_returns.mean()
             sharpe = (daily_mean / daily_std * np.sqrt(252)) if daily_std > 0 else 0.0
             st.metric(
-                "Sharpe Ratio", f"{sharpe:.2f}",
+                "🛡️ Sharpe Ratio", f"{sharpe:.2f}",
                 help="Risk-adjusted return. >1.0 is good, >2.0 is excellent, <0.5 is poor"
             )
         else:
-            st.metric("Sharpe Ratio", "N/A", help="Needs daily equity data")
+            st.metric("🛡️ Sharpe Ratio", "N/A", help="Needs daily equity data")
 
     with risk_col2:
         recovery_text = f" ({_recovery_days}d recovery)" if _recovery_days is not None else " (ongoing)"
         st.metric(
-            "Max Drawdown", f"{_max_dd_pct:.1f}%",
+            "📉 Max Drawdown", f"{_max_dd_pct:.1f}%",
             help=f"Deepest peak-to-trough decline{recovery_text}"
         )
 else:
@@ -457,7 +457,7 @@ for idx, ticker in enumerate(active_commodities):
         last_strategy = last_row.get("strategy_type", "---")
 
         st.metric(
-            "Trades", str(total_trades),
+            "📦 Trades", str(total_trades),
             help=f"Total number of Council decisions (trades) made for {meta['name']}."
         )
         st.metric(
@@ -530,24 +530,24 @@ try:
                 width='stretch',
                 hide_index=True,
                 column_config={
-                    "Time": st.column_config.TextColumn("Time", width="small", help="Time since the decision was made."),
-                    "Commodity": st.column_config.TextColumn("Ticker", width="small", help="The commodity symbol (e.g., KC, CC)."),
-                    "Contract": st.column_config.TextColumn("Contract", width="small", help="The specific futures contract traded."),
-                    "Decision": st.column_config.TextColumn("Decision", width="small", help="The final decision rendered by the Master Strategist."),
+                    "Time": st.column_config.TextColumn("🕒 Time", width="small", help="Time since the decision was made."),
+                    "Commodity": st.column_config.TextColumn("📦 Ticker", width="small", help="The commodity symbol (e.g., KC, CC)."),
+                    "Contract": st.column_config.TextColumn("📜 Contract", width="small", help="The specific futures contract traded."),
+                    "Decision": st.column_config.TextColumn("⚖️ Decision", width="small", help="The final decision rendered by the Master Strategist."),
                     "Confidence": st.column_config.ProgressColumn(
-                        "Conf.",
+                        "🎯 Conf.",
                         width="small",
                         min_value=0,
                         max_value=100,
                         format="%.0f%%",
                         help="The confidence level of the Master Strategist's decision (0-100%)."
                     ),
-                    "Strategy": st.column_config.TextColumn("Strategy", width="medium", help="The trading strategy applied for this decision."),
-                    "Thesis": st.column_config.TextColumn("Thesis", width="small", help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
-                    "Trigger": st.column_config.TextColumn("Trigger", width="small", help="The event or sentinel that triggered this decision cycle."),
-                    "Outcome": st.column_config.TextColumn("Outcome", width="small", help="The outcome of the decision (WIN/LOSS) once resolved."),
+                    "Strategy": st.column_config.TextColumn("🛡️ Strategy", width="medium", help="The trading strategy applied for this decision."),
+                    "Thesis": st.column_config.TextColumn("💡 Thesis", width="small", help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    "Trigger": st.column_config.TextColumn("📡 Trigger", width="small", help="The event or sentinel that triggered this decision cycle."),
+                    "Outcome": st.column_config.TextColumn("🏁 Outcome", width="small", help="The outcome of the decision (WIN/LOSS) once resolved."),
                     "P&L": st.column_config.NumberColumn(
-                        "P&L",
+                        "💰 P&L",
                         width="small",
                         format="$%.2f",
                         help="The realized Profit and Loss for this trade."

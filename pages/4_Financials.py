@@ -64,11 +64,11 @@ with metric_cols[1]:
         reconciled = council_df[pd.notna(council_df['pnl_realized'])]
         if not reconciled.empty:
             win_rate = (reconciled['pnl_realized'] > 0).mean() * 100
-            st.metric("Win Rate", f"{win_rate:.1f}%", help="Percentage of reconciled trades that resulted in a positive P&L.")
+            st.metric("🎯 Win Rate", f"{win_rate:.1f}%", help="Percentage of reconciled trades that resulted in a positive P&L.")
         else:
-            st.metric("Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
+            st.metric("🎯 Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
     else:
-        st.metric("Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
+        st.metric("🎯 Win Rate", "N/A", help="Needs reconciled trade data to calculate.")
 
 with metric_cols[2]:
     # Sum realized P&L from reconciled trades
@@ -215,7 +215,7 @@ else:
 st.markdown("---")
 
 # === Win/Loss Ratio (per-commodity, from graded trades) ===
-st.subheader("Win/Loss Ratio")
+st.subheader("📊 Win/Loss Ratio")
 st.caption("Are winners bigger than losers?")
 
 if not graded_fin.empty:

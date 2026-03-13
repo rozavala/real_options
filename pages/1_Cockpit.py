@@ -124,7 +124,7 @@ def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
 
     with cols[0]:
         st.metric(
-            "Net Liquidation",
+            "💰 Net Liquidation",
             f"${net_liq:,.0f}",
             help="Total account value including cash and market value of positions"
         )
@@ -133,21 +133,21 @@ def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
         if net_liq > 0:
             margin_util = (margin / net_liq) * 100
             st.metric(
-                "Margin Util",
+                "🛡️ Margin Util",
                 f"{margin_util:.1f}%",
                 help="Percentage of Net Liquidation currently used for maintenance margin"
             )
         else:
-            st.metric("Margin Util", "N/A", help="Percentage of Net Liquidation currently used for maintenance margin")
+            st.metric("🛡️ Margin Util", "N/A", help="Percentage of Net Liquidation currently used for maintenance margin")
 
     with cols[2]:
         import math
         pnl_help = "Total change in account equity since prior day close (as reported by IBKR)."
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
-            st.metric("Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
+            st.metric("💵 Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
         else:
             st.metric(
-                "Daily P&L",
+                "💵 Daily P&L",
                 f"${daily_pnl:+,.0f}",
                 delta=f"${daily_pnl:+,.0f}",
                 delta_color="normal",
@@ -162,14 +162,14 @@ def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
         # Count positions (spreads) from TMS theses
         if active_theses:
             pos_count = len(active_theses)
-            pos_label = "Open Positions"
+            pos_label = "💼 Open Positions"
             pos_help = (
                 f"{pos_count} spread positions (from TMS theses), "
                 f"{leg_count} individual legs visible in IB."
             )
         else:
             pos_count = leg_count
-            pos_label = "Open Legs"
+            pos_label = "💼 Open Legs"
             pos_help = (
                 f"{leg_count} individual option legs in IB. "
                 "TMS theses unavailable — showing raw leg count."
@@ -970,7 +970,7 @@ if config:
 
     # === SECTION: Recent Decisions Feed ===
     st.markdown("---")
-    st.subheader("Recent Decisions")
+    st.subheader("📜 Recent Decisions")
     try:
         if not council_df.empty:
             _recent = council_df.head(10).copy()

@@ -29,7 +29,7 @@ from _date_filter import date_range_filter
 
 config = get_config()
 
-st.title("LLM Monitor")
+st.title("🤖 LLM Monitor")
 st.caption("API costs, budget utilization, provider health, and latency")
 
 

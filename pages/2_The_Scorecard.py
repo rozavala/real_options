@@ -555,7 +555,7 @@ else:
 
 # === NEW SECTION: Regime-Specific Win Rate ===
 st.markdown("---")
-st.subheader("Regime-Specific Win Rate")
+st.subheader("🎭 Regime-Specific Win Rate")
 st.caption("Does the system perform differently in different market conditions?")
 
 # Load decision_signals.csv for regime data (explicit ticker for commodity-aware path)
@@ -658,7 +658,7 @@ if not _regime_shown:
 
 # === NEW SECTION: Strategy-Specific Win Rate ===
 st.markdown("---")
-st.subheader("Strategy Win Rate Breakdown")
+st.subheader("🎯 Strategy Win Rate Breakdown")
 st.caption("Which trading strategy is working best?")
 
 _STRATEGY_PRETTY = {
@@ -753,7 +753,7 @@ else:
 
 # === NEW SECTION: Trade Duration Distribution ===
 st.markdown("---")
-st.subheader("Trade Duration: Winners vs Losers")
+st.subheader("⏱️ Trade Duration: Winners vs Losers")
 st.caption("Do winning trades differ in holding time from losing trades?")
 
 _duration_shown = False
@@ -823,7 +823,7 @@ if not _duration_shown:
 
 # === NEW SECTION: Volatility Trade Performance ===
 st.markdown("---")
-st.subheader("Volatility Strategy Performance")
+st.subheader("⚡ Volatility Strategy Performance")
 
 vol_df = (
     graded_df[graded_df["prediction_type"] == "VOLATILITY"]
