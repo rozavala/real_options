@@ -39,11 +39,21 @@ def _is_error_report(report) -> bool:
     research_topic() wraps exceptions as:
       {'data': 'Error conducting research: ...', 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
     These must not be passed to the council as legitimate agent reports (Issue #1167).
+
+    Also catches LLM-rephrased variants where reflexion previously fed the
+    error text back as "previous analysis" and the LLM re-phrased it (e.g.,
+    "[EVIDENCE]: The provided input was a system error message ('Error
+    conducting research: ...')"). Without this, poisoned state persists across
+    cycles even after the original API error resolves.
     """
-    if isinstance(report, dict) and isinstance(report.get('data'), str):
-        data_str = report['data']
-        if 'Error conducting research' in data_str or 'All providers exhausted' in data_str:
-            return True
+    if isinstance(report, dict):
+        data = report.get('data', '')
+        # Handle nested dicts (reflexion output wraps data in another dict)
+        if isinstance(data, dict):
+            data = data.get('data', '')
+        if isinstance(data, str):
+            if 'Error conducting research' in data or 'All providers exhausted' in data:
+                return True
     return False
 
 
@@ -1104,6 +1114,18 @@ OUTPUT FORMAT (JSON):
 
         # Step 1: Initial analysis
         initial_response_struct = await self.research_topic(persona_key, search_instruction, regime_context=regime_context, trace_collector=trace_collector)
+
+        # Short-circuit reflexion if the initial research failed.
+        # Feeding error text into the reflexion prompt creates a
+        # self-perpetuating loop where the LLM "analyzes" the error
+        # message as evidence, poisoning state for future cycles.
+        if _is_error_report(initial_response_struct):
+            logger.warning(
+                f"[{persona_key}] Skipping reflexion — initial research returned error. "
+                f"Returning error struct as-is to avoid poisoned-state loop."
+            )
+            return initial_response_struct
+
         initial_text = initial_response_struct.get('data', '')
 
         # Step 2: Reflexion prompt

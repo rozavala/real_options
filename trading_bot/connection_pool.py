@@ -329,8 +329,15 @@ class IBConnectionPool:
         fill callbacks and corrupted local state.
         """
         try:
+            my_client_id = ib.client.clientId
             pending = []
             for trade in ib.openTrades():
+                # Only drain orders placed by THIS connection's clientId.
+                # IB Gateway returns trades from ALL client connections on the
+                # same account; attempting to cancel another engine's orders
+                # causes Error 10147 and 120s blocking stalls.
+                if trade.order.clientId != my_client_id:
+                    continue
                 status = trade.orderStatus.status
                 if status not in cls.TERMINAL_ORDER_STATES:
                     pending.append(trade)
