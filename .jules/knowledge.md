@@ -41,11 +41,11 @@ A set of agents that synthesize the analysts' reports.
 ### Tier 4: Execution & Risk Management
 - **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.), the Conviction Gate (blocking weak signals, e.g., |weighted_score| < 0.20), and Sentinel IC Suppression (blocking short premium positions during sentinel-triggered high-volatility events).
 - **Dynamic Position Sizer:** Calculates optimal trade size.
-- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking.
+- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking, falling back to market orders via a profile-driven timeout (e.g., KC=90s, CC=120s, NG=60s). Catastrophe stops are gated by an account Net Liquidation Value (NLV) minimum threshold to fail-closed without stop protection if margin is insufficient.
 
 ## Infrastructure
 
-- **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas). Notifications are isolated per commodity ticker via ContextVar.
+- **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas). Notifications are isolated per commodity ticker via ContextVar. Multi-commodity isolation requires strict `clientId` filtering and symbol prefix matching to prevent cross-engine order corruption or false untracked positions.
 - **Commodity Engine:** Runs the per-commodity loop.
 - **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.

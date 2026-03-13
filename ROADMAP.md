@@ -32,7 +32,7 @@
 | B.1 Temporal GraphRAG | Heavy infra (Neo4j, 6-8 wk). TMS with temporal filtering covers 80% of use case |
 | D.2 Time-Travel Data Layer | Massive data engineering, depends on D.1 which doesn't exist |
 | D.3 Walk-Forward Optimization | Depends on D.1 + D.2 |
-| G.8 Notification Expansion | Pushover works for single operator |
+| G.8 Notification Expansion | **Done.** Replaced with severity-gated operator alerts (Pushover) directly prioritizing critical anomalies. Routine noise is silenced to avoid operator fatigue |
 | G.3 Advanced Dashboard | Incremental — build pages as modules ship |
 | E.5 Market Impact Modeling | Position sizes 1-5 contracts on $50K, impact negligible. Revisit at $500K+ |
 | G.7 Automated Incident Post-Mortems | Trade journal (A.5) + self-healing (G.4) cover 80% |
@@ -155,7 +155,7 @@ Researcher agent monitors preprint servers, USDA/ICO reports. Extracts causal me
 ### #10 — G.1 Formal Observability (AgentOps)
 **Type:** Ops | **Effort:** 2-3 weeks | **Status:** Partial (internal + GitHub)
 
-Custom `observability.py` exists with HallucinationDetector, AgentTrace, and ObservabilityHub. The decoupled `scripts/error_reporter.py` script now handles out-of-band log telemetry, intelligent filtering of transient operational noise (e.g., rate limits, lock timeouts, 503 errors), and auto-generation of structured GitHub issues with full backtraces for true system anomalies. Missing: third-party integration (AgentOps or LangSmith) for trace replay, cost attribution dashboards, and advanced real-time alert rules. Keep custom hallucination detection as it's commodity-aware.
+Custom `observability.py` exists with HallucinationDetector, AgentTrace, and ObservabilityHub. The decoupled `scripts/error_reporter.py` script now handles out-of-band log telemetry, intelligent filtering of transient operational noise (e.g., rate limits, lock timeouts, 503 errors), and auto-generation of structured GitHub issues with full backtraces for true system anomalies. Real-time operator alerts (via Pushover) are now natively severity-gated. Missing: third-party integration (AgentOps or LangSmith) for trace replay, cost attribution dashboards, and advanced real-time alert rules. Keep custom hallucination detection as it's commodity-aware.
 
 ---
 
