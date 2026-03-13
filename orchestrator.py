@@ -3247,11 +3247,13 @@ async def sentinel_effectiveness_check(config: dict):
                 f"Diagnosis: {diagnosis}"
             )
             logger.warning(msg)
-            send_pushover_notification(
-                config.get('notifications', {}),
-                f"{severity} Sentinel Effectiveness",
-                msg
-            )
+            # Only push HIGH/CRITICAL sentinel effectiveness alerts
+            if severity in ('HIGH', 'CRITICAL'):
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    f"{severity} Sentinel Effectiveness",
+                    msg
+                )
         else:
             logger.info(
                 f"Sentinel effectiveness OK: weekly change {weekly_change_pct:+.1f}%, "
@@ -3731,23 +3733,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
         _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (daily cutoff {cutoff_hour}:{cutoff_minute:02d} ET)")
         StateManager.queue_deferred_trigger(trigger)
 
-        # Notify operator for potential manual intervention
-        # Include payload summary if available (e.g., Fed policy shock detail)
-        reason_detail = trigger.reason[:200]
-        if isinstance(getattr(trigger, 'payload', None), dict):
-            _summary = trigger.payload.get('summary', '')
-            if _summary:
-                reason_detail = f"{reason_detail} - {_summary[:200]}"
-        send_pushover_notification(
-            config.get('notifications', {}),
-            f"⏸️ Post-Cutoff: {trigger.source}",
-            (
-                f"{reason_detail}\n"
-                f"Deferred to {next_session} ({day_name} {cutoff_hour}:{cutoff_minute:02d} ET cutoff).\n"
-                f"Severity: {getattr(trigger, 'severity', 'N/A')}/10\n"
-                f"Manual intervention available via dashboard."
-            )
-        )
+        # Log-only (Pushover removed — routine deferral, not actionable)
         return
 
     # === HOLDING-TIME GATE (early exit — avoids burning API calls) ===
@@ -3766,13 +3752,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
         )
         _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
         StateManager.queue_deferred_trigger(trigger)
-        send_pushover_notification(
-            config.get('notifications', {}),
-            f"📅 Deferred: {trigger.source}",
-            f"Weekly close in {remaining_hours:.1f}h — below {min_holding}h minimum.\n"
-            f"Trigger deferred (no API calls spent).\n"
-            f"Reason: {trigger.reason[:200]}"
-        )
+        # Pushover removed — routine Friday deferral, not actionable
         return
 
     # === NEW: Log Trigger for Fallback ===
@@ -3829,12 +3809,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                     f"({now_ny.strftime('%H:%M')} ET >= {WEEKLY_CLOSE_CUTOFF_HOUR}:{WEEKLY_CLOSE_CUTOFF_MINUTE:02d} ET). "
                     f"Trigger: {trigger.source} — {trigger.reason}"
                 )
-                # Still log the trigger for Monday analysis
-                send_pushover_notification(
-                    config.get('notifications', {}),
-                    f"⏸️ Deferred: {trigger.source}",
-                    f"Trigger deferred to Monday (Friday close window):\n{trigger.reason}"
-                )
+                # Pushover removed — routine Friday close window deferral
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (Friday close window)")
                 StateManager.queue_deferred_trigger(trigger)
                 return
@@ -3844,8 +3819,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
             if _bg and _bg.is_budget_hit:
                 logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (budget hit)")
-                send_pushover_notification(config.get('notifications', {}), "Budget Guard",
-                    "Daily API budget hit. Sentinel-only mode active.")
+                # Pushover removed — expected when running multiple commodities
                 return
 
             # === Drawdown Circuit Breaker ===
@@ -3885,12 +3859,29 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
             active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             cycle_id = generate_cycle_id(active_ticker)
             logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason} (Cycle: {cycle_id})")
-            _trigger_detail = trigger.reason
-            if isinstance(getattr(trigger, 'payload', None), dict):
-                _ps = trigger.payload.get('summary', '')
-                if _ps:
-                    _trigger_detail = f"{trigger.reason} - {_ps[:200]}"
-            send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", _trigger_detail)
+            # Sentinel trigger Pushover: severity-gated per sentinel type.
+            # Downstream notifications (orders queued/filled) already cover trade outcomes.
+            # Only push high-severity events that warrant immediate operator awareness.
+            _SENTINEL_PUSH_THRESHOLDS = {
+                'PriceSentinel': 8,       # Only extreme moves
+                'MicrostructureSentinel': None,  # Never (handled separately, SNR ~0)
+                'MacroContagionSentinel': 8,     # Only systemic events
+                'WeatherSentinel': 7,     # Frost, extreme drought
+                'XSentimentSentinel': 7,  # Genuine spikes only
+                'PredictionMarketSentinel': 0,   # Always (low volume, high signal)
+                'NewsSentinel': 7,
+                'LogisticsSentinel': 7,
+                'FundamentalRegimeSentinel': 8,
+            }
+            _push_threshold = _SENTINEL_PUSH_THRESHOLDS.get(trigger.source, 7)
+            _trigger_severity = getattr(trigger, 'severity', 0)
+            if _push_threshold is not None and _trigger_severity >= _push_threshold:
+                _trigger_detail = trigger.reason
+                if isinstance(getattr(trigger, 'payload', None), dict):
+                    _ps = trigger.payload.get('summary', '')
+                    if _ps:
+                        _trigger_detail = f"{trigger.reason} - {_ps[:200]}"
+                send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", _trigger_detail)
 
             # --- DEFCON 1: Crash Protection ---
             # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
@@ -4018,7 +4009,6 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                 if priced_in:
                     logger.warning(f"PRICED IN CHECK FAILED: {reason}. Skipping emergency cycle.")
                     _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (priced in: {reason})")
-                    send_pushover_notification(config.get('notifications', {}), "Signal Priced In", reason)
                     return
 
                 # 3. Get Market Context (Snapshot)
@@ -5172,17 +5162,12 @@ async def run_sentinels(config: dict):
                                 )
                                 _get_deduplicator().set_cooldown(micro_trigger.source, 900)
                         elif tier == NotificationTier.PUSHOVER:
-                            # Severity 7-8: Log + Pushover but NO emergency cycle
-                            # Liquidity depletion is informational, not actionable by council
-                            logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
+                            # Severity 7-8: Log only (was Pushover — removed as noise,
+                            # SNR 0.0 across commodities, ~13 alerts/day)
+                            logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})")
                             if _get_deduplicator().should_process(micro_trigger):
                                 StateManager.log_sentinel_event(micro_trigger)
                                 SENTINEL_STATS.record_alert(micro_trigger.source, triggered_trade=False)
-                                send_pushover_notification(
-                                    config.get('notifications', {}),
-                                    "Microstructure Alert",
-                                    f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
-                                )
                                 _get_deduplicator().set_cooldown(micro_trigger.source, 1800)
                         elif tier == NotificationTier.DASHBOARD:
                             # Severity 5-6: Log only (visible in dashboard via sentinel history)

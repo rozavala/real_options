@@ -535,15 +535,12 @@ def _on_fill(trade: Trade, fill: Fill, config: dict):
         return
 
     try:
-        # Create a detailed notification message
-        message = (
-            f"<b>✅ Order Executed</b>\n"
-            f"<b>{fill.execution.side} {fill.execution.shares}</b> {trade.contract.localSymbol}\n"
-            f"Avg Price: ${fill.execution.price:.2f}\n"
-            f"Order ID: {fill.execution.orderId}"
+        # Log fill (Pushover removed — redundant with order_manager fill notifications)
+        logging.info(
+            f"Execution: {fill.execution.side} {fill.execution.shares} "
+            f"{trade.contract.localSymbol} @ ${fill.execution.price:.2f} "
+            f"(Order ID: {fill.execution.orderId})"
         )
-        logging.info(f"Sending execution notification for Order ID {fill.execution.orderId}")
-        send_pushover_notification(config.get('notifications', {}), "Order Execution", message)
     except Exception as e:
         logging.error(f"Error processing execution notification for order ID {trade.order.orderId}: {e}")
 
