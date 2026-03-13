@@ -1858,7 +1858,12 @@ async def _close_single_leg_with_walk(
             trade = place_order(ib, contract, order)
             if trade is None:
                 return False
-            for _ in range(15):
+            try:
+                from config import get_active_profile
+                _mkt_timeout = get_active_profile(config).market_order_fallback_timeout_seconds
+            except Exception:
+                _mkt_timeout = 60
+            for _ in range(_mkt_timeout):
                 await asyncio.sleep(1)
                 if trade.orderStatus.status == 'Filled':
                     try:
@@ -1965,7 +1970,12 @@ async def _close_single_leg_with_walk(
             if market_trade is None:
                 return False
 
-            for _ in range(15):
+            try:
+                from config import get_active_profile
+                _mkt_timeout2 = get_active_profile(config).market_order_fallback_timeout_seconds
+            except Exception:
+                _mkt_timeout2 = 60
+            for _ in range(_mkt_timeout2):
                 await asyncio.sleep(1)
                 if market_trade.orderStatus.status == 'Filled':
                     logger.info(
