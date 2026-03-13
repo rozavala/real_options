@@ -217,7 +217,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
                 ).astype(int)
 
                 with open(ACCURACY_FILE, 'a') as f:
-                    for _, row in newly_resolved.iterrows():
+                    for row in newly_resolved.to_dict('records'):
                         agent = str(row.get('agent', '')).lower()
                         f.write(f"{row['timestamp']},{agent},{row['direction']},{row['actual']},{row['correct']}\n")
 
