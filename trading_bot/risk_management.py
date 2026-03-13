@@ -24,6 +24,7 @@ from trading_bot.order_manager import get_trade_ledger_df
 from trading_bot.ib_interface import place_order, get_active_futures
 from notifications import send_pushover_notification
 from trading_bot.tms import TransactiveMemory
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 
 async def check_iron_condor_theses(ib: IB, config: dict):
@@ -484,7 +485,24 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         reason = _determine_risk_action(metrics, config, position_open_dates, grace_period_seconds, combo_legs)
 
         if reason:
+            # --- Funnel: RISK_TRIGGER ---
+            _risk_contract = combo_legs[0].contract.localSymbol if combo_legs else "unknown"
+            log_funnel_event(
+                cycle_id="RISK",
+                contract=_risk_contract,
+                stage=FunnelStage.RISK_TRIGGER,
+                outcome="INFO",
+                detail=f"reason={reason}, pnl={metrics['pnl']:.2f}, risk_pct={metrics['risk_pct']:.2%}, capture_pct={metrics['capture_pct']:.2%}",
+            )
             await _execute_risk_closure(ib, config, combo_legs, reason, metrics['pnl'], closed_ids, account)
+            # --- Funnel: POSITION_CLOSED ---
+            log_funnel_event(
+                cycle_id="RISK",
+                contract=_risk_contract,
+                stage=FunnelStage.POSITION_CLOSED,
+                outcome="PASS",
+                detail=f"exit_reason={reason}, pnl={metrics['pnl']:.2f}",
+            )
 
 
 # --- Order Fill Monitoring ---

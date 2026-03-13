@@ -37,6 +37,7 @@ from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.order_queue import OrderQueueManager
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 # --- Module-level storage for orders ---
 # Structure: [(contract, order, decision_data), ...]
@@ -1025,6 +1026,15 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 # === F.4.1: Confidence gate (before NEUTRAL skip so low-confidence gets logged) ===
                 sig_confidence = signal.get('confidence', 0.0)
                 if sig_confidence < min_confidence:
+                    log_funnel_event(
+                        cycle_id=signal.get('_cycle_id', 'unknown'),
+                        contract=signal.get('contract_month', 'unknown'),
+                        stage=FunnelStage.CONFIDENCE_THRESHOLD,
+                        outcome="BLOCK",
+                        detail=f"confidence={sig_confidence:.2f}, threshold={min_confidence:.2f}, direction={signal.get('direction', 'N/A')}",
+                        price_snapshot=signal.get('price'),
+                        regime=signal.get('regime', 'UNKNOWN'),
+                    )
                     logger.info(
                         f"BLOCKED BY CONFIDENCE: {signal.get('contract_month', 'N/A')} — "
                         f"confidence {sig_confidence:.2f} < threshold {min_confidence:.2f}. "
@@ -1055,6 +1065,15 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                     signal, config, approved_in_this_cycle)
 
                 if coherence_action == "BLOCK_INTRA_CYCLE":
+                    log_funnel_event(
+                        cycle_id=signal.get('_cycle_id', 'unknown'),
+                        contract=signal.get('contract_month', 'unknown'),
+                        stage=FunnelStage.THESIS_COHERENCE,
+                        outcome="BLOCK",
+                        detail=f"action=BLOCK_INTRA_CYCLE, direction={signal.get('direction')}",
+                        price_snapshot=signal.get('price'),
+                        regime=signal.get('regime', 'UNKNOWN'),
+                    )
                     logger.info(
                         f"BLOCKED (intra-cycle duplicate): {signal.get('contract_month')} "
                         f"{signal.get('direction')} — already approved in this batch. Skipping."
@@ -1062,6 +1081,15 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                     continue
 
                 if coherence_action == "CONTRADICT":
+                    log_funnel_event(
+                        cycle_id=signal.get('_cycle_id', 'unknown'),
+                        contract=signal.get('contract_month', 'unknown'),
+                        stage=FunnelStage.THESIS_COHERENCE,
+                        outcome="INFO",
+                        detail=f"action=CONTRADICT, direction={signal.get('direction')}",
+                        price_snapshot=signal.get('price'),
+                        regime=signal.get('regime', 'UNKNOWN'),
+                    )
                     # IMMEDIATE CLOSE: Mark for closure before new orders are placed.
                     # The pending_close flag in TMS is the durable record of intent.
                     # place_queued_orders() will query TMS and close these positions
@@ -1218,6 +1246,15 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
 
                             # Issue #4: Early abort if capital exhausted
                             if committed_capital > account_value:
+                                log_funnel_event(
+                                    cycle_id=signal.get('_cycle_id', 'unknown'),
+                                    contract=signal.get('contract_month', 'unknown'),
+                                    stage=FunnelStage.CAPITAL_CHECK,
+                                    outcome="BLOCK",
+                                    detail=f"committed={committed_capital:,.2f}, account={account_value:,.2f}, this_order={estimated_risk:,.2f}",
+                                    price_snapshot=signal.get('price'),
+                                    regime=signal.get('regime', 'UNKNOWN'),
+                                )
                                 logger.warning(f"Capital exhausted (${committed_capital:,.2f} committed vs ${account_value:,.2f} available). Stopping order generation.")
                                 break
 
@@ -1231,6 +1268,16 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                             signal['strategy_def'] = strategy_def
                             await ORDER_QUEUE.add((contract, order, signal))
                             approved_in_this_cycle.append(signal)
+                            _strategy_name = strategy_def.get('strategy_name', 'unknown') if isinstance(strategy_def, dict) else 'unknown'
+                            log_funnel_event(
+                                cycle_id=signal.get('_cycle_id', 'unknown'),
+                                contract=signal.get('contract_month', 'unknown'),
+                                stage=FunnelStage.ORDER_QUEUED,
+                                outcome="PASS",
+                                detail=f"strategy={_strategy_name}, qty={strategy_def.get('quantity', 0) if isinstance(strategy_def, dict) else 0}, risk=${estimated_risk:,.2f}",
+                                price_snapshot=signal.get('price'),
+                                regime=signal.get('regime', 'UNKNOWN'),
+                            )
                             logger.info(f"Successfully queued order for {future.localSymbol}.")
         except Exception as e:
             logger.error(f"Error in order generation block: {e}")
@@ -1408,6 +1455,16 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
                         pass
         if _ledger_logged:
             logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
+
+            # --- Funnel: POSITION_OPENED ---
+            log_funnel_event(
+                cycle_id=decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown',
+                contract=detailed_contract.localSymbol,
+                stage=FunnelStage.POSITION_OPENED,
+                outcome="PASS",
+                detail=f"position_id={position_uuid}, order_id={trade.order.orderId}",
+                fill_price=fill.execution.avgPrice if fill.execution else None,
+            )
 
         # --- NEW: Record Trade Thesis to TMS (DEDUPLICATED) ---
         if decision_data and position_uuid:
@@ -2011,14 +2068,38 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     # Maybe check once before the loop?
                     # Yes, but let's check strict status here.
                     if not drawdown_guard.is_entry_allowed():
+                        _dd_cycle_id = decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown'
+                        log_funnel_event(
+                            cycle_id=_dd_cycle_id,
+                            contract=display_name,
+                            stage=FunnelStage.DRAWDOWN_GATE,
+                            outcome="BLOCK",
+                            detail="Circuit breaker active",
+                        )
                         logger.warning(f"DRAWDOWN GATE BLOCKED {display_name}: Circuit Breaker Active")
                         continue
 
                 # 0b. Liquidity Gate (Fail Closed)
                 liq_ok, liq_msg = await check_liquidity_conditions(ib, contract, order.totalQuantity)
+                _liq_cycle_id = decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown'
                 if not liq_ok:
+                    log_funnel_event(
+                        cycle_id=_liq_cycle_id,
+                        contract=display_name,
+                        stage=FunnelStage.LIQUIDITY_GATE,
+                        outcome="BLOCK",
+                        detail=liq_msg,
+                    )
                     logger.warning(f"LIQUIDITY GATE BLOCKED {contract.localSymbol}: {liq_msg}. Skipping order.")
                     continue
+                else:
+                    log_funnel_event(
+                        cycle_id=_liq_cycle_id,
+                        contract=display_name,
+                        stage=FunnelStage.LIQUIDITY_GATE,
+                        outcome="PASS",
+                        detail=liq_msg,
+                    )
 
                 # 1. Fetch Market Context (Spread & Trend)
 
@@ -2365,7 +2446,23 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 'max_modification_errors': 3,
                 # Catastrophe stop trade (if any) — must be cancelled if spread times out
                 'catastrophe_stop_trade': _catastrophe_stop_trade,
+                # Funnel: initial limit for slippage tracking
+                'initial_limit': order.lmtPrice if order.orderType == "LMT" else None,
+                '_walk_log_counter': 0,
             }
+
+            # --- Funnel: ORDER_PLACED ---
+            _op_cycle_id = decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown'
+            log_funnel_event(
+                cycle_id=_op_cycle_id,
+                contract=display_name,
+                stage=FunnelStage.ORDER_PLACED,
+                outcome="PASS",
+                detail=f"action={order.action}, qty={int(order.totalQuantity)}, type={order.orderType}",
+                initial_limit=order.lmtPrice if order.orderType == "LMT" else None,
+                bid=ticker.bid if not util.isNan(ticker.bid) else None,
+                ask=ticker.ask if not util.isNan(ticker.ask) else None,
+            )
 
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
             price_info_notify = f"LMT: {order.lmtPrice:.{_price_decimals}f}" if order.orderType == "LMT" else "MKT"
@@ -2495,6 +2592,19 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                                 details['last_known_good_price'] = new_price  # Track for rollback
                                 details['modification_error_count'] = 0  # Reset on attempt
                                 log_order_event(trade, "Updated", f"Adaptive Walk: Price updated to {new_price}")
+
+                                # Funnel: PRICE_WALK_STEP (every 3rd step to limit CSV bloat)
+                                details['_walk_log_counter'] = details.get('_walk_log_counter', 0) + 1
+                                if details['_walk_log_counter'] % 3 == 0:
+                                    _wk_cycle_id = details.get('decision_data', {}).get('_cycle_id', 'unknown') if isinstance(details.get('decision_data'), dict) else 'unknown'
+                                    log_funnel_event(
+                                        cycle_id=_wk_cycle_id,
+                                        contract=stored_display_name,
+                                        stage=FunnelStage.PRICE_WALK_STEP,
+                                        outcome="INFO",
+                                        detail=f"step={details['_walk_log_counter']}, old={current_limit}, new={new_price}, cap={ceiling}",
+                                        initial_limit=details.get('initial_limit'),
+                                    )
                             else:
                                 # Price at or very near cap/floor - log once then stop checking
                                 if not details.get('cap_reached_logged', False):
@@ -2593,6 +2703,18 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"    Filled @ {avg_fill_price:.2f} (qty {int(trade.order.totalQuantity)})"
                 )
                 filled_orders.append(fill_line)
+
+                # --- Funnel: ORDER_FILLED ---
+                _fill_cycle_id = dd.get('_cycle_id', 'unknown')
+                log_funnel_event(
+                    cycle_id=_fill_cycle_id,
+                    contract=stored_display_name,
+                    stage=FunnelStage.ORDER_FILLED,
+                    outcome="PASS",
+                    detail=f"action={trade.order.action}, qty={int(trade.orderStatus.filled)}, direction={fill_direction}",
+                    fill_price=avg_fill_price,
+                    initial_limit=details.get('initial_limit'),
+                )
 
                 # Cancel companion catastrophe stop — spread filled, stop is no longer needed
                 cat_stop = details.get('catastrophe_stop_trade')
@@ -2694,6 +2816,19 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"    {price_info_notify} — Unfilled, cancelled"
                 )
                 cancelled_orders.append(cancel_line)
+
+                # --- Funnel: ORDER_CANCELLED ---
+                _cancel_cycle_id = dd.get('_cycle_id', 'unknown')
+                log_funnel_event(
+                    cycle_id=_cancel_cycle_id,
+                    contract=stored_display_name,
+                    stage=FunnelStage.ORDER_CANCELLED,
+                    outcome="BLOCK",
+                    detail=f"direction={cancel_direction}, reason=monitoring_timeout",
+                    walk_away_price=trade.order.lmtPrice,
+                    initial_limit=details.get('initial_limit'),
+                )
+
                 await asyncio.sleep(0.2)
 
         # Build and send the final summary notification
