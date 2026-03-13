@@ -467,7 +467,7 @@ class EnhancedBrierTracker:
         if csv_exists:
             # Build lookup of resolved CSV predictions: cycle_id+agent → actual_direction
             csv_resolved = {}
-            for _, row in csv_df.iterrows():
+            for row in csv_df.to_dict('records'):
                 actual = str(row.get('actual', 'PENDING'))
                 if actual in ('PENDING', 'ORPHANED', ''):
                     continue
@@ -515,7 +515,7 @@ class EnhancedBrierTracker:
         if not skip_pass2:
             json_keys = {(p.cycle_id, p.agent) for p in self.predictions}
 
-            for _, row in csv_df.iterrows():
+            for row in csv_df.to_dict('records'):
                 cycle_id = str(row.get('cycle_id', '')).strip()
                 agent = str(row.get('agent', '')).strip()
                 if not cycle_id or not agent or cycle_id in ("nan", "None", "null"):
@@ -572,7 +572,7 @@ class EnhancedBrierTracker:
                 ch_df = pd.read_csv(council_path, on_bad_lines='warn')
                 # Build cycle_id → outcome lookup (volatility-aware)
                 ch_outcomes = {}
-                for _, row in ch_df.iterrows():
+                for row in ch_df.to_dict('records'):
                     cid = str(row.get('cycle_id', '')).strip()
                     atd = str(row.get('actual_trend_direction', '')).strip()
                     prediction_type = str(row.get('prediction_type', '')).strip()
