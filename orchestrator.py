@@ -3928,6 +3928,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                     if affected_theses and live_positions is not None:
                         trade_ledger = get_trade_ledger_df()
 
+                        # Filter to this commodity only — IB returns ALL positions
+                        active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+                        commodity_positions = [
+                            p for p in live_positions
+                            if p.position != 0 and p.contract.symbol == active_ticker
+                        ]
+
                         for thesis in affected_theses:
                           try:
                             # Check if this trigger invalidates the thesis
@@ -3946,9 +3953,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
 
                                 # Collect ALL legs for this thesis (spreads have multiple legs)
                                 thesis_legs = []
-                                for pos in live_positions:
-                                    if pos.position == 0:
-                                        continue
+                                for pos in commodity_positions:
                                     pos_id = _find_position_id_for_contract(pos, trade_ledger)
                                     if pos_id == thesis_id:
                                         thesis_legs.append(pos)
