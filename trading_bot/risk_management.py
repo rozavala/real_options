@@ -11,7 +11,6 @@ This module contains the core logic for three key risk management functions:
 import asyncio
 import logging
 import time
-import traceback
 from datetime import datetime, timedelta
 import pytz
 import pandas as pd
@@ -25,6 +24,7 @@ from trading_bot.order_manager import get_trade_ledger_df
 from trading_bot.ib_interface import place_order, get_active_futures
 from notifications import send_pushover_notification
 from trading_bot.tms import TransactiveMemory
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 
 async def check_iron_condor_theses(ib: IB, config: dict):
@@ -172,7 +172,7 @@ async def manage_existing_positions(ib: IB, config: dict, signal: dict, underlyi
                 if trade.orderStatus.status == OrderStatus.Filled:
                     log_trade_to_ledger(ib, trade, "Position Misaligned", combo_id=trade.order.permId)
             except Exception as e:
-                logging.error(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}\n{traceback.format_exc()}")
+                logging.exception(f"Failed to close position for conId {pos_to_close.contract.conId}: {e}")
         return True
 
     return not position_is_aligned
@@ -378,7 +378,7 @@ async def _execute_risk_closure(ib: IB, config: dict, combo_legs: list, reason: 
         contract.symbol = config.get('symbol', 'KC')
         contract.secType = "BAG"
         contract.currency = "USD"
-        contract.exchange = config.get('exchange', 'NYBOT')
+        contract.exchange = config['exchange']
 
         combo_legs_list = []
         for leg_pos in combo_legs:
@@ -394,7 +394,7 @@ async def _execute_risk_closure(ib: IB, config: dict, combo_legs: list, reason: 
                 conId=leg_pos.contract.conId,
                 ratio=leg_qty,  # v3.1: Use actual position size
                 action=action,
-                exchange=config.get('exchange', 'NYBOT')
+                exchange=config['exchange']
             ))
 
         contract.comboLegs = combo_legs_list
@@ -485,7 +485,24 @@ async def _check_risk_once(ib: IB, config: dict, closed_ids: set, stop_loss_pct:
         reason = _determine_risk_action(metrics, config, position_open_dates, grace_period_seconds, combo_legs)
 
         if reason:
+            # --- Funnel: RISK_TRIGGER ---
+            _risk_contract = combo_legs[0].contract.localSymbol if combo_legs else "unknown"
+            log_funnel_event(
+                cycle_id="RISK",
+                contract=_risk_contract,
+                stage=FunnelStage.RISK_TRIGGER,
+                outcome="INFO",
+                detail=f"reason={reason}, pnl={metrics['pnl']:.2f}, risk_pct={metrics['risk_pct']:.2%}, capture_pct={metrics['capture_pct']:.2%}",
+            )
             await _execute_risk_closure(ib, config, combo_legs, reason, metrics['pnl'], closed_ids, account)
+            # --- Funnel: POSITION_CLOSED ---
+            log_funnel_event(
+                cycle_id="RISK",
+                contract=_risk_contract,
+                stage=FunnelStage.POSITION_CLOSED,
+                outcome="PASS",
+                detail=f"exit_reason={reason}, pnl={metrics['pnl']:.2f}",
+            )
 
 
 # --- Order Fill Monitoring ---
@@ -536,15 +553,12 @@ def _on_fill(trade: Trade, fill: Fill, config: dict):
         return
 
     try:
-        # Create a detailed notification message
-        message = (
-            f"<b>✅ Order Executed</b>\n"
-            f"<b>{fill.execution.side} {fill.execution.shares}</b> {trade.contract.localSymbol}\n"
-            f"Avg Price: ${fill.execution.price:.2f}\n"
-            f"Order ID: {fill.execution.orderId}"
+        # Log fill (Pushover removed — redundant with order_manager fill notifications)
+        logging.info(
+            f"Execution: {fill.execution.side} {fill.execution.shares} "
+            f"{trade.contract.localSymbol} @ ${fill.execution.price:.2f} "
+            f"(Order ID: {fill.execution.orderId})"
         )
-        logging.info(f"Sending execution notification for Order ID {fill.execution.orderId}")
-        send_pushover_notification(config.get('notifications', {}), "Order Execution", message)
     except Exception as e:
         logging.error(f"Error processing execution notification for order ID {trade.order.orderId}: {e}")
 
@@ -593,6 +607,19 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
     try:
         while True:
             try:
+                # Self-gate: sleep longer during SLEEPING state
+                try:
+                    from trading_bot.utils import get_market_state
+                    _ms = get_market_state(config)
+                    if _ms == 'SLEEPING':
+                        logging.debug("Position monitor: SLEEPING state — skipping cycle")
+                        await asyncio.sleep(60)
+                        continue
+                    # Adaptive interval: slower during PASSIVE
+                    _effective_interval = 120 if _ms == 'PASSIVE' else interval
+                except Exception:
+                    _effective_interval = interval
+
                 logging.debug("P&L monitor cycle starting...")
                 # Always run check if we have valid thresholds, but also the loop logic depends on them being present?
                 if target_capture_pct or max_risk_loss_pct:
@@ -606,8 +633,8 @@ async def monitor_positions_for_risk(ib: IB, config: dict):
                     await check_iron_condor_theses(ib, config)
                     ic_check_counter = 0
 
-                logging.debug(f"P&L monitor cycle complete. Waiting {interval} seconds.")
-                await asyncio.sleep(interval)
+                logging.debug(f"P&L monitor cycle complete. Waiting {_effective_interval} seconds.")
+                await asyncio.sleep(_effective_interval)
             except asyncio.CancelledError:
                 logging.info("P&L monitoring task was cancelled.")
                 break

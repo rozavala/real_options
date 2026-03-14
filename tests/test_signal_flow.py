@@ -50,7 +50,7 @@ async def test_neutral_direction_triggers_volatility_signal_low():
         # Setup Council Mock
         council_instance = council_cls_mock.return_value
 
-        async def research_side_effect(agent, instruction):
+        async def research_side_effect(agent, instruction, **kwargs):
             if agent == 'volatility':
                 return {'data': '[SENTIMENT: BEARISH] Vol is expensive', 'confidence': 0.8, 'sentiment': 'BEARISH'}
             return {'data': 'Neutral report', 'confidence': 0.5, 'sentiment': 'NEUTRAL'}
@@ -122,7 +122,7 @@ async def test_neutral_direction_triggers_volatility_signal_high():
 
         council_instance = council_cls_mock.return_value
 
-        async def research_side_effect(agent, instruction):
+        async def research_side_effect(agent, instruction, **kwargs):
             if agent == 'agronomist': return "[SENTIMENT: BULLISH] Rain delay."
             if agent == 'macro': return "[SENTIMENT: BEARISH] BRL tanking."
             if agent == 'technical': return "[SENTIMENT: BULLISH] Support held."

@@ -1,0 +1,137 @@
+{
+    "name": "Cocoa",
+    "ticker": "CC",
+    "commodity_type": "soft",
+    "contract": {
+        "exchange": "ICE",
+        "symbol": "CC",
+        "contract_months": ["H", "K", "N", "U", "Z"],
+        "tick_size": 1.0,
+        "tick_value": 10.0,
+        "contract_size": 10,
+        "unit": "$/metric ton",
+        "trading_hours_et": "04:45-13:30",
+        "spot_month_limit": 1000,
+        "all_months_limit": 10000
+    },
+    "market_states": {
+        "active": "04:45-13:30",
+        "passive": [],
+        "maintenance_breaks": [],
+        "emergency_trigger_pct": 0,
+        "emergency_cooldown_seconds": 1800,
+        "emergency_council_timeout_seconds": 300,
+        "passive_new_positions_only": true,
+        "emergency_dry_run": false,
+        "blackout_windows": []
+    },
+    "primary_regions": [
+        {
+            "name": "C\u00f4te d'Ivoire",
+            "country": "Ivory Coast",
+            "latitude_range": [6.0, 7.6],
+            "longitude_range": [-6.0, -4.6],
+            "production_share": 0.40,
+            "drought_soil_moisture_pct": 15.0,
+            "harvest_months": [10, 11, 12, 1, 2],
+            "planting_months": [5, 6]
+        },
+        {
+            "name": "Ghana",
+            "country": "Ghana",
+            "latitude_range": [6.0, 7.5],
+            "longitude_range": [-2.5, -0.5],
+            "production_share": 0.20,
+            "drought_soil_moisture_pct": 15.0,
+            "harvest_months": [10, 11, 12, 1],
+            "planting_months": [5, 6]
+        },
+        {
+            "name": "Ecuador",
+            "country": "Ecuador",
+            "latitude_range": [-2.5, -1.0],
+            "longitude_range": [-80.0, -79.0],
+            "production_share": 0.08,
+            "flood_precip_mm_24h": 80.0,
+            "harvest_months": [3, 4, 5, 6],
+            "planting_months": [11, 12]
+        }
+    ],
+    "logistics_hubs": [
+        {
+            "name": "Port of Abidjan",
+            "hub_type": "port",
+            "country": "Ivory Coast",
+            "latitude": 5.3,
+            "longitude": -4.0,
+            "congestion_vessel_threshold": 15,
+            "dwell_time_alert_days": 4
+        },
+        {
+            "name": "Port of Tema",
+            "hub_type": "port",
+            "country": "Ghana",
+            "latitude": 5.6,
+            "longitude": 0.0,
+            "congestion_vessel_threshold": 10,
+            "dwell_time_alert_days": 5
+        }
+    ],
+    "agronomy_context": "\n    Critical weather risks for Cocoa:\n    - HARMATTAN (Dec-Feb): Dry, dusty winds from Sahara stress trees.\n    - DROUGHT: Soil moisture <15% reduces pod development.\n    - BLACK POD DISEASE (Phytophthora): Fungal disease favored by excess humidity.\n    - SWOLLEN SHOOT VIRUS: Spread by mealybugs, requires tree removal.\n\n    Seasonality: Main crop Oct-Feb (65%), Mid-crop May-Aug (35%).\n    ",
+    "macro_context": "\n    Key macro drivers for Cocoa:\n    - EUDR (EU Deforestation Regulation): Major compliance challenge.\n    - C\u00f4te d'Ivoire/Ghana minimum price: Government price floors.\n    - Chocolate demand (Europe/US): Consumer spending sensitivity.\n    - GBP/USD: UK pricing exposure.\n    ",
+    "supply_chain_context": "\n    Key supply chain factors:\n    - ICCO (International Cocoa Organization) stocks\n    - ICE Certified Cocoa Stocks\n    - Port of Abidjan: Primary West African export hub\n    - Grinding statistics: Proxy for demand (Europe, Asia, Americas)\n    ",
+    "inventory_sources": [
+        "ICE Cocoa Certified Stocks",
+        "ICCO Quarterly Bulletin",
+        "European Cocoa Association Grindings"
+    ],
+    "weather_apis": ["open-meteo"],
+    "news_keywords": [
+        "cocoa", "cacao", "chocolate",
+        "ivory coast cocoa", "ghana cocoa",
+        "black pod", "harmattan", "ICCO"
+    ],
+    "social_accounts": ["@CocoaBarometer", "@ICCOorg"],
+    "sentiment_search_queries": [
+        "\"cocoa futures\" OR \"CC futures\"",
+        "(Ivory OR Ghana) (cocoa OR farmgate OR \"price cut\")",
+        "cocoa (stock OR inventory OR grind OR \"supply glut\")",
+        "cocoa (farmer OR protest OR ICCO)"
+    ],
+    "legitimate_data_sources": [],
+    "volatility_high_iv_rank": 0.65,
+    "volatility_low_iv_rank": 0.25,
+    "price_move_alert_pct": 3.0,
+    "straddle_risk_threshold": 8000.0,
+    "max_liquidity_spread_pct": 0.75,
+    "max_liquidity_spread_ticks": 30,
+    "fallback_iv": 0.35,
+    "risk_free_rate": 0.04,
+    "default_starting_capital": 50000.0,
+    "min_dte": 45,
+    "max_dte": 365,
+    "stop_parse_range": [0.0, 9999.0],
+    "typical_price_range": [0.0, 9999.0],
+    "research_prompts": {
+        "agronomist": "Search for 'C\u00f4te d Ivoire cocoa harvest forecast' and 'Ghana cocoa rainfall anomaly'. Analyze if conditions favor or threaten the main crop.",
+        "macro": "Search for 'EUR USD exchange rate forecast' and 'West Africa CFA franc outlook'. Determine currency impact on cocoa pricing.",
+        "geopolitical": "Search for 'C\u00f4te d Ivoire cocoa regulation' and 'Ghana COCOBOD policy'. Analyze supply-side policy risks.",
+        "supply_chain": "Search for 'Abidjan port cocoa shipments' and 'cocoa grinding data Europe'. Analyze processing demand vs origin supply.",
+        "inventory": "Search for 'ICE Cocoa Certified Stocks' and 'European cocoa warehouse stocks'. Look for inventory trends.",
+        "sentiment": "Search for 'Cocoa COT report non-commercial net length'. Determine if market is overbought.",
+        "technical": "Search for 'Cocoa futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find the current '200-day SMA'.",
+        "volatility": "Search for 'Cocoa Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if premiums are cheap or expensive."
+    },
+    "yfinance_ticker": "CC=F",
+    "concentration_proxies": ["CC", "SB", "EWZ", "NGN=X"],
+    "concentration_label": "West Africa",
+    "cross_commodity_basket": {
+        "gold": "GC=F",
+        "sugar": "SB=F",
+        "wheat": "ZW=F",
+        "coffee": "KC=F"
+    },
+    "market_order_fallback_timeout_seconds": 120,
+    "catastrophe_stop_nlv_minimum": 100000,
+    "neutral_move_threshold_pct": 0.008
+}

@@ -19,7 +19,7 @@ from trading_bot.confidence_utils import parse_confidence
 from trading_bot.state_manager import StateManager
 from trading_bot.sentinels import SentinelTrigger
 from trading_bot.semantic_router import SemanticRouter
-from trading_bot.utils import escape_xml
+from trading_bot.utils import escape_xml, sanitize_prompt_content
 from trading_bot.market_data_provider import format_market_context_for_prompt
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router, CriticalRPCError
 from trading_bot.budget_guard import BudgetThrottledError
@@ -28,8 +28,34 @@ from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
 from trading_bot.enhanced_brier import EnhancedBrierTracker
 from trading_bot.observability import ObservabilityHub, AgentTrace
+from trading_bot.prompt_trace import PromptTraceRecord, hash_persona
 
 logger = logging.getLogger(__name__)
+
+
+def _is_error_report(report) -> bool:
+    """Check if a report is a dict-wrapped error from research_topic().
+
+    research_topic() wraps exceptions as:
+      {'data': 'Error conducting research: ...', 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
+    These must not be passed to the council as legitimate agent reports (Issue #1167).
+
+    Also catches LLM-rephrased variants where reflexion previously fed the
+    error text back as "previous analysis" and the LLM re-phrased it (e.g.,
+    "[EVIDENCE]: The provided input was a system error message ('Error
+    conducting research: ...')"). Without this, poisoned state persists across
+    cycles even after the original API error resolves.
+    """
+    if isinstance(report, dict):
+        data = report.get('data', '')
+        # Handle nested dicts (reflexion output wraps data in another dict)
+        if isinstance(data, dict):
+            data = data.get('data', '')
+        if isinstance(data, str):
+            if 'Error conducting research' in data or 'All providers exhausted' in data:
+                return True
+    return False
+
 
 # === NEW IMPORTS FOR COMMODITY-AGNOSTIC SUPPORT ===
 # Added for HRO Enhancement - does not affect existing functionality
@@ -52,21 +78,38 @@ except Exception as e:
 if not _HAS_COMMODITY_PROFILES:
     logger.info(f"Profile system disabled. Reason: {_PROFILE_IMPORT_ERROR or 'Unknown'}")
 
-# Setup Provenance Logger
+# Setup Provenance Logger (handler added lazily via set_data_dir to avoid
+# writing to the root data/ dir before the commodity-specific path is known)
+from logging.handlers import RotatingFileHandler
 provenance_logger = logging.getLogger("provenance")
 provenance_logger.setLevel(logging.INFO)
 provenance_logger.propagate = False
-if not provenance_logger.handlers:
-    from logging.handlers import RotatingFileHandler
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-    os.makedirs(log_dir, exist_ok=True)
-    fh = RotatingFileHandler(
-        os.path.join(log_dir, 'research_provenance.log'),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=3
-    )
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-    provenance_logger.addHandler(fh)
+_provenance_data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+
+
+def set_data_dir(data_dir: str):
+    """Configure (or reconfigure) provenance logger for a commodity-specific data directory."""
+    global _provenance_data_dir
+    _provenance_data_dir = data_dir
+    os.makedirs(data_dir, exist_ok=True)
+    new_path = os.path.join(data_dir, 'research_provenance.log')
+    for h in provenance_logger.handlers[:]:
+        if isinstance(h, RotatingFileHandler):
+            h.close()
+            provenance_logger.removeHandler(h)
+    new_fh = RotatingFileHandler(new_path, maxBytes=10 * 1024 * 1024, backupCount=3)
+    new_fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    provenance_logger.addHandler(new_fh)
+    logger.info(f"Agents provenance log set to: {new_path}")
+
+
+def _get_provenance_data_dir() -> str:
+    """Resolve provenance data dir via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return get_engine_data_dir()
+    except LookupError:
+        return _provenance_data_dir
 
 @dataclass
 class GroundedDataPacket:
@@ -81,13 +124,15 @@ class GroundedDataPacket:
     def to_context_block(self) -> str:
         """Format as context block for analyst prompts."""
         facts_str = "\n".join([
-            f"- [{f.get('date', 'undated')}] {f.get('fact')} (source: {f.get('source', 'unknown')})"
+            f"- [{f.get('date', 'undated')}] {sanitize_prompt_content(f.get('fact', ''))} (source: {sanitize_prompt_content(f.get('source', 'unknown'))})"
             for f in self.extracted_facts
         ]) or "No specific dated facts extracted."
 
+        safe_urls = [sanitize_prompt_content(url) for url in self.source_urls[:5]]
+
         return f"""
 === GROUNDED DATA PACKET ===
-Query: {self.search_query}
+Query: {sanitize_prompt_content(self.search_query)}
 Gathered: {self.gathered_at.isoformat()}
 Data Freshness Target: Last {self.data_freshness_hours} hours
 
@@ -95,10 +140,10 @@ EXTRACTED FACTS:
 {facts_str}
 
 RAW RESEARCH FINDINGS:
-{self.raw_findings[:2000]}  # Truncate for context limits
+{sanitize_prompt_content(self.raw_findings[:2000])}  # Truncate for context limits
 
 SOURCES CONSULTED:
-{chr(10).join(self.source_urls[:5]) or 'No URLs captured'}
+{chr(10).join(safe_urls) or 'No URLs captured'}
 === END GROUNDED DATA ===
 """
 
@@ -201,10 +246,17 @@ class TradingCouncil:
         ]
 
         # 6. Initialize Cognitive Infrastructure
-        self.tms = TransactiveMemory()
-        self.scorer = ReliabilityScorer()
+        data_dir = config.get('data_dir')
+        if data_dir:
+            import os as _os
+            self.tms = TransactiveMemory(persist_path=_os.path.join(data_dir, 'tms'))
+            self.scorer = ReliabilityScorer(scores_file=_os.path.join(data_dir, 'agent_scores.json'))
+            self.brier_tracker = EnhancedBrierTracker(data_path=_os.path.join(data_dir, 'enhanced_brier.json'))
+        else:
+            self.tms = TransactiveMemory()
+            self.scorer = ReliabilityScorer()
+            self.brier_tracker = EnhancedBrierTracker()
         self.response_tracker = ResponseTimeTracker()
-        self.brier_tracker = EnhancedBrierTracker()
         self._search_cache = {}  # Cache for grounded data
 
         # Rate limiter state for grounded data gathering (Gemini with tools)
@@ -289,7 +341,8 @@ class TradingCouncil:
             return self._optimized_prompt_cache[cache_key]
 
         dspy_config = self.full_config.get("dspy", {})
-        prompts_dir = dspy_config.get("optimized_prompts_dir", "data/dspy_optimized")
+        data_dir = self.full_config.get('data_dir', 'data')
+        prompts_dir = dspy_config.get("optimized_prompts_dir", os.path.join(data_dir, "dspy_optimized"))
         if not os.path.isabs(prompts_dir):
             prompts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), prompts_dir)
 
@@ -383,24 +436,75 @@ class TradingCouncil:
 
         # Check 3: Hallucination flag — numbers not in grounded data
         # v5.2 FIX: Context-aware thresholds and price-level whitelisting
+        # v8.0 FIX: Strip commas before extraction so "3,040" → "3040" (not "040")
+        # v8.1 FIX: Extract whole floats (not decimal fragments) so "6481.605" → "6481.605" not "6481"+"605"
         import re as re_mod
-        output_numbers = set(re_mod.findall(r'\b\d{3,}\b', analysis))
-        source_numbers = set(re_mod.findall(r'\b\d{3,}\b', grounded_data))
+        _strip_commas = lambda t: re_mod.sub(r'(\d),(\d)', r'\1\2', t)
+        _number_pat = r'\b\d{3,}(?:\.\d+)?\b'  # 3+ digit integers, optionally with decimal part
+        output_numbers = set(re_mod.findall(_number_pat, _strip_commas(analysis)))
+        source_numbers = set(re_mod.findall(_number_pat, _strip_commas(grounded_data)))
         fabricated = output_numbers - source_numbers
 
         # Whitelist price levels near the underlying price for technical/volatility/macro agents
         # These agents CALCULATE support/resistance levels that won't appear in input data.
         if agent_name in ('technical', 'volatility', 'macro'):
             try:
-                price_numbers = [float(n) for n in source_numbers if 50 < float(n) < 1000]
+                price_numbers = [float(n) for n in source_numbers if 50 < float(n) < 100000]
                 if price_numbers:
-                    ref_price = max(price_numbers)  # Use highest as reference
+                    # Whitelist if within 30% of ANY source price (not just max).
+                    # Handles cases where current price diverges from SMA (e.g., CC: 3146 vs SMA 6481).
                     fabricated = {
                         n for n in fabricated
-                        if not (ref_price * 0.7 < float(n) < ref_price * 1.3)
+                        if not any(ref * 0.7 < float(n) < ref * 1.3 for ref in price_numbers)
                     }
             except (ValueError, ZeroDivisionError):
                 pass  # If parsing fails, keep original check
+
+        # Whitelist derived arithmetic for inventory/supply_chain agents.
+        # These agents sum/diff ICE certified stock figures (e.g., regional totals)
+        # producing numbers that are valid derivations but not in the raw source.
+        if agent_name in ('inventory', 'supply_chain'):
+            try:
+                src_nums = [float(n) for n in source_numbers]
+                if src_nums:
+                    derived = set()
+                    for n in fabricated:
+                        n_val = float(n)
+                        if n_val == 0:
+                            continue
+                        # Check proximity: within 5% of any source number (rounding diffs)
+                        if any(abs(s - n_val) / n_val < 0.05 for s in src_nums):
+                            derived.add(n)
+                            continue
+                        # Check if n is a plausible sum or difference of 2 source numbers
+                        found = False
+                        for i, a in enumerate(src_nums):
+                            for b in src_nums[i:]:
+                                if abs(a + b - n_val) / n_val < 0.01:
+                                    found = True
+                                    break
+                                if abs(abs(a - b) - n_val) / n_val < 0.01:
+                                    found = True
+                                    break
+                            if found:
+                                derived.add(n)
+                                break
+                    fabricated -= derived
+                else:
+                    # No source numbers at all — inventory agent has no grounding data.
+                    # Any numbers it cites are necessarily hallucinated (#1171).
+                    if fabricated:
+                        issues.append(
+                            f"Ungrounded inventory data: {len(fabricated)} numbers cited "
+                            f"with no source numbers in grounded data: {list(fabricated)[:5]}"
+                        )
+                        confidence_adjustment = min(confidence_adjustment, 0.3) if confidence_adjustment is not None else 0.3
+                        logger.warning(
+                            f"[{agent_name}] No source numbers in grounded data — "
+                            f"forcing LOW confidence. Fabricated: {list(fabricated)[:5]}"
+                        )
+            except (ValueError, ZeroDivisionError):
+                pass
 
         # Agents with web search capability get a higher threshold
         # (their LLM retrieved numbers via AFC that aren't in our local data)
@@ -499,7 +603,7 @@ class TradingCouncil:
             text = text[:-3]
         return text.strip()
 
-    async def _route_call(self, role: AgentRole, prompt: str, system_prompt: str = None, response_json: bool = False) -> str:
+    async def _route_call(self, role: AgentRole, prompt: str, system_prompt: str = None, response_json: bool = False, route_info: dict = None) -> str:
         """
         Route call to appropriate model based on role.
         Falls back to Gemini if router unavailable.
@@ -508,7 +612,7 @@ class TradingCouncil:
         try:
             if self.use_heterogeneous and self.heterogeneous_router:
                 try:
-                    result = await self.heterogeneous_router.route(role, prompt, system_prompt, response_json)
+                    result = await self.heterogeneous_router.route(role, prompt, system_prompt, response_json, route_info=route_info)
                     return result
                 except BudgetThrottledError:
                     raise  # Don't fall back to Gemini — budget applies to all providers
@@ -517,6 +621,8 @@ class TradingCouncil:
 
             # Fallback to existing Gemini implementation
             model_to_use = self.master_model_name if role == AgentRole.MASTER_STRATEGIST else self.agent_model_name
+            if route_info is not None:
+                route_info.update({'provider': 'gemini', 'model': model_to_use, 'input_tokens': 0, 'output_tokens': 0})
             return await self._call_model(model_to_use, prompt, response_json=response_json)
         finally:
             latency = time.time() - start_time
@@ -545,6 +651,19 @@ class TradingCouncil:
                     contents=prompt,
                     config=types.GenerateContentConfig(**config_args)
                 )
+                if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    try:
+                        from trading_bot.budget_guard import calculate_api_cost, get_budget_guard
+                        budget = get_budget_guard()
+                        if budget:
+                            cost = calculate_api_cost(
+                                model_name,
+                                response.usage_metadata.prompt_token_count or 0,
+                                response.usage_metadata.candidates_token_count or 0,
+                            )
+                            budget.record_cost(cost, source="council/grounded_data")
+                    except Exception:
+                        pass
                 return response.text
             except Exception as e:
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
@@ -749,7 +868,7 @@ OUTPUT FORMAT (JSON):
             logger.warning(f"Reflexion query failed for {agent_name}: {e}")
             return base_prompt  # Fail-safe: no reflexion is always better than crashing
 
-    async def research_topic(self, persona_key: str, search_instruction: str, regime_context: str = "") -> str:
+    async def research_topic(self, persona_key: str, search_instruction: str, regime_context: str = "", trace_collector=None) -> str:
         """
         Conducts deep-dive research using a specialized agent persona.
 
@@ -774,7 +893,7 @@ OUTPUT FORMAT (JSON):
             # Add temporal warning to prevent confusion
             context_str = (
                 "PRIOR INSIGHTS (from last 14 days only - do NOT cite older events):\n"
-                + "\n".join(relevant_context)
+                + "\n".join([sanitize_prompt_content(c) for c in relevant_context])
             )
         else:
             context_str = "No recent prior context available."
@@ -796,12 +915,15 @@ OUTPUT FORMAT (JSON):
 
         # === PHASE 2: HETEROGENEOUS ANALYSIS ===
         persona_prompt = self.personas.get(persona_key, "You are a helpful research assistant.")
+        _prompt_source = "legacy"
+        _demo_count = 0
 
         # ENHANCED: Try commodity-aware prompt first, fall back to legacy
         if self.commodity_profile and _HAS_COMMODITY_PROFILES:
             try:
                 # Use commodity-specific prompt template
                 persona_prompt = get_agent_prompt(persona_key, self.commodity_profile, regime_context=regime_context)
+                _prompt_source = "commodity_profile"
                 logger.debug(f"Using commodity-aware prompt for {persona_key}")
             except (ValueError, KeyError) as e:
                 # Fall back to legacy persona prompt (no change in behavior)
@@ -816,7 +938,9 @@ OUTPUT FORMAT (JSON):
             optimized = self._load_optimized_prompt(commodity_ticker, persona_key)
             if optimized:
                 persona_prompt = optimized["instruction"]
+                _prompt_source = "dspy_optimized"
                 demos = optimized.get("demos")
+                _demo_count = len(demos) if demos and isinstance(demos, list) else 0
                 if demos and isinstance(demos, list):
                     demo_text = self._format_demos(demos)
                     persona_prompt = f"{persona_prompt}\n\nEXAMPLES OF GOOD ANALYSIS:\n{demo_text}"
@@ -860,12 +984,41 @@ OUTPUT FORMAT (JSON):
         role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 
         try:
+            _research_route_info = {}
+            _trace_start = time.time()
             # Phase 2 always uses heterogeneous routing for diverse analysis if enabled
             if self.use_heterogeneous:
-                result_raw = await self.heterogeneous_router.route(role, full_prompt, response_json=True)
+                result_raw = await self.heterogeneous_router.route(role, full_prompt, response_json=True, route_info=_research_route_info)
             else:
                 # If no heterogeneous, fallback to agent model (Gemini) without tools
                 result_raw = await self._call_model(self.agent_model_name, full_prompt, use_tools=False, response_json=True)
+                _research_route_info = {'provider': 'gemini', 'model': self.agent_model_name, 'input_tokens': 0, 'output_tokens': 0}
+            if 'latency_ms' not in _research_route_info:
+                _research_route_info['latency_ms'] = (time.time() - _trace_start) * 1000
+
+            # Emit prompt trace
+            if trace_collector:
+                try:
+                    _assigned = self.heterogeneous_router.assignments.get(role, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                    trace_collector.record(PromptTraceRecord(
+                        phase='research',
+                        agent=persona_key,
+                        prompt_source=_prompt_source,
+                        model_provider=_research_route_info.get('provider', ''),
+                        model_name=_research_route_info.get('model', ''),
+                        assigned_provider=_assigned[0].value if _assigned[0] else '',
+                        assigned_model=_assigned[1] or '',
+                        persona_hash=hash_persona(persona_prompt),
+                        demo_count=_demo_count,
+                        tms_context_count=len(relevant_context) if relevant_context else 0,
+                        grounded_freshness_hours=grounded_data.data_freshness_hours,
+                        reflexion_applied=False,
+                        prompt_tokens=_research_route_info.get('input_tokens', 0),
+                        completion_tokens=_research_route_info.get('output_tokens', 0),
+                        latency_ms=_research_route_info.get('latency_ms', 0),
+                    ))
+                except Exception:
+                    pass  # Never block trading
 
             # Validate Output (New 3-tuple Unpacking)
             is_valid, issues, conf_adj = self._validate_agent_output(
@@ -873,6 +1026,10 @@ OUTPUT FORMAT (JSON):
             )
             if not is_valid:
                 logger.warning(f"[{persona_key}] Validation issues: {issues}")
+                # Invalidate cached response to prevent hallucination propagation
+                if any("hallucination" in i.lower() for i in issues):
+                    if self.use_heterogeneous and hasattr(self.heterogeneous_router, 'cache'):
+                        self.heterogeneous_router.cache.invalidate_by_role(persona_key)
 
             # Parse JSON
             try:
@@ -916,7 +1073,8 @@ OUTPUT FORMAT (JSON):
                 'data': formatted_text,
                 'confidence': parse_confidence(data.get('confidence', 0.5)),
                 'sentiment': data.get('sentiment', 'NEUTRAL'),
-                'data_freshness_hours': grounded_data.data_freshness_hours
+                'data_freshness_hours': grounded_data.data_freshness_hours,
+                'has_direction_mismatch': any('Direction-evidence mismatch' in i for i in issues),
             }
 
             # Record Trace
@@ -951,11 +1109,23 @@ OUTPUT FORMAT (JSON):
         except Exception as e:
             return {'data': f"Error conducting research: {str(e)}", 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
 
-    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str, regime_context: str = "") -> dict:
+    async def research_topic_with_reflexion(self, persona_key: str, search_instruction: str, regime_context: str = "", trace_collector=None) -> dict:
         """Research with self-correction loop."""
 
         # Step 1: Initial analysis
-        initial_response_struct = await self.research_topic(persona_key, search_instruction, regime_context=regime_context)
+        initial_response_struct = await self.research_topic(persona_key, search_instruction, regime_context=regime_context, trace_collector=trace_collector)
+
+        # Short-circuit reflexion if the initial research failed.
+        # Feeding error text into the reflexion prompt creates a
+        # self-perpetuating loop where the LLM "analyzes" the error
+        # message as evidence, poisoning state for future cycles.
+        if _is_error_report(initial_response_struct):
+            logger.warning(
+                f"[{persona_key}] Skipping reflexion — initial research returned error. "
+                f"Returning error struct as-is to avoid poisoned-state loop."
+            )
+            return initial_response_struct
+
         initial_text = initial_response_struct.get('data', '')
 
         # Step 2: Reflexion prompt
@@ -989,7 +1159,27 @@ OUTPUT FORMAT (JSON ONLY):
         }
         role = role_map.get(persona_key, AgentRole.AGRONOMIST)
 
-        revised_raw = await self._route_call(role, reflexion_prompt, response_json=True)
+        _reflexion_route_info = {}
+        revised_raw = await self._route_call(role, reflexion_prompt, response_json=True, route_info=_reflexion_route_info)
+
+        if trace_collector:
+            try:
+                _assigned = self.heterogeneous_router.assignments.get(role, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                trace_collector.record(PromptTraceRecord(
+                    phase='research',
+                    agent=persona_key,
+                    prompt_source='legacy',
+                    model_provider=_reflexion_route_info.get('provider', ''),
+                    model_name=_reflexion_route_info.get('model', ''),
+                    assigned_provider=_assigned[0].value if _assigned[0] else '',
+                    assigned_model=_assigned[1] or '',
+                    reflexion_applied=True,
+                    prompt_tokens=_reflexion_route_info.get('input_tokens', 0),
+                    completion_tokens=_reflexion_route_info.get('output_tokens', 0),
+                    latency_ms=_reflexion_route_info.get('latency_ms', 0),
+                ))
+            except Exception:
+                pass
 
         try:
             data = json.loads(self._clean_json_text(revised_raw))
@@ -1013,7 +1203,7 @@ OUTPUT FORMAT (JSON ONLY):
             'sentiment': data.get('sentiment', 'NEUTRAL')
         }
 
-    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, market_data: dict, opponent_argument: str = None, market_context: str = "") -> str:
+    async def _get_red_team_analysis(self, persona_key: str, reports_text: str, market_data: dict, opponent_argument: str = None, market_context: str = "", trace_collector=None) -> str:
         """Gets critique/defense from Permabear or Permabull."""
         persona_prompt = self.personas.get(persona_key, "")
 
@@ -1040,11 +1230,31 @@ OUTPUT FORMAT (JSON ONLY):
         try:
             # Enforce JSON output for structured debate
             role = AgentRole.PERMABEAR if persona_key == 'permabear' else AgentRole.PERMABULL
-            return await self._route_call(role, prompt, response_json=True)
+            _debate_route_info = {}
+            result = await self._route_call(role, prompt, response_json=True, route_info=_debate_route_info)
+            if trace_collector:
+                try:
+                    _assigned = self.heterogeneous_router.assignments.get(role, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                    trace_collector.record(PromptTraceRecord(
+                        phase='debate',
+                        agent=persona_key,
+                        prompt_source='legacy',
+                        model_provider=_debate_route_info.get('provider', ''),
+                        model_name=_debate_route_info.get('model', ''),
+                        assigned_provider=_assigned[0].value if _assigned[0] else '',
+                        assigned_model=_assigned[1] or '',
+                        persona_hash=hash_persona(persona_prompt),
+                        prompt_tokens=_debate_route_info.get('input_tokens', 0),
+                        completion_tokens=_debate_route_info.get('output_tokens', 0),
+                        latency_ms=_debate_route_info.get('latency_ms', 0),
+                    ))
+                except Exception:
+                    pass
+            return result
         except Exception as e:
             return json.dumps({"error": str(e), "position": "NEUTRAL", "key_arguments": []})
 
-    async def run_debate(self, reports_text: str, market_data: dict, market_context: str = "") -> tuple[str, str]:
+    async def run_debate(self, reports_text: str, market_data: dict, market_context: str = "", trace_collector=None) -> tuple[str, str]:
         """
         Run sequential attack-defense debate.
         Step 1: PERMABEAR generates the Thesis (Attack).
@@ -1052,14 +1262,14 @@ OUTPUT FORMAT (JSON ONLY):
         """
 
         # Step 1: Bear attacks the thesis (with market context including sentinel briefing)
-        bear_json = await self._get_red_team_analysis("permabear", reports_text, market_data, market_context=market_context)
+        bear_json = await self._get_red_team_analysis("permabear", reports_text, market_data, market_context=market_context, trace_collector=trace_collector)
 
         # Step 2: Bull must RESPOND to the specific critique
-        bull_json = await self._get_red_team_analysis("permabull", reports_text, market_data, opponent_argument=bear_json, market_context=market_context)
+        bull_json = await self._get_red_team_analysis("permabull", reports_text, market_data, opponent_argument=bear_json, market_context=market_context, trace_collector=trace_collector)
 
         return bear_json, bull_json
 
-    async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str) -> dict:
+    async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str, trace_collector=None) -> dict:
         """
         Run Pre-Mortem analysis on a tentative decision.
         Returns: {'proceed': bool, 'risks': list, 'recommendation': str}
@@ -1095,9 +1305,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
         # Retry Loop for JSON Parsing
         max_retries = 2
+        _da_route_info = {}
         for attempt in range(max_retries + 1):
             try:
-                response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True)
+                response = await self._route_call(AgentRole.PERMABEAR, prompt, response_json=True, route_info=_da_route_info)
                 cleaned = self._clean_json_text(response)
                 if not cleaned:
                     raise ValueError("Empty response")
@@ -1119,6 +1330,23 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     result['proceed'] = raw is True or (isinstance(raw, str) and raw.lower() in ('true', 'yes'))
                     logger.warning(f"DA 'proceed' was {type(raw).__name__} ({raw!r}), coerced to {result['proceed']}")
 
+                if trace_collector:
+                    try:
+                        _assigned = self.heterogeneous_router.assignments.get(AgentRole.PERMABEAR, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                        trace_collector.record(PromptTraceRecord(
+                            phase='devils_advocate',
+                            agent='devils_advocate',
+                            prompt_source='legacy',
+                            model_provider=_da_route_info.get('provider', ''),
+                            model_name=_da_route_info.get('model', ''),
+                            assigned_provider=_assigned[0].value if _assigned[0] else '',
+                            assigned_model=_assigned[1] or '',
+                            prompt_tokens=_da_route_info.get('input_tokens', 0),
+                            completion_tokens=_da_route_info.get('output_tokens', 0),
+                            latency_ms=_da_route_info.get('latency_ms', 0),
+                        ))
+                    except Exception:
+                        pass
                 return result
 
             except Exception as e:
@@ -1174,10 +1402,13 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                         'da_bypassed': True  # R3: Signal to downstream components
                     }
 
-    async def decide(self, contract_name: str, market_data: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "", trigger: SentinelTrigger = None) -> dict:
+    async def decide(self, contract_name: str, market_data: dict, research_reports: dict, market_context: str, trigger_reason: str = None, cycle_id: str = "", trigger: SentinelTrigger = None, trace_collector=None) -> dict:
         """
         The Hegelian Loop: Thesis (Reports) -> Antithesis (Bear/Bull) -> Synthesis (Master).
         """
+        # v8.1: Reset debate summary to prevent stale cross-cycle contamination
+        self._last_debate_summary = ""
+
         # 1. Thesis: Format Research Reports
         # Handle dictionary reports with timestamps (from StateManager) vs strings (legacy/fresh)
         reports_text = ""
@@ -1245,7 +1476,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Run sequentially (Bear Attack -> Bull Defense)
         # Inject sentinel briefing so debate agents know WHY this cycle exists
         debate_market_context = market_context + sentinel_briefing if sentinel_briefing else market_context
-        bear_json, bull_json = await self.run_debate(reports_text, market_data, market_context=debate_market_context)
+        bear_json, bull_json = await self.run_debate(reports_text, market_data, market_context=debate_market_context, trace_collector=trace_collector)
+
+        # v8.1: Store debate summary for compliance audit pipeline
+        self._last_debate_summary = f"BEAR ATTACK:\n{bear_json}\n\nBULL DEFENSE:\n{bull_json}"
 
         # 3. Synthesis: Master Strategist
         master_persona = self.personas.get('master', "You are the Chief Strategist.")
@@ -1267,7 +1501,11 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             f"2. If agent consensus confidence > 0.85 -> Strong signal, consider action\n"
             f"3. If agent conflict score is high -> Consider volatility play\n\n"
             f"TASK: Synthesize the evidence. Judge the debate. Render a verdict.\n"
-            f"CRITICAL: DO NOT output price targets, stop-losses, or precise numerical confidence. Focus on reasoning quality.\n"
+            f"CRITICAL RULES:\n"
+            f"- DO NOT output price targets, stop-losses, or precise numerical confidence. Focus on reasoning quality.\n"
+            f"- ONLY cite facts, thresholds, and rules that appear explicitly in the reports above.\n"
+            f"- DO NOT invent framework rules, liquidation thresholds, or priority systems that are not in the evidence.\n"
+            f"- If a number or rule is not in the desk reports or market data, do not reference it.\n"
             f"OUTPUT FORMAT: Valid JSON object ONLY with these exact keys:\n"
             f"- 'direction': (string) 'BULLISH', 'BEARISH', or 'NEUTRAL'.\n"
             f"- 'thesis_strength': (string) 'SPECULATIVE', 'PLAUSIBLE', or 'PROVEN'.\n"
@@ -1277,7 +1515,26 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         )
 
         try:
-            response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True)
+            _master_route_info = {}
+            response_text = await self._route_call(AgentRole.MASTER_STRATEGIST, full_prompt, response_json=True, route_info=_master_route_info)
+            if trace_collector:
+                try:
+                    _assigned = self.heterogeneous_router.assignments.get(AgentRole.MASTER_STRATEGIST, (None, None)) if self.use_heterogeneous and self.heterogeneous_router else (None, None)
+                    trace_collector.record(PromptTraceRecord(
+                        phase='decision',
+                        agent='master',
+                        prompt_source='legacy',
+                        model_provider=_master_route_info.get('provider', ''),
+                        model_name=_master_route_info.get('model', ''),
+                        assigned_provider=_assigned[0].value if _assigned[0] else '',
+                        assigned_model=_assigned[1] or '',
+                        persona_hash=hash_persona(master_persona),
+                        prompt_tokens=_master_route_info.get('input_tokens', 0),
+                        completion_tokens=_master_route_info.get('output_tokens', 0),
+                        latency_ms=_master_route_info.get('latency_ms', 0),
+                    ))
+                except Exception:
+                    pass
             cleaned_text = self._clean_json_text(response_text)
             decision = json.loads(cleaned_text)
             if not isinstance(decision, dict):
@@ -1307,17 +1564,17 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
             # do not warrant risking capital. They are logged for learning
             # (Brier scoring) but not executed.
             #
-            # Execution threshold:
-            #   PROVEN (0.90)     → Executes ✓
-            #   PLAUSIBLE (0.70)  → Executes ✓ (even with 0.5 conviction = 0.35... see note)
+            # v8.0 Execution threshold (with min_confidence_threshold = 0.50):
+            #   PROVEN (0.90)      → Always executes ✓
+            #   PLAUSIBLE (0.80)   → Executes ✓ (even DIVERGENT: 0.80*0.70=0.56 > 0.50)
             #   SPECULATIVE (0.45) → Blocked ✗
             #
-            # IMPORTANT: PLAUSIBLE + DIVERGENT consensus (0.70 * 0.5 = 0.35)
-            # will ALSO be blocked. This is correct — low conviction + disagreement
-            # should not trade.
+            # PLAUSIBLE+PARTIAL: 0.80*0.75=0.60, PLAUSIBLE+DIVERGENT: 0.80*0.70=0.56
+            # Both pass the 0.50 gate. The gap between PARTIAL/DIVERGENT is now 0.05
+            # (down from 0.25 pre-v8.0). If more separation needed: PARTIAL→0.85.
             THESIS_TO_CONFIDENCE = {
                 'PROVEN': 0.90,
-                'PLAUSIBLE': 0.70,
+                'PLAUSIBLE': 0.80,
                 'SPECULATIVE': 0.45,
             }
             thesis = decision.get('thesis_strength', 'SPECULATIVE').upper()
@@ -1359,7 +1616,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         1. Wake up the RELEVANT agent based on Semantic Router.
         2. Load cached state for other agents.
         3. Run the Debate and Master.
+
+        v8.1: Returns 'debate_summary' key for compliance audit pipeline.
         """
+        # v8.1: Early reset to prevent stale cross-cycle contamination
+        self._last_debate_summary = ""
+
         logger.info(f"Running Specialized Cycle triggered by {trigger.source}...")
         
         # Load Cached State with Metadata (Fix #1: Graduated Staleness)
@@ -1406,8 +1668,12 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Create combined reports for Decision context
         final_reports = cached_reports.copy()
 
-        # Overwrite/Add the fresh report
-        final_reports[active_agent_key] = fresh_report
+        # Validate fresh_report before merging (Issue #1167)
+        if _is_error_report(fresh_report):
+            logger.warning(f"Agent {active_agent_key}: research returned error, excluding from council - {fresh_report.get('data', '')[:100]}")
+        else:
+            # Overwrite/Add the fresh report
+            final_reports[active_agent_key] = fresh_report
 
         # --- Handle "Empty Brain" (Cold Start) ---
         expected_agents = [
@@ -1458,12 +1724,14 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
 
                     # Update reports
                     for agent, res in zip(cued_tasks.keys(), cued_results):
-                        if not isinstance(res, Exception):
+                        if isinstance(res, Exception):
+                            logger.error(f"Cued agent {agent} failed: {res}")
+                        elif _is_error_report(res):
+                            logger.warning(f"Cued agent {agent}: research returned error, excluding from council - {res.get('data', '')[:100]}")
+                        else:
                             final_reports[agent] = res
                             # Save to state
                             StateManager.save_state({agent: res})
-                        else:
-                            logger.error(f"Cued agent {agent} failed: {res}")
 
         # === NEW: Calculate Weighted Vote ===
         trigger_type = determine_trigger_type(trigger.source)
@@ -1503,6 +1771,13 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         # Add to market context
         enriched_context = market_context + weighted_context
 
+        # v8.0 P3: Inject regime transition alert if detected
+        from trading_bot.weighted_voting import detect_regime_transition
+        regime_alert = detect_regime_transition(market_data)
+        if regime_alert:
+            enriched_context += regime_alert
+            logger.info("Regime transition alert injected into emergency cycle context")
+
         # Run Decision Loop with Context Injection
         decision = await self.decide(contract_name, market_data, final_reports, enriched_context, trigger_reason=trigger.reason, cycle_id=cycle_id, trigger=trigger)
 
@@ -1514,9 +1789,10 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
         if master_dir == vote_dir or vote_dir == 'NEUTRAL':
             conviction_multiplier = 1.0
         elif vote_dir != master_dir and master_dir != 'NEUTRAL':
-            conviction_multiplier = 0.5
+            # v8.0: 0.5→0.70 to unblock PLAUSIBLE+DIVERGENT (0.80*0.70=0.56 > 0.50 threshold)
+            conviction_multiplier = 0.70
             decision['reasoning'] += f" [DIVERGENT CONSENSUS: Vote={vote_dir}, trading smaller]"
-            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → half size")
+            logger.info(f"Emergency consensus divergent: Master={master_dir}, Vote={vote_dir} → reduced size")
         else:
             conviction_multiplier = 0.75
 
@@ -1582,6 +1858,9 @@ OUTPUT: JSON with 'proceed' (bool), 'risks' (list of strings), 'recommendation' 
                     )
             except Exception as e:
                 logger.error(f"Failed to record Brier prediction (non-fatal): {e}")
+
+        # v8.1: Attach debate summary for compliance audit pipeline
+        decision['debate_summary'] = getattr(self, '_last_debate_summary', '')
 
         return decision
 

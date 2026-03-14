@@ -1,108 +1,614 @@
 """
-Coffee Bot Real Options - Main Entry Point
+Real Options Portfolio — Main Entry Point
 
-This file serves as the entry point and redirects to the multi-page app.
+Cross-commodity portfolio home page. Shows health, financials, and recent
+activity across all active commodities. Individual commodity drill-down
+lives on pages 1-7 (each page has its own commodity selector).
+
 Streamlit's native multi-page support handles routing via the pages/ directory.
 """
 
 import streamlit as st
-from config_loader import load_config
 from trading_bot.logging_config import setup_logging
+import os
+import json
 
-# Set up dashboard-specific logging
+# Single consolidated dashboard log (not per-commodity)
 setup_logging(log_file="logs/dashboard.log")
-
-# Dynamic configuration for commodity-aware branding
-_cfg = load_config()
-_commodity_name = _cfg.get('commodity', {}).get('name', 'Coffee') if _cfg else 'Coffee'
-_commodity_emoji = {'Coffee': '☕', 'Cocoa': '🍫', 'Sugar': '🍬'}.get(_commodity_name.split()[0], '📊')
 
 st.set_page_config(
     layout="wide",
-    page_title=f"{_commodity_name} Real Options",
-    page_icon=_commodity_emoji,
+    page_title="Real Options Portfolio",
+    page_icon="\U0001f4ca",
     initial_sidebar_state="expanded"
 )
 
-# The presence of files in pages/ directory enables multi-page mode automatically.
-# This file becomes the "home" page or can redirect.
+# === IMPORTS ===
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+import calendar
+from dashboard_utils import (
+    discover_active_commodities,
+    get_system_heartbeat_for_commodity,
+    load_council_history_for_commodity,
+    grade_decision_quality,
+    fetch_all_live_data,
+    get_config,
+    load_equity_data,
+    fetch_benchmark_data,
+    get_starting_capital,
+    _relative_time,
+)
+from _date_filter import date_range_picker, apply_date_filter
 
-st.title(f"{_commodity_emoji} {_commodity_name} Real Options")
+config = get_config()
+
+def _get_commodity_meta(ticker: str) -> dict:
+    """Build display metadata from CommodityProfile — no hardcoded dict."""
+    from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
+    try:
+        from config.commodity_profiles import get_commodity_profile
+        profile = get_commodity_profile(ticker)
+        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "\U0001f4ca"))
+        return {"name": profile.name, "emoji": emoji}
+    except Exception:
+        return {"name": ticker, "emoji": "\U0001f4ca"}
+
+st.title("\U0001f4ca Real Options Portfolio")
+
+# =====================================================================
+# SECTION 1: Portfolio Health — per-commodity orchestrator status
+# =====================================================================
+active_commodities = discover_active_commodities()
+
+st.markdown("### 💓 Portfolio Health")
+health_cols = st.columns(max(len(active_commodities), 1))
+
+for idx, ticker in enumerate(active_commodities):
+    meta = _get_commodity_meta(ticker)
+    hb = get_system_heartbeat_for_commodity(ticker)
+    status = hb["orchestrator_status"]
+    last_pulse = hb.get("orchestrator_last_pulse")
+
+    # Format status with semantic icon and relative pulse time
+    status_icon = "🟢" if status == "ONLINE" else "🟡" if status == "STALE" else "🔴"
+    pulse_delta = f"Pulse: {_relative_time(last_pulse)}" if last_pulse else "No pulse"
+
+    with health_cols[idx]:
+        st.metric(
+            f"{meta['emoji']} {meta['name']} ({ticker})",
+            f"{status_icon} {status.title()}",
+            delta=pulse_delta,
+            delta_color="off",
+            help=(
+                f"Status of the {meta['name']} orchestrator engine.\n\n"
+                f"**Last Pulse:** {last_pulse if last_pulse else 'Never'}\n"
+                "**Green:** Log updated within 10 minutes\n"
+                "**Yellow:** Log stale (check logs)\n"
+                "**Red:** Engine process not found"
+            )
+        )
+
+# =====================================================================
+# SECTION 2: Financial Summary — NLV, Daily P&L, Portfolio VaR
+# =====================================================================
 st.markdown("---")
+st.markdown("### 💰 Financial Summary")
 
-st.markdown("### Navigation")
+fin_col1, fin_col2, fin_col3 = st.columns(3)
 
-# Interactive Navigation with Progressive Enhancement
+# IB account data (single account, shared across commodities)
+try:
+    live = fetch_all_live_data(config) if config else {}
+except Exception:
+    live = {}
+
+with fin_col1:
+    try:
+        if live.get("connection_status") == "CONNECTED":
+            nlv = live.get("net_liquidation", 0.0)
+            st.metric(
+                "💰 Net Liquidation", f"${nlv:,.2f}",
+                help="Total account value including cash and market value of positions."
+            )
+        else:
+            st.metric(
+                "💰 Net Liquidation", "IB Offline",
+                help="Connection to Interactive Brokers is offline. Data may be stale."
+            )
+    except Exception:
+        st.metric("💰 Net Liquidation", "IB Offline", help="Connection to Interactive Brokers is offline.")
+
+with fin_col2:
+    try:
+        if live.get("connection_status") == "CONNECTED":
+            daily_pnl = live.get("daily_pnl", 0.0)
+            nlv = live.get("net_liquidation", 0.0)
+            pnl_pct = (daily_pnl / nlv * 100) if nlv > 0 else 0.0
+            st.metric(
+                "💵 Daily P&L", f"${daily_pnl:,.0f}", delta=f"{pnl_pct:+.2f}%",
+                help="Total change in account equity since prior day close (as reported by IBKR)."
+            )
+        else:
+            st.metric(
+                "💵 Daily P&L", "IB Offline",
+                help="Connection to Interactive Brokers is offline. Data may be stale."
+            )
+    except Exception:
+        st.metric("💵 Daily P&L", "IB Offline", help="Connection to Interactive Brokers is offline.")
+
+with fin_col3:
+    try:
+        var_path = os.path.join("data", "var_state.json")
+        if os.path.exists(var_path):
+            with open(var_path, "r") as f:
+                var_data = json.load(f)
+            var_95 = var_data.get("var_95", 0)
+            limit = var_data.get("var_limit", 0)
+            utilization = (var_95 / limit * 100) if limit > 0 else 0.0
+            st.metric(
+                "⚖️ Portfolio VaR (95%)", f"${var_95:,.0f}", delta=f"{utilization:.0f}% utilized",
+                help="Value at Risk (95% confidence): Estimated maximum loss over one day based on current portfolio correlations."
+            )
+        else:
+            st.metric(
+                "⚖️ Portfolio VaR (95%)", "No data",
+                help="VaR state file not found. Ensure the VaR calculator has run successfully."
+            )
+    except Exception:
+        st.metric("⚖️ Portfolio VaR (95%)", "No data", help="VaR state file not found.")
+
+# =====================================================================
+# SECTION 2b: Equity Curve + Drawdown (account-wide from daily_equity.csv)
+# =====================================================================
+st.markdown("---")
+st.markdown("### 📈 Equity Curve")
+
+# Always load from KC — equity_logger only runs for primary commodity but
+# records account-wide NLV.
+equity_df = load_equity_data(ticker="KC")
+
+if not equity_df.empty:
+    equity_df = equity_df.sort_values('timestamp')
+
+    # Merge trade markers from ALL commodities
+    all_trade_markers = []
+    for _tk in active_commodities:
+        _cdf = load_council_history_for_commodity(_tk)
+        if not _cdf.empty and 'timestamp' in _cdf.columns:
+            _markers = _cdf[['timestamp', 'master_decision']].copy()
+            _markers['timestamp'] = pd.to_datetime(_markers['timestamp'])
+            all_trade_markers.append(_markers)
+    trade_markers = pd.concat(all_trade_markers, ignore_index=True) if all_trade_markers else pd.DataFrame()
+
+    fig_eq = make_subplots(
+        rows=2, cols=1,
+        row_heights=[0.7, 0.3],
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        subplot_titles=('Equity Curve', 'Drawdown')
+    )
+
+    fig_eq.add_trace(
+        go.Scatter(
+            x=equity_df['timestamp'],
+            y=equity_df['total_value_usd'],
+            mode='lines',
+            name='Equity',
+            line=dict(color='#636EFA', width=2)
+        ),
+        row=1, col=1
+    )
+
+    if not trade_markers.empty:
+        buys = trade_markers[trade_markers['master_decision'] == 'BULLISH']
+        sells = trade_markers[trade_markers['master_decision'] == 'BEARISH']
+
+        if not buys.empty:
+            buy_eq = pd.merge_asof(
+                buys.sort_values('timestamp'),
+                equity_df[['timestamp', 'total_value_usd']].sort_values('timestamp'),
+                on='timestamp'
+            )
+            fig_eq.add_trace(
+                go.Scatter(
+                    x=buy_eq['timestamp'],
+                    y=buy_eq['total_value_usd'],
+                    mode='markers',
+                    name='Buy Signal',
+                    marker=dict(symbol='triangle-up', size=12, color='#00CC96')
+                ),
+                row=1, col=1
+            )
+
+        if not sells.empty:
+            sell_eq = pd.merge_asof(
+                sells.sort_values('timestamp'),
+                equity_df[['timestamp', 'total_value_usd']].sort_values('timestamp'),
+                on='timestamp'
+            )
+            fig_eq.add_trace(
+                go.Scatter(
+                    x=sell_eq['timestamp'],
+                    y=sell_eq['total_value_usd'],
+                    mode='markers',
+                    name='Sell Signal',
+                    marker=dict(symbol='triangle-down', size=12, color='#EF553B')
+                ),
+                row=1, col=1
+            )
+
+    # Drawdown
+    equity_df['peak'] = equity_df['total_value_usd'].cummax()
+    equity_df['drawdown'] = (equity_df['total_value_usd'] - equity_df['peak']) / equity_df['peak'] * 100
+
+    fig_eq.add_trace(
+        go.Scatter(
+            x=equity_df['timestamp'],
+            y=equity_df['drawdown'],
+            mode='lines',
+            fill='tozeroy',
+            name='Drawdown',
+            line=dict(color='#EF553B', width=1)
+        ),
+        row=2, col=1
+    )
+
+    fig_eq.update_layout(height=600, showlegend=True, hovermode='x unified')
+    fig_eq.update_yaxes(title_text="Equity ($)", row=1, col=1)
+    fig_eq.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
+    st.plotly_chart(fig_eq, width='stretch')
+
+    max_dd = equity_df['drawdown'].min()
+    st.caption(f"Maximum Drawdown: {max_dd:.2f}%")
+else:
+    st.info("No equity data available. Ensure equity_logger is running.")
+
+# =====================================================================
+# SECTION 2c: Risk Metrics — Sharpe Ratio, Max Drawdown
+# =====================================================================
+st.markdown("---")
+st.markdown("### 🛡️ Risk Metrics")
+
+if not equity_df.empty and len(equity_df) >= 10:
+    eq_sorted = equity_df.sort_values('timestamp').copy()
+    eq_sorted['daily_return'] = eq_sorted['total_value_usd'].pct_change()
+    _daily_returns = eq_sorted['daily_return'].dropna()
+
+    # Max drawdown + recovery
+    eq_sorted['_peak'] = eq_sorted['total_value_usd'].cummax()
+    eq_sorted['_dd'] = (eq_sorted['total_value_usd'] - eq_sorted['_peak']) / eq_sorted['_peak']
+    _max_dd_pct = eq_sorted['_dd'].min() * 100
+
+    trough_idx = eq_sorted['_dd'].idxmin()
+    post_trough = eq_sorted.loc[trough_idx:]
+    recovered = post_trough[post_trough['total_value_usd'] >= post_trough.iloc[0]['_peak']]
+    _recovery_days = (recovered.iloc[0]['timestamp'] - eq_sorted.loc[trough_idx, 'timestamp']).days if not recovered.empty else None
+
+    risk_col1, risk_col2 = st.columns(2)
+
+    with risk_col1:
+        if len(_daily_returns) >= 10:
+            daily_std = _daily_returns.std()
+            daily_mean = _daily_returns.mean()
+            sharpe = (daily_mean / daily_std * np.sqrt(252)) if daily_std > 0 else 0.0
+            st.metric(
+                "🛡️ Sharpe Ratio", f"{sharpe:.2f}",
+                help="Risk-adjusted return. >1.0 is good, >2.0 is excellent, <0.5 is poor"
+            )
+        else:
+            st.metric("🛡️ Sharpe Ratio", "N/A", help="Needs daily equity data")
+
+    with risk_col2:
+        recovery_text = f" ({_recovery_days}d recovery)" if _recovery_days is not None else " (ongoing)"
+        st.metric(
+            "📉 Max Drawdown", f"{_max_dd_pct:.1f}%",
+            help=f"Deepest peak-to-trough decline{recovery_text}"
+        )
+else:
+    st.info("Insufficient equity data for risk metrics (need 10+ daily snapshots).")
+
+# =====================================================================
+# SECTION 2d: Monthly Returns Heatmap
+# =====================================================================
+st.markdown("---")
+st.markdown("### 📅 Monthly Returns")
+st.caption("Calendar view of monthly performance")
+
+if not equity_df.empty:
+    _eq_hm = equity_df.copy()
+    _eq_hm['month'] = _eq_hm['timestamp'].dt.tz_localize(None).dt.to_period('M')
+
+    monthly = _eq_hm.groupby('month').agg({'total_value_usd': ['first', 'last']})
+    monthly.columns = ['start', 'end']
+    monthly['return'] = ((monthly['end'] - monthly['start']) / monthly['start']) * 100
+
+    monthly = monthly.reset_index()
+    monthly['year'] = monthly['month'].dt.year
+    monthly['month_num'] = monthly['month'].dt.month
+
+    # Vectorized mapping for month names
+    month_map = {i: calendar.month_abbr[i] for i in range(1, 13)}
+    monthly['month_name'] = monthly['month_num'].map(month_map)
+
+    if len(monthly) > 1:
+        pivot = monthly.pivot(index='year', columns='month_name', values='return')
+        month_order = [calendar.month_abbr[i] for i in range(1, 13)]
+        pivot = pivot.reindex(columns=[m for m in month_order if m in pivot.columns])
+
+        fig_hm = px.imshow(
+            pivot,
+            labels=dict(x="Month", y="Year", color="Return %"),
+            color_continuous_scale='RdYlGn',
+            color_continuous_midpoint=0,
+            aspect='auto'
+        )
+        fig_hm.update_layout(height=300)
+        st.plotly_chart(fig_hm, width='stretch')
+    else:
+        st.info("Not enough monthly data for heatmap.")
+else:
+    st.info("Equity data not available for monthly analysis.")
+
+# =====================================================================
+# SECTION 2e: Benchmark Comparison
+# =====================================================================
+st.markdown("---")
+st.markdown("### 📊 Benchmark Comparison")
+
+if not equity_df.empty:
+    starting_capital = get_starting_capital(config) if config else 50000.0
+    if not equity_df.empty:
+        starting_capital = equity_df.iloc[0]['total_value_usd']
+
+    start_date = equity_df['timestamp'].min()
+    end_date = equity_df['timestamp'].max()
+
+    benchmark_df = fetch_benchmark_data(start_date, end_date)
+
+    if not benchmark_df.empty:
+        bot_returns = (equity_df.set_index('timestamp')['total_value_usd'] / starting_capital - 1) * 100
+        bot_returns = bot_returns.resample('D').last().dropna()
+
+        fig_bm = go.Figure()
+
+        fig_bm.add_trace(go.Scatter(
+            x=bot_returns.index,
+            y=bot_returns.values,
+            name='Real Options',
+            line=dict(color='#636EFA', width=2)
+        ))
+
+        if 'SPY' in benchmark_df.columns:
+            fig_bm.add_trace(go.Scatter(
+                x=benchmark_df.index,
+                y=benchmark_df['SPY'],
+                name='S&P 500',
+                line=dict(color='#FFA15A', width=1, dash='dot')
+            ))
+
+        from config import get_active_profile
+        profile = get_active_profile(config) if config else None
+        if profile:
+            benchmark_col = profile.ticker
+            if benchmark_col in benchmark_df.columns:
+                fig_bm.add_trace(go.Scatter(
+                    x=benchmark_df.index,
+                    y=benchmark_df[benchmark_col],
+                    name=f'{profile.name} Futures',
+                    line=dict(color='#00CC96', width=1, dash='dot')
+                ))
+
+        fig_bm.update_layout(
+            title='Returns vs Benchmarks',
+            xaxis_title='Date',
+            yaxis_title='Return (%)',
+            height=400,
+            hovermode='x unified'
+        )
+
+        st.plotly_chart(fig_bm, width='stretch')
+    else:
+        st.info("Could not fetch benchmark data.")
+else:
+    st.info("Equity data required for benchmark comparison.")
+
+# =====================================================================
+# SECTION 3: Per-Commodity Cards — trade count, last decision, win rate
+# =====================================================================
+st.markdown("---")
+st.markdown("### 📦 Commodity Summary")
+
+# Build a merged df to derive date bounds for the single page-level picker
+_all_council = {t: load_council_history_for_commodity(t) for t in active_commodities}
+_valid_council_dfs = [d for d in _all_council.values() if not d.empty]
+_reference_df = pd.concat(_valid_council_dfs, ignore_index=True) if _valid_council_dfs else pd.DataFrame()
+_home_dates = date_range_picker(_reference_df, key='home')
+
+card_cols = st.columns(max(len(active_commodities), 1))
+
+for idx, ticker in enumerate(active_commodities):
+    meta = _get_commodity_meta(ticker)
+    council_df = _all_council[ticker]
+    if _home_dates:
+        council_df = apply_date_filter(council_df, *_home_dates)
+
+    with card_cols[idx]:
+        st.markdown(f"#### {meta['emoji']} {meta['name']}")
+
+        if council_df.empty:
+            st.caption("No trading history yet.")
+            continue
+
+        total_trades = len(council_df)
+
+        # Win rate from graded decisions
+        graded = grade_decision_quality(council_df)
+        resolved = graded[graded["outcome"].isin(["WIN", "LOSS"])] if not graded.empty else pd.DataFrame()
+        wins = len(resolved[resolved["outcome"] == "WIN"]) if not resolved.empty else 0
+        win_rate = (wins / len(resolved) * 100) if len(resolved) > 0 else 0.0
+
+        # Last decision
+        last_row = council_df.iloc[0]
+        last_decision = last_row.get("master_decision", "---")
+        last_strategy = last_row.get("strategy_type", "---")
+
+        st.metric(
+            "📦 Trades", str(total_trades),
+            help=f"Total number of Council decisions (trades) made for {meta['name']}."
+        )
+        st.metric(
+            "🎯 Win Rate", f"{win_rate:.0f}%", delta=f"{wins}W / {len(resolved) - wins}L",
+            help="Percentage of trades with resolved outcomes that resulted in a win."
+        )
+        st.caption(f"Last: **{last_decision}** / {last_strategy}")
+
+# =====================================================================
+# SECTION 4: Recent Activity Feed — merged council history (top 10)
+# =====================================================================
+st.markdown("---")
+st.markdown("### 📜 Recent Activity")
+
+try:
+    all_dfs = [d for d in _all_council.values() if not d.empty]
+
+    if all_dfs:
+        merged = pd.concat(all_dfs, ignore_index=True)
+        if _home_dates:
+            merged = apply_date_filter(merged, *_home_dates)
+        merged = merged.sort_values("timestamp", ascending=False).head(10).copy()
+
+        graded_merged = grade_decision_quality(merged)
+
+        display_cols = []
+        if "timestamp" in graded_merged.columns:
+            # Vectorized alternative to apply() for performance: map unique timestamps
+            unique_ts = graded_merged["timestamp"].dropna().unique()
+            ts_map = {ts: _relative_time(ts) for ts in unique_ts}
+            graded_merged["Time"] = graded_merged["timestamp"].map(ts_map)
+            display_cols.append("Time")
+
+        if "commodity" in graded_merged.columns:
+            graded_merged["Commodity"] = graded_merged["commodity"]
+            display_cols.append("Commodity")
+
+        col_map = {
+            "contract": "Contract",
+            "master_decision": "Decision",
+            "master_confidence": "Confidence",
+            "strategy_type": "Strategy",
+            "thesis_strength": "Thesis",
+            "trigger_type": "Trigger",
+            "outcome": "Outcome",
+            "pnl_realized": "P&L",
+        }
+        for src, dst in col_map.items():
+            if src in graded_merged.columns:
+                graded_merged[dst] = graded_merged[src]
+                display_cols.append(dst)
+
+        # Ensure numeric types for proper sorting and column_config support
+        if "Confidence" in graded_merged.columns:
+            graded_merged["Confidence"] = pd.to_numeric(graded_merged["Confidence"], errors='coerce') * 100
+
+        # Format outcome with visual indicators
+        if "Outcome" in graded_merged.columns:
+            # Vectorized outcome formatting
+            outcome_map = {"WIN": "✅ WIN", "LOSS": "❌ LOSS"}
+            graded_merged["Outcome"] = graded_merged["Outcome"].map(outcome_map).fillna("—")
+
+        # Ensure P&L is numeric for professional formatting
+        if "P&L" in graded_merged.columns:
+            graded_merged["P&L"] = pd.to_numeric(graded_merged["P&L"], errors='coerce')
+
+        if display_cols:
+            st.dataframe(
+                graded_merged[display_cols],
+                width='stretch',
+                hide_index=True,
+                column_config={
+                    "Time": st.column_config.TextColumn("🕒 Time", width="small", help="Time since the decision was made."),
+                    "Commodity": st.column_config.TextColumn("📦 Ticker", width="small", help="The commodity symbol (e.g., KC, CC)."),
+                    "Contract": st.column_config.TextColumn("📜 Contract", width="small", help="The specific futures contract traded."),
+                    "Decision": st.column_config.TextColumn("⚖️ Decision", width="small", help="The final decision rendered by the Master Strategist."),
+                    "Confidence": st.column_config.ProgressColumn(
+                        "🎯 Conf.",
+                        width="small",
+                        min_value=0,
+                        max_value=100,
+                        format="%.0f%%",
+                        help="The confidence level of the Master Strategist's decision (0-100%)."
+                    ),
+                    "Strategy": st.column_config.TextColumn("🛡️ Strategy", width="medium", help="The trading strategy applied for this decision."),
+                    "Thesis": st.column_config.TextColumn("💡 Thesis", width="small", help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    "Trigger": st.column_config.TextColumn("📡 Trigger", width="small", help="The event or sentinel that triggered this decision cycle."),
+                    "Outcome": st.column_config.TextColumn("🏁 Outcome", width="small", help="The outcome of the decision (WIN/LOSS) once resolved."),
+                    "P&L": st.column_config.NumberColumn(
+                        "💰 P&L",
+                        width="small",
+                        format="$%.2f",
+                        help="The realized Profit and Loss for this trade."
+                    ),
+                }
+            )
+        else:
+            st.info("No decision columns available.")
+    else:
+        st.info("No council decisions yet.")
+except Exception:
+    st.info("No decision data available.")
+
+# =====================================================================
+# SECTION 5: Navigation
+# =====================================================================
+st.markdown("---")
+st.markdown("### 🧭 Navigate")
+
 if hasattr(st, "page_link"):
     col1, col2 = st.columns(2)
     with col1:
-        st.page_link("pages/1_Cockpit.py", label="Cockpit", icon="🦅", help="Live operations, system health, emergency controls", width="stretch")
-        st.page_link("pages/3_The_Council.py", label="The Council", icon="🧠", help="Agent explainability, consensus visualization", width="stretch")
-        st.page_link("pages/5_Utilities.py", label="Utilities", icon="🔧", help="Log collection, equity sync, system maintenance", width="stretch")
+        st.page_link("pages/1_Cockpit.py", label="Cockpit", icon="\U0001f985",
+                      help="Is the system running? Check positions, health, emergencies", width="stretch")
+        st.page_link("pages/3_The_Council.py", label="The Council", icon="\U0001f9e0",
+                      help="Why did we decide that? Agent debate, voting, forensics", width="stretch")
+        st.page_link("pages/5_Utilities.py", label="Utilities", icon="\U0001f527",
+                      help="Debug and control: logs, manual trading, reconciliation", width="stretch")
+        st.page_link("pages/7_Brier_Analysis.py", label="Brier Analysis", icon="\U0001f3af",
+                      help="Which agents need tuning? Accuracy, calibration, learning", width="stretch")
     with col2:
-        st.page_link("pages/2_The_Scorecard.py", label="The Scorecard", icon="⚖️", help="Decision quality analysis, win rates, confusion matrix", width="stretch")
-        st.page_link("pages/4_Financials.py", label="Financials", icon="📈", help="ROI, equity curve, strategy performance", width="stretch")
-        st.page_link("pages/6_Signal_Overlay.py", label="Signal Overlay", icon="🎯", help="Decision forensics against price action", width="stretch")
+        st.page_link("pages/2_The_Scorecard.py", label="The Scorecard", icon="\u2696\ufe0f",
+                      help="How are we performing? Win rates, decision quality, learning curves", width="stretch")
+        st.page_link("pages/4_Financials.py", label="Trade Analytics", icon="\U0001f4c8",
+                      help="Per-commodity strategy performance, trade breakdown, execution ledger", width="stretch")
+        st.page_link("pages/6_Signal_Overlay.py", label="Signal Overlay", icon="\U0001f3af",
+                      help="How do signals align with price? Visual forensics", width="stretch")
+        st.page_link("pages/8_LLM_Monitor.py", label="LLM Monitor", icon="\U0001f4b0",
+                      help="API costs, budget utilization, provider health, latency", width="stretch")
+        st.page_link("pages/9_Portfolio.py", label="Portfolio", icon="\U0001f4ca",
+                      help="Account-wide risk status, cross-commodity positions, engine health", width="stretch")
+        st.page_link("pages/10_The_Funnel.py", label="The Funnel", icon="\U0001f52c",
+                      help="Where does alpha leak? Signal-to-trade conversion, execution efficiency, $ impact", width="stretch")
 else:
     st.markdown("""
     Use the sidebar to navigate between pages:
 
     | Page | Purpose |
     |------|---------|
-    | **🦅 Cockpit** | Live operations, system health, emergency controls |
-    | **⚖️ Scorecard** | Decision quality analysis, win rates, confusion matrix |
-    | **🧠 Council** | Agent explainability, consensus visualization |
-    | **📈 Financials** | ROI, equity curve, strategy performance |
-    | **🔧 Utilities** | Log collection, equity sync, system maintenance |
+    | **Cockpit** | Is the system running? Check positions, health, emergencies |
+    | **Scorecard** | How are we performing? Win rates, decision quality, learning curves |
+    | **Council** | Why did we decide that? Agent debate, voting, forensics |
+    | **Trade Analytics** | Per-commodity strategy performance, trade breakdown, execution ledger |
+    | **Utilities** | Debug and control: logs, manual trading, reconciliation |
+    | **Signal Overlay** | How do signals align with price? Visual forensics |
+    | **Brier Analysis** | Which agents need tuning? Accuracy, calibration, learning |
+    | **LLM Monitor** | API costs, budget utilization, provider health, latency |
+    | **Portfolio** | Account-wide risk status, cross-commodity positions, engine health |
     """)
 
-st.markdown("---")
-st.markdown("### Quick Status")
-
-# Import utils for quick status display
-from dashboard_utils import (
-    get_system_heartbeat,
-    fetch_live_dashboard_data,
-    get_config,
-    fetch_todays_benchmark_data
+active_str = ", ".join(
+    f"{_get_commodity_meta(t)['emoji']} {t}" for t in active_commodities
 )
-
-config = get_config()
-heartbeat = get_system_heartbeat()
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    status = heartbeat['orchestrator_status']
-    color = "🟢" if status == "ONLINE" else "🔴" if status == "OFFLINE" else "🟡"
-    st.metric(
-        "Orchestrator",
-        f"{color} {status}",
-        help="System health based on recent activity logs. Green indicates active polling within the last 10 minutes."
-    )
-
-with col2:
-    if config:
-        live_data = fetch_live_dashboard_data(config)
-        st.metric(
-            "Net Liquidation",
-            f"${live_data['NetLiquidation']:,.2f}",
-            help="Total account value (Cash + Market Value of Positions) from live Interactive Brokers data."
-        )
-    else:
-        st.metric("Net Liquidation", "Offline")
-
-with col3:
-    benchmarks = fetch_todays_benchmark_data()
-    # E2 FIX: Commodity-agnostic benchmark
-    profile = _cfg.get('commodity', {})
-    ticker = profile.get('ticker', 'KC')
-    benchmark_symbol = f"{ticker}=F"
-    st.metric(
-        f"{ticker} Benchmark",
-        f"{benchmarks.get(benchmark_symbol, 0):+.2f}%",
-        help=f"Today's percentage change for {ticker} futures, sourced from Yahoo Finance."
-    )
-
-st.markdown("---")
-st.caption("Select a page from the sidebar to begin.")
+st.caption(f"Active commodities: {active_str}")

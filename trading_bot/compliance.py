@@ -3,14 +3,59 @@ import json
 import os
 import asyncio
 import re
-import time
+import time as _time
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional
+import pytz
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole
 from trading_bot.utils import get_dollar_multiplier, get_active_ticker
 from config.commodity_profiles import get_active_profile
 
 logger = logging.getLogger(__name__)
+
+
+def _eia_now_et():
+    """Return current time in US/Eastern. Extracted for testability."""
+    return datetime.now(pytz.timezone('America/New_York'))
+
+# --- VaR startup grace period ---
+# Set explicitly by orchestrator main(), NOT at import time.
+# Tests and verify scripts get no grace period (correct behavior).
+_ORCHESTRATOR_BOOT_TIME = None
+_VAR_READY = False  # Set True after first successful VaR computation
+
+
+def set_boot_time():
+    """Called by orchestrator in main() to enable startup grace period."""
+    global _ORCHESTRATOR_BOOT_TIME, _VAR_READY
+    _ORCHESTRATOR_BOOT_TIME = _time.time()
+    _VAR_READY = False
+
+
+def notify_var_ready():
+    """Called by var_calculator after first successful VaR computation."""
+    global _VAR_READY
+    _VAR_READY = True
+
+
+def _in_startup_grace_period() -> bool:
+    """Check if we're within the startup grace period.
+
+    Standard 15-min grace always applies. If VaR hasn't computed yet,
+    extends to 30 min to avoid blocking trades on slow first computation.
+    """
+    if _ORCHESTRATOR_BOOT_TIME is None:
+        return False  # Not under orchestrator — no grace
+    elapsed = _time.time() - _ORCHESTRATOR_BOOT_TIME
+    if elapsed < 900:  # 15 min standard grace
+        return True
+    if not _VAR_READY and elapsed < 1800:  # Extended to 30 min if VaR not ready
+        logger.warning(
+            f"Extended startup grace: {elapsed/60:.0f}min elapsed, VaR not yet computed"
+        )
+        return True
+    return False
 
 @dataclass
 class ComplianceDecision:
@@ -121,7 +166,7 @@ class ComplianceDecision:
 
 # Module-level cache for ContractDetails (prevents redundant API calls during multi-signal bursts)
 # TTL: 1 hour, Max entries: 500 (FIFO eviction)
-_CONTRACT_DETAILS_CACHE: dict = {}  # {conId: {'data': ..., 'ts': time.time()}}
+_CONTRACT_DETAILS_CACHE: dict = {}  # {conId: {'data': ..., 'ts': _time.time()}}
 _CACHE_TTL_SECONDS = 3600
 _CACHE_MAX_SIZE = 500
 
@@ -166,7 +211,7 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
             """Fetch leg details with TTL-bounded caching."""
             cache_key = leg.conId
             cached = _CONTRACT_DETAILS_CACHE.get(cache_key)
-            if cached and (time.time() - cached['ts']) < _CACHE_TTL_SECONDS:
+            if cached and (_time.time() - cached['ts']) < _CACHE_TTL_SECONDS:
                 logger.debug(f"Cache hit for conId {cache_key}")
                 return cached['data']
 
@@ -183,7 +228,7 @@ async def calculate_spread_max_risk(ib, contract, order, config: dict) -> float:
                 if len(_CONTRACT_DETAILS_CACHE) >= _CACHE_MAX_SIZE:
                     oldest_key = min(_CONTRACT_DETAILS_CACHE, key=lambda k: _CONTRACT_DETAILS_CACHE[k]['ts'])
                     del _CONTRACT_DETAILS_CACHE[oldest_key]
-                _CONTRACT_DETAILS_CACHE[cache_key] = {'data': result, 'ts': time.time()}
+                _CONTRACT_DETAILS_CACHE[cache_key] = {'data': result, 'ts': _time.time()}
                 return result
             return None
 
@@ -314,12 +359,16 @@ class ComplianceGuardian:
             logger.warning(f"Concentration check failed: {e}")
             return False, f"Concentration check blocked: {e} (fail-closed)"
 
-    async def _fetch_volume_stats(self, ib, contract) -> float:
+    async def _fetch_volume_stats(self, ib, contract, cycle_type: str = 'SCHEDULED', passive_mode: bool = False) -> float:
         """
         Fetch volume with IB primary, YFinance fallback, -1 for unknown.
 
         For FOP (options) and BAG (combos), fetches volume from the UNDERLYING
         FUTURES contract using the 'underConId' hard link from ContractDetails.
+
+        During EMERGENCY/PASSIVE cycles, the YFinance fallback is skipped
+        because it returns stale daily volume that can cause false-positive
+        liquidity readings.
         """
         from ib_insync import Contract, Bag
 
@@ -396,6 +445,12 @@ class ComplianceGuardian:
                     logger.warning(f"IB volume fetch failed: {e}")
 
         # === SECONDARY: YFinance (fallback) ===
+        # Skip YFinance during emergency/passive cycles — stale daily volume
+        # can produce false-positive liquidity readings.
+        if cycle_type == 'EMERGENCY' or passive_mode:
+            logger.info("Skipping YFinance volume fallback (emergency/passive cycle)")
+            return -1.0
+
         try:
             from trading_bot.utils import get_market_data_cached
             symbol = target_contract.symbol if target_contract else get_active_ticker(self.config)
@@ -435,7 +490,11 @@ class ComplianceGuardian:
         equity = order_context.get('account_equity', 100000.0)
 
         # 1. Gather Data for Constitution
-        volume_15m = await self._fetch_volume_stats(ib, contract)
+        _cycle_type = order_context.get('cycle_type', 'SCHEDULED')
+        _passive_mode = order_context.get('passive_mode', False)
+        volume_15m = await self._fetch_volume_stats(
+            ib, contract, cycle_type=_cycle_type, passive_mode=_passive_mode
+        )
 
         # === v5.1 FIX: Shorter retry for scheduled, skip for emergency ===
         if volume_15m < 0:
@@ -451,7 +510,9 @@ class ComplianceGuardian:
                 await asyncio.sleep(15)  # Was 60s
 
                 # v5.1 FIX: Correct method name and arguments
-                volume_15m_retry = await self._fetch_volume_stats(ib, contract)
+                volume_15m_retry = await self._fetch_volume_stats(
+                    ib, contract, cycle_type=_cycle_type, passive_mode=_passive_mode
+                )
 
                 if volume_15m_retry < 0:
                     logger.warning(
@@ -470,6 +531,41 @@ class ComplianceGuardian:
             elif qty > volume_15m * self.limits['max_volume_pct']:
                 reason = f"REJECTED - Article II: Order qty {qty} exceeds {self.limits['max_volume_pct']:.0%} of volume ({volume_15m:.0f})."
                 return False, reason
+
+        # === PROFILE-DRIVEN BLACKOUT WINDOWS ===
+        # Check market_states.blackout_windows from the commodity profile.
+        # Replaces hardcoded EIA check with a generic, profile-driven approach.
+        # Use order commodity if available (may differ from engine config commodity).
+        try:
+            from config.commodity_profiles import get_commodity_profile
+            _order_ticker = (
+                order_context.get('commodity', '')
+                or order_context.get('symbol', '')
+                or getattr(self, '_ticker', '')
+                or ''
+            ).upper()
+            _profile = get_commodity_profile(_order_ticker) if _order_ticker else None
+            _ms = getattr(_profile, 'market_states', None) if _profile else None
+            if _ms and hasattr(_ms, 'blackout_windows') and _ms.blackout_windows:
+                _now_et = _eia_now_et()
+                for _bw in _ms.blackout_windows:
+                    _bw_dow = _bw.get('day_of_week')
+                    if _bw_dow is not None and _now_et.weekday() != _bw_dow:
+                        continue
+                    _sh, _sm = map(int, _bw['start'].split(':'))
+                    _eh, _em = map(int, _bw['end'].split(':'))
+                    _bw_start = _now_et.replace(hour=_sh, minute=_sm, second=0, microsecond=0)
+                    _bw_end = _now_et.replace(hour=_eh, minute=_em, second=0, microsecond=0)
+                    if _bw_start <= _now_et <= _bw_end:
+                        _bw_name = _bw.get('name', 'Data Release')
+                        reason = (
+                            f"REJECTED - Blackout: Order blocked during {_bw_name} "
+                            f"window ({_bw['start']}-{_bw['end']} ET)"
+                        )
+                        logger.warning(reason)
+                        return False, reason
+        except Exception as e:
+            logger.debug(f"Blackout window check skipped: {e}")
 
         # Prepare Review Packet
         # Calculate actual capital at risk for spreads (not fictitious futures notional)
@@ -559,6 +655,59 @@ class ComplianceGuardian:
             )
             return False, reason
 
+        # === Article V: Portfolio VaR Gate ===
+        enforcement_mode = self.config.get('compliance', {}).get('var_enforcement_mode', 'log_only')
+        try:
+            from trading_bot.var_calculator import get_var_calculator
+            var_limit = self.limits.get('var_limit_pct', 0.03)
+            stale_block = self.limits.get('var_stale_seconds', 3600) * 2
+
+            if enforcement_mode == 'log_only':
+                cached = get_var_calculator(self.config).get_cached_var()
+                if cached:
+                    logger.info(f"Article V [LOG_ONLY]: VaR {cached.var_95_pct:.1%}")
+
+            elif enforcement_mode == 'warn':
+                cached = get_var_calculator(self.config).get_cached_var()
+                if cached and cached.var_95_pct > self.limits.get('var_warning_pct', 0.02):
+                    logger.warning(f"Article V [WARN]: VaR {cached.var_95_pct:.1%} > warning threshold")
+
+            elif enforcement_mode == 'enforce':
+                # Emergency cycle bypass (log only)
+                if order_context.get('cycle_type') == 'EMERGENCY':
+                    cached = get_var_calculator(self.config).get_cached_var()
+                    if cached:
+                        logger.info(f"Article V: Emergency — VaR {cached.var_95_pct:.1%} (info only)")
+                else:
+                    cached = get_var_calculator(self.config).get_cached_var()
+                    if cached is None:
+                        if _in_startup_grace_period():
+                            logger.warning("Article V: No VaR data but startup grace active — allowing")
+                        else:
+                            return False, "REJECTED - Article V: VaR not computed (fail-closed)."
+
+                    elif cached:
+                        # Graduated staleness + startup grace
+                        age = _time.time() - cached.computed_epoch
+                        if age > stale_block:
+                            if _in_startup_grace_period():
+                                logger.warning("Article V: Stale VaR but startup grace active")
+                            else:
+                                return False, f"REJECTED - Article V: VaR {age/3600:.1f}h stale"
+
+                        if cached.var_95_pct > var_limit:
+                            return False, (
+                                f"REJECTED - Article V: Portfolio VaR ({cached.var_95_pct:.1%}) "
+                                f"> limit ({var_limit:.1%})"
+                            )
+
+        except ImportError:
+            logger.debug("var_calculator not available — Article V skipped")
+        except Exception as e:
+            logger.error(f"Article V error: {e}")
+            if enforcement_mode == 'enforce' and order_context.get('cycle_type') != 'EMERGENCY':
+                return False, f"REJECTED - Article V error (fail-closed): {e}"
+
         # === FIX-003: Align LLM instructions with deterministic code logic ===
         # The limit_pct variable already contains the correct limit (40% standard or 55% for straddles)
         # We MUST pass this to the LLM so both "brains" use the same threshold
@@ -609,7 +758,7 @@ class ComplianceGuardian:
             logger.error(f"Compliance review failed: {e}")
             return False, f"Compliance Error: {e}"
 
-    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None) -> dict:
+    async def audit_decision(self, reports: dict, market_context: str, decision: dict, master_persona: str, ib=None, debate_summary: str = "", route_info: dict = None) -> dict:
         """
         Audits the Master Strategist's decision.
         """
@@ -646,12 +795,23 @@ class ComplianceGuardian:
                 f"may be citing cached context or weighted vote data.\n"
             )
 
+        # v8.1: 3-source evidence framework — give compliance the same data the Master saw
+        debate_section = ""
+        if debate_summary:
+            debate_section = (
+                f"\n--- Source 3: ADVERSARIAL DEBATE ---\n"
+                f"{debate_summary}\n"
+            )
+
         prompt = (
             f"You are the Compliance Officer auditing a trading decision.\n"
             f"Your goal is to detect HALLUCINATIONS or violations of logic.\n\n"
-            f"--- EVIDENCE (REPORTS) ---\n{reports_text}\n\n"
-            f"--- MARKET CONTEXT ---\n{market_context}\n"
-            f"{availability_note}\n"
+            f"The Master Strategist had access to THREE sources of evidence when making this decision. "
+            f"A fact is NOT a hallucination if it appears in ANY of these three sources.\n\n"
+            f"--- Source 1: AGENT REPORTS ---\n{reports_text}\n\n"
+            f"--- Source 2: MARKET DATA (IBKR + Context) ---\n{market_context}\n"
+            f"{availability_note}"
+            f"{debate_section}\n"
             f"--- DECISION PROCESS CONTEXT ---\n"
             f"The Master Strategist receives input from a structured adversarial "
             f"debate between a 'Permabear' (bearish advocate) and 'Permabull' "
@@ -665,9 +825,10 @@ class ComplianceGuardian:
             f"TASK:\n"
             f"Check if the Decision Reasoning is supported by the Evidence.\n"
             f"1. Does the reasoning cite SPECIFIC FACTS (numbers, dates, "
-            f"percentages) NOT found in ANY report or market context? "
+            f"percentages) NOT found in ANY of the three sources above? "
             f"(Hallucination)\n"
             f"   - Permabear/Permabull references are NOT hallucinations.\n"
+            f"   - SMA levels, price data, and IBKR metrics from Source 2 are NOT hallucinations.\n"
             f"   - References to data from unavailable agents should be flagged "
             f"as 'data gap', not 'hallucination'.\n"
             f"2. Does the reasoning ignore a 'CRITICAL RISK' explicitly stated "
@@ -681,7 +842,8 @@ class ComplianceGuardian:
             response = await self.router.route(
                 AgentRole.COMPLIANCE_OFFICER,
                 prompt,
-                response_json=True
+                response_json=True,
+                route_info=route_info
             )
 
             if not response or not response.strip():

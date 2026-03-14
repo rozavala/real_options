@@ -22,6 +22,31 @@ from scipy.stats import norm
 from trading_bot.logging_config import setup_logging
 from trading_bot.timestamps import format_ts
 
+# --- MULTI-COMMODITY PATH ISOLATION ---
+# Mutable global — overridden by set_data_dir() so all CSV/JSON writers
+# use commodity-specific directories. When None, falls back to legacy paths.
+_data_dir = None
+
+
+def set_data_dir(data_dir: str):
+    """Configure all utils write paths for a commodity-specific data directory."""
+    global _data_dir
+    _data_dir = data_dir
+    logging.getLogger(__name__).info(f"Utils data_dir set to: {data_dir}")
+
+
+def _get_data_dir() -> str:
+    """Resolve data directory via ContextVar (multi-engine) or module global (legacy).
+
+    Returns None if no data directory is configured (triggers legacy fallback).
+    """
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return get_engine_data_dir()
+    except LookupError:
+        return _data_dir
+
+
 # --- TRADING MODE HELPERS ---
 _TRADING_MODE = None
 
@@ -101,20 +126,63 @@ def get_active_ticker(config: dict) -> str:
 
 def get_market_data_cached(tickers: list, period: str = "1d"):
     """
-    Fetch market data from YFinance.
+    Fetch market data from YFinance with file-based caching.
 
-    NOTE: Session injection removed. YFinance v0.2.66+ uses curl_cffi internally
-    which is incompatible with requests_cache. Let YFinance manage its own sessions.
+    Caches responses to local CSV files to prevent redundant network requests
+    and speed up backtesting/compliance checks.
 
-    TODO (Next Sprint): Implement file-based caching by saving DataFrame to
-    parquet/csv with timestamp. Check file age before fetching fresh data.
-    Example: data/yf_cache/{ticker}_{period}_{date}.parquet
+    Cache TTL:
+    - 4 hours for intraday/daily checks
+    - 24 hours for longer periods (>5d)
+
+    Storage: `data/{ticker}/yf_cache/` if data_dir is set, else `data/yf_cache/`
     """
     import pandas as pd
+    import time
+    from pathlib import Path
 
     try:
-        import yfinance as yf
+        # Resolve cache directory
+        data_dir = _get_data_dir()
+        if data_dir:
+            cache_dir = Path(data_dir) / "yf_cache"
+        else:
+            # Fallback to root/data/yf_cache
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cache_dir = Path(base_dir) / "data" / "yf_cache"
 
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a unique cache key based on tickers and period
+        # Sort tickers to ensure consistency (['KC', 'SB'] == ['SB', 'KC'])
+        ticker_key = "_".join(sorted(tickers)).replace("=", "").replace("^", "")
+        cache_file = cache_dir / f"{ticker_key}_{period}.csv"
+
+        # Determine TTL
+        ttl_seconds = 86400 if period in ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max", "ytd"] else 14400  # 4h default
+
+        # Check cache validity
+        use_cache = False
+        if cache_file.exists():
+            mtime = cache_file.stat().st_mtime
+            age = time.time() - mtime
+            if age < ttl_seconds:
+                use_cache = True
+            else:
+                logging.debug(f"Cache expired for {tickers} (age: {age/3600:.1f}h)")
+
+        if use_cache:
+            try:
+                # Read from CSV, parsing index as datetime
+                df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+                if not df.empty:
+                    logging.info(f"Loaded cached market data for {tickers} from {cache_file.name}")
+                    return df
+            except Exception as e:
+                logging.warning(f"Failed to read cache {cache_file}: {e}")
+
+        # Fetch fresh data
+        import yfinance as yf
         download_kwargs = {
             'tickers': tickers,
             'period': period,
@@ -128,6 +196,12 @@ def get_market_data_cached(tickers: list, period: str = "1d"):
             logging.warning(f"YFinance returned empty data for {tickers}")
         else:
             logging.info(f"YFinance fetched data for {tickers}: {len(data)} rows")
+            # Write to cache
+            try:
+                data.to_csv(cache_file)
+                logging.debug(f"Cached market data to {cache_file}")
+            except Exception as e:
+                logging.warning(f"Failed to write cache {cache_file}: {e}")
 
         return data
 
@@ -215,6 +289,19 @@ def escape_xml(text: str) -> str:
     return clean_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def sanitize_prompt_content(text: str) -> str:
+    """Sanitize content for LLM prompt injection — escape angle brackets only.
+
+    Unlike escape_xml(), does NOT escape & since LLMs don't parse XML entities
+    and &amp; in research text degrades analysis quality.
+    """
+    if not isinstance(text, str):
+        return str(text)
+    # Strip invalid XML control characters (0x00-0x1F except tab, newline, carriage return)
+    clean_text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+    return clean_text.replace("<", "&lt;").replace(">", "&gt;")
+
+
 def log_order_event(trade: Trade, status: str, message: str = ""):
     """Logs the status change of an order to the `order_events.csv` file.
 
@@ -226,9 +313,14 @@ def log_order_event(trade: Trade, status: str, message: str = ""):
         status (str): The new status of the order (e.g., 'Submitted', 'Filled').
         message (str, optional): Any additional message, like an error reason.
     """
-    # Use absolute path to ensure ledger is in the project root
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ledger_path = os.path.join(base_dir, 'order_events.csv')
+    # Use commodity-specific data_dir if set, else legacy project root
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        os.makedirs(eff_dir, exist_ok=True)
+        ledger_path = os.path.join(eff_dir, 'order_events.csv')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ledger_path = os.path.join(base_dir, 'order_events.csv')
     file_exists = os.path.isfile(ledger_path)
 
     fieldnames = [
@@ -439,9 +531,14 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         combo_id (int, optional): The permanent ID of the parent combo order.
         position_id (str, optional): The stable identifier for the position.
     """
-    # Use absolute path to ensure ledger is in the project root
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+    # Use commodity-specific data_dir if set, else legacy project root
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        os.makedirs(eff_dir, exist_ok=True)
+        ledger_path = os.path.join(eff_dir, 'trade_ledger.csv')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
 
     fieldnames = [
         'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
@@ -493,20 +590,47 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
                 logging.warning(f"Could not find detailed contract for {contract.conId}. Ledger may be incomplete.")
 
         execution = fill.execution
-        # Resolve multiplier: prefer IBKR contract data, fallback to profile
-        _fallback_mult = 37500.0  # ultimate fallback
+
+        # --- Derive commodity from fill contract, not engine config ---
+        _fill_symbol = ''
         try:
-            from config.commodity_profiles import get_commodity_profile
-            _fb_profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
-            _fallback_mult = float(_fb_profile.contract.contract_size)
+            _fill_symbol = getattr(contract, 'symbol', '') or ''
         except Exception:
             pass
+        if not _fill_symbol:
+            # Fallback: parse localSymbol (e.g., "KCH6 C3.5" → "KC")
+            import re as _re
+            _ls = getattr(contract, 'localSymbol', '') or ''
+            _m = _re.match(r'^([A-Z]{2,4})', _ls)
+            _fill_symbol = _m.group(1) if _m else ''
+        if not _fill_symbol:
+            _fill_symbol = get_active_ticker(config) if config else 'KC'
+
+        # Look up profile once — reuse for multiplier, divisor, and strike normalization
+        _fill_profile = None
+        try:
+            from config.commodity_profiles import get_commodity_profile
+            _fill_profile = get_commodity_profile(_fill_symbol)
+        except Exception:
+            pass
+
+        # Resolve multiplier: prefer IBKR contract data, fallback to profile
+        _fallback_mult = float(_fill_profile.contract.contract_size) if _fill_profile else 37500.0
         try:
             multiplier = float(contract.multiplier) if contract.multiplier else _fallback_mult
         except (ValueError, TypeError):
             multiplier = _fallback_mult
 
-        total_value = (execution.price * execution.shares * multiplier) / 100.0
+        # Determine price divisor based on commodity unit
+        _price_divisor = 1.0
+        _is_cents_based = False
+        if _fill_profile:
+            _unit = _fill_profile.contract.unit.lower()
+            _is_cents_based = any(ind in _unit for ind in CENTS_INDICATORS)
+            if _is_cents_based:
+                _price_divisor = 100.0
+
+        total_value = (execution.price * execution.shares * multiplier) / _price_divisor
         action = 'BUY' if execution.side == 'BOT' else 'SELL'
         if action == 'BUY':
             total_value *= -1
@@ -518,17 +642,7 @@ async def log_trade_to_ledger(ib: IB, trade: Trade, reason: str = "Strategy Exec
         try:
             if strike_value != 'N/A':
                 strike_value = float(strike_value)
-
-            # Detect cents-based pricing from profile unit, fallback to multiplier heuristic
-            unit = ""
-            try:
-                from config.commodity_profiles import get_commodity_profile
-                profile = get_commodity_profile(get_active_ticker(config) if config else 'KC')
-                unit = profile.contract.unit.lower()
-            except Exception:
-                pass
-            is_cents_based = any(ind in unit for ind in CENTS_INDICATORS) if unit else False
-            if is_cents_based and isinstance(strike_value, (int, float)):
+            if _is_cents_based and isinstance(strike_value, (int, float)):
                 if 0 < strike_value < 100.0:
                     strike_value = round(strike_value * 100.0, 2)
                     logging.debug(
@@ -577,14 +691,18 @@ def archive_trade_ledger():
     with a timestamp appended to its name.
     """
     ledger_filename = 'trade_ledger.csv'
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ledger_path = os.path.join(base_dir, ledger_filename)
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        ledger_path = os.path.join(eff_dir, ledger_filename)
+        archive_dir = os.path.join(eff_dir, 'archive_ledger')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ledger_path = os.path.join(base_dir, ledger_filename)
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     if not os.path.exists(ledger_path):
         logging.info(f"'{ledger_filename}' not found, no action taken.")
         return
-
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
     if not os.path.exists(archive_dir):
         os.makedirs(archive_dir)
         logging.info(f"Created archive directory at: {archive_dir}")
@@ -602,48 +720,38 @@ def archive_trade_ledger():
 
 def log_council_decision(decision_data):
     """
-    Appends a row to 'data/council_history.csv' with the FULL details of the decision.
+    Appends a row to 'data/{ticker}/council_history.csv' with the FULL details of the decision.
 
     UPDATED: Uses in-place schema migration instead of archiving to preserve history.
     """
     import pandas as pd
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, 'data')
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
+    # Guard: only log decisions inside a live orchestrator session.
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        if get_engine_runtime() is None:
+            logger.debug("Skipping council decision log: no EngineRuntime (non-orchestrator context)")
+            return
+    except Exception:
+        pass  # Allow in legacy single-engine mode
 
-    file_path = os.path.join(data_dir, "council_history.csv")
+    eff_dir = _get_data_dir()
+    if eff_dir:
+        council_data_dir = eff_dir
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        council_data_dir = os.path.join(base_dir, 'data')
+    os.makedirs(council_data_dir, exist_ok=True)
 
-    # UPDATED SCHEMA v2: Added weighted voting fields
-    fieldnames = [
-        "cycle_id",  # NEW: Deterministic foreign key for prediction matching
-        "timestamp", "contract", "entry_price",
-        "meteorologist_sentiment", "meteorologist_summary",
-        "macro_sentiment", "macro_summary",
-        "geopolitical_sentiment", "geopolitical_summary",
-        "fundamentalist_sentiment", "fundamentalist_summary",
-        "sentiment_sentiment", "sentiment_summary",
-        "technical_sentiment", "technical_summary",
-        "volatility_sentiment", "volatility_summary",
-        "master_decision", "master_confidence", "master_reasoning",
-        "prediction_type",
-        "volatility_level",
-        "strategy_type",
-        "compliance_approved",
-        "exit_price", "exit_timestamp", "pnl_realized", "actual_trend_direction",
-        "volatility_outcome",
-        # NEW COLUMNS (v2)
-        "vote_breakdown",     # JSON string of agent contributions
-        "dominant_agent",     # Agent with highest contribution
-        "weighted_score",     # Final weighted score (-1 to 1)
-        "trigger_type",       # What triggered the decision (scheduled, weather, news, etc.)
-        # NEW COLUMNS (v3 — Judge & Jury Protocol)
-        "thesis_strength",        # SPECULATIVE / PLAUSIBLE / PROVEN
-        "primary_catalyst",       # Single most important driver
-        "conviction_multiplier",  # 0.5 / 0.75 / 1.0 from consensus sensor
-        "dissent_acknowledged",   # Strongest counter-argument Master chose to override
-    ]
+    file_path = os.path.join(council_data_dir, "council_history.csv")
+
+    # Schema defined in schema.py — single source of truth
+    from trading_bot.schema import (
+        COUNCIL_HISTORY_FIELDNAMES,
+        COUNCIL_HISTORY_BACKFILL_DEFAULTS,
+        backfill_missing_columns,
+    )
+    fieldnames = COUNCIL_HISTORY_FIELDNAMES
 
     # Free-text fields that may contain LLM output — sanitize for CSV formula injection
     _TEXT_FIELDS = {
@@ -682,14 +790,59 @@ def log_council_decision(decision_data):
     except ImportError:
         logging.warning("Could not import CouncilHistoryRow for validation — skipping schema check")
 
-    # === APPEND NEW ROW ===
-    file_exists = os.path.exists(file_path)
+    # === APPEND NEW ROW (with auto-migration) ===
     try:
-        with open(file_path, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
-            if not file_exists:
+        if not os.path.exists(file_path):
+            # Brand-new file — write header + row
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
                 writer.writeheader()
-            writer.writerow(row_data)
+                writer.writerow(row_data)
+        else:
+            # Check existing header against canonical schema
+            with open(file_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                existing_header = next(reader, None) or []
+
+            if existing_header != list(fieldnames):
+                # Schema drift detected — rewrite entire file atomically
+                missing = set(fieldnames) - set(existing_header)
+                extra = set(existing_header) - set(fieldnames)
+                logging.warning(
+                    f"council_history.csv schema drift detected. "
+                    f"Missing columns: {missing or 'none'}, "
+                    f"Extra columns: {extra or 'none'}. "
+                    f"Auto-migrating {file_path}"
+                )
+                # Read all existing rows using old header
+                with open(file_path, 'r', newline='', encoding='utf-8') as f:
+                    old_reader = csv.DictReader(f)
+                    existing_rows = list(old_reader)
+
+                # Backfill missing columns on each row
+                for old_row in existing_rows:
+                    backfill_missing_columns(old_row)
+
+                # Write to temp file with canonical header, then atomic replace
+                tmp_path = file_path + ".migrate.tmp"
+                with open(tmp_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+                    writer.writeheader()
+                    writer.writerows(existing_rows)
+                    writer.writerow(row_data)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, file_path)
+                logging.info(
+                    f"Auto-migrated council_history.csv: "
+                    f"{len(existing_rows)} rows + 1 new, "
+                    f"{len(missing)} columns added"
+                )
+            else:
+                # Header matches — simple append
+                with open(file_path, 'a', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+                    writer.writerow(row_data)
         logging.info(f"Logged council decision for {row_data.get('contract', 'Unknown')}")
     except Exception as e:
         logging.error(f"Failed to log council decision: {e}")
@@ -741,11 +894,17 @@ def is_market_open(config: dict = None) -> bool:
     if now_ny.date() in us_holidays:
         return False
 
-    # 3. Time Check — use profile hours if config provided, else hardcoded
+    # 3. Time Check — use market_states.active if present, else profile
+    #    trading_hours_et, else hardcoded fallback.
     if config is not None:
         try:
             from config.commodity_profiles import get_active_profile, parse_trading_hours
             profile = get_active_profile(config)
+            # Prefer market_states.active as source of truth
+            ms = getattr(profile, 'market_states', None)
+            if ms is not None:
+                now_minutes = now_ny.hour * 60 + now_ny.minute
+                return _in_time_window(now_minutes, ms.active)
             open_t, close_t = parse_trading_hours(profile.contract.trading_hours_et)
             market_open_ny = now_ny.replace(hour=open_t.hour, minute=open_t.minute, second=0, microsecond=0)
             market_close_ny = now_ny.replace(hour=close_t.hour, minute=close_t.minute, second=0, microsecond=0)
@@ -787,6 +946,156 @@ def is_trading_day() -> bool:
         return False
 
     return True
+
+
+# ---------------------------------------------------------------------------
+# Three-Tier Market State Resolver
+# ---------------------------------------------------------------------------
+
+def _in_time_window(now_minutes: int, window_str: str) -> bool:
+    """Check if ``now_minutes`` (0-1439) falls inside a time window string.
+
+    Handles overnight windows correctly (e.g., "18:00-09:00" spans midnight).
+
+    Args:
+        now_minutes: Minutes since midnight in ET (0-1439).
+        window_str: "HH:MM-HH:MM" format. Start inclusive, end exclusive.
+
+    Returns:
+        True if now_minutes is inside the window.
+    """
+    start_str, end_str = window_str.split('-')
+    sh, sm = map(int, start_str.split(':'))
+    eh, em = map(int, end_str.split(':'))
+    start = sh * 60 + sm
+    end = eh * 60 + em
+    if start <= end:
+        # Same-day window: e.g. 09:00-14:30
+        return start <= now_minutes < end
+    else:
+        # Overnight window: e.g. 18:00-09:00
+        return now_minutes >= start or now_minutes < end
+
+
+def get_market_state(config: dict = None) -> str:
+    """Resolve the current three-tier market state for the active commodity.
+
+    Returns one of ``'ACTIVE'``, ``'PASSIVE'``, or ``'SLEEPING'``.
+
+    Resolution order:
+    1. Saturday → SLEEPING
+    2. Sunday before 18:00 ET → SLEEPING; 18:00+ → fall through to window checks
+    3. Holiday → SLEEPING
+    4. maintenance_breaks → SLEEPING
+    5. active window → ACTIVE
+    6. passive windows → PASSIVE
+    7. else → SLEEPING
+
+    When no ``market_states`` is configured on the profile, falls back to
+    binary ``is_market_open()`` logic (ACTIVE if open, SLEEPING otherwise).
+    """
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+    weekday = now_ny.weekday()  # 0=Mon ... 6=Sun
+
+    # --- Load profile's market_states config ---
+    ms_config = None
+    if config is not None:
+        try:
+            from config.commodity_profiles import get_active_profile
+            profile = get_active_profile(config)
+            ms_config = getattr(profile, 'market_states', None)
+        except Exception:
+            pass
+
+    # If no market_states configured, fall back to binary is_market_open()
+    if ms_config is None:
+        return 'ACTIVE' if is_market_open(config) else 'SLEEPING'
+
+    # --- Day-level gates ---
+    # Saturday → always SLEEPING
+    if weekday == 5:
+        return 'SLEEPING'
+
+    # Sunday: before 18:00 ET → SLEEPING (CME Globex opens 18:00 Sun)
+    if weekday == 6:
+        sunday_minutes = now_ny.hour * 60 + now_ny.minute
+        if sunday_minutes < 18 * 60:
+            return 'SLEEPING'
+        # Sunday ≥ 18:00 falls through to window checks below
+
+    # Holiday check (weekdays)
+    if weekday < 5:
+        us_holidays = holidays.US(years=now_ny.year, observed=True)
+        try:
+            nyse_holidays = holidays.financial_holidays('NYSE', years=now_ny.year)
+            if now_ny.date() in nyse_holidays:
+                return 'SLEEPING'
+        except (AttributeError, TypeError):
+            pass
+        if now_ny.date() in us_holidays:
+            return 'SLEEPING'
+
+    # --- Time-of-day windows (all in ET minutes) ---
+    now_minutes = now_ny.hour * 60 + now_ny.minute
+
+    # Maintenance breaks → SLEEPING
+    for brk in ms_config.maintenance_breaks:
+        if _in_time_window(now_minutes, brk):
+            return 'SLEEPING'
+
+    # Active window → ACTIVE
+    if _in_time_window(now_minutes, ms_config.active):
+        return 'ACTIVE'
+
+    # Passive windows → PASSIVE
+    for pw in ms_config.passive:
+        if _in_time_window(now_minutes, pw):
+            return 'PASSIVE'
+
+    return 'SLEEPING'
+
+
+def is_passive_mode(config: dict = None) -> bool:
+    """Convenience: True when the market is in PASSIVE state."""
+    return get_market_state(config) == 'PASSIVE'
+
+
+def _minutes_until_next_break(config: dict = None) -> int:
+    """Return minutes until the next maintenance break starts.
+
+    Returns ``9999`` if no breaks are configured or no profile is available.
+    Used as a guard to avoid starting emergency cycles too close to a break.
+    """
+    ny_tz = pytz.timezone('America/New_York')
+    now_ny = datetime.now(ny_tz)
+    now_minutes = now_ny.hour * 60 + now_ny.minute
+
+    ms_config = None
+    if config is not None:
+        try:
+            from config.commodity_profiles import get_active_profile
+            profile = get_active_profile(config)
+            ms_config = getattr(profile, 'market_states', None)
+        except Exception:
+            pass
+
+    if ms_config is None or not ms_config.maintenance_breaks:
+        return 9999
+
+    min_dist = 9999
+    for brk in ms_config.maintenance_breaks:
+        start_str = brk.split('-')[0]
+        sh, sm = map(int, start_str.split(':'))
+        break_start = sh * 60 + sm
+        dist = break_start - now_minutes
+        if dist < 0:
+            dist += 1440  # wrap around midnight
+        if dist < min_dist:
+            min_dist = dist
+
+    return min_dist
+
 
 def get_effective_close_time(config: dict = None) -> tuple[int, int]:
     """
@@ -843,7 +1152,7 @@ def hours_until_weekly_close(config: dict = None) -> float:
     CLOSE_HOUR, CLOSE_MINUTE = get_effective_close_time(config)
 
     # Build holiday set
-    profile_exchange = config.get('exchange', 'ICE') if config else 'ICE'
+    profile_exchange = config.get('exchange', 'ICE') if config else 'ICE'  # Fallback needed: config may be None
     cal = get_exchange_calendar(profile_exchange)
 
     exchange_holidays = set()
@@ -888,7 +1197,7 @@ DEFAULT_OPTIONS_TICK_SIZE = 0.05
 COFFEE_OPTIONS_TICK_SIZE = DEFAULT_OPTIONS_TICK_SIZE  # Backward-compat alias
 
 
-def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, action: str = 'BUY') -> float:
+def round_to_tick(price: float, tick_size: float = None, action: str = 'BUY', config: dict = None) -> float:
     """
     Round a price to the nearest valid tick increment.
 
@@ -897,22 +1206,44 @@ def round_to_tick(price: float, tick_size: float = COFFEE_OPTIONS_TICK_SIZE, act
 
     Args:
         price: The price to round
-        tick_size: Minimum price increment (default: 0.05 for KC options)
+        tick_size: Minimum price increment (default: profile-driven or 0.05)
         action: 'BUY' or 'SELL' to determine rounding direction
+        config: Optional config dict for profile-driven tick size lookup
 
     Returns:
         Price rounded to valid tick increment
     """
     import math
 
+    if tick_size is None:
+        tick_size = COFFEE_OPTIONS_TICK_SIZE
+        if config:
+            try:
+                from config.commodity_profiles import get_active_profile
+                profile = get_active_profile(config)
+                tick_size = profile.contract.tick_size
+            except Exception:
+                pass
+
+    # Domain safety: prevent division by zero
+    tick_size = max(tick_size, 1e-6)
+
+    # Floating-point epsilon: price/tick_size can produce values like 45.9999999
+    # instead of 46.0, causing floor() to round DOWN incorrectly (e.g., 2.30 -> 2.25
+    # for tick=0.05). A tiny epsilon nudge corrects this without affecting true
+    # sub-tick prices. See: KC walks stuck at 2.25 when ceiling was 2.70.
+    epsilon = tick_size * 1e-9
+
     if action == 'BUY':
         # Round down for buys (don't overpay)
-        val = math.floor(price / tick_size) * tick_size
+        val = math.floor((price + epsilon) / tick_size) * tick_size
     else:
         # Round up for sells (don't undersell)
-        val = math.ceil(price / tick_size) * tick_size
+        val = math.ceil((price - epsilon) / tick_size) * tick_size
 
-    return round(val, 2)
+    # Dynamic precision based on tick_size (e.g., 0.05→2, 0.001→3)
+    precision = max(0, -int(math.floor(math.log10(tick_size))))
+    return round(val, precision)
 
 def word_boundary_match(keyword: str, text: str) -> bool:
     """Check if keyword matches in text using word-boundary matching.

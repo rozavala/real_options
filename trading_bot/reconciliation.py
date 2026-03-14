@@ -49,7 +49,7 @@ async def reconcile_council_history(config: dict, ib: IB = None):
     Reconciles the Council History CSV by backfilling missing exit prices and outcomes.
 
     Logic:
-    1. Loads 'data/council_history.csv'.
+    1. Loads 'data/{ticker}/council_history.csv'.
     2. Identifies rows where 'exit_price' is missing and enough time has passed (approx 27h).
     3. Connects to IB (if not provided) to fetch historical prices for those contracts.
     4. Calculates realized P&L (theoretical) and actual trend direction.
@@ -57,15 +57,19 @@ async def reconcile_council_history(config: dict, ib: IB = None):
     """
     logger.info("--- Starting Council History Reconciliation ---")
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    file_path = os.path.join(base_dir, 'data', 'council_history.csv')
+    data_dir = config.get('data_dir')
+    if data_dir:
+        file_path = os.path.join(data_dir, 'council_history.csv')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_dir, 'data', 'council_history.csv')
 
     if not os.path.exists(file_path):
         logger.warning("No council_history.csv found. Skipping reconciliation.")
         return
 
     try:
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, on_bad_lines='warn')
     except Exception as e:
         logger.error(f"Failed to read council_history.csv: {e}")
         return
@@ -135,7 +139,7 @@ def _calculate_actual_exit_time(entry_time: datetime, config: dict) -> datetime:
     entry_ny = entry_time.astimezone(ny_tz)
 
     # Build exchange holiday set
-    cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+    cal = get_exchange_calendar(config['exchange'])
     entry_year = entry_ny.year
     exchange_holidays = set()
     for year in {entry_year, entry_year + 1}:
@@ -199,9 +203,11 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
     # Ensure columns exist (if migrated recently, they should be there, but good to be safe)
     required_cols = ['exit_price', 'exit_timestamp', 'pnl_realized', 'actual_trend_direction', 'volatility_outcome']
+    str_cols = {'exit_timestamp', 'actual_trend_direction', 'volatility_outcome'}
     for col in required_cols:
         if col not in df.columns:
-            df[col] = None
+            # Use object dtype for string columns to avoid FutureWarning on mixed-type assignment
+            df[col] = pd.Series([None] * len(df), dtype='object' if col in str_cols else 'float64')
 
     # Identify candidates for reconciliation
     try:
@@ -243,22 +249,26 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
         entry_time = row.get('timestamp')
 
-        # Check age. If it's less than ~20 hours old, it might still be open.
-        # We only want to grade "finished" tests.
-        if (now - entry_time).total_seconds() < 20 * 3600 and not is_broken_volatility:
+        # Determine Target Exit Time early (respects weekly close policy)
+        # so we can use it in the age check below.
+        target_exit_time = _calculate_actual_exit_time(entry_time, config)
+
+        # Skip if position might still be open: younger than 20 hours AND
+        # the calculated exit time hasn't passed yet. On Fridays, the weekly
+        # close policy sets exit to same-day close, so signals are graded
+        # the same evening instead of waiting until Monday.
+        if (now - entry_time).total_seconds() < 20 * 3600 and now < target_exit_time and not is_broken_volatility:
             continue
 
         contract_str = row.get('contract', '')  # e.g., "KC H4 (202403)" or just "KC H4"
         entry_price = float(row.get('entry_price', 0)) if pd.notna(row.get('entry_price')) else 0.0
         decision = row.get('master_decision', '')
+        missing_entry_price = (entry_price == 0)
 
-        if not contract_str or entry_price == 0:
+        if not contract_str:
             continue
 
         logger.info(f"Reconciling trade from {entry_time}: {contract_str} ({decision})")
-
-        # Determine Target Exit Time (respects weekly close policy)
-        target_exit_time = _calculate_actual_exit_time(entry_time, config)
 
         # Log if exit time was adjusted from default
         default_exit = entry_time + timedelta(hours=27)
@@ -296,10 +306,35 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     logger.warning(f"Could not parse contract string: {contract_str}")
                     continue
 
+                # Skip contracts expired more than 60 days ago — IBKR HMDS
+                # returns no data for long-expired contracts (Error 162),
+                # and retrying every cycle is futile.
+                try:
+                    if len(last_trade_date) == 6:
+                        # YYYYMM format — use last day of month
+                        expiry_date = datetime.strptime(last_trade_date, '%Y%m')
+                        # Advance to last day of that month
+                        if expiry_date.month == 12:
+                            expiry_date = expiry_date.replace(month=12, day=31)
+                        else:
+                            expiry_date = expiry_date.replace(
+                                month=expiry_date.month + 1, day=1
+                            ) - timedelta(days=1)
+                    else:
+                        expiry_date = datetime.strptime(last_trade_date, '%Y%m%d')
+                    if (datetime.now() - expiry_date).days > 60:
+                        logger.info(
+                            f"Skipping reconciliation for expired contract "
+                            f"{contract_str} (>{60} days past expiry)"
+                        )
+                        continue
+                except Exception:
+                    pass  # If date can't be parsed, proceed normally
+
                 contract = Contract()
                 contract.symbol = config.get('symbol', 'KC')
                 contract.secType = 'FUT'
-                contract.exchange = config.get('exchange', 'NYBOT')
+                contract.exchange = config['exchange']
                 contract.currency = 'USD'
                 contract.lastTradeDateOrContractMonth = last_trade_date
                 contract.includeExpired = True
@@ -406,6 +441,22 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
 
                 exit_price = matched_bar.close
 
+                # If entry_price was missing, derive it from entry-day bar
+                if missing_entry_price:
+                    entry_date_obj = entry_time.date()
+                    entry_bar = next((b for b in sorted_bars if b.date == entry_date_obj), None)
+                    if not entry_bar:
+                        # Fallback: last bar on or before entry date
+                        on_or_before = [b for b in sorted_bars if b.date <= entry_date_obj]
+                        entry_bar = on_or_before[-1] if on_or_before else None
+                    if entry_bar:
+                        entry_price = entry_bar.close
+                        df.at[index, 'entry_price'] = entry_price
+                        logger.info(f"Backfilled entry_price for {contract_str}: {entry_price:.2f} (from {entry_bar.date} bar)")
+                    else:
+                        logger.warning(f"Cannot derive entry_price for {contract_str} — no entry-day bar")
+                        continue
+
 
             # ================================================================
             # VOLATILITY-AWARE P&L CALCULATION (NET BASIS)
@@ -415,8 +466,23 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             pct_change = (exit_price - entry_price) / entry_price if entry_price != 0 else 0
             abs_pct_change = abs(pct_change)
 
-            # 2. Determine Trend Direction
-            if exit_price > entry_price:
+            # 2. Determine Trend Direction (materiality-aware)
+            # Sub-threshold moves resolve as NEUTRAL to prevent grading noise.
+            # Threshold is commodity-specific, calibrated from annualized IV.
+            try:
+                from config.commodity_profiles import get_active_profile
+                _profile = get_active_profile(config)
+                _threshold = _profile.neutral_move_threshold_pct
+            except Exception:
+                _threshold = 0.008  # Safe default
+
+            if abs_pct_change < _threshold:
+                trend = 'NEUTRAL'
+                logger.info(
+                    f"Materiality filter: {abs_pct_change:.4%} < {_threshold:.4%} "
+                    f"threshold → resolving as NEUTRAL"
+                )
+            elif exit_price > entry_price:
                 trend = 'BULLISH'
             elif exit_price < entry_price:
                 trend = 'BEARISH'
@@ -497,6 +563,45 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                             reasoning=str(reasoning)
                         )
 
+            # --- Record Contribution Scores ---
+            try:
+                _scoring_cfg = config.get("scoring", {})
+                if (_scoring_cfg.get("use_contribution_scoring", False)
+                        or _scoring_cfg.get("accumulate_contribution_scores", False)):
+                    _cycle_id = row.get("cycle_id", "")
+                    _vote_breakdown_raw = row.get("vote_breakdown", "")
+                    _regime = row.get("entry_regime", "NORMAL")
+                    _master_conf = float(row.get("master_confidence", 0.5) or 0.5)
+
+                    if _vote_breakdown_raw and _cycle_id:
+                        import json as _json
+                        _vote_data = (
+                            _json.loads(_vote_breakdown_raw)
+                            if isinstance(_vote_breakdown_raw, str)
+                            else _vote_breakdown_raw
+                        )
+                        if _vote_data and isinstance(_vote_data, list):
+                            from trading_bot.contribution_bridge import record_cycle_contributions
+                            _contrib_scores = record_cycle_contributions(
+                                vote_breakdown=_vote_data,
+                                master_direction=decision,
+                                master_confidence=_master_conf,
+                                actual_outcome=trend,
+                                prediction_type=prediction_type or "DIRECTIONAL",
+                                strategy_type=strategy_type or "",
+                                volatility_outcome=vol_outcome or "",
+                                regime=str(_regime),
+                                cycle_id=_cycle_id,
+                                contract=contract_str,
+                            )
+                            if _contrib_scores:
+                                logger.info(
+                                    f"Contribution scores for {contract_str}: "
+                                    f"{_json.dumps({k: round(v, 3) for k, v in _contrib_scores.items()})}"
+                                )
+            except Exception as e:
+                logger.warning(f"Contribution scoring failed (non-fatal): {e}")
+
             updates_made = True
             logger.info(
                 f"Reconciled {contract_str}: Entry {entry_price:.2f} -> Exit {exit_price:.2f} "
@@ -513,6 +618,10 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
                     'confidence': float(row.get('master_confidence', 0.0) or 0.0),
                     'strategy_type': row.get('strategy_type', ''),
                     'trigger_type': row.get('trigger_type', ''),
+                    'schedule_id': row.get('schedule_id', ''),
+                    'thesis_strength': row.get('thesis_strength', ''),
+                    'primary_catalyst': row.get('primary_catalyst', ''),
+                    'dissent_acknowledged': row.get('dissent_acknowledged', ''),
                 }
 
                 # Construct exit data
@@ -577,63 +686,11 @@ async def _process_reconciliation(ib: IB, df: pd.DataFrame, config: dict, file_p
             os.replace(temp_path, file_path)
             logger.info("Successfully updated council_history.csv with reconciliation results.")
 
-            # === RESOLVE INDIVIDUAL AGENT PREDICTIONS ===
-            # PHASE 1: Legacy CSV resolution (backward compat)
-            newly_resolved_indices = []
-            try:
-                from trading_bot.brier_scoring import resolve_pending_predictions
-                newly_resolved_indices = resolve_pending_predictions(file_path)
-                if newly_resolved_indices:
-                    logger.info(f"Feedback Loop (Legacy): Resolved {len(newly_resolved_indices)} agent predictions")
-            except Exception as resolve_e:
-                logger.error(f"Failed to resolve legacy agent predictions: {resolve_e}")
-
-            # PHASE 2: Enhanced probabilistic resolution
-            try:
-                from trading_bot.brier_bridge import resolve_agent_prediction, reset_enhanced_tracker
-                # Removed inner import pandas as pd to fix scoping issue
-
-                # Read the just-resolved structured predictions to find what was resolved
-                structured_file = "data/agent_accuracy_structured.csv"
-                if os.path.exists(structured_file):
-                    struct_df = pd.read_csv(structured_file)
-
-                    # FIX: Only process predictions that Phase 1 JUST resolved (this run).
-                    # Previously iterated ALL resolved predictions, which:
-                    # 1. Wasted CPU trying to match 200+ old predictions
-                    # 2. Generated hundreds of "No matching prediction found" warnings
-                    # 3. Masked whether any NEW resolutions actually occurred
-                    if newly_resolved_indices:
-                        newly_resolved_df = struct_df.loc[
-                            struct_df.index.isin(newly_resolved_indices)
-                        ]
-                    else:
-                        newly_resolved_df = pd.DataFrame()
-
-                    enhanced_resolved = 0
-                    for _, row in newly_resolved_df.iterrows():
-                        cycle_id = str(row.get('cycle_id', ''))
-                        agent = str(row.get('agent', ''))
-                        actual = str(row.get('actual', ''))
-
-                        if not agent or not actual or actual in ('PENDING', 'ORPHANED'):
-                            continue
-
-                        brier = resolve_agent_prediction(
-                            agent=agent,
-                            actual_outcome=actual,
-                            cycle_id=cycle_id,
-                        )
-                        if brier is not None:
-                            enhanced_resolved += 1
-
-                    if enhanced_resolved > 0:
-                        logger.info(f"Feedback Loop (Enhanced): Scored {enhanced_resolved} predictions with Brier scores")
-                        reset_enhanced_tracker()  # Reset singleton so voting picks up new scores
-
-            except Exception as enhanced_e:
-                # Enhanced resolution failure MUST NOT block reconciliation
-                logger.warning(f"Enhanced Brier resolution failed (non-critical): {enhanced_e}")
+            # NOTE: Structured CSV prediction resolution (agent_accuracy_structured.csv)
+            # is handled by run_brier_reconciliation → resolve_with_cycle_aware_match(),
+            # which runs as a separate scheduled task after reconciliation completes.
+            # Enhanced Brier JSON resolution is handled by the tracker's council_history
+            # backfill (Pass 3) during that same task.
 
         except Exception as e:
             logger.error(f"Failed to save updated CSV: {e}")

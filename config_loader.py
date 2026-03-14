@@ -181,8 +181,48 @@ def load_config() -> dict | None:
     if trading_mode == "OFF":
         logger.warning("*** TRADING MODE OFF — No real orders will be placed ***")
 
+    # 10. COMMODITY TICKER: Override symbol from environment
+    # This ensures dashboards and any caller of load_config() get the correct commodity
+    # without needing to duplicate the override logic. The orchestrator also sets this
+    # from --commodity CLI arg in main(), but the env var covers all other callers.
+    commodity_ticker = os.getenv("COMMODITY_TICKER")
+    if commodity_ticker:
+        config['symbol'] = commodity_ticker
+        config.setdefault('commodity', {})['ticker'] = commodity_ticker
+
+    # Always set data_dir based on the active symbol (env override or config default)
+    ticker = commodity_ticker or config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    config['data_dir'] = os.path.join(base_dir, 'data', ticker)
+
     # Log successful load
     loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai'] if config.get(p, {}).get('api_key')]
     logger.info(f"Config loaded successfully. Mode: {trading_mode}. Providers: {', '.join(loaded_providers)}")
 
     return config
+
+
+def get_active_commodities(config: dict = None) -> list:
+    """Return list of active commodity tickers.
+
+    Priority: ACTIVE_COMMODITIES env var > config.active_commodities > ['KC'].
+    """
+    env_val = os.getenv('ACTIVE_COMMODITIES')
+    if env_val:
+        return [t.strip().upper() for t in env_val.split(',') if t.strip()]
+    if config:
+        return config.get('active_commodities', ['KC'])
+    return ['KC']
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge override into base dict. Override values win.
+
+    Used for per-commodity config overrides (e.g. commodity_overrides.CC).
+    """
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result

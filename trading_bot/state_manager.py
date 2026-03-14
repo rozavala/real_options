@@ -16,7 +16,46 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-STATE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'state.json')
+# Default paths — overridden by set_data_dir() for multi-commodity isolation
+_BASE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC')
+STATE_FILE = os.path.join(_BASE_DATA_DIR, 'state.json')
+
+
+def _get_state_file() -> str:
+    """Resolve state file via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'state.json')
+    except LookupError:
+        return STATE_FILE
+
+
+def _get_state_lock_file() -> str:
+    """Resolve state lock file via ContextVar (multi-engine) or class var (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), '.state_global.lock')
+    except LookupError:
+        return StateManager._STATE_LOCK_FILE
+
+
+def _get_deferred_triggers_file() -> str:
+    """Resolve deferred triggers file via ContextVar (multi-engine) or class var (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'deferred_triggers.json')
+    except LookupError:
+        return StateManager.DEFERRED_TRIGGERS_FILE
+
+
+def _get_deferred_lock_file() -> str:
+    """Resolve deferred lock file via ContextVar (multi-engine) or class var (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), '.deferred_triggers.lock')
+    except LookupError:
+        return StateManager._DEFERRED_LOCK_FILE
+
 
 def _validate_confidence(value: Any) -> float:
     """
@@ -49,15 +88,40 @@ class StateManager:
     """
     _async_lock = asyncio.Lock()
     REPORT_TTL_SECONDS = 3600  # 1 hour staleness threshold
-    DEFERRED_TRIGGERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'deferred_triggers.json')
+    DEFERRED_TRIGGERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC', 'deferred_triggers.json')
+
+    # Class-level path variables — overridden by set_data_dir() for multi-commodity
+    _state_file = None  # When None, falls back to module-level STATE_FILE
+    _deferred_triggers_file = None
+    _state_lock_file = None
+    _deferred_lock_file = None
+
+    @classmethod
+    def set_data_dir(cls, data_dir: str):
+        """Configure all StateManager paths for a commodity-specific data directory.
+
+        Must be called before any state operations when running multi-commodity.
+        """
+        global STATE_FILE
+        os.makedirs(data_dir, exist_ok=True)
+        STATE_FILE = os.path.join(data_dir, 'state.json')
+        cls._state_file = STATE_FILE
+        cls.DEFERRED_TRIGGERS_FILE = os.path.join(data_dir, 'deferred_triggers.json')
+        cls._deferred_triggers_file = cls.DEFERRED_TRIGGERS_FILE
+        cls._STATE_LOCK_FILE = os.path.join(data_dir, '.state_global.lock')
+        cls._state_lock_file = cls._STATE_LOCK_FILE
+        cls._DEFERRED_LOCK_FILE = os.path.join(data_dir, '.deferred_triggers.lock')
+        cls._deferred_lock_file = cls._DEFERRED_LOCK_FILE
+        logger.info(f"StateManager data_dir set to: {data_dir}")
 
     @classmethod
     def _save_raw_sync(cls, data: dict):
         """Internal sync save with file locking."""
-        temp_file = STATE_FILE + ".tmp"
+        state_file = _get_state_file()
+        temp_file = state_file + ".tmp"
 
         # Ensure dir exists
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        os.makedirs(os.path.dirname(state_file), exist_ok=True)
 
         with open(temp_file, 'w') as f:
             if HAS_FCNTL:
@@ -75,16 +139,17 @@ class StateManager:
                 elif '_fallback_lock' in globals():
                     _fallback_lock.release()
 
-        os.replace(temp_file, STATE_FILE)
+        os.replace(temp_file, state_file)
 
     @classmethod
     def _load_raw_sync(cls) -> dict:
         """Internal sync load."""
-        if not os.path.exists(STATE_FILE):
+        state_file = _get_state_file()
+        if not os.path.exists(state_file):
             return {}
 
         try:
-            with open(STATE_FILE, 'r') as f:
+            with open(state_file, 'r') as f:
                 if HAS_FCNTL:
                     fcntl.flock(f, fcntl.LOCK_SH)
                 try:
@@ -107,17 +172,18 @@ class StateManager:
     # Single global lock file for ALL state writes to prevent cross-namespace races.
     # Previously used per-namespace locks (data/.state_{ns}.lock) which allowed
     # concurrent writes from different namespaces to clobber each other's data.
-    _STATE_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.state_global.lock')
+    _STATE_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC', '.state_global.lock')
 
     # Separate lock file for deferred triggers (prevents race between sentinel
     # queue_deferred_trigger and orchestrator get_deferred_triggers).
-    _DEFERRED_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', '.deferred_triggers.lock')
+    _DEFERRED_LOCK_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'KC', '.deferred_triggers.lock')
 
     @classmethod
     def _with_state_lock(cls, fn):
         """Execute fn under the global state file lock (read-modify-write safe)."""
-        os.makedirs(os.path.dirname(cls._STATE_LOCK_FILE), exist_ok=True)
-        with open(cls._STATE_LOCK_FILE, 'w') as lock_fd:
+        lock_file = _get_state_lock_file()
+        os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+        with open(lock_file, 'w') as lock_fd:
             if HAS_FCNTL:
                 fcntl.flock(lock_fd, fcntl.LOCK_EX)
             elif '_fallback_lock' in globals():
@@ -172,6 +238,21 @@ class StateManager:
             cls._save_raw_sync(current)
 
         cls._with_state_lock(_do_save)
+
+    @classmethod
+    def delete_state_keys(cls, namespace: str, keys: list):
+        """Delete specific keys from a namespace. Uses global lock."""
+        if not keys:
+            return
+
+        def _do_delete():
+            state = cls._load_raw_sync()
+            ns = state.get(namespace, {})
+            for key in keys:
+                ns.pop(key, None)
+            cls._save_raw_sync(state)
+
+        cls._with_state_lock(_do_delete)
 
     @classmethod
     async def save_state_async(cls, updates: Dict[str, Any], namespace: str = "reports"):
@@ -308,8 +389,9 @@ class StateManager:
     @classmethod
     def _with_deferred_lock(cls, fn):
         """Execute fn under the deferred triggers file lock (read-modify-write safe)."""
-        os.makedirs(os.path.dirname(cls._DEFERRED_LOCK_FILE), exist_ok=True)
-        with open(cls._DEFERRED_LOCK_FILE, 'w') as lock_fd:
+        lock_file = _get_deferred_lock_file()
+        os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+        with open(lock_file, 'w') as lock_fd:
             if HAS_FCNTL:
                 fcntl.flock(lock_fd, fcntl.LOCK_EX)
             elif '_fallback_lock' in globals():
@@ -325,25 +407,29 @@ class StateManager:
     @classmethod
     def _write_deferred_triggers(cls, triggers: list):
         """Atomically write deferred triggers via temp file + os.replace."""
-        os.makedirs(os.path.dirname(cls.DEFERRED_TRIGGERS_FILE), exist_ok=True)
-        temp_file = cls.DEFERRED_TRIGGERS_FILE + ".tmp"
+        dt_file = _get_deferred_triggers_file()
+        os.makedirs(os.path.dirname(dt_file), exist_ok=True)
+        temp_file = dt_file + ".tmp"
         with open(temp_file, 'w') as f:
             json.dump(triggers, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(temp_file, cls.DEFERRED_TRIGGERS_FILE)
+        os.replace(temp_file, dt_file)
 
     @classmethod
     def queue_deferred_trigger(cls, trigger: Any):
         """Queue a trigger for processing when market opens (file-locked)."""
         def _do_queue():
             triggers = cls._load_deferred_triggers()
-            triggers.append({
+            entry = {
                 'source': trigger.source,
                 'reason': trigger.reason,
                 'payload': trigger.payload,
                 'timestamp': datetime.now(timezone.utc).isoformat()
-            })
+            }
+            # Validate JSON-serializable before appending (prevents partial writes)
+            json.dumps(entry)
+            triggers.append(entry)
             cls._write_deferred_triggers(triggers)
             logger.info(f"Queued deferred trigger from {trigger.source}")
 
@@ -410,13 +496,26 @@ class StateManager:
 
     @classmethod
     def _load_deferred_triggers(cls) -> list:
-        if not os.path.exists(cls.DEFERRED_TRIGGERS_FILE):
+        dt_file = _get_deferred_triggers_file()
+        if not os.path.exists(dt_file):
             return []
         try:
-            with open(cls.DEFERRED_TRIGGERS_FILE, 'r') as f:
-                return json.load(f)
+            with open(dt_file, 'r') as f:
+                data = json.load(f)
+                if not isinstance(data, list):
+                    raise ValueError(f"Expected list, got {type(data).__name__}")
+                return data
         except Exception as e:
-            logger.error(f"Failed to load deferred triggers: {e}")
+            logger.error(f"Failed to load deferred triggers: {e}. Resetting corrupted file.")
+            # Recovery: backup corrupted file and reset to empty list
+            try:
+                backup = dt_file + ".corrupt"
+                if os.path.exists(dt_file):
+                    os.replace(dt_file, backup)
+                    logger.warning(f"Corrupted deferred triggers backed up to {backup}")
+                cls._write_deferred_triggers([])
+            except Exception as recovery_err:
+                logger.error(f"Recovery failed: {recovery_err}")
             return []
 
     @classmethod

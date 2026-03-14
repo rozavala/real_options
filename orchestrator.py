@@ -10,9 +10,9 @@ It now supports an Event-Driven architecture via a Sentinel Loop.
 import asyncio
 import logging
 import sys
-import traceback
 import os
 import json
+import numpy as np
 import hashlib
 from collections import deque
 from dataclasses import dataclass
@@ -21,13 +21,13 @@ import time as time_module
 from datetime import datetime, time, timedelta, timezone
 import pytz
 import pandas as pd
-from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, Order, Future
+from ib_insync import IB, util, Contract, MarketOrder, LimitOrder, ComboLeg, Future
 
 from config_loader import load_config
 from trading_bot.logging_config import setup_logging
 from notifications import send_pushover_notification
 from performance_analyzer import main as run_performance_analysis
-from reconcile_trades import main as run_reconciliation, reconcile_active_positions
+from reconcile_trades import main as run_reconciliation, reconcile_active_positions, get_local_active_positions
 from trading_bot.reconciliation import reconcile_council_history
 from trading_bot.utils import log_council_decision
 from trading_bot.decision_signals import log_decision_signal
@@ -38,7 +38,7 @@ from trading_bot.order_manager import (
     place_queued_orders,
     get_trade_ledger_df
 )
-from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, round_to_tick, get_tick_size, word_boundary_match, hours_until_weekly_close
+from trading_bot.utils import archive_trade_ledger, configure_market_data_type, is_market_open, is_trading_day, get_market_state, _minutes_until_next_break, word_boundary_match, hours_until_weekly_close
 from equity_logger import log_equity_snapshot, sync_equity_from_flex
 from trading_bot.sentinels import PriceSentinel, WeatherSentinel, LogisticsSentinel, NewsSentinel, XSentimentSentinel, PredictionMarketSentinel, MacroContagionSentinel, SentinelTrigger, _sentinel_diag
 from trading_bot.microstructure_sentinel import MicrostructureSentinel
@@ -55,7 +55,7 @@ from trading_bot.compliance import ComplianceGuardian
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.weighted_voting import RegimeDetector
 from trading_bot.tms import TransactiveMemory
-from trading_bot.budget_guard import BudgetGuard, get_budget_guard
+from trading_bot.budget_guard import get_budget_guard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
@@ -66,22 +66,83 @@ from trading_bot.utils import get_active_ticker
 from trading_bot.sentinel_stats import SENTINEL_STATS
 
 # --- Logging Setup ---
-setup_logging(log_file="logs/orchestrator.log")
+# NOTE: setup_logging() is called in main() after --commodity arg is parsed,
+# so that the log file can be per-commodity (e.g. logs/orchestrator_kc.log).
 logger = logging.getLogger("Orchestrator")
 
 # --- Global Process Handle for the monitor ---
 monitor_process = None
+# DEPRECATED: Use _get_budget_guard() accessor instead. Kept for legacy single-engine mode.
 GLOBAL_BUDGET_GUARD = None
+# DEPRECATED: Use _get_drawdown_guard() accessor instead. Kept for legacy single-engine mode.
 GLOBAL_DRAWDOWN_GUARD = None
 _STARTUP_DISCOVERY_TIME = 0  # Set to time.time() after successful startup topic discovery
 
-# Module-level shutdown state
-_SYSTEM_SHUTDOWN = False
+# Module-level shutdown state (two-tier for Passive mode support)
+# _SCHEDULED_SHUTDOWN: set when the daily scheduled cycle ends (blocks new
+#   scheduled signals). May remain True while the position monitor stays alive
+#   during PASSIVE periods.
+# _FULL_SHUTDOWN: set when the system is fully down (SLEEPING). Sentinel loop
+#   gate uses this to stop IB connections.
+_SCHEDULED_SHUTDOWN = False
+_FULL_SHUTDOWN = False
 _brier_zero_resolution_streak = 0
 
+# Passive emergency cooldown tracking: ticker → datetime of last trigger
+_last_passive_emergency: dict = {}
+# Deferred trigger rate limiting: (ticker, sentinel_type) → datetime
+_deferred_trigger_times: dict = {}
+
+# IB startup grace — suppress ERROR logging for IB failures during first 2 minutes
+_IB_BOOT_TIME = None
+_IB_STARTUP_GRACE_SECONDS = 120
+
+
+def _in_ib_startup_grace() -> bool:
+    """True during the first 2 minutes after boot (IB Gateway may be starting)."""
+    if _IB_BOOT_TIME is None:
+        return False
+    return (time_module.time() - _IB_BOOT_TIME) < _IB_STARTUP_GRACE_SECONDS
+
 def is_system_shutdown() -> bool:
-    """Check if the system has entered end-of-day shutdown."""
-    return _SYSTEM_SHUTDOWN
+    """Check if the system has fully shut down (SLEEPING state)."""
+    return _FULL_SHUTDOWN
+
+
+def is_scheduled_shutdown() -> bool:
+    """Check if the scheduled trading cycle has ended.
+
+    True after cancel_and_stop_monitoring() runs. Used by
+    guarded_generate_orders() to block new scheduled signals.
+    """
+    return _SCHEDULED_SHUTDOWN
+
+
+def _is_in_passive_emergency_cooldown(ticker: str, cooldown_seconds: int) -> bool:
+    """Check if a passive emergency was triggered recently for this ticker."""
+    last = _last_passive_emergency.get(ticker)
+    if last is None:
+        return False
+    elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+    return elapsed < cooldown_seconds
+
+
+def _write_deferred_trigger(trigger: SentinelTrigger, ticker: str) -> None:
+    """Rate-limited deferred trigger write.
+
+    Uses a (ticker, sentinel_type) composite key so that NG PriceSentinel
+    rate-limiting doesn't block NG NewsSentinel deferrals.
+    """
+    key = (ticker, trigger.source)
+    now = datetime.now(timezone.utc)
+    last = _deferred_trigger_times.get(key)
+    if last is not None and (now - last).total_seconds() < 300:
+        logger.debug(f"Deferred trigger rate-limited: {key}")
+        return
+    _deferred_trigger_times[key] = now
+    StateManager.queue_deferred_trigger(trigger)
+    logger.info(f"Deferred {trigger.source} trigger for {ticker}")
+
 
 def _record_sentinel_health(name: str, status: str, interval_seconds: int, error: str = None):
     """
@@ -106,7 +167,9 @@ def _record_sentinel_health(name: str, status: str, interval_seconds: int, error
         logger.warning(f"Failed to record sentinel health for {name}: {e}")
 
 class TriggerDeduplicator:
-    def __init__(self, window_seconds: int = 7200, state_file="data/deduplicator_state.json", critical_severity_threshold: int = 9):
+    def __init__(self, window_seconds: int = 7200, state_file=None, critical_severity_threshold: int = 9):
+        if state_file is None:
+            state_file = os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "deduplicator_state.json")
         self.state_file = state_file
         self.window = window_seconds
         self.critical_severity_threshold = critical_severity_threshold
@@ -236,14 +299,89 @@ class TriggerDeduplicator:
             del self.cooldowns[source]
             self._save_state()
 
-# Global Deduplicator Instance
-GLOBAL_DEDUPLICATOR = TriggerDeduplicator()
+# DEPRECATED: Use _get_deduplicator() accessor instead. Kept for legacy single-engine mode.
+GLOBAL_DEDUPLICATOR = None
 
-# Concurrent Cycle Lock (Global)
+# DEPRECATED: Use _get_emergency_lock() accessor instead. Kept for legacy single-engine mode.
 EMERGENCY_LOCK = asyncio.Lock()
 
-# Track fire-and-forget tasks so they can be cancelled on shutdown
+# DEPRECATED: Use _get_inflight_tasks() accessor instead. Kept for legacy single-engine mode.
 _INFLIGHT_TASKS: set[asyncio.Task] = set()
+
+
+# ---------------------------------------------------------------------------
+# Engine-scoped accessors — ContextVar first, module global fallback (Phase 2)
+# ---------------------------------------------------------------------------
+
+def _get_deduplicator():
+    """Get the TriggerDeduplicator for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.deduplicator if rt else GLOBAL_DEDUPLICATOR
+
+
+def _get_budget_guard():
+    """Get the BudgetGuard for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.budget_guard if rt else GLOBAL_BUDGET_GUARD
+
+
+def _get_drawdown_guard():
+    """Get the DrawdownGuard for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.drawdown_guard if rt else GLOBAL_DRAWDOWN_GUARD
+
+
+def _get_emergency_lock():
+    """Get the emergency cycle lock for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.emergency_lock if rt else EMERGENCY_LOCK
+
+
+def _get_inflight_tasks() -> set:
+    """Get the inflight tasks set for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.inflight_tasks if rt else _INFLIGHT_TASKS
+
+
+def _get_startup_discovery_time() -> float:
+    """Get the startup topic discovery timestamp for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.startup_discovery_time if rt else _STARTUP_DISCOVERY_TIME
+
+
+def _set_startup_discovery_time(value: float):
+    """Set the startup topic discovery timestamp for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt:
+        rt.startup_discovery_time = value
+    else:
+        global _STARTUP_DISCOVERY_TIME
+        _STARTUP_DISCOVERY_TIME = value
+
+
+def _get_brier_streak() -> int:
+    """Get the Brier zero-resolution streak counter for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    return rt.brier_zero_resolution_streak if rt else _brier_zero_resolution_streak
+
+
+def _set_brier_streak(value: int):
+    """Set the Brier zero-resolution streak counter for the current engine."""
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt:
+        rt.brier_zero_resolution_streak = value
+    else:
+        global _brier_zero_resolution_streak
+        _brier_zero_resolution_streak = value
 
 
 def _extract_agent_prediction(report) -> tuple:
@@ -320,11 +458,18 @@ def _route_emergency_strategy(decision: dict, market_context: dict, agent_report
         imminent_catalyst = _detect_emergency_catalyst(agent_reports)
 
         # PATH 1: IRON CONDOR — sell premium in range when vol is expensive
+        # H7-B: Emergency path is ALWAYS a sentinel trigger. Selling premium
+        # (short gamma/vega) during market disruption is structurally dangerous.
+        # Suppress IC when vol is expensive — same check as strategy_router.py.
         if regime == 'RANGE_BOUND' and vol_sentiment == 'BEARISH':
-            prediction_type = "VOLATILITY"
-            vol_level = "LOW"
-            reason = "Emergency Iron Condor: Range-bound + expensive vol (sell premium)"
-            logger.info(f"EMERGENCY STRATEGY: IRON_CONDOR | regime={regime}, vol={vol_sentiment}")
+            reason = (
+                f"H7-B: Emergency IC SUPPRESSED — sentinel trigger with expensive vol. "
+                f"(vol={vol_sentiment}, regime={regime}, conflict={agent_conflict_score:.2f})"
+            )
+            logger.info(
+                f"H7-B: EMERGENCY IC SUPPRESSED — sentinel trigger with expensive vol. "
+                f"regime={regime}, vol={vol_sentiment}. Falling through to NO TRADE."
+            )
 
         # PATH 2: LONG STRADDLE — expect big move, options not expensive
         elif (imminent_catalyst or agent_conflict_score > 0.6) and vol_sentiment != 'BEARISH':
@@ -585,7 +730,7 @@ async def _validate_iron_condor(thesis: dict, config: dict, ib: IB, active_futur
         underlying_contract = Future(
             symbol=underlying_symbol,
             lastTradeDateOrContractMonth=contract_month,
-            exchange=config.get('exchange', 'NYBOT')
+            exchange=config['exchange']
         )
         try:
             await asyncio.wait_for(ib.qualifyContractsAsync(underlying_contract), timeout=15)
@@ -676,7 +821,7 @@ async def _validate_long_straddle(thesis: dict, position, config: dict, ib: IB, 
                     underlying_contract = Future(
                         symbol=underlying_symbol,
                         lastTradeDateOrContractMonth=contract_month,
-                        exchange=config.get('exchange', 'NYBOT')
+                        exchange=config['exchange']
                     )
                     try:
                         await asyncio.wait_for(ib.qualifyContractsAsync(underlying_contract), timeout=15)
@@ -866,6 +1011,11 @@ def _find_position_id_for_contract(
     conId = position.contract.conId
     position_direction = 'BUY' if position.position > 0 else 'SELL'
 
+    # Guard: empty ledger or missing required columns
+    if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+        logger.debug(f"Trade ledger empty or missing 'position_id' column for {symbol}")
+        return None
+
     # Filter to matching symbol
     matches = trade_ledger[trade_ledger['local_symbol'] == symbol].copy()
 
@@ -878,7 +1028,7 @@ def _find_position_id_for_contract(
         if 'conId' in matches.columns:
             conId_matches = matches[matches['conId'] == conId]
         else:
-            conId_matches = pd.DataFrame()
+            conId_matches = pd.DataFrame(columns=matches.columns)
 
         for pos_id in conId_matches['position_id'].unique():
             # Check if thesis is still active
@@ -898,11 +1048,14 @@ def _find_position_id_for_contract(
         pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
 
         # Calculate net quantity for this symbol
-        net_qty = 0
-        for _, row in pos_entries.iterrows():
-            if row['local_symbol'] == symbol:
-                qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-                net_qty += qty
+        sym_mask = pos_entries['local_symbol'] == symbol
+        sym_entries = pos_entries[sym_mask].copy()
+
+        if not sym_entries.empty:
+            sym_entries['signed_qty'] = np.where(sym_entries['action'] == 'BUY', sym_entries['quantity'], -sym_entries['quantity'])
+            net_qty = sym_entries['signed_qty'].sum()
+        else:
+            net_qty = 0
 
         if net_qty != 0:
             entry_time = pos_entries['timestamp'].min()
@@ -1048,7 +1201,7 @@ async def cleanup_orphaned_theses(config: dict):
     try:
         ib = await IBConnectionPool.get_connection("cleanup", config)
         tms = TransactiveMemory()
-        trade_ledger = get_trade_ledger_df()
+        trade_ledger = get_trade_ledger_df(config.get('data_dir'))
 
         cleaned = await _reconcile_orphaned_theses(ib, trade_ledger, tms, config)
 
@@ -1065,7 +1218,10 @@ async def cleanup_orphaned_theses(config: dict):
         return cleaned
 
     except Exception as e:
-        logger.error(f"Thesis cleanup failed: {e}")
+        if _in_ib_startup_grace():
+            logger.warning(f"Thesis cleanup skipped (IB not ready at startup): {e}")
+        else:
+            logger.error(f"Thesis cleanup failed: {e}")
         return 0
     finally:
         if ib is not None:
@@ -1080,6 +1236,7 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     Check equity data freshness and trigger Flex query if stale.
 
     v3.1: Auto-recovery instead of just alerting.
+    v7.2: Non-primary commodities copy equity from primary (account-wide metric).
 
     Returns:
         True if data is fresh or recovery succeeded
@@ -1087,8 +1244,17 @@ async def check_and_recover_equity_data(config: dict) -> bool:
     from equity_logger import sync_equity_from_flex
     from pathlib import Path
 
-    equity_file = Path("data/daily_equity.csv")
+    # Non-primary engines don't own equity data (account-wide metric).
+    # Skip staleness check to avoid spurious warnings.
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+    if not is_primary:
+        return True
+
+    data_dir = config.get('data_dir', 'data')
+    equity_file = Path(os.path.join(data_dir, "daily_equity.csv"))
     max_staleness_hours = config.get('monitoring', {}).get('equity_max_staleness_hours', 24)
+    # In --multi mode, MasterOrchestrator's equity service handles equity data.
+    # In single-engine mode, this function runs the Flex query below.
 
     # Check staleness
     if equity_file.exists():
@@ -1158,20 +1324,134 @@ async def _reconcile_orphaned_theses(
             logger.debug("Reconciliation: No active theses to reconcile")
             return 0
 
-        # 2. Build set of position_ids with live IB exposure
+        # 2. Build actual IB aggregate: {local_symbol: net_qty}
         try:
             live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
-            logger.error("Reconciliation: reqPositionsAsync timed out (30s), treating as empty")
-            live_positions = []
+            logger.error("Reconciliation: reqPositionsAsync timed out (30s), skipping")
+            return 0  # Fail closed: don't orphan anything on timeout
+
+        commodity_symbol = config.get('symbol', 'KC')
+        ib_aggregate = {}
+        for pos in live_positions:
+            if pos.position == 0 or pos.contract.symbol != commodity_symbol:
+                continue
+            sym = pos.contract.localSymbol
+            ib_aggregate[sym] = ib_aggregate.get(sym, 0) + pos.position
+
+        # 2b. Build expected quantities per thesis from trade ledger
+        thesis_expected = {}  # tid -> {local_symbol: net_qty}
+        for tid in active_thesis_ids:
+            if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+                continue
+            tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+            if tid_rows.empty:
+                continue
+            tid_valid = tid_rows[tid_rows['local_symbol'].astype(str).str.strip() != ''].copy()
+            if not tid_valid.empty:
+                tid_valid['signed_qty'] = np.where(tid_valid['action'] == 'BUY', tid_valid['quantity'], -tid_valid['quantity'])
+                leg_map_vec = tid_valid.groupby('local_symbol')['signed_qty'].sum()
+                leg_map = leg_map_vec[leg_map_vec != 0].to_dict()
+            else:
+                leg_map = {}
+
+            if leg_map:
+                thesis_expected[tid] = leg_map
+
+        # 2c. Greedy FIFO allocation — oldest theses claim IB qty first
+        thesis_order = []
+        for tid in active_thesis_ids:
+            if tid in thesis_expected:
+                tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                entry_time = tid_rows['timestamp'].min() if not tid_rows.empty else ''
+                thesis_order.append((tid, entry_time))
+        thesis_order.sort(key=lambda x: x[1])
+
+        remaining_ib = dict(ib_aggregate)
         live_position_ids = set()
 
-        for pos in live_positions:
-            if pos.position == 0:
-                continue
-            pos_id = _find_position_id_for_contract(pos, trade_ledger)
-            if pos_id:
-                live_position_ids.add(pos_id)
+        for tid, _ in thesis_order:
+            expected_legs = thesis_expected[tid]
+            all_covered = True
+            for sym, exp_qty in expected_legs.items():
+                avail = remaining_ib.get(sym, 0)
+                if exp_qty > 0 and avail < exp_qty:
+                    all_covered = False
+                    break
+                if exp_qty < 0 and avail > exp_qty:
+                    all_covered = False
+                    break
+
+            if all_covered:
+                for sym, exp_qty in expected_legs.items():
+                    remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
+                live_position_ids.add(tid)
+            else:
+                # Fail closed: if ANY leg still has IB backing, don't orphan
+                any_present = any(
+                    (exp > 0 and remaining_ib.get(s, 0) > 0) or
+                    (exp < 0 and remaining_ib.get(s, 0) < 0)
+                    for s, exp in expected_legs.items()
+                )
+                if any_present:
+                    # Check thesis age — stale partial theses (>48h) should be
+                    # invalidated rather than kept alive indefinitely (#1166)
+                    max_partial_hours = 48
+                    tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                    entry_time_str = tid_rows['timestamp'].min() if not tid_rows.empty else None
+                    thesis_age_hours = None
+                    if entry_time_str:
+                        try:
+                            entry_dt = pd.to_datetime(entry_time_str, utc=True)
+                            thesis_age_hours = (
+                                datetime.now(timezone.utc) - entry_dt
+                            ).total_seconds() / 3600
+                        except Exception:
+                            pass
+
+                    if thesis_age_hours and thesis_age_hours > max_partial_hours:
+                        logger.warning(
+                            f"Reconciliation: Thesis {tid} partially covered for "
+                            f"{thesis_age_hours:.0f}h (>{max_partial_hours}h). "
+                            f"Force-invalidating stale partial thesis. "
+                            f"expected={expected_legs}, remaining_ib={remaining_ib}"
+                        )
+                        # Don't add to live_position_ids — will be orphaned and invalidated
+                    else:
+                        live_position_ids.add(tid)
+                        logger.warning(
+                            f"Reconciliation: Thesis {tid} partially covered "
+                            f"(expected={expected_legs}, remaining={remaining_ib}). "
+                            f"Keeping alive (fail-closed, age={thesis_age_hours:.0f}h)."
+                            if thesis_age_hours else
+                            f"Reconciliation: Thesis {tid} partially covered "
+                            f"(expected={expected_legs}, remaining={remaining_ib}). "
+                            f"Keeping alive (fail-closed)."
+                        )
+
+        # Theses with no ledger entries but IB has positions: fail closed
+        for tid in active_thesis_ids:
+            if tid not in thesis_expected and tid not in live_position_ids:
+                if ib_aggregate:
+                    logger.warning(
+                        f"Reconciliation: Thesis {tid} has no ledger entries "
+                        f"but IB has positions. Skipping invalidation (fail-closed)."
+                    )
+                    live_position_ids.add(tid)
+
+        # D3: Alert on IB positions with no matching thesis after FIFO matching
+        unmatched_ib = {sym: qty for sym, qty in remaining_ib.items() if qty != 0}
+        if unmatched_ib:
+            logger.warning(f"Orphan IB positions with no thesis match: {unmatched_ib}")
+            try:
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "Orphan IB Positions Detected",
+                    f"{len(unmatched_ib)} positions in IB with no TMS thesis:\n"
+                    + "\n".join(f"  {sym}: {qty}" for sym, qty in unmatched_ib.items())
+                )
+            except Exception:
+                pass
 
         # 3. Identify orphans: active in TMS but not in IB
         orphaned_ids = [
@@ -1225,6 +1505,171 @@ async def _reconcile_orphaned_theses(
         return 0
 
 
+async def _reconcile_phantom_ledger_entries(
+    trade_ledger: pd.DataFrame,
+    tms: TransactiveMemory,
+    config: dict
+) -> int:
+    """
+    Identifies and zeroes out 'phantom' ledger entries — position_ids with
+    non-zero net quantity in the trade ledger but no matching IB position.
+
+    This happens when:
+    - An exit fill was confirmed by IB but the ledger write was interrupted
+    - Manual TWS close didn't propagate to the ledger
+    - Partial fills left residual quantities
+
+    Appends synthetic close rows to the CSV to zero out each phantom,
+    invalidates associated TMS theses, and sends a notification.
+
+    Returns the count of reconciled phantom entries.
+    """
+    from trading_bot.utils import TRADE_LEDGER_LOCK
+    try:
+        if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+            return 0
+
+        # 1. Find position_ids with non-zero net quantity
+        phantoms = []
+        for pos_id in trade_ledger['position_id'].unique():
+            pos_rows = trade_ledger[trade_ledger['position_id'] == pos_id]
+            for symbol in pos_rows['local_symbol'].unique():
+                symbol_rows = pos_rows[pos_rows['local_symbol'] == symbol]
+
+                # Skip RECONCILIATION_MISSING entries — these are single-leg
+                # historical records from Flex Query reconciliation, NOT real
+                # open positions. They appear as non-zero net qty because only
+                # one side of a round-trip was recorded locally.
+                if 'reason' in symbol_rows.columns:
+                    reasons = symbol_rows['reason'].dropna().astype(str)
+                    if reasons.str.contains('RECONCILIATION_MISSING').any():
+                        continue
+
+                # Idempotency: skip if already has a PHANTOM_RECONCILIATION
+                # synthetic close entry (prevents duplicate synthetics on
+                # repeated audit cycles)
+                if 'reason' in symbol_rows.columns:
+                    reasons = symbol_rows['reason'].dropna().astype(str)
+                    if reasons.str.contains('PHANTOM_RECONCILIATION').any():
+                        continue
+
+                sr_valid = symbol_rows.copy()
+                sr_valid['signed_qty'] = np.where(sr_valid['action'] == 'BUY', sr_valid['quantity'], -sr_valid['quantity'])
+                net_qty = sr_valid['signed_qty'].sum()
+
+                if net_qty != 0:
+                    phantoms.append({
+                        'position_id': pos_id,
+                        'local_symbol': symbol,
+                        'net_qty': net_qty,
+                    })
+
+        if not phantoms:
+            logger.debug("Phantom reconciliation: No phantom ledger entries found")
+            return 0
+
+        logger.warning(
+            f"Phantom reconciliation: Found {len(phantoms)} phantom ledger entries "
+            f"(non-zero net qty, no IB position): "
+            f"{[(p['position_id'], p['local_symbol'], p['net_qty']) for p in phantoms]}"
+        )
+
+        # 2. Build synthetic close rows and append to CSV
+        now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        synthetic_rows = []
+        for phantom in phantoms:
+            # Reverse the net quantity: if net_qty > 0 (long), we SELL to close
+            close_action = 'SELL' if phantom['net_qty'] > 0 else 'BUY'
+            synthetic_rows.append({
+                'timestamp': now_str,
+                'position_id': phantom['position_id'],
+                'combo_id': phantom['position_id'],
+                'local_symbol': phantom['local_symbol'],
+                'action': close_action,
+                'quantity': abs(phantom['net_qty']),
+                'avg_fill_price': 0.0,
+                'strike': 'N/A',
+                'right': 'N/A',
+                'total_value_usd': 0.0,
+                'reason': 'PHANTOM_RECONCILIATION: synthetic close (no IB position)'
+            })
+
+        # Resolve ledger path
+        from trading_bot.utils import _get_data_dir
+        eff_dir = _get_data_dir()
+        if eff_dir:
+            ledger_path = os.path.join(eff_dir, 'trade_ledger.csv')
+        else:
+            ledger_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 'trade_ledger.csv'
+            )
+
+        async with TRADE_LEDGER_LOCK:
+            try:
+                import csv
+                fieldnames = [
+                    'timestamp', 'position_id', 'combo_id', 'local_symbol',
+                    'action', 'quantity', 'avg_fill_price', 'strike', 'right',
+                    'total_value_usd', 'reason'
+                ]
+                try:
+                    file_exists_and_has_content = os.path.getsize(ledger_path) > 0
+                except OSError:
+                    file_exists_and_has_content = False
+
+                with open(ledger_path, 'a', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    if not file_exists_and_has_content:
+                        writer.writeheader()
+                    writer.writerows(synthetic_rows)
+                logger.info(
+                    f"Phantom reconciliation: Wrote {len(synthetic_rows)} "
+                    f"synthetic close rows to ledger"
+                )
+            except Exception as e:
+                logger.error(f"Phantom reconciliation: Failed to write ledger: {e}")
+                return 0
+
+        # 3. Invalidate associated TMS theses
+        invalidated_ids = set()
+        for phantom in phantoms:
+            pid = phantom['position_id']
+            if pid not in invalidated_ids:
+                try:
+                    tms.invalidate_thesis(
+                        pid,
+                        "Phantom reconciliation: ledger had non-zero qty with no IB position"
+                    )
+                    invalidated_ids.add(pid)
+                    logger.info(f"Phantom reconciliation: Invalidated thesis {pid}")
+                except Exception as e:
+                    logger.error(
+                        f"Phantom reconciliation: Failed to invalidate {pid}: {e}"
+                    )
+
+        # 4. Notify
+        try:
+            summary = (
+                f"Phantom reconciliation: Zeroed out {len(phantoms)} ledger entries "
+                f"(non-zero qty, no IB position).\n"
+                f"Position IDs: {list(invalidated_ids)}"
+            )
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"Phantom Ledger Reconciliation [{ticker}]",
+                summary
+            )
+        except Exception:
+            pass  # Notification failure is non-fatal
+
+        return len(phantoms)
+
+    except Exception as e:
+        logger.error(f"Phantom reconciliation failed (non-fatal): {e}")
+        return 0
+
+
 def _group_positions_by_thesis(
     positions: list,
     trade_ledger: object,
@@ -1241,6 +1686,10 @@ def _group_positions_by_thesis(
         }
 
     Design: Commodity-agnostic — works for any multi-leg strategy.
+
+    v3.2: After initial FIFO grouping, discovers active TMS theses that
+    share contracts with existing groups due to IBKR position aggregation
+    (e.g., two bear put spreads on the same strikes → qty=2 in IBKR).
     """
     groups = {}  # position_id → {thesis, legs}
     unmapped = []  # Legs we couldn't map
@@ -1271,7 +1720,502 @@ def _group_positions_by_thesis(
             f"{[p.contract.localSymbol for p in unmapped]}"
         )
 
+    # v3.2: Find active TMS theses not yet grouped that share contracts with
+    # existing groups (IBKR aggregates identical contracts across theses).
+    try:
+        active_theses = tms.collection.get(
+            where={"active": "true"}, include=['metadatas']
+        )
+        active_ids = {
+            m['trade_id'] for m in active_theses.get('metadatas', [])
+            if 'trade_id' in m
+        }
+        ungrouped = active_ids - set(groups.keys())
+
+        if ungrouped and not trade_ledger.empty and 'position_id' in trade_ledger.columns:
+            # Build set of contract symbols already in groups
+            grouped_symbols = {
+                leg.contract.localSymbol
+                for g in groups.values() for leg in g['legs']
+            }
+
+            for tid in ungrouped:
+                tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+                if tid_rows.empty:
+                    continue
+                tid_symbols = set(tid_rows['local_symbol'].unique())
+                # If this thesis's contracts overlap with grouped legs,
+                # it's part of an IBKR aggregate position
+                if tid_symbols & grouped_symbols:
+                    thesis = tms.retrieve_thesis(tid)
+                    # Find the matching grouped legs (shared contracts)
+                    shared_legs = [
+                        leg for g in groups.values() for leg in g['legs']
+                        if leg.contract.localSymbol in tid_symbols
+                    ]
+                    groups[tid] = {
+                        'thesis': thesis,
+                        'legs': shared_legs,
+                        'position_id': tid,
+                        '_aggregate': True,  # Mark as aggregate-discovered
+                    }
+                    logger.info(
+                        f"Aggregate grouping: thesis {tid[:8]} shares "
+                        f"IBKR legs with existing group (contracts: "
+                        f"{tid_symbols & grouped_symbols})"
+                    )
+    except Exception as e:
+        logger.warning(f"Aggregate thesis discovery failed (non-fatal): {e}")
+
     return groups
+
+def _send_close_notification(
+    config: dict,
+    position_id: str,
+    reason: str,
+    legs: list,
+    closed_syms: list,
+    failed_syms: list,
+):
+    """Send Pushover notification for spread close results."""
+    total = len(legs)
+    success = len(closed_syms)
+    readable = closed_syms[0].split()[0] if closed_syms else (
+        failed_syms[0].split()[0] if failed_syms else "Unknown"
+    )
+
+    if success == total and not failed_syms:
+        title = f"✅ Position Closed: {readable}"
+        message = (
+            f"Reason: {reason}\n"
+            f"Closed {success}/{total} legs successfully.\n"
+        )
+    elif success > 0:
+        title = f"⚠️ PARTIAL CLOSE: {readable}"
+        message = (
+            f"Reason: {reason}\n"
+            f"⚠️ ONLY {success}/{total} legs closed!\n"
+            f"MANUAL INTERVENTION REQUIRED — position may have naked exposure.\n\n"
+            f"Closed: {', '.join(closed_syms)}\n"
+            f"FAILED: {', '.join(failed_syms)}\n"
+        )
+    else:
+        title = f"❌ CLOSE FAILED: {readable}"
+        message = (
+            f"Reason: {reason}\n"
+            f"ALL {total} close orders FAILED.\n"
+            f"Position remains open. Will retry on next audit cycle.\n"
+        )
+
+    send_pushover_notification(config.get('notifications', {}), title, message)
+
+
+async def _close_single_leg_with_walk(
+    ib: IB,
+    contract,
+    action: str,
+    qty: int,
+    position_id: str,
+    config: dict,
+    timeout: int,
+    max_walks: int,
+    walk_interval: int,
+    walk_pct: float,
+    tick_size: float,
+) -> bool:
+    """
+    Close a single option leg with limit order + adaptive price walking.
+    Falls back to market order only as last resort after timeout.
+    Returns True if filled, False otherwise.
+    """
+    try:
+        # Get market data for pricing
+        ticker = ib.reqMktData(contract, '', True, False)
+        await asyncio.sleep(1.5)
+
+        bid = ticker.bid if not util.isNan(ticker.bid) else 0
+        ask = ticker.ask if not util.isNan(ticker.ask) else 0
+        last = ticker.last if not util.isNan(ticker.last) else 0
+
+        ib.cancelMktData(contract)
+
+        # Determine initial price — start passive (near natural side)
+        if bid > 0 and ask > 0:
+            if action == 'SELL':
+                initial_price = bid  # Start at bid for sells
+            else:
+                initial_price = ask  # Start at ask for buys
+        elif last > 0:
+            initial_price = last
+        else:
+            # No market data — fall back to market order
+            logger.warning(
+                f"No market data for {contract.localSymbol}, "
+                f"using MarketOrder for close"
+            )
+            order = MarketOrder(action, qty)
+            order.outsideRth = True
+            trade = place_order(ib, contract, order)
+            if trade is None:
+                return False
+            try:
+                from config import get_active_profile
+                _mkt_timeout = get_active_profile(config).market_order_fallback_timeout_seconds
+            except Exception:
+                _mkt_timeout = 60
+            for _ in range(_mkt_timeout):
+                await asyncio.sleep(1)
+                if trade.orderStatus.status == 'Filled':
+                    try:
+                        from trading_bot.utils import log_trade_to_ledger
+                        await log_trade_to_ledger(
+                            ib, trade,
+                            reason=f"Spread Close (no mkt data): {position_id[:8]}",
+                            position_id=position_id,
+                            config=config
+                        )
+                    except Exception:
+                        pass
+                    return True
+            return False
+
+        initial_price = round(initial_price / tick_size) * tick_size
+
+        # Place limit order
+        order = LimitOrder(action, qty, initial_price)
+        order.outsideRth = True
+        trade = place_order(ib, contract, order)
+
+        if trade is None:
+            return False
+
+        logger.info(
+            f"  Leg close: {action} {qty}x {contract.localSymbol} "
+            f"@ {initial_price:.4f} (limit+walk)"
+        )
+
+        # Walk toward aggressive side (SELL walks down, BUY walks up)
+        price_range = abs(initial_price) * 0.15 if initial_price > 0 else tick_size * 15
+        if action == 'SELL':
+            price_limit = max(initial_price - price_range, tick_size)
+        else:
+            price_limit = initial_price + price_range
+
+        walk_count = 0
+        elapsed = 0
+
+        while elapsed < timeout:
+            await asyncio.sleep(1)
+            elapsed += 1
+
+            if trade.orderStatus.status == 'Filled':
+                logger.info(
+                    f"  ✅ {action} {qty}x {contract.localSymbol} "
+                    f"@ {trade.orderStatus.avgFillPrice}"
+                )
+                try:
+                    from trading_bot.utils import log_trade_to_ledger
+                    await log_trade_to_ledger(
+                        ib, trade,
+                        reason=f"Spread Close: {position_id[:8]}",
+                        position_id=position_id,
+                        config=config
+                    )
+                except Exception as log_err:
+                    logger.warning(f"Ledger log failed for {contract.localSymbol}: {log_err}")
+                return True
+
+            if trade.orderStatus.status in ('Cancelled', 'Inactive'):
+                logger.warning(f"  Leg close cancelled/inactive for {contract.localSymbol}")
+                break
+
+            # Don't walk if partially filled — preserve queue position
+            if trade.orderStatus.remaining > 0 and trade.orderStatus.filled > 0:
+                continue
+
+            if elapsed % walk_interval == 0 and walk_count < max_walks:
+                current = trade.order.lmtPrice
+                walk_amount = max(abs(current) * walk_pct, tick_size)
+
+                if action == 'SELL':
+                    new_price = current - walk_amount
+                    new_price = max(new_price, price_limit)
+                else:
+                    new_price = current + walk_amount
+                    new_price = min(new_price, price_limit)
+
+                new_price = round(new_price / tick_size) * tick_size
+
+                if new_price != current:
+                    walk_count += 1
+                    trade.order.lmtPrice = new_price
+                    ib.placeOrder(trade.contract, trade.order)
+                    logger.info(
+                        f"  Leg walk #{walk_count}: "
+                        f"{current:.4f} → {new_price:.4f}"
+                    )
+
+        # Last resort: market order
+        if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
+            logger.warning(
+                f"  Leg {contract.localSymbol} not filled after {elapsed}s "
+                f"and {walk_count} walks. Converting to MarketOrder."
+            )
+            ib.cancelOrder(trade.order)
+            await asyncio.sleep(2)
+
+            market_order = MarketOrder(action, qty)
+            market_order.outsideRth = True
+            market_trade = place_order(ib, contract, market_order)
+            if market_trade is None:
+                return False
+
+            try:
+                from config import get_active_profile
+                _mkt_timeout2 = get_active_profile(config).market_order_fallback_timeout_seconds
+            except Exception:
+                _mkt_timeout2 = 60
+            for _ in range(_mkt_timeout2):
+                await asyncio.sleep(1)
+                if market_trade.orderStatus.status == 'Filled':
+                    logger.info(
+                        f"  ✅ Market fallback: {action} {qty}x "
+                        f"{contract.localSymbol} @ {market_trade.orderStatus.avgFillPrice}"
+                    )
+                    try:
+                        from trading_bot.utils import log_trade_to_ledger
+                        await log_trade_to_ledger(
+                            ib, market_trade,
+                            reason=f"Spread Close (market fallback): {position_id[:8]}",
+                            position_id=position_id,
+                            config=config
+                        )
+                    except Exception:
+                        pass
+                    return True
+
+            return False
+
+        return trade.orderStatus.status == 'Filled'
+
+    except Exception as e:
+        logger.error(f"Single leg close failed for {contract.localSymbol}: {e}")
+        return False
+
+
+async def _attempt_bag_close(
+    ib: IB,
+    legs: list,
+    position_id: str,
+    config: dict,
+    timeout: int,
+    max_walks: int,
+    walk_interval: int,
+    walk_pct: float,
+    tick_size: float,
+) -> bool:
+    """
+    Attempt to close a multi-leg position as a single BAG (combo) order
+    with adaptive price walking. Follows the same pricing pattern used by
+    close_stale_positions() in order_manager.py.
+
+    Returns True if the BAG order filled, False otherwise.
+    Does NOT verify positions — caller must check via reqPositionsAsync.
+    """
+    from functools import reduce
+    from math import gcd
+
+    try:
+        # Determine close actions and quantities
+        close_legs = []
+        for leg in legs:
+            close_legs.append({
+                'contract': leg.contract,
+                'action': 'SELL' if leg.position > 0 else 'BUY',
+                'qty': abs(leg.position),
+            })
+
+        # Calculate GCD for BAG ratio (handles qty>1 cases)
+        qty_gcd = reduce(gcd, [cl['qty'] for cl in close_legs])
+
+        # Build BAG contract (same pattern as close_stale_positions)
+        bag = Contract()
+        bag.symbol = legs[0].contract.symbol
+        bag.secType = "BAG"
+        bag.currency = legs[0].contract.currency or 'USD'
+        bag.exchange = legs[0].contract.exchange or config.get('exchange', 'SMART')
+
+        combo_legs_list = []
+        for cl in close_legs:
+            combo_leg = ComboLeg()
+            combo_leg.conId = cl['contract'].conId
+            combo_leg.ratio = cl['qty'] // qty_gcd
+            combo_leg.action = cl['action']
+            combo_leg.exchange = cl['contract'].exchange or config.get('exchange', 'SMART')
+            combo_legs_list.append(combo_leg)
+
+        bag.comboLegs = combo_legs_list
+        bag_action = 'BUY'  # IB convention: BAG action BUY with explicit leg actions
+        order_size = qty_gcd
+
+        # Get market data for each leg to calculate combo price
+        calculated_combo_price = 0.0
+        price_valid = True
+
+        for cl in close_legs:
+            try:
+                ticker = ib.reqMktData(cl['contract'], '', True, False)
+                await asyncio.sleep(1.5)
+
+                bid = ticker.bid if not util.isNan(ticker.bid) else 0
+                ask = ticker.ask if not util.isNan(ticker.ask) else 0
+                last = ticker.last if not util.isNan(ticker.last) else 0
+
+                ib.cancelMktData(cl['contract'])
+
+                if bid > 0 and ask > 0:
+                    mid = (bid + ask) / 2
+                elif last > 0:
+                    mid = last
+                else:
+                    logger.warning(
+                        f"BAG close: no price data for {cl['contract'].localSymbol}"
+                    )
+                    price_valid = False
+                    break
+
+                # Same aggregation as close_stale_positions:
+                # BUY legs add to cost, SELL legs subtract
+                if cl['action'] == 'BUY':
+                    calculated_combo_price += mid
+                else:
+                    calculated_combo_price -= mid
+
+                logger.debug(
+                    f"BAG leg {cl['contract'].localSymbol}: "
+                    f"{cl['action']} @ mid={mid:.4f}"
+                )
+
+            except Exception as e:
+                logger.warning(
+                    f"BAG close: market data failed for "
+                    f"{cl['contract'].localSymbol}: {e}"
+                )
+                price_valid = False
+                break
+
+        if not price_valid:
+            logger.warning(
+                f"BAG close for {position_id}: price discovery failed, "
+                f"skipping BAG attempt"
+            )
+            return False
+
+        # Add slippage buffer (same pattern as close_stale_positions)
+        slippage_buffer = max(
+            abs(calculated_combo_price) * 0.02, tick_size
+        )
+        # BAG action is BUY → add buffer (willing to pay more / accept less credit)
+        lmt_price = calculated_combo_price + slippage_buffer
+        lmt_price = round(lmt_price / tick_size) * tick_size
+
+        # Validate price
+        if lmt_price == 0.0 or (abs(lmt_price) < tick_size):
+            logger.warning(
+                f"BAG close for {position_id}: invalid limit price "
+                f"{lmt_price:.4f}, skipping BAG attempt"
+            )
+            return False
+
+        price_type = 'CREDIT' if lmt_price < 0 else 'DEBIT'
+        logger.info(
+            f"BAG close order for {position_id}: {bag_action} {order_size}x "
+            f"@ {lmt_price:.4f} ({price_type}, {len(combo_legs_list)} legs)"
+        )
+
+        order = LimitOrder(bag_action, order_size, round(lmt_price, 4))
+        order.outsideRth = True
+
+        trade = place_order(ib, bag, order)
+        if trade is None:
+            logger.warning(f"BAG close: place_order returned None for {position_id}")
+            return False
+
+        # Adaptive walking (same direction logic as close_stale_positions)
+        price_range = abs(lmt_price) * 0.10 if lmt_price != 0 else tick_size * 10
+        # BAG action is BUY → ceiling is higher (walk UP = more aggressive)
+        ceiling_price = lmt_price + price_range
+
+        walk_count = 0
+        elapsed = 0
+
+        while elapsed < timeout:
+            await asyncio.sleep(1)
+            elapsed += 1
+
+            if trade.orderStatus.status == 'Filled':
+                logger.info(
+                    f"  ✅ BAG close filled for {position_id} "
+                    f"@ {trade.orderStatus.avgFillPrice}"
+                )
+                try:
+                    from trading_bot.utils import log_trade_to_ledger
+                    await log_trade_to_ledger(
+                        ib, trade,
+                        reason=f"Spread Close: {position_id[:8]}",
+                        position_id=position_id,
+                        config=config
+                    )
+                except Exception as log_err:
+                    logger.warning(f"BAG close ledger log failed: {log_err}")
+                return True
+
+            if trade.orderStatus.status in ('Cancelled', 'Inactive'):
+                logger.warning(
+                    f"BAG close cancelled/inactive for {position_id}"
+                )
+                return False
+
+            # Don't walk if partially filled
+            if trade.orderStatus.remaining > 0 and trade.orderStatus.filled > 0:
+                continue
+
+            if elapsed % walk_interval == 0 and walk_count < max_walks:
+                current = trade.order.lmtPrice
+                walk_amount = max(
+                    abs(current) * walk_pct, tick_size
+                ) if current != 0 else tick_size
+
+                # BUY BAG: walk UP toward ceiling
+                new_price = current + walk_amount
+                new_price = min(new_price, ceiling_price)
+                new_price = round(new_price / tick_size) * tick_size
+
+                if new_price != current:
+                    walk_count += 1
+                    price_type = 'CREDIT' if new_price < 0 else 'DEBIT'
+                    logger.info(
+                        f"  BAG close walk #{walk_count}: "
+                        f"{current:.4f} → {new_price:.4f} ({price_type})"
+                    )
+                    trade.order.lmtPrice = new_price
+                    ib.placeOrder(trade.contract, trade.order)
+
+        # Timeout — cancel BAG order
+        logger.warning(
+            f"BAG close timed out after {elapsed}s for {position_id}. "
+            f"Cancelling."
+        )
+        if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
+            ib.cancelOrder(trade.order)
+            await asyncio.sleep(2)
+
+        return trade.orderStatus.status == 'Filled'
+
+    except Exception as e:
+        logger.error(f"BAG close attempt failed for {position_id}: {e}")
+        return False
+
 
 async def _close_spread_position(
     ib: IB,
@@ -1282,174 +2226,213 @@ async def _close_spread_position(
     thesis: dict = None
 ):
     """
-    Closes all legs of a spread position.
+    Closes all legs of a spread position ATOMICALLY where possible.
 
-    Improvements over _close_position_with_thesis_reason:
-    1. Qualifies contracts before placing orders (fixes Error 321)
-    2. Verifies each order actually filled before claiming success
-    3. Handles multi-leg positions atomically where possible
-    4. Falls back to individual leg closure if BAG order fails
+    Strategy:
+    1. Attempt BAG (combo) close with limit+walk — all legs in one order
+    2. If BAG fails/partial → verify via reqPositionsAsync what actually closed
+    3. Close remaining legs individually with limit+walk
+    4. Final verification via reqPositionsAsync before claiming success
 
-    Commodity-agnostic: Works for any multi-leg strategy on any exchange.
+    Commodity-agnostic: Uses config-driven timeouts, tick sizes, and exchange routing.
+
+    Returns True ONLY if ALL legs confirmed closed via position query.
     """
+    from trading_bot.utils import get_tick_size
+
     logger.info(
         f"Executing SPREAD CLOSE for {position_id} "
         f"({len(legs)} legs): {reason}"
     )
 
-    # --- Step 1: Re-qualify ALL contracts by conId ---
-    # CRITICAL FIX (2026-02-03): IBKR returns KC option positions with strikes
-    # in cents (307.5), but the order API expects dollars (3.075). We MUST
-    # re-qualify every contract using ONLY the conId so IB populates the
-    # correct strike format. Previous code skipped this for contracts that
-    # already had an exchange set, which was always the case for positions.
+    # --- Config-driven close parameters ---
+    close_cfg = config.get('strategy_tuning', {})
+    CLOSE_TIMEOUT = close_cfg.get('close_timeout_seconds', 300)
+    CLOSE_WALK_STEPS = close_cfg.get('close_walk_steps', 10)
+    CLOSE_WALK_INTERVAL = close_cfg.get('close_walk_interval_seconds', 15)
+    CLOSE_WALK_PCT = close_cfg.get('close_walk_increment_pct', 0.04)
+    TICK_SIZE = get_tick_size(config)
+
+    # --- Step 1: Prepare qualified legs ---
     qualified_legs = []
     for leg in legs:
-        original_contract = leg.contract
-        try:
-            # Build a minimal contract with ONLY the conId.
-            # This forces IB to populate all fields from its database,
-            # including the correctly-formatted strike price.
-            minimal = Contract(conId=original_contract.conId)
-            qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=15)
-            if qualified and qualified[0].conId != 0:
-                qualified_legs.append(type(leg)(
-                    account=leg.account,
-                    contract=qualified[0],
-                    position=leg.position,
-                    avgCost=leg.avgCost
-                ))
-                logger.debug(
-                    f"Re-qualified {original_contract.localSymbol}: "
-                    f"strike {original_contract.strike} -> {qualified[0].strike}, "
-                    f"exchange={qualified[0].exchange}"
-                )
-            else:
-                logger.error(
-                    f"Contract re-qualification returned invalid result for "
-                    f"{original_contract.localSymbol} (conId={original_contract.conId}) "
-                    f"— using original (may fail with Error 478)"
-                )
-                qualified_legs.append(leg)
-        except Exception as e:
-            logger.error(
-                f"Contract re-qualification failed for "
-                f"{original_contract.localSymbol}: {e} — using original"
-            )
-            qualified_legs.append(leg)
-
-    # --- Step 2: Close each leg individually ---
-    # (BAG orders require additional combo definition logic; individual
-    #  leg closure is more reliable for thesis-based exits)
-    successful_closes = []
-    failed_closes = []
-
-    for leg in qualified_legs:
         contract = leg.contract
+        # reqPositionsAsync may return contracts without exchange — fill from config
+        if not contract.exchange:
+            contract.exchange = config.get('exchange', 'SMART')
+        qualified_legs.append(leg)
+        logger.debug(
+            f"Using pos.contract for {contract.localSymbol}: "
+            f"strike={contract.strike}, exchange={contract.exchange}"
+        )
+
+    # --- Step 2: Build symbol→expected_close map for verification ---
+    expected_closes = {}
+    for leg in qualified_legs:
+        sym = leg.contract.localSymbol
+        expected_closes[sym] = {
+            'contract': leg.contract,
+            'close_action': 'SELL' if leg.position > 0 else 'BUY',
+            'qty': abs(leg.position),
+            'original_position': leg.position,
+        }
+
+    # --- Step 3: Attempt BAG close if multi-leg ---
+    bag_filled = False
+    if len(qualified_legs) > 1:
+        bag_filled = await _attempt_bag_close(
+            ib, qualified_legs, position_id, config,
+            CLOSE_TIMEOUT, CLOSE_WALK_STEPS, CLOSE_WALK_INTERVAL,
+            CLOSE_WALK_PCT, TICK_SIZE
+        )
+        if bag_filled:
+            logger.info(f"BAG close filled for {position_id}")
+    elif len(qualified_legs) == 1:
+        # Single leg — close directly with limit+walk
+        leg = qualified_legs[0]
         action = 'SELL' if leg.position > 0 else 'BUY'
         qty = abs(leg.position)
-
-        try:
-            order = MarketOrder(action, qty)
-            trade = place_order(ib, contract, order)
-            await asyncio.sleep(3)  # Allow time for fill
-
-            # --- Step 3: Verify fill status ---
-            if trade.orderStatus.status == 'Filled':
-                successful_closes.append({
-                    'symbol': contract.localSymbol,
-                    'action': action,
-                    'qty': qty,
-                    'fill_price': trade.orderStatus.avgFillPrice
-                })
-                logger.info(
-                    f"  ✅ {action} {qty}x {contract.localSymbol} "
-                    f"@ {trade.orderStatus.avgFillPrice}"
-                )
-            else:
-                failed_closes.append({
-                    'symbol': contract.localSymbol,
-                    'status': trade.orderStatus.status,
-                    'error': str(trade.log[-1].message if trade.log else 'Unknown')
-                })
-                logger.error(
-                    f"  ❌ {contract.localSymbol}: "
-                    f"{trade.orderStatus.status} — "
-                    f"{trade.log[-1].message if trade.log else 'No message'}"
-                )
-                # Cancel pending order to avoid rogue fills
-                if trade.orderStatus.status not in ('Filled', 'Cancelled', 'Inactive'):
-                    try:
-                        ib.cancelOrder(trade.order)
-                    except Exception:
-                        pass
-
-        except Exception as e:
-            failed_closes.append({
-                'symbol': contract.localSymbol,
-                'status': 'EXCEPTION',
-                'error': str(e)
-            })
-            logger.error(f"  ❌ {contract.localSymbol}: Exception — {e}")
-
-        await asyncio.sleep(0.5)  # Throttle between legs
-
-    # --- Step 4: Send accurate notification ---
-    total_legs = len(qualified_legs)
-    success_count = len(successful_closes)
-    # fail_count = len(failed_closes)
-
-    if success_count == total_legs:
-        # Full success
-        leg_symbols = [sc['symbol'] for sc in successful_closes] if successful_closes else []
-        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
-        title = f"✅ Position Closed: {readable_symbol}"
-        message = (
-            f"Reason: {reason}\n"
-            f"Closed {success_count}/{total_legs} legs successfully.\n"
+        bag_filled = await _close_single_leg_with_walk(
+            ib, leg.contract, action, qty, position_id, config,
+            CLOSE_TIMEOUT, CLOSE_WALK_STEPS, CLOSE_WALK_INTERVAL,
+            CLOSE_WALK_PCT, TICK_SIZE
         )
-        for sc in successful_closes:
-            message += f"  {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
-    elif success_count > 0:
-        # Partial success — DANGEROUS, position is now unbalanced
-        leg_symbols = [sc['symbol'] for sc in successful_closes] + [fc['symbol'] for fc in failed_closes]
-        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
-        title = f"⚠️ PARTIAL CLOSE: {readable_symbol}"
-        message = (
-            f"Reason: {reason}\n"
-            f"⚠️ ONLY {success_count}/{total_legs} legs closed!\n"
-            f"MANUAL INTERVENTION REQUIRED — position may have naked exposure.\n\n"
-            f"Successful:\n"
+
+    # --- Step 4: Verify what actually closed via IB positions ---
+    await asyncio.sleep(2)  # Allow IB to settle
+    try:
+        current_positions = await asyncio.wait_for(
+            ib.reqPositionsAsync(), timeout=30
         )
-        for sc in successful_closes:
-            message += f"  ✅ {sc['action']} {sc['qty']}x {sc['symbol']} @ ${sc['fill_price']:.4f}\n"
-        message += "\nFailed:\n"
-        for fc in failed_closes:
-            message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
+    except asyncio.TimeoutError:
+        logger.error(
+            f"reqPositionsAsync timed out during close verification "
+            f"for {position_id}"
+        )
+        # If BAG said it filled, trust it
+        if bag_filled:
+            _send_close_notification(
+                config, position_id, reason, qualified_legs,
+                list(expected_closes.keys()), []
+            )
+            await close_spread_with_protection_cleanup(
+                ib, None, f"CATASTROPHE_{position_id}"
+            )
+            return True
+        return False
+
+    still_open = {}
+    for sym, info in expected_closes.items():
+        matching = [
+            p for p in (current_positions or [])
+            if p.contract.localSymbol == sym and p.position != 0
+        ]
+        if matching:
+            ib_qty = matching[0].position
+            thesis_qty = info['original_position']
+            # Position still open if IB shows same direction as our thesis
+            if (thesis_qty > 0 and ib_qty > 0) or (thesis_qty < 0 and ib_qty < 0):
+                remaining = min(abs(ib_qty), abs(thesis_qty))
+                still_open[sym] = {
+                    'contract': matching[0].contract,
+                    'close_action': info['close_action'],
+                    'qty': remaining,
+                }
+
+    if not still_open:
+        logger.info(
+            f"  ✅ ALL {len(qualified_legs)} legs confirmed closed "
+            f"for {position_id}"
+        )
+        _send_close_notification(
+            config, position_id, reason, qualified_legs,
+            list(expected_closes.keys()), []
+        )
+        await close_spread_with_protection_cleanup(
+            ib, None, f"CATASTROPHE_{position_id}"
+        )
+        return True
+
+    # --- Step 5: Close remaining legs individually with limit+walk ---
+    logger.warning(
+        f"  ⚠️ {len(still_open)} legs still open after "
+        f"{'BAG' if len(qualified_legs) > 1 else 'limit'} close for "
+        f"{position_id}: {list(still_open.keys())}. "
+        f"Closing individually."
+    )
+
+    for sym, info in still_open.items():
+        contract = info['contract']
+        if not contract.exchange:
+            contract.exchange = config.get('exchange', 'SMART')
+
+        closed = await _close_single_leg_with_walk(
+            ib, contract, info['close_action'], info['qty'],
+            position_id, config,
+            CLOSE_TIMEOUT, CLOSE_WALK_STEPS, CLOSE_WALK_INTERVAL,
+            CLOSE_WALK_PCT, TICK_SIZE
+        )
+        if not closed:
+            logger.error(
+                f"  ❌ Failed to close {sym} for {position_id} "
+                f"even with individual limit+walk"
+            )
+
+    # --- Step 6: Final verification ---
+    await asyncio.sleep(2)
+    try:
+        final_positions = await asyncio.wait_for(
+            ib.reqPositionsAsync(), timeout=30
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Final reqPositionsAsync timed out for {position_id}"
+        )
+        return False
+
+    final_open = []
+    for sym in expected_closes:
+        info = expected_closes[sym]
+        matching = [
+            p for p in (final_positions or [])
+            if p.contract.localSymbol == sym and p.position != 0
+        ]
+        if matching:
+            ib_qty = matching[0].position
+            thesis_qty = info['original_position']
+            if (thesis_qty > 0 and ib_qty > 0) or (thesis_qty < 0 and ib_qty < 0):
+                final_open.append(sym)
+
+    fully_closed = len(final_open) == 0
+
+    if fully_closed:
+        logger.info(
+            f"  ✅ ALL legs confirmed closed after individual "
+            f"fallback for {position_id}"
+        )
+        _send_close_notification(
+            config, position_id, reason, qualified_legs,
+            list(expected_closes.keys()), []
+        )
     else:
-        # Total failure — DO NOT invalidate thesis
-        leg_symbols = [fc['symbol'] for fc in failed_closes]
-        readable_symbol = leg_symbols[0].split()[0] if leg_symbols else "Unknown"
-        title = f"❌ CLOSE FAILED: {readable_symbol}"
-        message = (
-            f"Reason: {reason}\n"
-            f"ALL {total_legs} close orders FAILED.\n"
-            f"Position remains open. Will retry on next audit cycle.\n\n"
+        logger.error(
+            f"  ❌ ORPHAN RISK: {len(final_open)} legs STILL OPEN "
+            f"for {position_id}: {final_open}. "
+            f"Manual intervention required."
         )
-        for fc in failed_closes:
-            message += f"  ❌ {fc['symbol']}: {fc['status']} — {fc['error']}\n"
+        _send_close_notification(
+            config, position_id, reason, qualified_legs,
+            [s for s in expected_closes if s not in final_open],
+            final_open
+        )
 
-    send_pushover_notification(config.get('notifications', {}), title, message)
-
-    # --- Step 5: Cleanup catastrophe stops (only if fully closed) ---
-    if success_count == total_legs:
+    # Cleanup catastrophe stops if fully closed
+    if fully_closed:
         await close_spread_with_protection_cleanup(
             ib, None, f"CATASTROPHE_{position_id}"
         )
 
-    # --- Step 6: Return success status ---
-    # Caller should only invalidate thesis if ALL legs closed
-    return success_count == total_legs
+    return fully_closed
 
 
 async def _reconcile_state_stores(
@@ -1480,22 +2463,24 @@ async def _reconcile_state_stores(
         try:
             all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
-            logger.error("reqPositionsAsync timed out (30s) in state reconciliation")
+            if _in_ib_startup_grace():
+                logger.warning("reqPositionsAsync timed out (30s) in state reconciliation (startup)")
+            else:
+                logger.error("reqPositionsAsync timed out (30s) in state reconciliation")
             all_positions = ib.positions()  # Fall back to cached if timeout
-        ib_positions = [p for p in all_positions if p.position != 0]
+        symbol = config.get('symbol', 'KC')
+        ib_positions = [
+            p for p in all_positions
+            if p.position != 0 and p.contract.symbol == symbol
+        ]
         results['ibkr_positions'] = len(ib_positions)
 
-        # 2. Count open positions in ledger
-        if not trade_ledger.empty and 'position_id' in trade_ledger.columns:
-            # Group by position_id and check net quantity
-            for pos_id in trade_ledger['position_id'].unique():
-                pos_entries = trade_ledger[trade_ledger['position_id'] == pos_id]
-                net_qty = 0
-                for _, row in pos_entries.iterrows():
-                    qty = row['quantity'] if row['action'] == 'BUY' else -row['quantity']
-                    net_qty += qty
-                if net_qty != 0:
-                    results['ledger_open'] += 1
+        # 2. Count open positions in ledger using canonical filtering logic.
+        # get_local_active_positions handles all edge cases: PHANTOM entries,
+        # Ledger reconciliation synthetics, and RECONCILIATION_MISSING superseding.
+        # Using it ensures the state sync count matches what Flex reconciliation computes.
+        local_active = get_local_active_positions(trade_ledger)
+        results['ledger_open'] = len(local_active)
 
         # 3. Count active theses in TMS
         active_theses = tms.collection.get(
@@ -1504,15 +2489,31 @@ async def _reconcile_state_stores(
         )
         results['tms_active'] = len(active_theses.get('metadatas', []))
 
-        # 4. Check for discrepancies
+        # 4. Group IBKR legs into thesis groups before comparing with TMS.
+        # Spreads have 2 legs in IBKR but 1 thesis in TMS — comparing raw
+        # leg count vs thesis count produces false-positive warnings.
+        ib_thesis_groups = _group_positions_by_thesis(ib_positions, trade_ledger, tms)
+        ib_thesis_count = len(ib_thesis_groups)
+        unmapped_legs = results['ibkr_positions'] - sum(
+            len(g['legs']) for g in ib_thesis_groups.values()
+        )
+        results['ibkr_thesis_groups'] = ib_thesis_count
+        results['unmapped_legs'] = unmapped_legs
+
+        # 5. Check for discrepancies
         if results['ibkr_positions'] != results['ledger_open']:
             results['discrepancies'].append(
                 f"IBKR has {results['ibkr_positions']} positions but ledger shows {results['ledger_open']} open"
             )
 
-        if results['ibkr_positions'] != results['tms_active']:
+        if ib_thesis_count != results['tms_active']:
             results['discrepancies'].append(
-                f"IBKR has {results['ibkr_positions']} positions but TMS has {results['tms_active']} active theses"
+                f"IBKR has {ib_thesis_count} thesis groups ({results['ibkr_positions']} legs) "
+                f"but TMS has {results['tms_active']} active theses"
+            )
+        if unmapped_legs > 0:
+            results['discrepancies'].append(
+                f"{unmapped_legs} IBKR leg(s) could not be mapped to any thesis"
             )
 
         if results['discrepancies']:
@@ -1523,18 +2524,22 @@ async def _reconcile_state_stores(
             # Send notification for manual review
             send_pushover_notification(
                 config.get('notifications', {}),
-                "⚠️ State Sync Warning",
-                "Discrepancies found:\n" + "\n".join(results['discrepancies'])
+                f"⚠️ {symbol} State Sync Warning",
+                f"[{symbol}] Discrepancies found:\n" + "\n".join(results['discrepancies'])
             )
         else:
             logger.info(
-                f"State stores reconciled: {results['ibkr_positions']} positions across all stores"
+                f"State stores reconciled: {ib_thesis_count} thesis groups "
+                f"({results['ibkr_positions']} legs) across all stores"
             )
 
         return results
 
     except Exception as e:
-        logger.error(f"State reconciliation failed: {e}")
+        if _in_ib_startup_grace():
+            logger.warning(f"State reconciliation skipped (startup): {e}")
+        else:
+            logger.error(f"State reconciliation failed: {e}")
         results['reconciled'] = False
         results['discrepancies'].append(f"Reconciliation error: {e}")
         return results
@@ -1552,7 +2557,8 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
 
     logger.info(f"--- POSITION AUDIT CYCLE ({trigger_source}) ---")
 
-    llm_budget_available = not (GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit)
+    _bg = _get_budget_guard()
+    llm_budget_available = not (_bg and _bg.is_budget_hit)
     if not llm_budget_available:
         logger.info("Budget hit — position audit will skip LLM-based checks (IC/straddle checks still active)")
 
@@ -1560,6 +2566,13 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
     try:
         ib = await IBConnectionPool.get_connection("audit", config)
         configure_market_data_type(ib)
+
+        # Safety net: Cancel any orphaned catastrophe stops from previous sessions
+        try:
+            from trading_bot.order_manager import _cancel_orphaned_catastrophe_stops
+            await _cancel_orphaned_catastrophe_stops(ib, config)
+        except Exception as e:
+            logger.warning(f"Catastrophe stop cleanup in audit failed (non-fatal): {e}")
 
         # === L5 FIX: Reconcile state stores before audit ===
         trade_ledger = get_trade_ledger_df()
@@ -1572,13 +2585,18 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                 f"IBKR positions are source of truth."
             )
 
-        # 1. Get current positions from IB
+        # 1. Get current positions from IB (filtered to this commodity)
+        commodity_symbol = config.get('symbol', 'KC')
         try:
-            live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+            all_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
-            logger.error("reqPositionsAsync timed out (30s) in position audit, treating as empty")
-            live_positions = []
-        if not live_positions or all(p.position == 0 for p in live_positions):
+            if _in_ib_startup_grace():
+                logger.warning("reqPositionsAsync timed out (30s) in position audit (startup)")
+            else:
+                logger.error("reqPositionsAsync timed out (30s) in position audit, treating as empty")
+            all_positions = []
+        live_positions = [p for p in all_positions if p.position != 0 and p.contract.symbol == commodity_symbol]
+        if not live_positions:
             logger.info("No open positions to audit.")
 
             # Reconcile: If TMS has active theses but IB has no positions,
@@ -1594,6 +2612,13 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
                     )
             except Exception as e:
                 logger.warning(f"Post-audit reconciliation failed (non-fatal): {e}")
+
+            # Phantom reconciliation DISABLED — it creates synthetic close rows
+            # that worsen state sync discrepancies (adds extra non-zero symbols).
+            # Root causes: IB net-zero netting of opposing spreads, RECON_MISSING
+            # with fabricated position_ids, and emergency close EMERGENCY_ pids.
+            # See: https://github.com/rozavala/real_options/pull/1210
+            logger.info("Phantom ledger reconciliation skipped (disabled)")
 
             return
 
@@ -1612,11 +2637,48 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             f"{len(position_groups)} thesis groups"
         )
 
+        # 4.5 === SAFETY NET: Retry pending_close theses ===
+        # These are theses marked CONTRADICT where the immediate close in
+        # place_queued_orders failed (partial fill, timeout, IB disconnection).
+        # The pending_close flag in TMS metadata is the durable record of intent.
+        try:
+            pending = tms.get_pending_close_theses()
+            if pending:
+                logger.warning(
+                    f"Found {len(pending)} theses with pending_close flag — "
+                    f"retrying CONTRADICT close in audit cycle"
+                )
+                from trading_bot.order_manager import _close_contradicted_thesis
+                for item in pending:
+                    tid = item['trade_id']
+                    reason = item['pending_close']
+                    ts = item.get('pending_close_timestamp', '')
+                    logger.info(
+                        f"Retrying pending_close for {tid} "
+                        f"(reason={reason}, flagged_at={ts})")
+                    try:
+                        closed = await _close_contradicted_thesis(
+                            ib, tid, config, tms)
+                        if closed:
+                            logger.info(f"pending_close retry successful for {tid}")
+                            # Remove from position_groups so it's not double-processed
+                            position_groups.pop(tid, None)
+                        else:
+                            logger.warning(
+                                f"pending_close retry failed for {tid}. "
+                                f"Will retry on next audit cycle.")
+                    except Exception as e:
+                        logger.error(
+                            f"pending_close retry error for {tid}: {e}",
+                            exc_info=True)
+        except Exception as e:
+            logger.warning(f"Failed to process pending_close theses in audit: {e}")
+
         # 5. === NEW: Cache active futures (Issue 9 fix) ===
         active_futures_cache = {}
         try:
             symbol = config.get('symbol', 'KC')
-            exchange = config.get('exchange', 'NYBOT')
+            exchange = config['exchange']
 
             # === K1 FIX: Check cache validity before use ===
             cached_futures = active_futures_cache.get(symbol)
@@ -1814,8 +2876,55 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
         else:
             logger.info("Position audit complete. All theses remain valid.")
 
+        # E.1: Post-audit VaR computation + AI Risk Agent
+        try:
+            from trading_bot.var_calculator import get_var_calculator, run_risk_agent
+            var_calc = get_var_calculator(config)
+            prev_var = var_calc.get_cached_var()
+            var_result = await asyncio.wait_for(
+                var_calc.compute_portfolio_var(ib, config), timeout=30.0
+            )
+            logger.info(
+                f"Post-audit VaR: 95%={var_result.var_95_pct:.2%} "
+                f"(${var_result.var_95:,.0f}), positions={var_result.position_count}"
+            )
+
+            # Run AI Risk Agent (L1 + L2)
+            try:
+                agent_output = await asyncio.wait_for(
+                    run_risk_agent(var_result, config, ib, prev_var), timeout=30.0
+                )
+                if agent_output.get('interpretation'):
+                    var_result.narrative = agent_output['interpretation']
+                if agent_output.get('scenarios'):
+                    var_result.scenarios = agent_output['scenarios']
+                var_calc._save_state(var_result)
+            except asyncio.TimeoutError:
+                logger.warning("Risk Agent timed out after 30s (non-fatal, VaR saved)")
+            except Exception as agent_e:
+                logger.warning(f"Risk Agent failed (non-fatal, VaR saved): {agent_e}")
+
+            # Pushover alert if VaR is elevated
+            enforcement_mode = config.get('compliance', {}).get('var_enforcement_mode', 'log_only')
+            var_warning = config.get('compliance', {}).get('var_warning_pct', 0.02)
+            if enforcement_mode != 'log_only' and var_result.var_95_pct > var_warning:
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "Portfolio VaR Alert",
+                    f"VaR(95%) = {var_result.var_95_pct:.1%} of equity "
+                    f"(${var_result.var_95:,.0f}) — limit is "
+                    f"{config.get('compliance', {}).get('var_limit_pct', 0.03):.0%}",
+                    ticker="ALL"
+                )
+        except asyncio.TimeoutError:
+            logger.warning("Post-audit VaR computation timed out after 30s (non-fatal)")
+        except Exception as var_e:
+            logger.warning(f"Post-audit VaR computation failed (non-fatal): {var_e}")
+
     except Exception as e:
-        logger.error(f"Position Audit Cycle failed: {e}\n{traceback.format_exc()}")
+        logger.exception(f"Position Audit Cycle failed: {e}")
+        if config.get('_recovery_mode'):
+            raise  # Let recover_missed_tasks() see the failure
     finally:
         if ib is not None:
             try:
@@ -1836,11 +2945,12 @@ async def log_stream(stream, logger_func):
 
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
-    global monitor_process, _SYSTEM_SHUTDOWN
+    global monitor_process, _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
 
-    # Reset shutdown flag for new trading day
-    _SYSTEM_SHUTDOWN = False
-    logger.info("System shutdown flag CLEARED — new trading day beginning")
+    # Reset both shutdown flags for new trading day
+    _SCHEDULED_SHUTDOWN = False
+    _FULL_SHUTDOWN = False
+    logger.info("Shutdown flags CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
     if not is_market_open(config):
@@ -1866,7 +2976,7 @@ async def start_monitoring(config: dict):
 
         logger.info("Started position monitoring service.")
     except Exception as e:
-        logger.critical(f"Failed to start position monitor: {e}\n{traceback.format_exc()}")
+        logger.critical(f"Failed to start position monitor: {e}", exc_info=True)
         send_pushover_notification(config.get('notifications', {}), "Orchestrator CRITICAL", "Failed to start position monitor.")
 
 
@@ -1886,28 +2996,42 @@ async def stop_monitoring(config: dict):
     except ProcessLookupError:
         logger.warning("Process already terminated.")
     except Exception as e:
-        logger.critical(f"An error occurred while stopping the monitor: {e}\n{traceback.format_exc()}")
+        logger.critical(f"An error occurred while stopping the monitor: {e}", exc_info=True)
 
 
 async def cancel_and_stop_monitoring(config: dict):
     """Wrapper task to cancel open orders and then stop the monitor."""
-    global _SYSTEM_SHUTDOWN
+    global _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
 
     logger.info("--- Initiating end-of-day shutdown sequence ---")
-    _SYSTEM_SHUTDOWN = True  # Set BEFORE canceling orders
-    logger.info("System shutdown flag SET — no new trades or emergency cycles will be processed")
+    _SCHEDULED_SHUTDOWN = True  # Block new scheduled signals immediately
+    logger.info("Scheduled shutdown flag SET — no new scheduled trades will be processed")
 
     await cancel_all_open_orders(config)
-    await stop_monitoring(config)
 
-    # v5.4 Fix: Release pooled connections to prevent "Peer closed" errors
-    # at 20:00 UTC Gateway restart. Post-shutdown tasks (equity logging,
-    # reconciliation) use their own self-managed connections, not the pool.
-    try:
-        await IBConnectionPool.release_all()
-        logger.info("Connection pool released — no stale connections for Gateway restart")
-    except Exception as e:
-        logger.warning(f"Pool cleanup during shutdown: {e}")
+    # Check if the commodity has a PASSIVE window. If so, keep the position
+    # monitor alive and don't fully shut down — sentinels can still trigger
+    # emergency cycles during passive hours.
+    current_state = get_market_state(config)
+    if current_state == 'PASSIVE':
+        logger.info(
+            "Market entering PASSIVE state — position monitor stays alive, "
+            "emergency cycles remain enabled"
+        )
+        # Don't stop monitoring, don't set _FULL_SHUTDOWN
+    else:
+        _FULL_SHUTDOWN = True
+        logger.info("Full shutdown flag SET — system entering SLEEPING state")
+        await stop_monitoring(config)
+
+        # v5.4 Fix: Release pooled connections to prevent "Peer closed" errors
+        # at 20:00 UTC Gateway restart. Post-shutdown tasks (equity logging,
+        # reconciliation) use their own self-managed connections, not the pool.
+        try:
+            await IBConnectionPool.release_all()
+            logger.info("Connection pool released — no stale connections for Gateway restart")
+        except Exception as e:
+            logger.warning(f"Pool cleanup during shutdown: {e}")
 
     logger.info("--- End-of-day shutdown sequence complete ---")
 
@@ -2003,14 +3127,14 @@ async def analyze_and_archive(config: dict):
 
         logger.info("--- End-of-day analysis and archiving complete ---")
     except Exception as e:
-        logger.critical(f"An error occurred during the analysis and archiving process: {e}\n{traceback.format_exc()}")
+        logger.critical(f"An error occurred during the analysis and archiving process: {e}", exc_info=True)
 
 
 async def reconcile_and_notify(config: dict):
     """Runs the trade reconciliation and sends a notification if discrepancies are found."""
     logger.info("--- Starting trade reconciliation ---")
     try:
-        missing_df, superfluous_df = await run_reconciliation()
+        missing_df, superfluous_df = await run_reconciliation(config=config)
 
         if not missing_df.empty or not superfluous_df.empty:
             logger.warning("Trade reconciliation found discrepancies.")
@@ -2021,9 +3145,10 @@ async def reconcile_and_notify(config: dict):
                 message += f"Found {len(superfluous_df)} superfluous trades in the local ledger.\n"
             message += "Check the `archive_ledger` directory for details."
 
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             send_pushover_notification(
                 config.get('notifications', {}),
-                "Trade Reconciliation Alert",
+                f"Trade Reconciliation Alert [{ticker}]",
                 message
             )
         else:
@@ -2033,7 +3158,7 @@ async def reconcile_and_notify(config: dict):
         await reconcile_council_history(config)
 
     except Exception as e:
-        logger.critical(f"An error occurred during trade reconciliation: {e}\n{traceback.format_exc()}")
+        logger.critical(f"An error occurred during trade reconciliation: {e}", exc_info=True)
 
 
 async def sentinel_effectiveness_check(config: dict):
@@ -2053,7 +3178,11 @@ async def sentinel_effectiveness_check(config: dict):
         weekly_change_pct = None
         try:
             import yfinance as yf
-            yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
+            try:
+                from dashboard_utils import resolve_yf_ticker
+                yf_ticker = resolve_yf_ticker(profile.contract.symbol)
+            except Exception:
+                yf_ticker = getattr(profile, 'yfinance_ticker', f"{profile.contract.symbol}=F")
             data = yf.Ticker(yf_ticker).history(period="5d")
             if data is not None and len(data) >= 2:
                 weekly_change_pct = ((data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]) * 100
@@ -2071,11 +3200,46 @@ async def sentinel_effectiveness_check(config: dict):
 
         if abs(weekly_change_pct) > significance_threshold and total_sentinel_trades == 0:
             severity = "🔴" if abs(weekly_change_pct) > 10.0 else "🟡"
-            diagnosis = (
-                "No alerts fired — check sentinel thresholds and connectivity"
-                if total_alerts == 0
-                else "Alerts fired but no trades — check council pipeline (Fix 1) and debounce (Fix 2)"
-            )
+
+            if total_alerts == 0:
+                diagnosis = "No alerts fired — check sentinel thresholds and connectivity"
+            else:
+                # Check if council decisions were made but DA vetoed them
+                da_veto_count = 0
+                council_decisions_today = 0
+                try:
+                    import pandas as pd
+                    ch_path = os.path.join(config.get('data_dir', 'data'), 'council_history.csv')
+                    if os.path.exists(ch_path):
+                        ch_df = pd.read_csv(ch_path, on_bad_lines='warn')
+                        if not ch_df.empty and 'timestamp' in ch_df.columns:
+                            ch_df['timestamp'] = pd.to_datetime(ch_df['timestamp'], utc=True, errors='coerce')
+                            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                            today_mask = ch_df['timestamp'].dt.strftime('%Y-%m-%d') == today_str
+                            council_decisions_today = today_mask.sum()
+                            if 'master_reasoning' in ch_df.columns:
+                                da_veto_count = (
+                                    today_mask & ch_df['master_reasoning'].str.contains(
+                                        r'\[DA VETO:', na=False, case=False
+                                    )
+                                ).sum()
+                except Exception:
+                    pass  # Fall through to generic diagnosis
+
+                if da_veto_count > 0:
+                    diagnosis = (
+                        f"Pipeline working — DA vetoed {da_veto_count}/{council_decisions_today} "
+                        f"council decisions today (risk management working as intended)"
+                    )
+                    severity = "🟡"  # Downgrade: DA vetoes are intentional, not a failure
+                elif council_decisions_today > 0:
+                    diagnosis = (
+                        f"Council ran {council_decisions_today} decisions but no trades placed — "
+                        f"check compliance/order generation"
+                    )
+                else:
+                    diagnosis = "Alerts fired but no council decisions — check council pipeline and debounce"
+
             msg = (
                 f"{severity} SENTINEL EFFECTIVENESS ALERT\n"
                 f"{profile.name} weekly change: {weekly_change_pct:+.1f}%\n"
@@ -2083,11 +3247,13 @@ async def sentinel_effectiveness_check(config: dict):
                 f"Diagnosis: {diagnosis}"
             )
             logger.warning(msg)
-            send_pushover_notification(
-                config.get('notifications', {}),
-                f"{severity} Sentinel Blind Spot Detected",
-                msg
-            )
+            # Only push HIGH/CRITICAL sentinel effectiveness alerts
+            if severity in ('HIGH', 'CRITICAL'):
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    f"{severity} Sentinel Effectiveness",
+                    msg
+                )
         else:
             logger.info(
                 f"Sentinel effectiveness OK: weekly change {weekly_change_pct:+.1f}%, "
@@ -2098,6 +3264,24 @@ async def sentinel_effectiveness_check(config: dict):
         logger.error(f"Sentinel effectiveness check failed: {e}", exc_info=True)
 
 
+async def generate_system_digest_task(config: dict):
+    """Post-close: Generate daily System Health Digest."""
+    try:
+        from trading_bot.system_digest import generate_system_digest
+        digest = await asyncio.to_thread(generate_system_digest, config)
+        if digest:
+            high = [o for o in digest.get("improvement_opportunities", []) if o["priority"] == "HIGH"]
+            if high:
+                send_pushover_notification(
+                    config.get('notifications', {}),
+                    "System Digest: Action Required",
+                    "\n".join(f"[{o['component']}] {o['observation']}" for o in high[:3]),
+                    ticker="ALL"
+                )
+    except Exception as e:
+        logger.error(f"System Digest failed (non-fatal): {e}", exc_info=True)
+
+
 async def reconcile_and_analyze(config: dict):
     """Runs reconciliation, then analysis and archiving."""
     logger.info("--- Kicking off end-of-day reconciliation and analysis process ---")
@@ -2106,7 +3290,7 @@ async def reconcile_and_analyze(config: dict):
 
     # Check equity staleness
     try:
-        equity_file = "data/daily_equity.csv"
+        equity_file = os.path.join(config.get('data_dir', 'data'), "daily_equity.csv")
         if os.path.exists(equity_file):
             import pandas as pd
             eq_df = pd.read_csv(equity_file)
@@ -2131,7 +3315,7 @@ async def reconcile_and_analyze(config: dict):
         await reconcile_and_notify(config)
         # reconciliation_succeeded = True
     except Exception as e:
-        logger.critical(f"Reconciliation FAILED: {e}\n{traceback.format_exc()}")
+        logger.critical(f"Reconciliation FAILED: {e}", exc_info=True)
         send_pushover_notification(
             config.get('notifications', {}),
             "🚨 Reconciliation Failed",
@@ -2141,8 +3325,8 @@ async def reconcile_and_analyze(config: dict):
 
     await analyze_and_archive(config)
 
-    # Feedback loop health check — report reconciliation status too
-    await _check_feedback_loop_health(config)
+    # NOTE: Feedback loop health check moved to run_brier_reconciliation (close+20min)
+    # so it reports accurate counts AFTER CSV predictions are resolved.
 
     logger.info("--- End-of-day reconciliation and analysis process complete ---")
 
@@ -2164,7 +3348,7 @@ async def _check_feedback_loop_health(config: dict):
     logger.info("Running feedback loop health check...")
 
     try:
-        structured_file = "data/agent_accuracy_structured.csv"
+        structured_file = os.path.join(config.get('data_dir', 'data'), "agent_accuracy_structured.csv")
         if not os.path.exists(structured_file):
             logger.info("Feedback Loop Health: No structured predictions file yet (expected for new deployments)")
             return
@@ -2304,9 +3488,9 @@ async def _check_feedback_loop_health(config: dict):
     except Exception as e:
         # === FAIL-SAFE: Log error but NEVER crash the orchestrator ===
         logger.error(
-            f"Feedback loop health check failed (non-fatal): {e}\n"
-            f"The orchestrator will continue operating.\n"
-            f"{traceback.format_exc()}"
+            f"Feedback loop health check failed (non-fatal): {e}. "
+            f"The orchestrator will continue operating.",
+            exc_info=True
         )
         # Optionally notify about the monitoring failure itself
         try:
@@ -2371,7 +3555,7 @@ async def process_deferred_triggers(config: dict):
                     continue
 
             # === CRITICAL FIX: Check deduplicator before each cycle ===
-            if GLOBAL_DEDUPLICATOR.should_process(trigger):
+            if _get_deduplicator().should_process(trigger):
                 await run_emergency_cycle(trigger, config, ib_conn)
                 processed_count += 1
                 # Note: run_emergency_cycle sets POST_CYCLE debounce internally
@@ -2396,7 +3580,7 @@ async def process_deferred_triggers(config: dict):
 
 # --- SENTINEL LOGIC ---
 
-def load_regime_context() -> str:
+def load_regime_context(config: dict = None) -> str:
     """
     Load current fundamental regime from FundamentalRegimeSentinel.
 
@@ -2405,7 +3589,8 @@ def load_regime_context() -> str:
     from pathlib import Path
     import json
 
-    regime_file = Path("data/fundamental_regime.json")
+    data_dir = config.get('data_dir', 'data') if config else 'data'
+    regime_file = Path(os.path.join(data_dir, "fundamental_regime.json"))
     if regime_file.exists():
         try:
             with open(regime_file, 'r') as f:
@@ -2503,10 +3688,16 @@ async def _is_signal_priced_in(trigger: SentinelTrigger, ib: IB, contract) -> tu
         return False, ""  # Fail open — council still evaluates the signal
 
 
-async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
+async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, passive_mode: bool = False):
     """
     Runs a specialized cycle triggered by a Sentinel.
     Executes trades if the Council approves.
+
+    Args:
+        passive_mode: If True, this cycle was triggered during PASSIVE state
+            (emergency threshold exceeded). The caller has already validated
+            thresholds and cooldowns. The market hours gate uses passive_mode
+            as the primary gate; the state check is a safety net.
     """
     # === SHUTDOWN GATE ===
     if is_system_shutdown():
@@ -2516,8 +3707,11 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (system shutdown)")
         return
 
-    # === NEW: MARKET HOURS GATE ===
-    if not is_market_open(config):
+    # === MARKET HOURS GATE ===
+    # passive_mode is the primary gate (caller's intent). State check is a
+    # safety net against races where state transitions between the sentinel
+    # loop's decision and function entry.
+    if not is_market_open(config) and not passive_mode:
         logger.info(f"Market closed. Queuing {trigger.source} alert for next session.")
         _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (market closed)")
         StateManager.queue_deferred_trigger(trigger)
@@ -2539,31 +3733,55 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
         _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (daily cutoff {cutoff_hour}:{cutoff_minute:02d} ET)")
         StateManager.queue_deferred_trigger(trigger)
 
-        # Notify operator for potential manual intervention
-        send_pushover_notification(
-            config.get('notifications', {}),
-            f"⏸️ Post-Cutoff: {trigger.source}",
-            (
-                f"{trigger.reason[:200]}\n"
-                f"Deferred to {next_session} ({day_name} {cutoff_hour}:{cutoff_minute:02d} ET cutoff).\n"
-                f"Severity: {getattr(trigger, 'severity', 'N/A')}/10\n"
-                f"Manual intervention available via dashboard."
-            )
+        # Log-only (Pushover removed — routine deferral, not actionable)
+        return
+
+    # === HOLDING-TIME GATE (early exit — avoids burning API calls) ===
+    # On weekly-close days (Friday / pre-holiday Thursday), skip the entire
+    # council pipeline if there isn't enough time to hold a new position.
+    remaining_hours = hours_until_weekly_close(config)
+    if remaining_hours < float('inf'):
+        min_holding = config.get('risk_management', {}).get('friday_min_holding_hours', 2.0)
+    else:
+        min_holding = config.get('risk_management', {}).get('min_holding_hours', 6.0)
+
+    if remaining_hours < min_holding:
+        logger.info(
+            f"Emergency cycle BLOCKED (holding-time gate): Only {remaining_hours:.1f}h until weekly close "
+            f"(minimum: {min_holding}h). Skipping council pipeline for {trigger.source}."
         )
+        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
+        StateManager.queue_deferred_trigger(trigger)
+        # Pushover removed — routine Friday deferral, not actionable
         return
 
     # === NEW: Log Trigger for Fallback ===
     StateManager.log_sentinel_event(trigger)
 
     # Acquire Lock to prevent race conditions
-    if EMERGENCY_LOCK.locked():
+    _elock = _get_emergency_lock()
+    if _elock.locked():
         logger.warning(f"Emergency cycle for {trigger.source} queued (Lock active).")
 
     try:
-        await asyncio.wait_for(EMERGENCY_LOCK.acquire(), timeout=300)
+        await asyncio.wait_for(_elock.acquire(), timeout=300)
     except asyncio.TimeoutError:
-        logger.error(f"EMERGENCY_LOCK acquisition timed out (300s) for {trigger.source}. Skipping cycle.")
-        _sentinel_diag.error(f"OUTCOME {trigger.source}: BLOCKED (lock timeout)")
+        severity = getattr(trigger, 'severity', 'N/A')
+        logger.error(
+            f"EMERGENCY_LOCK acquisition timed out (300s) for {trigger.source} "
+            f"(severity={severity}). Deferring trigger instead of dropping."
+        )
+        _sentinel_diag.error(f"OUTCOME {trigger.source}: DEFERRED (lock timeout, severity={severity})")
+        StateManager.queue_deferred_trigger(trigger)
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"Lock Timeout: {trigger.source}",
+            f"Emergency cycle blocked for 300s — trigger deferred.\n"
+            f"Severity: {severity}/10\n"
+            f"Reason: {trigger.reason[:200]}\n"
+            f"Will retry at next deferred processing window.",
+            priority=1 if severity != 'N/A' and int(severity) >= 8 else 0,
+        )
         return
     try:
         cycle_actually_ran = False  # Did we reach the council decision?
@@ -2591,48 +3809,79 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     f"({now_ny.strftime('%H:%M')} ET >= {WEEKLY_CLOSE_CUTOFF_HOUR}:{WEEKLY_CLOSE_CUTOFF_MINUTE:02d} ET). "
                     f"Trigger: {trigger.source} — {trigger.reason}"
                 )
-                # Still log the trigger for Monday analysis
-                send_pushover_notification(
-                    config.get('notifications', {}),
-                    f"⏸️ Deferred: {trigger.source}",
-                    f"Trigger deferred to Monday (Friday close window):\n{trigger.reason}"
-                )
+                # Pushover removed — routine Friday close window deferral
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: DEFERRED (Friday close window)")
                 StateManager.queue_deferred_trigger(trigger)
                 return
 
             # Check Budget
-            if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+            _bg = _get_budget_guard()
+            if _bg and _bg.is_budget_hit:
                 logger.warning("Budget hit — skipping Emergency Cycle (Sentinel-only mode)")
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (budget hit)")
-                send_pushover_notification(config.get('notifications', {}), "Budget Guard",
-                    "Daily API budget hit. Sentinel-only mode active.")
+                # Pushover removed — expected when running multiple commodities
                 return
 
             # === Drawdown Circuit Breaker ===
-            if GLOBAL_DRAWDOWN_GUARD:
+            _dg = _get_drawdown_guard()
+            if _dg:
                 # Update P&L and Check
                 if not ib.isConnected():
                     logger.warning("IB disconnected — skipping drawdown P&L update (guard state preserved)")
                     status = "IB_DISCONNECTED"
                 else:
-                    status = await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
-                if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
+                    status = await _dg.update_pnl(ib)
+                if not _dg.is_entry_allowed():
                     logger.warning(f"Drawdown Circuit Breaker ACTIVE ({status}) - Skipping Emergency Cycle")
                     _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (drawdown breaker: {status})")
                     return
 
-                if GLOBAL_DRAWDOWN_GUARD.should_panic_close():
+                if _dg.should_panic_close():
                      logger.critical("Drawdown PANIC triggered during emergency cycle check. Triggering Hard Close.")
                      _sentinel_diag.critical(f"OUTCOME {trigger.source}: PANIC CLOSE (drawdown)")
                      await emergency_hard_close(config)
                      return
 
+            # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
+            try:
+                from trading_bot.data_dir_context import get_engine_runtime
+                _ert = get_engine_runtime()
+                if _ert and _ert.shared and _ert.shared.portfolio_guard:
+                    _allowed, _prg_reason = await _ert.shared.portfolio_guard.can_open_position(_ert.ticker, 0)
+                    if not _allowed:
+                        logger.warning(f"Emergency cycle BLOCKED by PortfolioRiskGuard: {_prg_reason}")
+                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (PRG: {_prg_reason})")
+                        return
+            except Exception as _prg_e:
+                logger.debug(f"PRG check in emergency cycle failed (non-fatal): {_prg_e}")
+
             # === Generate Cycle ID for prediction tracking ===
             active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
             cycle_id = generate_cycle_id(active_ticker)
             logger.info(f"🚨 EMERGENCY CYCLE TRIGGERED by {trigger.source}: {trigger.reason} (Cycle: {cycle_id})")
-            send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", trigger.reason)
+            # Sentinel trigger Pushover: severity-gated per sentinel type.
+            # Downstream notifications (orders queued/filled) already cover trade outcomes.
+            # Only push high-severity events that warrant immediate operator awareness.
+            _SENTINEL_PUSH_THRESHOLDS = {
+                'PriceSentinel': 8,       # Only extreme moves
+                'MicrostructureSentinel': None,  # Never (handled separately, SNR ~0)
+                'MacroContagionSentinel': 8,     # Only systemic events
+                'WeatherSentinel': 7,     # Frost, extreme drought
+                'XSentimentSentinel': 7,  # Genuine spikes only
+                'PredictionMarketSentinel': 0,   # Always (low volume, high signal)
+                'NewsSentinel': 7,
+                'LogisticsSentinel': 7,
+                'FundamentalRegimeSentinel': 8,
+            }
+            _push_threshold = _SENTINEL_PUSH_THRESHOLDS.get(trigger.source, 7)
+            _trigger_severity = getattr(trigger, 'severity', 0)
+            if _push_threshold is not None and _trigger_severity >= _push_threshold:
+                _trigger_detail = trigger.reason
+                if isinstance(getattr(trigger, 'payload', None), dict):
+                    _ps = trigger.payload.get('summary', '')
+                    if _ps:
+                        _trigger_detail = f"{trigger.reason} - {_ps[:200]}"
+                send_pushover_notification(config.get('notifications', {}), f"Sentinel Trigger: {trigger.source}", _trigger_detail)
 
             # --- DEFCON 1: Crash Protection ---
             # If price drops > 5% instantly, do NOT open new trades. Liquidation logic is complex, so we just Halt.
@@ -2670,6 +3919,13 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     if affected_theses and live_positions is not None:
                         trade_ledger = get_trade_ledger_df()
 
+                        # Filter to this commodity only — IB returns ALL positions
+                        active_ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+                        commodity_positions = [
+                            p for p in live_positions
+                            if p.position != 0 and p.contract.symbol == active_ticker
+                        ]
+
                         for thesis in affected_theses:
                           try:
                             # Check if this trigger invalidates the thesis
@@ -2688,9 +3944,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                                 # Collect ALL legs for this thesis (spreads have multiple legs)
                                 thesis_legs = []
-                                for pos in live_positions:
-                                    if pos.position == 0:
-                                        continue
+                                for pos in commodity_positions:
                                     pos_id = _find_position_id_for_contract(pos, trade_ledger)
                                     if pos_id == thesis_id:
                                         thesis_legs.append(pos)
@@ -2760,7 +4014,6 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 if priced_in:
                     logger.warning(f"PRICED IN CHECK FAILED: {reason}. Skipping emergency cycle.")
                     _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (priced in: {reason})")
-                    send_pushover_notification(config.get('notifications', {}), "Signal Priced In", reason)
                     return
 
                 # 3. Get Market Context (Snapshot)
@@ -2797,8 +4050,34 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 market_data['reason'] = f"Emergency Cycle triggered by {trigger.source}"
                 logger.info(f"Emergency market context: price={market_data.get('price')}, regime={market_data.get('regime')}")
 
+                # E.1: Inject VaR briefing into emergency context
+                try:
+                    from trading_bot.var_calculator import get_var_calculator
+                    cached_var = get_var_calculator(config).get_cached_var()
+                    var_limit = config.get('compliance', {}).get('var_limit_pct', 0.03)
+                    var_warning = config.get('compliance', {}).get('var_warning_pct', 0.02)
+                    if cached_var:
+                        util = cached_var.var_95_pct / var_limit if var_limit else 0
+                        market_context_str += (
+                            f"\n--- PORTFOLIO STATE ---\n"
+                            f"Positions: {cached_var.position_count} across "
+                            f"{', '.join(cached_var.commodities)}\n"
+                            f"VaR utilization: {util:.0%} of limit\n"
+                            f"--- END PORTFOLIO STATE ---\n"
+                        )
+                        if cached_var.var_95_pct > var_warning:
+                            market_context_str += (
+                                f"\n--- PORTFOLIO RISK ALERT ---\n"
+                                f"VaR: {cached_var.var_95_pct:.1%} (limit: {var_limit:.0%})\n"
+                                f"INSTRUCTION: PREFER strategies that REDUCE correlation "
+                                f"with existing positions.\n"
+                                f"--- END RISK ALERT ---\n"
+                            )
+                except Exception:
+                    pass  # Non-fatal
+
                 # Load Regime Context
-                regime_context = load_regime_context()
+                regime_context = load_regime_context(config)
 
                 # 5. Semantic Cache — sentinel fire invalidates other sources' cached decisions
                 semantic_cache = get_semantic_cache(config)
@@ -2815,20 +4094,102 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     decision = cached_decision
                     logger.info(f"SEMANTIC CACHE HIT: Reusing decision for {contract_name}/{trigger.source}")
                 else:
-                    decision = await council.run_specialized_cycle(
-                        trigger,
-                        contract_name,
-                        market_data,
-                        market_context_str,
-                        ib=ib,
-                        target_contract=target_contract,
-                        cycle_id=cycle_id, # Pass cycle_id for logging if supported
-                        regime_context=regime_context
-                    )
+                    _council_start = time_module.time()
+                    _council_timed_out = False
+                    try:
+                        _timeout = 300  # default
+                        if passive_mode:
+                            try:
+                                from config.commodity_profiles import get_active_profile as _gap
+                                _ep = _gap(config)
+                                _ms_cfg = getattr(_ep, 'market_states', None)
+                                if _ms_cfg:
+                                    _timeout = _ms_cfg.emergency_council_timeout_seconds
+                            except Exception:
+                                pass
+                        decision = await asyncio.wait_for(
+                            council.run_specialized_cycle(
+                                trigger,
+                                contract_name,
+                                market_data,
+                                market_context_str,
+                                ib=ib,
+                                target_contract=target_contract,
+                                cycle_id=cycle_id,
+                                regime_context=regime_context
+                            ),
+                            timeout=_timeout
+                        )
+                    except asyncio.TimeoutError:
+                        _council_timed_out = True
+                        logger.error(f"Council timed out after {_timeout}s during emergency cycle")
+                        decision = {
+                            'direction': 'NEUTRAL',
+                            'confidence': 0.0,
+                            'reasoning': f'Council timed out after {_timeout}s',
+                        }
+                    _council_duration = time_module.time() - _council_start
+
+                    # Log council duration for latency analysis
+                    try:
+                        _ticker = get_active_ticker(config)
+                        _dur_dir = os.path.join('data', _ticker)
+                        os.makedirs(_dur_dir, exist_ok=True)
+                        _dur_path = os.path.join(_dur_dir, 'emergency_council_durations.csv')
+                        _dur_exists = os.path.isfile(_dur_path)
+                        with open(_dur_path, 'a', newline='') as _df:
+                            import csv as _csv
+                            _w = _csv.writer(_df)
+                            if not _dur_exists:
+                                _w.writerow(['timestamp', 'duration_s', 'timed_out', 'dry_run', 'trigger_pct', 'passive_mode'])
+                            _dry = False
+                            _tpct = 0.0
+                            try:
+                                from config.commodity_profiles import get_active_profile as _gap2
+                                _ep2 = _gap2(config)
+                                _ms2 = getattr(_ep2, 'market_states', None)
+                                if _ms2:
+                                    _dry = _ms2.emergency_dry_run
+                                    _tpct = _ms2.emergency_trigger_pct
+                            except Exception:
+                                pass
+                            _w.writerow([
+                                datetime.now(timezone.utc).isoformat(),
+                                f"{_council_duration:.1f}",
+                                _council_timed_out,
+                                _dry,
+                                _tpct,
+                                passive_mode,
+                            ])
+                    except Exception as e:
+                        logger.debug(f"Council duration logging failed: {e}")
+
                     semantic_cache.put(contract_name, trigger.source, market_data, decision)
 
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
                 cycle_actually_ran = True
+
+                # === MID-DEBATE SLEEPING GUARD ===
+                # If we entered SLEEPING (e.g., maintenance break) while the council
+                # was deliberating during a passive emergency, abort before placing orders.
+                if passive_mode and get_market_state(config) == 'SLEEPING':
+                    logger.warning(
+                        "PASSIVE EMERGENCY ABORTED: Market entered SLEEPING during council deliberation. "
+                        "Decision logged but orders will NOT be placed."
+                    )
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "Passive Emergency Aborted",
+                        f"{trigger.source}: Council decided {decision.get('direction')} but market "
+                        f"entered SLEEPING during deliberation. No orders placed."
+                    )
+                    # Still log the decision for forensics, but skip execution
+                    # by setting direction to NEUTRAL
+                    decision['direction'] = 'NEUTRAL'
+                    decision['reasoning'] = (
+                        decision.get('reasoning', '') +
+                        ' [ABORTED: market entered SLEEPING during passive emergency deliberation]'
+                    )
 
                 # Amendment A: Inject polymarket context into the decision for thesis recording
                 if trigger.source == "PredictionMarketSentinel":
@@ -2857,6 +4218,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         reasoning=decision.get('reasoning', ''),
                         agent_data=current_reports,
                         mode="emergency",
+                        trigger_type=trigger.source if hasattr(trigger, 'source') else 'EMERGENCY',
                     )
 
                     if routed['prediction_type'] != routed_shadow['prediction_type'] or \
@@ -2934,10 +4296,14 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
 
                         "compliance_approved": True, # Assume true if we reached here, actually checked later
                         "trigger_type": trigger.source,
+                        "source_state": 'PASSIVE_EMERGENCY' if passive_mode else 'ACTIVE',
 
                         "vote_breakdown": json.dumps(decision.get('vote_breakdown', [])),
                         "dominant_agent": decision.get('dominant_agent', 'Unknown'),
-                        "weighted_score": 0.0 # Not explicitly returned by run_specialized_cycle but embedded in vote
+                        "weighted_score": 0.0, # Not explicitly returned by run_specialized_cycle but embedded in vote
+
+                        # v5: Regime tracking
+                        "entry_regime": market_data.get('regime', 'UNKNOWN'),
                     }
                     log_council_decision(council_log_entry)
 
@@ -2984,12 +4350,22 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     # For now, we reload state which is "close enough" as it was just updated.
                     current_reports = StateManager.load_state()
 
+                    # v8.1: Build compliance context with IBKR market data
+                    from trading_bot.market_data_provider import format_market_context_for_prompt
+                    compliance_context = market_context_str
+                    ibkr_data_str = format_market_context_for_prompt(market_data)
+                    if ibkr_data_str:
+                        compliance_context += f"\n--- IBKR MARKET DATA ---\n{ibkr_data_str}\n"
+                    # Note: Semantic cache hits from pre-v8.1 won't have debate_summary (defaults to "")
+                    debate_summary = decision.get('debate_summary', '')
+
                     audit = await compliance.audit_decision(
                         current_reports,
-                        market_context_str,
+                        compliance_context,
                         decision,
                         council.personas.get('master', ''),
-                        ib=ib
+                        ib=ib,
+                        debate_summary=debate_summary
                     )
 
                     if not audit.get('approved', True):
@@ -3020,27 +4396,6 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                         return
 
                     logger.info("Decision is actionable. Generating order...")
-
-                    # === HOLDING-TIME GATE (same logic as scheduled path) ===
-                    remaining_hours = hours_until_weekly_close(config)
-                    if remaining_hours < float('inf'):
-                        min_holding = config.get('risk_management', {}).get('friday_min_holding_hours', 2.0)
-                    else:
-                        min_holding = config.get('risk_management', {}).get('min_holding_hours', 6.0)
-
-                    if remaining_hours < min_holding:
-                        logger.info(
-                            f"Emergency holding-time gate: Only {remaining_hours:.1f}h until weekly close "
-                            f"(minimum: {min_holding}h). Skipping emergency order."
-                        )
-                        send_pushover_notification(
-                            config.get('notifications', {}),
-                            "📅 Emergency Order Skipped",
-                            f"Weekly close in {remaining_hours:.1f}h — below {min_holding}h minimum. "
-                            f"Emergency signal from {trigger.source} not executed."
-                        )
-                        _sentinel_diag.info(f"OUTCOME {trigger.source}: BLOCKED (holding-time gate: {remaining_hours:.1f}h < {min_holding}h)")
-                        return
 
                     # === NEW: Dynamic Position Sizing ===
                     sizer = DynamicPositionSizer(config)
@@ -3108,6 +4463,20 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                             await place_queued_orders(config, orders_list=emergency_order_list)
                             logger.info(f"Emergency Order Placed (Qty: {qty}).")
 
+                            # === Update portfolio-wide position count (Phase 3: SharedContext) ===
+                            try:
+                                from trading_bot.data_dir_context import get_engine_runtime
+                                _rt = get_engine_runtime()
+                                if _rt and _rt.shared and _rt.shared.portfolio_guard:
+                                    ticker = config.get('symbol', 'KC')
+                                    snap = await _rt.shared.portfolio_guard.get_snapshot()
+                                    current_count = snap.get('positions', {}).get(ticker, 0)
+                                    await _rt.shared.portfolio_guard.update_positions(
+                                        ticker, current_count + 1, 0
+                                    )
+                            except Exception as _prg_e:
+                                logger.debug(f"PRG position update failed (non-fatal): {_prg_e}")
+
                 # === BRIER SCORE RECORDING (Dual-Write: Legacy CSV + Enhanced JSON) ===
                 try:
                     from trading_bot.brier_bridge import record_agent_prediction
@@ -3142,7 +4511,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                     logger.info(f"Emergency Cycle concluded with no action: {direction} ({pred_type})")
 
             except Exception as e:
-                logger.error(f"Emergency Cycle Failed: {e}\n{traceback.format_exc()}")
+                logger.exception(f"Emergency Cycle Failed: {e}")
 
         finally:
             # Graduated post-cycle debounce based on cycle outcome
@@ -3160,16 +4529,16 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB):
                 debounce_reason = "neutral decision"
 
             if debounce_seconds > 0:
-                GLOBAL_DEDUPLICATOR.set_cooldown("POST_CYCLE", debounce_seconds)
+                _get_deduplicator().set_cooldown("POST_CYCLE", debounce_seconds)
             else:
-                GLOBAL_DEDUPLICATOR.clear_cooldown("POST_CYCLE")
+                _get_deduplicator().clear_cooldown("POST_CYCLE")
 
             logger.info(f"Post-cycle debounce: {debounce_seconds}s ({debounce_reason})")
             if cycle_actually_ran:
                 outcome = "TRADE" if is_actionable else "NEUTRAL"
                 _sentinel_diag.info(f"OUTCOME {trigger.source}: {outcome} (debounce={debounce_seconds}s)")
     finally:
-        EMERGENCY_LOCK.release()
+        _elock.release()
 
 
 def validate_trigger(trigger):
@@ -3186,7 +4555,7 @@ def validate_trigger(trigger):
 
 def _log_task_exception(task: asyncio.Task, name: str):
     """Generic callback to log exceptions from fire-and-forget tasks."""
-    _INFLIGHT_TASKS.discard(task)
+    _get_inflight_tasks().discard(task)
     try:
         exc = task.exception()
     except asyncio.CancelledError:
@@ -3199,7 +4568,7 @@ def _log_task_exception(task: asyncio.Task, name: str):
 
 def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, config: dict):
     """Callback to catch and report crashes in fire-and-forget emergency cycle tasks."""
-    _INFLIGHT_TASKS.discard(task)
+    _get_inflight_tasks().discard(task)
     try:
         exc = task.exception()
     except asyncio.CancelledError:
@@ -3215,7 +4584,7 @@ def _emergency_cycle_done_callback(task: asyncio.Task, trigger_source: str, conf
         _sentinel_diag.error(f"OUTCOME {trigger_source}: CRASHED ({type(exc).__name__}: {exc})")
         SENTINEL_STATS.record_error(trigger_source, f"CRASH: {type(exc).__name__}")
         # Prevent crash-loop: cooldown so the sentinel doesn't immediately re-trigger
-        GLOBAL_DEDUPLICATOR.set_cooldown(trigger_source, 1800)  # 30-min crash cooldown
+        _get_deduplicator().set_cooldown(trigger_source, 1800)  # 30-min crash cooldown
         try:
             send_pushover_notification(
                 config.get('notifications', {}),
@@ -3255,16 +4624,22 @@ async def _run_periodic_sentinel(
         if trigger:
             logger.info(f"{sentinel_name}: trigger detected (source={trigger.source}, severity={getattr(trigger, 'severity', '?')})")
             if market_open and sentinel_ib and sentinel_ib.isConnected():
-                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                if _get_deduplicator().should_process(trigger):
                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                    _INFLIGHT_TASKS.add(task)
+                    _get_inflight_tasks().add(task)
                     task.add_done_callback(
                         lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                     )
-                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, cooldown_seconds)
+                    _get_deduplicator().set_cooldown(trigger.source, cooldown_seconds)
             else:
-                StateManager.queue_deferred_trigger(trigger)
-                logger.info(f"Deferred {trigger.source} trigger for market open")
+                # Record hash in deduplicator BEFORE deferring — prevents
+                # duplicate notifications on restart (sentinel re-fires same
+                # trigger, but deduplicator now recognizes it)
+                if _get_deduplicator().should_process(trigger):
+                    StateManager.queue_deferred_trigger(trigger)
+                    logger.info(f"Deferred {trigger.source} trigger for market open")
+                else:
+                    logger.info(f"Skipped duplicate deferred trigger: {trigger.source}")
     except asyncio.TimeoutError:
         logger.error(f"{sentinel_name} TIMED OUT after {timeout}s")
         _health_error = f"TIMEOUT after {timeout}s"
@@ -3291,6 +4666,7 @@ async def run_sentinels(config: dict):
     - Price/Microstructure sentinels only run during market hours (IB needed)
     - IB connection is LAZY: only established when market is actually open
     """
+    global _FULL_SHUTDOWN  # Written during PASSIVE → SLEEPING transitions
     logger.info("--- Starting Sentinel Array ---")
 
     # === 1. LAZY INITIALIZATION: Start with NO connection ===
@@ -3327,13 +4703,20 @@ async def run_sentinels(config: dict):
     last_news = 0
     last_x_sentiment = 0
     last_prediction_market = 0
-    last_topic_discovery = _STARTUP_DISCOVERY_TIME  # 0 if startup scan failed/skipped → runs on first iteration
+    last_topic_discovery = _get_startup_discovery_time()  # 0 if startup scan failed/skipped → runs on first iteration
     last_macro_contagion = 0
 
     # Contract Cache
     cached_contract = None
     last_contract_refresh = 0
     CONTRACT_REFRESH_INTERVAL = 14400  # 4 hours
+
+    # Deferred trigger processing: one-shot flag
+    # The scheduled task runs at 3:31 AM ET but market opens at 4:15 AM ET,
+    # so the task always skips (is_market_open check fails). Process deferred
+    # triggers once on the first market-open transition in the sentinel loop.
+    _deferred_processed_today = False
+    _deferred_last_date = None
 
     # Outage Tracking (only relevant during market hours)
     last_successful_ib_time = None  # Will be set on first successful connection
@@ -3356,7 +4739,7 @@ async def run_sentinels(config: dict):
             _sentinel_iteration += 1
 
             # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
-            if _SYSTEM_SHUTDOWN:
+            if _FULL_SHUTDOWN:
                 # One-time microstructure cleanup (Issue 7 integrated)
                 if micro_sentinel is not None:
                     logger.info("Shutdown: Gracefully disengaging Microstructure Sentinel")
@@ -3375,18 +4758,25 @@ async def run_sentinels(config: dict):
                 continue
 
             now = time_module.time()
-            market_open = is_market_open(config)
+            market_state = get_market_state(config)
+            market_open = (market_state == 'ACTIVE')  # backward compat
             trading_day = is_trading_day()
 
             # Heartbeat: confirm sentinel loop is alive
             if _sentinel_iteration % _HEARTBEAT_INTERVAL == 0:
                 logger.info(
                     f"Sentinel loop heartbeat: iteration={_sentinel_iteration}, "
-                    f"market_open={market_open}, trading_day={trading_day}"
+                    f"market_state={market_state}, market_open={market_open}, trading_day={trading_day}"
                 )
 
-            # === 2. MARKET HOURS GATE: Only connect when market is OPEN ===
-            should_connect = market_open  # NOT trading_day - must be is_market_open(config)
+            # === 2. MARKET STATE GATE: Connect when ACTIVE or PASSIVE ===
+            should_connect = market_state in ('ACTIVE', 'PASSIVE')
+            # For commodities with no Passive window (KC/CC): on trading days,
+            # run background sentinels even when state is SLEEPING. The
+            # `or trading_day` ensures Weather/News/X still run on weekdays
+            # outside Active hours. On Sunday >=18:00 ET for NG, market_state
+            # is PASSIVE (not SLEEPING), so the first clause handles it.
+            should_run_background_sentinels = market_state != 'SLEEPING' or trading_day
 
             if should_connect:
                 # Market is open - we need IB for Price/Microstructure sentinels
@@ -3409,7 +4799,7 @@ async def run_sentinels(config: dict):
                         # === SAFETY NET: Ensure position monitoring is running ===
                         # Covers the gap where bot starts just before market open
                         # and the scheduled start_monitoring was already missed.
-                        if not _SYSTEM_SHUTDOWN and (
+                        if not _FULL_SHUTDOWN and (
                             monitor_process is None or monitor_process.returncode is not None
                         ):
                             logger.info(
@@ -3422,6 +4812,23 @@ async def run_sentinels(config: dict):
                                 logger.error(
                                     f"Safety net start_monitoring failed: {e}"
                                 )
+
+                        # === DEFERRED TRIGGER PROCESSING ===
+                        # Process deferred triggers once per day on first market-open
+                        # transition. The scheduled task at 03:31 ET fires before
+                        # market open (04:15 ET) and always skips.
+                        today = datetime.now().date()
+                        if not _deferred_processed_today or _deferred_last_date != today:
+                            _deferred_processed_today = True
+                            _deferred_last_date = today
+                            logger.info(
+                                "SENTINEL SAFETY NET: First market-open transition — "
+                                "processing deferred triggers"
+                            )
+                            try:
+                                await process_deferred_triggers(config)
+                            except Exception as e:
+                                logger.error(f"Deferred trigger processing failed: {e}")
 
                     except Exception as e:
                         # Log as WARNING during market hours (connection should be possible)
@@ -3447,7 +4854,12 @@ async def run_sentinels(config: dict):
                     outage_notification_sent = False
 
             else:
-                # === 4. MARKET CLOSED: Disconnect to prevent zombie state ===
+                # === 4. MARKET SLEEPING: Disconnect to prevent zombie state ===
+                # Also ensure _FULL_SHUTDOWN is set when entering SLEEPING
+                if market_state == 'SLEEPING' and not _FULL_SHUTDOWN and _SCHEDULED_SHUTDOWN:
+                    _FULL_SHUTDOWN = True
+                    logger.info("State transition: PASSIVE → SLEEPING — full shutdown engaged")
+
                 if sentinel_ib is not None and sentinel_ib.isConnected():
                     logger.info("Market Closed: Releasing Sentinel IB connection to pool.")
                     try:
@@ -3479,7 +4891,7 @@ async def run_sentinels(config: dict):
             # === MICROSTRUCTURE SENTINEL LIFECYCLE ===
             gateway_available = sentinel_ib is not None and sentinel_ib.isConnected()
 
-            if market_open and micro_sentinel is None and gateway_available:
+            if should_connect and micro_sentinel is None and gateway_available:
                 logger.info("Market Open: Engaging Microstructure Sentinel")
                 try:
                     micro_ib = await IBConnectionPool.get_connection("microstructure", config)
@@ -3509,10 +4921,10 @@ async def run_sentinels(config: dict):
                     micro_ib = None
                     _record_sentinel_health("MicrostructureSentinel", "ERROR", 60, str(e))
 
-            elif market_open and micro_sentinel is None and not gateway_available:
+            elif should_connect and micro_sentinel is None and not gateway_available:
                 logger.debug("Skipping Microstructure engagement - Gateway unavailable")
 
-            elif not market_open and micro_sentinel is not None:
+            elif not should_connect and micro_sentinel is not None:
                 logger.info("Market Closed: Disengaging Microstructure Sentinel")
                 try:
                     await micro_sentinel.unsubscribe_all()
@@ -3543,18 +4955,67 @@ async def run_sentinels(config: dict):
                                 config,
                                 f"PriceSentinel trigger ({price_change:.1f}% move)"
                             ))
-                            _INFLIGHT_TASKS.add(audit_task)
+                            _get_inflight_tasks().add(audit_task)
                             audit_task.add_done_callback(
                                 lambda t: _log_task_exception(t, "position_audit_price_trigger")
                             )
 
-                    if trigger and GLOBAL_DEDUPLICATOR.should_process(trigger):
-                        task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                        _INFLIGHT_TASKS.add(task)
-                        task.add_done_callback(
-                            lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
-                        )
-                        GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                    if trigger and _get_deduplicator().should_process(trigger):
+                        if market_state == 'PASSIVE':
+                            # === PASSIVE EMERGENCY PIPELINE ===
+                            _ticker = get_active_ticker(config)
+                            try:
+                                from config.commodity_profiles import get_active_profile
+                                _profile = get_active_profile(config)
+                                _ms = getattr(_profile, 'market_states', None)
+                            except Exception:
+                                _ms = None
+
+                            _change = abs(trigger.payload.get('change', 0))
+
+                            if _ms is None or _ms.emergency_trigger_pct <= 0:
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _change < _ms.emergency_trigger_pct:
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _is_in_passive_emergency_cooldown(_ticker, _ms.emergency_cooldown_seconds):
+                                logger.info(f"Passive emergency cooldown active for {_ticker}")
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _minutes_until_next_break(config) < 10:
+                                logger.info(f"Too close to maintenance break — deferring {trigger.source}")
+                                _write_deferred_trigger(trigger, _ticker)
+                            elif _ms.emergency_dry_run:
+                                logger.warning(
+                                    f"DRY RUN: Passive emergency would fire for {_ticker} "
+                                    f"({_change:.1f}% > {_ms.emergency_trigger_pct}%)"
+                                )
+                                send_pushover_notification(
+                                    config.get('notifications', {}),
+                                    f"DRY RUN: {_ticker} Passive Emergency",
+                                    f"{trigger.source}: {_change:.1f}% move detected during PASSIVE. "
+                                    f"Would invoke council if dry_run=false."
+                                )
+                                _last_passive_emergency[_ticker] = datetime.now(timezone.utc)
+                            else:
+                                logger.warning(
+                                    f"PASSIVE EMERGENCY: {_ticker} {_change:.1f}% > "
+                                    f"{_ms.emergency_trigger_pct}% — invoking council"
+                                )
+                                _last_passive_emergency[_ticker] = datetime.now(timezone.utc)
+                                task = asyncio.create_task(
+                                    run_emergency_cycle(trigger, config, sentinel_ib, passive_mode=True)
+                                )
+                                _get_inflight_tasks().add(task)
+                                task.add_done_callback(
+                                    lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                                )
+                        else:
+                            # === NORMAL ACTIVE EMERGENCY ===
+                            task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
+                            _get_inflight_tasks().add(task)
+                            task.add_done_callback(
+                                lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
+                            )
+                        _get_deduplicator().set_cooldown(trigger.source, 900)
                 except asyncio.TimeoutError:
                     logger.error("PriceSentinel TIMED OUT after 30s")
                     _health_error = "TIMEOUT after 30s"
@@ -3586,7 +5047,7 @@ async def run_sentinels(config: dict):
             )
 
             # 5. X Sentiment Sentinel (Every 90 min during market-adjacent hours on trading days)
-            if trading_day and (now - last_x_sentiment) > 5400:
+            if should_run_background_sentinels and (now - last_x_sentiment) > 5400:
                 # Only run during market-adjacent hours (6:00 AM - 4:30 PM ET)
                 from datetime import time as dt_time
                 et_now = datetime.now(pytz.timezone('US/Eastern'))
@@ -3614,13 +5075,13 @@ async def run_sentinels(config: dict):
                             logger.info(f"XSentimentSentinel: trigger detected (severity={getattr(trigger, 'severity', '?')})")
                             x_sentinel_stats['triggers_today'] += 1
                             if market_open and sentinel_ib and sentinel_ib.isConnected():
-                                if GLOBAL_DEDUPLICATOR.should_process(trigger):
+                                if _get_deduplicator().should_process(trigger):
                                     task = asyncio.create_task(run_emergency_cycle(trigger, config, sentinel_ib))
-                                    _INFLIGHT_TASKS.add(task)
+                                    _get_inflight_tasks().add(task)
                                     task.add_done_callback(
                                         lambda t, src=trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                                     )
-                                    GLOBAL_DEDUPLICATOR.set_cooldown(trigger.source, 900)
+                                    _get_deduplicator().set_cooldown(trigger.source, 900)
                             else:
                                 StateManager.queue_deferred_trigger(trigger)
                                 logger.info(f"Deferred {trigger.source} trigger for market open")
@@ -3669,8 +5130,7 @@ async def run_sentinels(config: dict):
             if discovery_config.get('enabled', False) and (now - last_topic_discovery) > discovery_interval:
                 try:
                     from trading_bot.topic_discovery import TopicDiscoveryAgent
-                    # Inject GLOBAL_BUDGET_GUARD (dependency injection)
-                    discovery_agent = TopicDiscoveryAgent(config, budget_guard=GLOBAL_BUDGET_GUARD)
+                    discovery_agent = TopicDiscoveryAgent(config, budget_guard=_get_budget_guard())
                     result = await discovery_agent.run_scan()
                     logger.info(
                         f"TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
@@ -3699,26 +5159,21 @@ async def run_sentinels(config: dict):
                         if tier == NotificationTier.CRITICAL:
                             # Severity 9-10: Full emergency cycle (must still pass deduplicator)
                             logger.warning(f"MICROSTRUCTURE CRITICAL: {micro_trigger.reason}")
-                            if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                            if _get_deduplicator().should_process(micro_trigger):
                                 task = asyncio.create_task(run_emergency_cycle(micro_trigger, config, sentinel_ib))
-                                _INFLIGHT_TASKS.add(task)
+                                _get_inflight_tasks().add(task)
                                 task.add_done_callback(
                                     lambda t, src=micro_trigger.source, cfg=config: _emergency_cycle_done_callback(t, src, cfg)
                                 )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 900)
+                                _get_deduplicator().set_cooldown(micro_trigger.source, 900)
                         elif tier == NotificationTier.PUSHOVER:
-                            # Severity 7-8: Log + Pushover but NO emergency cycle
-                            # Liquidity depletion is informational, not actionable by council
-                            logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason}")
-                            if GLOBAL_DEDUPLICATOR.should_process(micro_trigger):
+                            # Severity 7-8: Log only (was Pushover — removed as noise,
+                            # SNR 0.0 across commodities, ~13 alerts/day)
+                            logger.warning(f"MICROSTRUCTURE ALERT: {micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})")
+                            if _get_deduplicator().should_process(micro_trigger):
                                 StateManager.log_sentinel_event(micro_trigger)
                                 SENTINEL_STATS.record_alert(micro_trigger.source, triggered_trade=False)
-                                send_pushover_notification(
-                                    config.get('notifications', {}),
-                                    "Microstructure Alert",
-                                    f"{micro_trigger.reason} (Severity: {micro_trigger.severity:.1f})"
-                                )
-                                GLOBAL_DEDUPLICATOR.set_cooldown(micro_trigger.source, 1800)
+                                _get_deduplicator().set_cooldown(micro_trigger.source, 1800)
                         elif tier == NotificationTier.DASHBOARD:
                             # Severity 5-6: Log only (visible in dashboard via sentinel history)
                             logger.info(f"MICROSTRUCTURE NOTE: {micro_trigger.reason} (Sev: {micro_trigger.severity})")
@@ -3771,118 +5226,345 @@ async def run_sentinels(config: dict):
 
 async def emergency_hard_close(config: dict):
     """
-    Last-resort position closure at 13:15 ET using MARKET orders.
+    Last-resort position closure using MARKET orders.
 
-    This runs 45 minutes before market close. If we still have open positions
-    at this point, limit orders have failed and we accept slippage to protect
-    against overnight/weekend risk.
+    Only closes positions that SHOULD have been closed by close_stale_positions:
+    - Positions older than max_holding_days, OR
+    - All positions on weekly close days (Friday / pre-holiday Thursday)
+
+    Uses true market orders (not limit-with-slippage) and submits all legs
+    concurrently to maximize fill probability in thin end-of-day liquidity.
     """
     from trading_bot.utils import is_trading_off
     if is_trading_off():
         logger.info("[OFF] emergency_hard_close skipped — no positions exist in OFF mode")
         return
 
-    logger.info("--- Emergency Hard Close Check (T-45 min) ---")
+    logger.info("--- Emergency Hard Close Check ---")
+
+    # --- Determine if this is a weekly close day ---
+    today_date = datetime.now(timezone.utc).date()
+    weekday = today_date.weekday()
+
+    is_weekly_close = False
+    if weekday == 4:  # Friday
+        is_weekly_close = True
+    elif weekday == 3:  # Thursday — check if Friday is a holiday
+        from trading_bot.calendars import get_exchange_calendar
+        cal = get_exchange_calendar(config['exchange'])
+        tomorrow = today_date + timedelta(days=1)
+        holidays = cal.holidays(start=tomorrow, end=tomorrow)
+        if not holidays.empty:
+            is_weekly_close = True
+
+    max_holding_days = config.get('risk_management', {}).get('max_holding_days', 2)
 
     ib = None
     try:
         ib = await IBConnectionPool.get_connection("orchestrator_orders", config)
         configure_market_data_type(ib)
 
+        commodity_symbol = config.get('symbol', 'KC')
         try:
             live_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
         except asyncio.TimeoutError:
             logger.error("reqPositionsAsync timed out (30s) in emergency hard close, aborting")
             return
-        open_positions = [p for p in live_positions if p.position != 0]
+        open_positions = [
+            p for p in live_positions
+            if p.position != 0 and p.contract.symbol == commodity_symbol
+        ]
 
         if not open_positions:
             logger.info("Emergency hard close: No open positions. All clear. ✓")
             return
 
+        # --- Gate: Only close positions that are stale or on weekly close ---
+        if not is_weekly_close:
+            # Filter to only stale positions using trade ledger age
+            trade_ledger = get_trade_ledger_df()
+            from pandas.tseries.offsets import CustomBusinessDay
+            from trading_bot.calendars import get_exchange_calendar
+            cal = get_exchange_calendar(config['exchange'])
+            holidays_index = cal.holidays(
+                start=today_date - timedelta(days=365),
+                end=today_date + timedelta(days=30)
+            )
+            custom_bday = CustomBusinessDay(holidays=holidays_index)
+
+            stale_symbols = set()
+            for pos in open_positions:
+                sym = pos.contract.localSymbol
+                if not trade_ledger.empty and 'local_symbol' in trade_ledger.columns:
+                    sym_rows = trade_ledger[trade_ledger['local_symbol'] == sym]
+                    if not sym_rows.empty:
+                        # Use most recent opening entry (matching direction), not
+                        # earliest-ever.  Old closed positions for the same symbol
+                        # must not inflate the age of the current live position.
+                        action_dir = 'BUY' if pos.position > 0 else 'SELL'
+                        dir_rows = sym_rows[sym_rows['action'] == action_dir]
+                        ref_ts = pd.Timestamp(
+                            dir_rows['timestamp'].max() if not dir_rows.empty
+                            else sym_rows['timestamp'].max()
+                        )
+                        trading_days = pd.date_range(
+                            start=ref_ts.date(), end=today_date, freq=custom_bday
+                        )
+                        if len(trading_days) >= max_holding_days:
+                            stale_symbols.add(sym)
+
+            if not stale_symbols:
+                logger.info(
+                    f"Emergency hard close: {len(open_positions)} legs open but none are stale "
+                    f"(max_holding_days={max_holding_days}). Skipping."
+                )
+                return
+
+            open_positions = [
+                p for p in open_positions
+                if p.contract.localSymbol in stale_symbols
+            ]
+            logger.info(
+                f"Emergency hard close: Filtered to {len(open_positions)} stale legs "
+                f"(symbols: {stale_symbols})"
+            )
+
         position_count = len(open_positions)
         logger.warning(
-            f"🚨 EMERGENCY HARD CLOSE: {position_count} positions still open at T-45! "
+            f"🚨 EMERGENCY HARD CLOSE: {position_count} legs still open. "
             f"Closing with MARKET orders (slippage accepted)."
         )
 
         send_pushover_notification(
             config.get('notifications', {}),
             "🚨 Emergency Hard Close Triggered",
-            f"{position_count} positions still open at 13:15 ET.\n"
+            f"{position_count} legs still open at emergency close.\n"
             f"Closing with MARKET orders. Slippage expected."
         )
 
-        closed = 0
-        failed = 0
+        # --- B3: Register Error 201 handler for margin rejections ---
+        error_201_symbols = []
+        def on_emergency_error(reqId, errorCode, errorString, contract):
+            if errorCode == 201:
+                sym = getattr(contract, 'localSymbol', 'unknown') if contract else 'unknown'
+                error_201_symbols.append(sym)
+                logger.error(f"Emergency close Error 201 (margin): {sym}: {errorString}")
 
-        for pos in open_positions:
-            try:
+        # Safe: ib is per-commodity from IBConnectionPool, no cross-engine handler bleed
+        ib.errorEvent += on_emergency_error
+
+        try:
+            # --- Submit all MARKET orders ---
+            # Use pos.contract directly from reqPositionsAsync — it has the correct
+            # conId and strike format. Re-qualifying via qualifyContractsAsync can
+            # return strike=285.0 vs exchange's 2.85, causing Error 478 rejections.
+            trades_pending = []  # (contract, trade, pos)
+            failed = 0
+            failed_symbols = []  # (localSymbol, status, error_detail)
+
+            for pos in open_positions:
+                contract = pos.contract
+                # reqPositionsAsync may return contracts without exchange — fill from config
+                if not contract.exchange:
+                    contract.exchange = config.get('exchange', 'SMART')
                 close_action = 'SELL' if pos.position > 0 else 'BUY'
                 qty = abs(pos.position)
 
-                # CRITICAL FIX: Re-qualify by conId only to get correct strike format
-                minimal = Contract(conId=pos.contract.conId)
-                try:
-                    qualified = await asyncio.wait_for(
-                        ib.qualifyContractsAsync(minimal), timeout=15
-                    )
-                except asyncio.TimeoutError:
-                    logger.error(f"qualifyContractsAsync timed out (15s) for {pos.contract.localSymbol}")
-                    failed += 1
-                    continue
-                if not qualified or qualified[0].conId == 0:
-                    logger.error(f"Could not qualify {pos.contract.localSymbol} (conId={pos.contract.conId})")
-                    failed += 1
-                    continue
-                contract = qualified[0]
-
-                # L3 FIX: Protective Close Order
-                # Fetch price for limit cap
-                ticker = ib.reqMktData(contract, '', True, False)
-                await asyncio.sleep(1)
-                last_price = ticker.last if not util.isNan(ticker.last) else ticker.close
-
-                if last_price and not util.isNan(last_price) and last_price > 0:
-                    slippage_pct = config.get('execution', {}).get('max_slippage_pct', 0.02)
-                    if close_action == 'BUY':
-                        limit_price = last_price * (1 + slippage_pct)
-                    else:
-                        limit_price = last_price * (1 - slippage_pct)
-
-                    tick_size = get_tick_size(config)
-                    limit_price = round_to_tick(limit_price, tick_size)
-
-                    order = LimitOrder(close_action, qty, limit_price)
-                    order.tif = 'GTC'
-                    logger.info(f"L3: Protective close at {limit_price:.4f} (last: {last_price:.4f}, cap: {slippage_pct:.1%})")
-                else:
-                    logger.warning(f"L3: No price for {contract.localSymbol}, using market order")
-                    order = MarketOrder(close_action, qty)
-                    order.tif = 'GTC'
-
+                order = MarketOrder(close_action, qty)
+                order.tif = 'GTC'
                 trade = ib.placeOrder(contract, order)
-                logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol}")
+                logger.info(f"Emergency close: {close_action} {qty} {contract.localSymbol} (MARKET)")
+                trades_pending.append((contract, trade, pos))
 
-                for _ in range(60):
-                    await asyncio.sleep(1)
-                    if trade.isDone():
-                        break
+            # --- Phase 3: Wait for all fills ---
+            closed = 0
+            if trades_pending:
+                fill_timeout = 30  # seconds total for all fills
+                deadline = asyncio.get_event_loop().time() + fill_timeout
+                while trades_pending and asyncio.get_event_loop().time() < deadline:
+                    await asyncio.sleep(0.5)
+                    still_pending = []
+                    for contract, trade, pos in trades_pending:
+                        if trade.isDone():
+                            if trade.orderStatus.status == 'Filled':
+                                closed += 1
+                                logger.info(
+                                    f"Emergency fill: {contract.localSymbol} "
+                                    f"qty={trade.orderStatus.filled} "
+                                    f"@ {trade.orderStatus.avgFillPrice}"
+                                )
+                                # B1: Log to trade ledger
+                                try:
+                                    from trading_bot.utils import log_trade_to_ledger
+                                    import time as _time
+                                    await log_trade_to_ledger(
+                                        ib, trade,
+                                        reason="EMERGENCY_HARD_CLOSE",
+                                        position_id=f"EMERGENCY_{contract.localSymbol}_{today_date}_{int(_time.time())}"
+                                    )
+                                except Exception as ledger_err:
+                                    logger.error(f"Failed to log emergency fill to ledger: {ledger_err}")
+                            else:
+                                failed += 1
+                                # B2: Capture error details
+                                err_detail = "unknown"
+                                try:
+                                    if trade.log:
+                                        err_detail = trade.log[-1].message
+                                except Exception:
+                                    pass
+                                failed_symbols.append(
+                                    (contract.localSymbol, trade.orderStatus.status, err_detail)
+                                )
+                                logger.error(
+                                    f"Emergency close rejected/cancelled: "
+                                    f"{contract.localSymbol} status={trade.orderStatus.status} "
+                                    f"detail={err_detail}"
+                                )
+                        else:
+                            still_pending.append((contract, trade, pos))
+                    trades_pending = still_pending
 
-                if trade.orderStatus.status == 'Filled':
-                    closed += 1
-                    logger.info(f"Emergency fill: {contract.localSymbol} @ {trade.orderStatus.avgFillPrice}")
-                else:
+                # Anything still pending after timeout
+                for contract, trade, pos in trades_pending:
                     failed += 1
-                    logger.error(f"Emergency close incomplete: {contract.localSymbol}")
+                    err_detail = "timeout"
+                    try:
+                        if trade.log:
+                            err_detail = trade.log[-1].message
+                    except Exception:
+                        pass
+                    failed_symbols.append(
+                        (contract.localSymbol, trade.orderStatus.status, err_detail)
+                    )
+                    logger.error(
+                        f"Emergency close timed out ({fill_timeout}s): "
+                        f"{contract.localSymbol} status={trade.orderStatus.status}"
+                    )
 
-            except Exception as e:
-                failed += 1
-                logger.error(f"Emergency close failed for {pos.contract.localSymbol}: {e}")
+            # --- Phase 4: Retry margin-rejected orders (Error 201) ---
+            # After other legs close, margin may have freed up enough.
+            if error_201_symbols and failed_symbols:
+                retry_candidates = [
+                    (sym, status, err) for sym, status, err in failed_symbols
+                    if sym in error_201_symbols
+                ]
+                if retry_candidates:
+                    logger.info(
+                        f"Retrying {len(retry_candidates)} margin-rejected order(s) "
+                        f"after 5s margin release window..."
+                    )
+                    await asyncio.sleep(5)
 
-        summary = f"Emergency hard close: {closed} closed, {failed} failed"
-        logger.info(summary)
-        send_pushover_notification(config.get('notifications', {}), "Emergency Close Result", summary)
+                    # Build symbol → position lookup from original positions
+                    pos_by_symbol = {
+                        pos.contract.localSymbol: pos for pos in open_positions
+                    }
+
+                    for sym, _status, _err in retry_candidates:
+                        pos = pos_by_symbol.get(sym)
+                        if not pos:
+                            continue
+                        contract = pos.contract
+                        if not contract.exchange:
+                            contract.exchange = config.get('exchange', 'SMART')
+                        close_action = 'SELL' if pos.position > 0 else 'BUY'
+                        qty = abs(pos.position)
+
+                        # Retry 1: same quantity
+                        order = MarketOrder(close_action, qty)
+                        order.tif = 'GTC'
+                        trade = ib.placeOrder(contract, order)
+                        logger.info(f"Emergency retry: {close_action} {qty} {sym} (MARKET)")
+
+                        retry_deadline = asyncio.get_event_loop().time() + 10
+                        while not trade.isDone() and asyncio.get_event_loop().time() < retry_deadline:
+                            await asyncio.sleep(0.5)
+
+                        if trade.isDone() and trade.orderStatus.status == 'Filled':
+                            closed += 1
+                            failed -= 1
+                            # Remove from failed lists
+                            failed_symbols = [(s, st, e) for s, st, e in failed_symbols if s != sym]
+                            error_201_symbols = [s for s in error_201_symbols if s != sym]
+                            logger.info(f"Emergency retry FILLED: {sym} qty={trade.orderStatus.filled}")
+                            try:
+                                from trading_bot.utils import log_trade_to_ledger
+                                import time as _time
+                                await log_trade_to_ledger(
+                                    ib, trade,
+                                    reason="EMERGENCY_HARD_CLOSE_RETRY",
+                                    position_id=f"EMERGENCY_{sym}_{today_date}_{int(_time.time())}"
+                                )
+                            except Exception as ledger_err:
+                                logger.error(f"Failed to log retry fill to ledger: {ledger_err}")
+                            continue
+
+                        # Retry 2: reduce quantity to 1 if original was > 1
+                        if qty > 1:
+                            logger.info(f"Emergency retry reduced qty: {close_action} 1 {sym} (MARKET)")
+                            try:
+                                ib.cancelOrder(trade.order)
+                            except Exception:
+                                pass
+                            await asyncio.sleep(1)
+
+                            order2 = MarketOrder(close_action, 1)
+                            order2.tif = 'GTC'
+                            trade2 = ib.placeOrder(contract, order2)
+
+                            retry2_deadline = asyncio.get_event_loop().time() + 10
+                            while not trade2.isDone() and asyncio.get_event_loop().time() < retry2_deadline:
+                                await asyncio.sleep(0.5)
+
+                            if trade2.isDone() and trade2.orderStatus.status == 'Filled':
+                                closed += 1
+                                logger.info(f"Emergency retry (reduced qty) FILLED: {sym} qty=1")
+                                try:
+                                    from trading_bot.utils import log_trade_to_ledger
+                                    import time as _time
+                                    await log_trade_to_ledger(
+                                        ib, trade2,
+                                        reason="EMERGENCY_HARD_CLOSE_RETRY_PARTIAL",
+                                        position_id=f"EMERGENCY_{sym}_{today_date}_{int(_time.time())}"
+                                    )
+                                except Exception as ledger_err:
+                                    logger.error(f"Failed to log partial retry fill: {ledger_err}")
+                                # Still have remaining qty unfilled
+                                remaining = qty - 1
+                                if remaining > 0:
+                                    logger.warning(
+                                        f"MANUAL CLOSE REQUIRED: {remaining} remaining "
+                                        f"{close_action} {sym}"
+                                    )
+                                continue
+
+                        # All retries exhausted
+                        logger.error(f"MANUAL CLOSE REQUIRED: {sym} — all retry attempts failed")
+
+                    # Send separate notification for manual close items
+                    manual_close_needed = [s for s in error_201_symbols]
+                    if manual_close_needed:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "🚨 MANUAL CLOSE REQUIRED",
+                            f"Emergency close retry exhausted for: "
+                            f"{', '.join(manual_close_needed)}\n"
+                            f"These positions remain OPEN. Close manually ASAP."
+                        )
+
+            # B2: Include failed symbol details in notification
+            summary = f"Emergency hard close: {closed} closed, {failed} failed"
+            if failed_symbols:
+                detail = "\n".join(f"  {sym}: {status} — {err}" for sym, status, err in failed_symbols)
+                summary += f"\n{detail}"
+            if error_201_symbols:
+                summary += f"\nMargin rejections (Error 201): {', '.join(error_201_symbols)}"
+            logger.info(summary)
+            send_pushover_notification(config.get('notifications', {}), "Emergency Close Result", summary)
+
+        finally:
+            ib.errorEvent -= on_emergency_error
 
         # Sweep-invalidate active theses for positions we just closed.
         # Without this, ghost theses remain active until the 5AM cleanup job.
@@ -3956,10 +5638,9 @@ async def run_brier_reconciliation(config: dict):
             logger.warning(f"Enhanced Brier backfill failed (non-fatal): {backfill_e}")
 
         # v5.4: Stall detection — alert after 3 consecutive days with 0 resolutions
-        global _brier_zero_resolution_streak
         try:
             import json
-            brier_path = os.path.join(os.path.dirname(__file__), 'data', 'enhanced_brier.json')
+            brier_path = os.path.join(config.get('data_dir', 'data'), 'enhanced_brier.json')
             if os.path.exists(brier_path):
                 with open(brier_path, 'r') as f:
                     brier_data = json.load(f)
@@ -3974,21 +5655,22 @@ async def run_brier_reconciliation(config: dict):
                     )
                 )
                 if resolved_today == 0 and pending > 0:
-                    _brier_zero_resolution_streak += 1
+                    _set_brier_streak(_get_brier_streak() + 1)
+                    streak = _get_brier_streak()
                     logger.warning(
                         f"Brier stall: {pending} pending, 0 resolved today "
-                        f"(streak: {_brier_zero_resolution_streak} days)"
+                        f"(streak: {streak} days)"
                     )
-                    if _brier_zero_resolution_streak >= 3:
+                    if streak >= 3:
                         send_pushover_notification(
                             config.get('notifications', {}),
                             "⚠️ Brier Reconciliation Stall",
                             f"{pending} predictions pending, 0 resolved for "
-                            f"{_brier_zero_resolution_streak} consecutive days. "
+                            f"{streak} consecutive days. "
                             f"Check council_history backfill and schedule ordering."
                         )
                 else:
-                    _brier_zero_resolution_streak = 0
+                    _set_brier_streak(0)
                     if resolved_today > 0:
                         logger.info(f"Brier reconciliation: {resolved_today} predictions resolved today")
         except Exception as e:
@@ -3997,15 +5679,39 @@ async def run_brier_reconciliation(config: dict):
     except Exception as e:
         logger.error(f"Brier reconciliation failed (non-fatal): {e}")
 
-async def guarded_generate_orders(config: dict):
+    # Feedback loop health check — runs here (after CSV + Enhanced Brier resolution)
+    # so it reports accurate post-resolution counts.
+    await _check_feedback_loop_health(config)
+
+async def guarded_generate_orders(config: dict, schedule_id: str = None):
     """Generate orders with budget and cutoff guards."""
 
     # v3.1: Check equity data freshness before cycle
     await check_and_recover_equity_data(config)
 
-    if GLOBAL_BUDGET_GUARD and GLOBAL_BUDGET_GUARD.is_budget_hit:
+    # === Sync portfolio-wide position count from TMS (live, not stale file) ===
+    from trading_bot.data_dir_context import get_engine_runtime
+    rt = get_engine_runtime()
+    if rt and rt.shared and rt.shared.portfolio_guard:
+        try:
+            _tms = TransactiveMemory()
+            _active = _tms.get_active_theses()
+            _count = len(_active) if _active else 0
+            await rt.shared.portfolio_guard.update_positions(rt.ticker, _count, 0)
+        except Exception as _up_e:
+            logger.debug(f"Scheduled path: PRG position sync failed (non-fatal): {_up_e}")
+
+    _bg = _get_budget_guard()
+    if _bg and _bg.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
         return
+
+    # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
+    if rt and rt.shared and rt.shared.portfolio_guard:
+        allowed, reason = await rt.shared.portfolio_guard.can_open_position(rt.ticker, 0)
+        if not allowed:
+            logger.warning(f"Signal cycle BLOCKED by PortfolioRiskGuard: {reason}")
+            return
 
     # --- QUARANTINE HEALTH CHECK (Fix B2) ---
     # Ensure any agents past their quarantine cooldown are released
@@ -4069,7 +5775,8 @@ async def guarded_generate_orders(config: dict):
         return
 
     # Check Drawdown Guard
-    if GLOBAL_DRAWDOWN_GUARD:
+    _dg = _get_drawdown_guard()
+    if _dg:
         ib = None
         try:
              # Need a connection to check P&L.
@@ -4080,12 +5787,18 @@ async def guarded_generate_orders(config: dict):
              if not ib.isConnected():
                  logger.warning("IB disconnected — skipping drawdown P&L update (guard state preserved)")
              else:
-                 await GLOBAL_DRAWDOWN_GUARD.update_pnl(ib)
-             if not GLOBAL_DRAWDOWN_GUARD.is_entry_allowed():
+                 await _dg.update_pnl(ib)
+             if not _dg.is_entry_allowed():
                  logger.warning("Order generation BLOCKED: Drawdown Guard Active")
                  return
         except Exception as e:
-             logger.warning(f"Failed to check drawdown guard before orders: {e}")
+             logger.error(f"Drawdown guard check failed (fail-closed): {e}")
+             send_pushover_notification(
+                 config.get('notifications', {}),
+                 "⚠️ Drawdown Check Failed",
+                 f"Order generation blocked — drawdown guard unreachable: {e}"
+             )
+             return
         finally:
              if ib is not None:
                  try:
@@ -4093,7 +5806,7 @@ async def guarded_generate_orders(config: dict):
                  except Exception:
                      pass
 
-    await generate_and_execute_orders(config, shutdown_check=is_system_shutdown)
+    await generate_and_execute_orders(config, shutdown_check=is_scheduled_shutdown, schedule_id=schedule_id)
 
     # Invalidate semantic cache after scheduled cycle (fresh analysis supersedes cached)
     try:
@@ -4127,6 +5840,7 @@ FUNCTION_REGISTRY = {
     'reconcile_and_analyze': reconcile_and_analyze,
     'run_brier_reconciliation': run_brier_reconciliation,
     'sentinel_effectiveness_check': sentinel_effectiveness_check,
+    'generate_system_digest_task': generate_system_digest_task,
 }
 
 
@@ -4152,6 +5866,7 @@ def _build_default_schedule() -> list:
         ("reconcile_and_analyze",     time(18, 25), reconcile_and_analyze,         "Reconcile & Analyze (18:25 ET)"),
         ("brier_reconciliation",      time(18, 35), run_brier_reconciliation,      "Brier Reconciliation (18:35 ET)"),
         ("sentinel_effectiveness",    time(18, 40), sentinel_effectiveness_check,  "Sentinel Effectiveness Check (18:40 ET)"),
+        ("system_digest",             time(18, 45), generate_system_digest_task,  "System Health Digest (18:45 ET)"),
     ]
     return [
         ScheduledTask(id=tid, time_et=t, function=fn, func_name=fn.__name__, label=lbl)
@@ -4203,19 +5918,21 @@ def _build_session_schedule(config: dict) -> list:
         dt = open_dt + timedelta(minutes=entry['offset_minutes'])
         _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
 
-    # 2. Signal generation: evenly distributed between start_pct and end_pct
-    signal_count = tmpl.get('signal_count', 4)
-    start_pct = tmpl.get('signal_start_pct', 0.05)
-    end_pct = tmpl.get('signal_end_pct', 0.80)
-
+    # 2. Signal generation: explicit pcts or evenly distributed between start/end
     signal_names = ['signal_open', 'signal_early', 'signal_mid', 'signal_late', 'signal_5']
     signal_labels = ['Signal: Open', 'Signal: Early', 'Signal: Mid', 'Signal: Late', 'Signal: 5']
 
-    if signal_count == 1:
-        pcts = [start_pct]
+    if 'signal_pcts' in tmpl:
+        pcts = tmpl['signal_pcts']
     else:
-        step = (end_pct - start_pct) / (signal_count - 1)
-        pcts = [start_pct + i * step for i in range(signal_count)]
+        signal_count = tmpl.get('signal_count', 4)
+        start_pct = tmpl.get('signal_start_pct', 0.05)
+        end_pct = tmpl.get('signal_end_pct', 0.80)
+        if signal_count == 1:
+            pcts = [start_pct]
+        else:
+            step = (end_pct - start_pct) / (signal_count - 1)
+            pcts = [start_pct + i * step for i in range(signal_count)]
 
     for i, pct in enumerate(pcts):
         dt = open_dt + timedelta(minutes=session_minutes * pct)
@@ -4224,7 +5941,11 @@ def _build_session_schedule(config: dict) -> list:
         _add_task(sid, dt.time(), 'guarded_generate_orders', slbl)
 
     # 3. Intra-session tasks: open_time + (session_minutes * session_pct)
+    ticker = get_active_ticker(config)
     for entry in tmpl.get('intra_session_tasks', []):
+        cf = entry.get('commodity_filter', '')
+        if cf and cf != ticker:
+            continue
         dt = open_dt + timedelta(minutes=session_minutes * entry['session_pct'])
         _add_task(entry['id'], dt.time(), entry['function'], entry.get('label', entry['id']))
 
@@ -4380,7 +6101,7 @@ def apply_schedule_offset(original_schedule, offset_minutes: int):
 #
 RECOVERY_POLICY = {
     'start_monitoring':               {'policy': 'MARKET_OPEN',   'idempotent': True},
-    'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': False},
+    'process_deferred_triggers':      {'policy': 'MARKET_OPEN',   'idempotent': True},
     'cleanup_orphaned_theses':        {'policy': 'ALWAYS',        'idempotent': True},
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
     'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # 5 daily cycles (09:00-17:00 UTC)
@@ -4392,6 +6113,7 @@ RECOVERY_POLICY = {
     'reconcile_and_analyze':          {'policy': 'ALWAYS',        'idempotent': False},
     'run_brier_reconciliation':       {'policy': 'ALWAYS',        'idempotent': True},
     'sentinel_effectiveness_check':   {'policy': 'ALWAYS',        'idempotent': False},
+    'generate_system_digest_task':    {'policy': 'ALWAYS',        'idempotent': True},
 }
 
 # Startup validation: warn if default schedule has tasks not covered by RECOVERY_POLICY
@@ -4468,6 +6190,8 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
 
     logger.info(f"--- Recovery: Evaluating {len(sorted_missed)} missed tasks ---")
 
+    config['_recovery_mode'] = True
+
     for task in sorted_missed:
         if task.id in seen_ids:
             logger.debug(
@@ -4524,14 +6248,14 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
                 record_task_completion(task.id)
                 logger.info(f"✅ RECOVERY: {task.id} completed")
                 recovered += 1
+                await asyncio.sleep(6)  # Allow IB connection backoff to expire between tasks
             except Exception as e:
-                logger.error(
-                    f"❌ RECOVERY: {task.id} failed: {e}\n"
-                    f"{traceback.format_exc()}"
-                )
+                logger.exception(f"❌ RECOVERY: {task.id} failed: {e}")
         else:
             logger.info(f"⏭️ RECOVERY SKIP: {task.id} — {skip_reason}")
             skipped += 1
+
+    config.pop('_recovery_mode', None)
 
     total_evaluated = recovered + skipped + already_ran
     summary = (
@@ -4541,23 +6265,116 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
     logger.info(summary)
 
     # Always send ONE notification on restart (even if nothing recovered)
+    ticker = config.get('symbol', config.get('commodity', {}).get('ticker', ''))
     send_pushover_notification(
         config.get('notifications', {}),
-        f"🔄 System Restart: {recovered} Tasks Recovered",
+        f"🔄 [{ticker}] Restart: {recovered} Tasks Recovered",
         summary
     )
 
 
-async def main():
-    """The main long-running orchestrator process."""
+async def main(commodity_ticker: str = None):
+    """The main long-running orchestrator process.
+
+    LEGACY: Single-engine mode. For multi-commodity, use MasterOrchestrator → CommodityEngine.
+    """
+    # --- Multi-commodity path isolation ---
+    ticker = commodity_ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    ticker = ticker.upper()
+    os.environ["COMMODITY_TICKER"] = ticker  # Expose to notifications and dashboard
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, 'data', ticker)
+    os.makedirs(data_dir, exist_ok=True)
+
+    # Per-commodity logging — only in single-engine mode.
+    # In --multi mode, setup_logging was already called once by the __main__ block.
+    from trading_bot.data_dir_context import get_engine_runtime
+    if get_engine_runtime() is not None:
+        # Multi-engine mode — logging already configured by __main__
+        logger.info(f"Engine [{ticker}] using unified multi-engine log")
+    else:
+        # Single-engine mode (no EngineRuntime set yet) — configure per-commodity log
+        setup_logging(log_file=f"logs/orchestrator_{ticker.lower()}.log")
+
     logger.info("=============================================")
-    logger.info("=== Starting the Trading Bot Orchestrator ===")
+    logger.info(f"=== Starting Trading Bot Orchestrator [{ticker}] ===")
     logger.info("=============================================")
+    logger.info(f"Data directory: {data_dir}")
 
     config = load_config()
     if not config:
         logger.critical("Orchestrator cannot start without a valid configuration.")
         return
+
+    # Apply per-commodity config overrides (e.g. commodity_overrides.CC)
+    from config_loader import deep_merge
+    commodity_overrides = config.get('commodity_overrides', {}).get(ticker, {})
+    if commodity_overrides:
+        config = deep_merge(config, commodity_overrides)
+        logger.info(f"Applied commodity overrides for {ticker}: {list(commodity_overrides.keys())}")
+
+    # Inject data_dir and ticker into config for downstream modules
+    config['data_dir'] = data_dir
+    config['symbol'] = ticker
+    config.setdefault('commodity', {})['ticker'] = ticker
+    # Inject exchange from commodity profile (NG→NYMEX, KC/CC→NYBOT).
+    from trading_bot.utils import get_ibkr_exchange
+    config['exchange'] = get_ibkr_exchange(config)
+    # is_primary is set by CommodityEngine._build_config() in multi-engine mode.
+    # In legacy single-engine mode, it defaults to True (the guard default).
+
+    # --- Set ContextVar for multi-engine data isolation ---
+    from trading_bot.data_dir_context import set_engine_data_dir
+    set_engine_data_dir(data_dir)
+
+    # --- Initialize all path-dependent modules BEFORE anything else ---
+    from trading_bot.state_manager import StateManager
+    from trading_bot.task_tracker import set_data_dir as set_tracker_dir
+    from trading_bot.decision_signals import set_data_dir as set_signals_dir
+    from trading_bot.order_manager import set_capital_state_dir
+    from trading_bot.sentinel_stats import set_data_dir as set_stats_dir
+    from trading_bot.utils import set_data_dir as set_utils_data_dir
+    from trading_bot.tms import set_data_dir as set_tms_dir
+    from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
+    from trading_bot.brier_scoring import set_data_dir as set_brier_scoring_dir
+    from trading_bot.weighted_voting import set_data_dir as set_weighted_voting_dir
+    from trading_bot.brier_reconciliation import set_data_dir as set_brier_recon_dir
+    from trading_bot.router_metrics import set_data_dir as set_router_metrics_dir
+    from trading_bot.agents import set_data_dir as set_agents_dir
+    from trading_bot.prompt_trace import set_data_dir as set_prompt_trace_dir
+    from trading_bot.contribution_bridge import set_data_dir as set_contribution_data_dir
+    from trading_bot.contribution_bridge import set_scoring_mode
+
+    StateManager.set_data_dir(data_dir)
+    set_tracker_dir(data_dir)
+    set_signals_dir(data_dir)
+    set_capital_state_dir(data_dir)
+    set_stats_dir(data_dir)
+    set_utils_data_dir(data_dir)
+    set_tms_dir(data_dir)
+    set_brier_bridge_dir(data_dir)
+    set_brier_scoring_dir(data_dir)
+    set_weighted_voting_dir(data_dir)
+    set_brier_recon_dir(data_dir)
+    set_router_metrics_dir(data_dir)
+    set_agents_dir(data_dir)
+    set_prompt_trace_dir(data_dir)
+    set_contribution_data_dir(data_dir)
+    set_scoring_mode(config.get("scoring", {}).get("use_contribution_scoring", False))
+
+    # E.1: Portfolio VaR — shared data dir (NOT per-commodity)
+    from trading_bot.var_calculator import set_var_data_dir
+    from trading_bot.compliance import set_boot_time
+    set_var_data_dir(os.path.dirname(data_dir))  # data/{ticker}/ → data/
+    set_boot_time()
+
+    global _IB_BOOT_TIME
+    _IB_BOOT_TIME = time_module.time()
+
+    global GLOBAL_DEDUPLICATOR
+    GLOBAL_DEDUPLICATOR = TriggerDeduplicator(
+        state_file=os.path.join(data_dir, 'deduplicator_state.json')
+    )
 
     # Initialize trading mode
     from trading_bot.utils import set_trading_mode, is_trading_off
@@ -4570,7 +6387,8 @@ async def main():
         send_pushover_notification(
             config.get('notifications', {}),
             "Orchestrator Started (OFF Mode)",
-            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed."
+            "Trading mode is OFF. Analysis pipeline runs normally. No orders will be placed.",
+            ticker="ALL"
         )
 
     # Remote Gateway indicator
@@ -4580,7 +6398,7 @@ async def main():
         gw_label = "REMOTE/PAPER" if is_paper else "REMOTE"
         logger.warning("=" * 60)
         logger.warning(f"  IB GATEWAY: {gw_label} ({ib_host})")
-        logger.warning(f"  Client IDs: DEV range (10-79)")
+        logger.warning("  Client IDs: DEV range (10-79)")
         logger.warning(f"  Trading Mode: {config.get('trading_mode', 'LIVE')}")
         logger.warning("=" * 60)
         if not is_trading_off() and not is_paper:
@@ -4593,12 +6411,12 @@ async def main():
                 "REMOTE GW + LIVE MODE",
                 f"Orchestrator on remote GW ({ib_host}) with TRADING_MODE=LIVE. "
                 "Likely a misconfiguration — set TRADING_MODE=OFF or IB_PAPER=true.",
-                priority=1
+                priority=1,
+                ticker="ALL"
             )
 
     # Update deduplicator with config values
-    global GLOBAL_DEDUPLICATOR
-    GLOBAL_DEDUPLICATOR.critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
+    _get_deduplicator().critical_severity_threshold = config.get('sentinels', {}).get('critical_severity_threshold', 9)
 
     # Initialize Budget Guard (singleton — shared with heterogeneous_router)
     global GLOBAL_BUDGET_GUARD
@@ -4609,6 +6427,16 @@ async def main():
     global GLOBAL_DRAWDOWN_GUARD
     GLOBAL_DRAWDOWN_GUARD = DrawdownGuard(config)
     logger.info("Drawdown Guard initialized.")
+
+    # === Set EngineRuntime ContextVar (Phase 2: engine-scoped state) ===
+    from trading_bot.data_dir_context import EngineRuntime, set_engine_runtime
+    _runtime = EngineRuntime(
+        ticker=ticker,
+        deduplicator=GLOBAL_DEDUPLICATOR,
+        budget_guard=GLOBAL_BUDGET_GUARD,
+        drawdown_guard=GLOBAL_DRAWDOWN_GUARD,
+    )
+    set_engine_runtime(_runtime)
 
     # M6 FIX: Validate expiry overlap
     from config import get_active_profile
@@ -4667,9 +6495,7 @@ async def main():
                 for task in task_list
             ]
         }
-        schedule_file = os.path.join(
-            os.path.dirname(__file__), 'data', 'active_schedule.json'
-        )
+        schedule_file = os.path.join(data_dir, 'active_schedule.json')
         os.makedirs(os.path.dirname(schedule_file), exist_ok=True)
         with open(schedule_file, 'w') as f:
             json.dump(schedule_data, f, indent=2)
@@ -4702,19 +6528,18 @@ async def main():
     # === STARTUP: Run Topic Discovery Agent immediately ===
     # Ensures PredictionMarketSentinel has topics before sentinel loop begins.
     # The sentinel loop will handle subsequent 12-hour refreshes.
-    global _STARTUP_DISCOVERY_TIME
     discovery_config = config.get('sentinels', {}).get('prediction_markets', {}).get('discovery_agent', {})
     if discovery_config.get('enabled', False):
         try:
             from trading_bot.topic_discovery import TopicDiscoveryAgent
             logger.info("Running TopicDiscoveryAgent on startup...")
-            startup_discovery = TopicDiscoveryAgent(config, budget_guard=GLOBAL_BUDGET_GUARD)
+            startup_discovery = TopicDiscoveryAgent(config, budget_guard=_get_budget_guard())
             result = await startup_discovery.run_scan()
             logger.info(
                 f"Startup TopicDiscovery: {result['metadata']['topics_discovered']} topics, "
                 f"{result['changes']['summary']}"
             )
-            _STARTUP_DISCOVERY_TIME = time_module.time()
+            _set_startup_discovery_time(time_module.time())
         except Exception as e:
             logger.warning(f"Startup TopicDiscovery failed (sentinel loop will retry): {e}")
 
@@ -4746,21 +6571,24 @@ async def main():
 
                 # Set global cooldown during scheduled cycle (e.g. 10 mins)
                 # This prevents Sentinels from firing Emergency Cycles while we are busy
-                GLOBAL_DEDUPLICATOR.set_cooldown("GLOBAL", 600)
+                _get_deduplicator().set_cooldown("GLOBAL", 600)
 
                 try:
-                    await next_task.function(config)
+                    if next_task.func_name == 'guarded_generate_orders':
+                        await next_task.function(config, schedule_id=next_task.id)
+                    else:
+                        await next_task.function(config)
                     record_task_completion(next_task.id)
                 finally:
                     # Clear cooldown immediately after task finishes
-                    GLOBAL_DEDUPLICATOR.clear_cooldown("GLOBAL")
+                    _get_deduplicator().clear_cooldown("GLOBAL")
 
             except asyncio.CancelledError:
                 logger.info("Orchestrator main loop cancelled.")
                 break
             except Exception as e:
-                error_msg = f"A critical error occurred in the main orchestrator loop: {e}\n{traceback.format_exc()}"
-                logger.critical(error_msg)
+                error_msg = f"A critical error occurred in the main orchestrator loop: {e}"
+                logger.critical(error_msg, exc_info=True)
                 await asyncio.sleep(60)
     finally:
         logger.info("Orchestrator shutting down. Ensuring monitor is stopped.")
@@ -4770,13 +6598,14 @@ async def main():
 
         # Cancel any in-flight fire-and-forget tasks (emergency cycles, audits)
         # before releasing connections they may be using
-        if _INFLIGHT_TASKS:
-            logger.info(f"Cancelling {len(_INFLIGHT_TASKS)} in-flight tasks...")
-            for t in list(_INFLIGHT_TASKS):
+        _ift = _get_inflight_tasks()
+        if _ift:
+            logger.info(f"Cancelling {len(_ift)} in-flight tasks...")
+            for t in list(_ift):
                 t.cancel()
             # Give tasks a moment to handle CancelledError gracefully
             await asyncio.sleep(1)
-            _INFLIGHT_TASKS.clear()
+            _ift.clear()
 
         if monitor_process and monitor_process.returncode is None:
             await stop_monitoring(config)
@@ -4789,14 +6618,33 @@ async def sequential_main():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Trading Bot Orchestrator")
+    parser.add_argument(
+        '--commodity', type=str, default=None,
+        help="Run single commodity engine (e.g. --commodity KC). Overrides --multi."
+    )
+    parser.add_argument(
+        '--sequential', action='store_true',
+        help="Run tasks sequentially (legacy diagnostic mode)"
+    )
+    parser.add_argument(
+        '--multi', action='store_true', default=True,
+        help="Run MasterOrchestrator with all active commodities (default)"
+    )
+    args = parser.parse_args()
 
-    if len(sys.argv) > 1:
+    legacy_mode = os.environ.get("LEGACY_MODE", "").lower() == "true"
+
+    if args.sequential:
         asyncio.run(sequential_main())
-    else:
+    elif args.commodity or legacy_mode:
+        # Single-commodity mode: explicit --commodity flag or LEGACY_MODE=true
+        ticker = args.commodity or os.environ.get("COMMODITY_TICKER", "KC")
         loop = asyncio.get_event_loop()
         main_task = None
         try:
-            main_task = loop.create_task(main())
+            main_task = loop.create_task(main(commodity_ticker=ticker))
             loop.run_until_complete(main_task)
         except (KeyboardInterrupt, SystemExit):
             logger.info("Orchestrator stopped by user.")
@@ -4805,3 +6653,9 @@ if __name__ == "__main__":
                 loop.run_until_complete(main_task)
         finally:
             loop.close()
+    else:
+        # Default: --multi (MasterOrchestrator)
+        setup_logging(log_file="logs/orchestrator_multi.log")
+        _IB_BOOT_TIME = time_module.time()
+        from trading_bot.master_orchestrator import main as master_main
+        asyncio.run(master_main())

@@ -70,32 +70,57 @@ def print_eval_table(stats: dict, readiness: dict, min_examples: int):
               f"{total_neutral/total_all:.0%} NEUTRAL")
     print()
 
-    # Header
-    fmt = "{:<20} {:>8} {:>9} {:>7}  {}"
-    print(fmt.format("Agent", "Examples", "Accuracy", "Brier", "Ready?"))
-    print("-" * 70)
+    # Check if contribution metrics are available
+    has_metric = any(
+        info.get("avg_metric_score") is not None
+        for info in agents_info.values()
+    )
 
-    # Sort by accuracy ascending (worst first)
+    # Header
+    if has_metric:
+        fmt = "{:<20} {:>8} {:>10} {:>8} {:>11} {:>7}  {}"
+        print(fmt.format("Agent", "Examples", "Dir. Acc.", "Metric", "Abstention", "Brier", "Ready?"))
+        print("-" * 95)
+    else:
+        fmt = "{:<20} {:>8} {:>10} {:>11} {:>7}  {}"
+        print(fmt.format("Agent", "Examples", "Dir. Acc.", "Abstention", "Brier", "Ready?"))
+        print("-" * 85)
+
+    # Sort by metric score (or directional accuracy) ascending (worst first)
+    sort_key = "avg_metric_score" if has_metric else "directional_accuracy"
     sorted_agents = sorted(
         agents_info.items(),
-        key=lambda x: x[1].get("accuracy", 0),
+        key=lambda x: x[1].get(sort_key, 0),
     )
 
     for agent, info in sorted_agents:
         ready_info = readiness.get(agent, {})
         ready_str = "YES" if ready_info.get("ready") else "NO"
         reason = ready_info.get("reason", "")
+        dir_total = info.get("directional_total", 0)
         flag = ""
-        if info["accuracy"] < 0.30:
+        if info["directional_accuracy"] < 0.30:
             flag = " <-- worst"
 
-        print(fmt.format(
-            agent,
-            info["total"],
-            f"{info['accuracy']:.1%}",
-            f"{info['brier_score']:.2f}",
-            f"{ready_str} ({reason}){flag}",
-        ))
+        if has_metric:
+            print(fmt.format(
+                agent,
+                f"{dir_total}/{info['total']}",
+                f"{info['directional_accuracy']:.1%}",
+                f"{info.get('avg_metric_score', 0):.3f}",
+                f"{info['abstention_rate']:.1%}",
+                f"{info['brier_score']:.2f}",
+                f"{ready_str} ({reason}){flag}",
+            ))
+        else:
+            print(fmt.format(
+                agent,
+                f"{dir_total}/{info['total']}",
+                f"{info['directional_accuracy']:.1%}",
+                f"{info['abstention_rate']:.1%}",
+                f"{info['brier_score']:.2f}",
+                f"{ready_str} ({reason}){flag}",
+            ))
 
     print()
     print("Run with --optimize to generate improved prompts.")
@@ -110,13 +135,26 @@ def print_optimization_results(
     min_for_suggest: int,
 ):
     """Print before/after comparison and recommendation."""
-    print(f"\n{'='*56}")
+    print(f"\n{'='*70}")
     print(f"  Optimization Results ({ticker})")
-    print(f"{'='*56}\n")
+    print(f"{'='*70}\n")
 
-    fmt = "{:<20} {:>8} {:>8} {:>10}  {:>5}"
-    print(fmt.format("Agent", "Before", "After", "Delta", "Demos"))
-    print("-" * 60)
+    # Check if contribution metrics are available
+    has_metric = any(
+        opt.get("avg_metric_score") is not None
+        for opt in optimized_results.values()
+        if not opt.get("skipped")
+    )
+
+    if has_metric:
+        fmt = "{:<20} {:>8} {:>8} {:>7} {:>8} {:>8} {:>7} {:>5}"
+        print(fmt.format("Agent", "Dir.Bef", "Dir.Aft", "D.Delt",
+                          "Met.Bef", "Met.Aft", "M.Delt", "Demos"))
+        print("-" * 85)
+    else:
+        fmt = "{:<20} {:>8} {:>8} {:>10} {:>11}  {:>5}"
+        print(fmt.format("Agent", "Before", "After", "Delta", "Abstention", "Demos"))
+        print("-" * 75)
 
     for agent in sorted(optimized_results.keys()):
         opt = optimized_results[agent]
@@ -124,18 +162,28 @@ def print_optimization_results(
             print(f"{agent:<20} {'skipped':>8}")
             continue
 
-        base_acc = baseline.get(agent, {}).get("accuracy", 0)
-        opt_acc = opt.get("accuracy", 0)
+        base_acc = baseline.get(agent, {}).get("directional_accuracy", 0)
+        opt_acc = opt.get("directional_accuracy", 0)
         delta = opt_acc - base_acc
-        delta_str = f"{delta:+.1%}"
 
-        print(fmt.format(
-            agent,
-            f"{base_acc:.1%}",
-            f"{opt_acc:.1%}",
-            delta_str,
-            opt.get("n_demos", 0),
-        ))
+        if has_metric:
+            base_met = baseline.get(agent, {}).get("avg_metric_score") or 0
+            opt_met = opt.get("avg_metric_score") or 0
+            met_delta = opt_met - base_met
+            print(fmt.format(
+                agent,
+                f"{base_acc:.1%}", f"{opt_acc:.1%}", f"{delta:+.1%}",
+                f"{base_met:.3f}", f"{opt_met:.3f}", f"{met_delta:+.3f}",
+                opt.get("n_demos", 0),
+            ))
+        else:
+            abstention = opt.get("abstention_rate", 0)
+            print(fmt.format(
+                agent,
+                f"{base_acc:.1%}", f"{opt_acc:.1%}", f"{delta:+.1%}",
+                f"{abstention:.1%}",
+                opt.get("n_demos", 0),
+            ))
 
     print(f"\nOptimized prompts saved to {output_dir}/{ticker}/")
 
@@ -169,14 +217,15 @@ def main():
     # Resolve paths
     ticker = args.ticker or config.get("symbol", "KC")
     data_dir = args.data_dir or config.get("data_directory", str(PROJECT_ROOT / "data"))
-    output_dir = dspy_config.get("optimized_prompts_dir", "data/dspy_optimized")
+    ticker_dir = os.path.join("data", ticker, "dspy_optimized")
+    output_dir = dspy_config.get("optimized_prompts_dir", ticker_dir)
     if not Path(output_dir).is_absolute():
         output_dir = str(PROJECT_ROOT / output_dir)
     min_examples = dspy_config.get("min_examples_per_agent", DEFAULT_MIN_EXAMPLES_PER_AGENT)
     min_for_suggest = dspy_config.get("min_examples_for_suggest", DEFAULT_MIN_EXAMPLES_FOR_SUGGEST)
 
     # Load data
-    dataset = CouncilDataset(data_dir)
+    dataset = CouncilDataset(os.path.join(data_dir, ticker))
     try:
         predictions = dataset.load()
     except FileNotFoundError as e:
@@ -195,11 +244,17 @@ def main():
     # Optimization mode — pre-flight checks
     # Check for required API key before starting (avoids N identical failures)
     bootstrap_model = dspy_config.get("bootstrap_model", "openai/gpt-4o-mini")
-    if bootstrap_model.startswith("openai/") and not os.environ.get("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY environment variable is required for --optimize mode.")
-        print(f"  Bootstrap model: {bootstrap_model}")
-        print("  Set the key or configure dspy.bootstrap_model in config.json.")
-        sys.exit(1)
+    api_key_map = {
+        "openai/": "OPENAI_API_KEY",
+        "xai/": "XAI_API_KEY",
+        "anthropic/": "ANTHROPIC_API_KEY",
+    }
+    for prefix, env_var in api_key_map.items():
+        if bootstrap_model.startswith(prefix) and not os.environ.get(env_var):
+            print(f"Error: {env_var} environment variable is required for --optimize mode.")
+            print(f"  Bootstrap model: {bootstrap_model}")
+            print("  Set the key or configure dspy.bootstrap_model in config.json.")
+            sys.exit(1)
 
     _ensure_signature()
 
@@ -237,7 +292,7 @@ def main():
             optimized_results[agent] = result
         except Exception as e:
             logger.error(f"  Failed to optimize {agent}: {e}")
-            optimized_results[agent] = {"accuracy": 0.0, "skipped": True}
+            optimized_results[agent] = {"directional_accuracy": 0.0, "abstention_rate": 0.0, "skipped": True}
 
     print_optimization_results(baseline, optimized_results, ticker, output_dir, stats, min_for_suggest)
 

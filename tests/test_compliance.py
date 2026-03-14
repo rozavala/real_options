@@ -67,6 +67,35 @@ async def test_audit_decision(mock_config):
         assert "Hallucination" in result['flagged_reason']
 
 
+@pytest.mark.asyncio
+async def test_audit_decision_with_debate_summary(mock_config):
+    """v8.1: Verify debate_summary param is accepted and included in prompt."""
+    with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+        mock_router_instance = MockRouter.return_value
+        mock_router_instance.route = AsyncMock()
+        mock_router_instance.route.return_value = '{"approved": true, "flagged_reason": ""}'
+
+        guardian = ComplianceGuardian(mock_config)
+
+        reports = {'agent1': 'report'}
+        market_context = 'price data'
+        decision = {'direction': 'BULLISH', 'reasoning': 'Permabear noted risk but Bull defense was stronger'}
+        debate_summary = "BEAR ATTACK:\n{\"position\": \"BEARISH\"}\n\nBULL DEFENSE:\n{\"position\": \"BULLISH\"}"
+
+        result = await guardian.audit_decision(
+            reports, market_context, decision, "",
+            debate_summary=debate_summary
+        )
+        assert result['approved'] is True
+
+        # Verify debate summary was included in the prompt sent to LLM
+        call_args = mock_router_instance.route.call_args
+        prompt_sent = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get('prompt', '')
+        assert "BEAR ATTACK" in prompt_sent
+        assert "BULL DEFENSE" in prompt_sent
+        assert "Source 3: ADVERSARIAL DEBATE" in prompt_sent
+
+
 # --- ComplianceDecision parser tests ---
 
 class TestComplianceDecisionParser:
@@ -121,3 +150,85 @@ class TestComplianceDecisionParser:
         d = ComplianceDecision.from_llm_response("I think this order is fine.")
         assert d.approved is False
         assert d.parse_method == "fail_closed"
+
+
+# --- EIA Blackout Window Tests ---
+
+class TestEIABlackout:
+    """Tests for the EIA Natural Gas Storage Report blackout window."""
+
+    @pytest.mark.asyncio
+    async def test_eia_blackout_rejects_ng_during_window(self, mock_config):
+        """NG order during Thursday 10:25-10:35 ET is rejected."""
+        from datetime import datetime
+        import pytz
+
+        with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+            mock_router_instance = MockRouter.return_value
+            guardian = ComplianceGuardian(mock_config)
+
+            with patch.object(guardian, '_fetch_volume_stats', new_callable=AsyncMock) as mock_vol:
+                mock_vol.return_value = 1000.0
+
+                # Thursday 10:30 AM ET — inside EIA window
+                ny_tz = pytz.timezone('America/New_York')
+                mock_now = ny_tz.localize(datetime(2026, 2, 26, 10, 30, 0))  # Thursday
+
+                with patch('trading_bot.compliance._eia_now_et', return_value=mock_now):
+                    context = {'symbol': 'NG', 'commodity': 'NG', 'order_quantity': 1}
+                    approved, reason = await guardian.review_order(context)
+
+                    assert approved is False
+                    assert "Blackout" in reason
+
+    @pytest.mark.asyncio
+    async def test_eia_blackout_allows_ng_outside_window(self, mock_config):
+        """NG order on Thursday but outside 10:25-10:35 ET proceeds normally."""
+        from datetime import datetime
+        import pytz
+
+        with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+            mock_router_instance = MockRouter.return_value
+            mock_router_instance.route = AsyncMock()
+            mock_router_instance.route.return_value = '{"approved": true, "reason": "Approved"}'
+
+            guardian = ComplianceGuardian(mock_config)
+
+            with patch.object(guardian, '_fetch_volume_stats', new_callable=AsyncMock) as mock_vol:
+                mock_vol.return_value = 1000.0
+
+                # Thursday 11:00 AM ET — outside EIA window
+                ny_tz = pytz.timezone('America/New_York')
+                mock_now = ny_tz.localize(datetime(2026, 2, 26, 11, 0, 0))
+
+                with patch('trading_bot.compliance._eia_now_et', return_value=mock_now):
+                    context = {'symbol': 'NG', 'commodity': 'NG', 'order_quantity': 1}
+                    approved, reason = await guardian.review_order(context)
+
+                    assert "EIA Blackout" not in reason
+
+    @pytest.mark.asyncio
+    async def test_eia_blackout_skips_kc(self, mock_config):
+        """KC order on Thursday 10:30 ET is NOT affected by EIA blackout."""
+        from datetime import datetime
+        import pytz
+
+        with patch('trading_bot.compliance.HeterogeneousRouter') as MockRouter:
+            mock_router_instance = MockRouter.return_value
+            mock_router_instance.route = AsyncMock()
+            mock_router_instance.route.return_value = '{"approved": true, "reason": "Approved"}'
+
+            guardian = ComplianceGuardian(mock_config)
+
+            with patch.object(guardian, '_fetch_volume_stats', new_callable=AsyncMock) as mock_vol:
+                mock_vol.return_value = 1000.0
+
+                # Thursday 10:30 AM ET — inside EIA window but KC, not NG
+                ny_tz = pytz.timezone('America/New_York')
+                mock_now = ny_tz.localize(datetime(2026, 2, 26, 10, 30, 0))
+
+                with patch('trading_bot.compliance._eia_now_et', return_value=mock_now):
+                    context = {'symbol': 'KC', 'commodity': 'KC', 'order_quantity': 1}
+                    approved, reason = await guardian.review_order(context)
+
+                    assert "EIA Blackout" not in reason

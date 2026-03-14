@@ -376,3 +376,42 @@ def test_build_schedule_absolute_mode_still_works():
     assert len(result) == 2
     assert result[0].id == 'sig1'
     assert result[1].id == 'sig2'
+
+
+# === commodity_filter in intra-session tasks ===
+
+def test_commodity_filter_skips_non_matching():
+    """Intra-session task with commodity_filter='NG' is skipped for KC engine."""
+    config = _make_session_config('KC')
+    config['schedule']['session_template']['intra_session_tasks'].append(
+        {'id': 'eia_storage_signal', 'session_pct': 0.29, 'function': 'guarded_generate_orders',
+         'label': 'Signal: EIA Storage Report', 'commodity_filter': 'NG'}
+    )
+    result = build_schedule(config)
+
+    # The NG-only task should NOT appear in KC schedule
+    ids = [t.id for t in result]
+    assert 'eia_storage_signal' not in ids
+
+
+def test_commodity_filter_includes_matching():
+    """Intra-session task with commodity_filter='NG' IS included for NG engine."""
+    config = _make_session_config('NG')
+    config['schedule']['session_template']['intra_session_tasks'].append(
+        {'id': 'eia_storage_signal', 'session_pct': 0.29, 'function': 'guarded_generate_orders',
+         'label': 'Signal: EIA Storage Report', 'commodity_filter': 'NG'}
+    )
+    result = build_schedule(config)
+
+    ids = [t.id for t in result]
+    assert 'eia_storage_signal' in ids
+
+
+def test_commodity_filter_absent_includes_all():
+    """Intra-session task without commodity_filter is included for any engine."""
+    config = _make_session_config('KC')
+    # The default audit_mid_session has no commodity_filter
+    result = build_schedule(config)
+
+    ids = [t.id for t in result]
+    assert 'audit_mid_session' in ids

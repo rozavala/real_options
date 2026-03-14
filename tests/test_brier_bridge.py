@@ -37,14 +37,16 @@ class TestConfidenceToProbs(unittest.TestCase):
 
 
 class TestGetAgentReliability(unittest.TestCase):
+    @patch('trading_bot.contribution_bridge.is_contribution_scoring_enabled', return_value=False)
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_falls_back_to_legacy_when_enhanced_unavailable(self, mock_tracker):
+    def test_falls_back_to_legacy_when_enhanced_unavailable(self, mock_tracker, _mock_contrib):
         mock_tracker.return_value = None
         result = get_agent_reliability('agronomist')
         self.assertEqual(result, 1.0)  # Default baseline
 
+    @patch('trading_bot.contribution_bridge.is_contribution_scoring_enabled', return_value=False)
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_returns_enhanced_when_available(self, mock_tracker):
+    def test_returns_enhanced_when_available(self, mock_tracker, _mock_contrib):
         mock_enhanced = MagicMock()
         mock_enhanced.get_agent_reliability.return_value = 1.5
         mock_tracker.return_value = mock_enhanced
@@ -54,43 +56,28 @@ class TestGetAgentReliability(unittest.TestCase):
         result = get_agent_reliability('agronomist', 'HIGH_VOL')
         self.assertEqual(result, 1.5)
 
+    @patch('trading_bot.contribution_bridge.is_contribution_scoring_enabled', return_value=False)
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    def test_regime_fallback_to_normal(self, mock_get_tracker):
-        # Mock tracker
+    def test_bridge_delegates_to_tracker_without_fallback(self, mock_get_tracker, _mock_contrib):
+        """v8.0: Bridge delegates directly to tracker — no NORMAL fallback."""
         mock_tracker = MagicMock()
         mock_get_tracker.return_value = mock_tracker
 
-        # Setup: HIGH_VOLATILITY returns 1.0 (no data), NORMAL returns 1.5
-        def side_effect(agent, regime):
-            if regime == "HIGH_VOL":
-                return 1.0
-            if regime == "NORMAL":
-                return 1.5
-            return 1.0
+        # Tracker returns 1.0 for HIGH_VOL (no regime-specific data)
+        mock_tracker.get_agent_reliability.return_value = 1.0
 
-        mock_tracker.get_agent_reliability.side_effect = side_effect
-
-        # Action: request for HIGH_VOLATILITY
         result = get_agent_reliability('agronomist', 'HIGH_VOLATILITY')
 
-        # Assert: should return NORMAL value (1.5)
-        self.assertEqual(result, 1.5)
-
-        # Verify both calls were made
-        expected_calls = [
-            unittest.mock.call('agronomist', 'HIGH_VOL'),
-            unittest.mock.call('agronomist', 'NORMAL')
-        ]
-        mock_tracker.get_agent_reliability.assert_has_calls(expected_calls)
+        # Bridge should NOT retry with NORMAL — tracker handles cross-regime internally
+        self.assertEqual(result, 1.0)
+        mock_tracker.get_agent_reliability.assert_called_once_with('agronomist', 'HIGH_VOL')
 
 
 class TestRecordAgentPrediction(unittest.TestCase):
+    @patch('trading_bot.data_dir_context.get_engine_runtime', return_value=MagicMock())
     @patch('trading_bot.brier_bridge._get_enhanced_tracker')
-    @patch('trading_bot.brier_scoring.get_brier_tracker')
-    def test_dual_write_both_systems(self, mock_legacy, mock_enhanced_fn):
-        mock_legacy_tracker = MagicMock()
-        mock_legacy.return_value = mock_legacy_tracker
-
+    def test_writes_to_enhanced_only(self, mock_enhanced_fn, _mock_rt):
+        """record_agent_prediction writes to enhanced system only (legacy removed)."""
         mock_enhanced_tracker = MagicMock()
         mock_enhanced_fn.return_value = mock_enhanced_tracker
 
@@ -101,10 +88,7 @@ class TestRecordAgentPrediction(unittest.TestCase):
             cycle_id='test_cycle_001',
         )
 
-        # Verify legacy was called
-        mock_legacy_tracker.record_prediction_structured.assert_called_once()
-
-        # Verify enhanced was called
+        # Enhanced should be called
         mock_enhanced_tracker.record_prediction.assert_called_once()
 
 

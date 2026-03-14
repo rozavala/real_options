@@ -6,7 +6,6 @@ import sys
 from datetime import datetime, timedelta, time, timezone
 import pandas as pd
 from ib_insync import IB
-import httpx
 
 # Use absolute imports if running as a script within the package
 if __name__ == "__main__":
@@ -17,24 +16,47 @@ if __name__ == "__main__":
     # We can't easily import from reconcile_trades if it's a script in the same dir
     # unless we treat the dir as a package or add it to path.
     # We already added '.' to path.
-    from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
+    from reconcile_trades import fetch_flex_query_report
 else:
     from config_loader import load_config
-    from reconcile_trades import fetch_flex_query_report, parse_flex_csv_to_df
+    from reconcile_trades import fetch_flex_query_report
     from trading_bot.utils import configure_market_data_type
 
 # Setup logging
 logger = logging.getLogger("EquityLogger")
 
+# Module-level lock to prevent concurrent Flex Query requests (rate-limit guard)
+_equity_sync_lock = asyncio.Lock()
+
 async def sync_equity_from_flex(config: dict):
     """
     Fetches the last 365 days of Net Asset Value from IBKR Flex Query (ID 1341111)
-    and updates `data/daily_equity.csv`.
+    and updates `data/{ticker}/daily_equity.csv`.
 
     The Flex Query returns 'ReportDate' and 'Total'.
     This function normalizes the date to closing time (17:00 NY Time) and saves
     the file to ensure the local equity history matches the broker's official record.
+
+    Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
+    Non-primary engines skip to avoid duplicate Flex queries and identical data.
     """
+    # Guard: only the primary engine syncs account-wide equity
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+    if not is_primary:
+        logger.info("Equity sync skipped (non-primary engine).")
+        return
+
+    # Guard: skip if another sync is already in progress to avoid Flex Query rate limits
+    if _equity_sync_lock.locked():
+        logger.info("Equity sync already in progress, skipping duplicate request.")
+        return
+
+    async with _equity_sync_lock:
+        await _sync_equity_from_flex_inner(config)
+
+
+async def _sync_equity_from_flex_inner(config: dict):
+    """Inner implementation of equity sync, called under lock."""
     logger.info("--- Starting Equity Synchronization from Flex Query ---")
 
     # Get the ID from the config (loaded from .env), or fallback to os.getenv just in case
@@ -92,7 +114,8 @@ async def sync_equity_from_flex(config: dict):
         return
 
     # 4. Merge with Local Data (Preserving extra local data)
-    file_path = os.path.join("data", "daily_equity.csv")
+    data_dir = config.get('data_dir', 'data')
+    file_path = os.path.join(data_dir, "daily_equity.csv")
 
     final_df = flex_df.copy() # Start with Flex data as base (Source of Truth)
 
@@ -132,11 +155,22 @@ async def sync_equity_from_flex(config: dict):
 
 async def log_equity_snapshot(config: dict):
     """
-    Connects to IB, fetches NetLiquidation, and logs it to data/daily_equity.csv.
+    Connects to IB, fetches NetLiquidation, and logs it to data/{ticker}/daily_equity.csv.
+
+    Only runs for the primary commodity (KC) since NetLiquidation is account-wide.
+    Non-primary engines skip to avoid duplicate IB connections and identical data.
     """
+    # Guard: only the primary engine logs account-wide equity
+    is_primary = config.get('commodity', {}).get('is_primary', True)
+    if not is_primary:
+        logger.info("Equity snapshot skipped (non-primary engine).")
+        return
+
     logger.info("--- Starting Equity Snapshot Logging ---")
 
-    file_path = os.path.join("data", "daily_equity.csv")
+    data_dir = config.get('data_dir', 'data')
+    file_path = os.path.join(data_dir, "daily_equity.csv")
+    os.makedirs(data_dir, exist_ok=True)
 
     # 1. Connect to IB
     ib = IB()
@@ -215,12 +249,22 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--sync', action='store_true', help='Sync equity from Flex Query')
+    parser.add_argument('--commodity', type=str,
+                        default=os.environ.get("COMMODITY_TICKER", "KC"),
+                        help="Commodity ticker (e.g. KC, CC)")
     args = parser.parse_args()
+
+    ticker = args.commodity.upper()
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, 'data', ticker)
+    os.makedirs(data_dir, exist_ok=True)
 
     setup_logging(log_file="logs/equity_logger.log")
     cfg = load_config()
 
     if cfg:
+        cfg['data_dir'] = data_dir
+        cfg.setdefault('commodity', {})['ticker'] = ticker
         if args.sync:
             asyncio.run(sync_equity_from_flex(cfg))
         else:

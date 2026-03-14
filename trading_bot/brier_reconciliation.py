@@ -14,11 +14,27 @@ from trading_bot.timestamps import parse_ts_column
 
 logger = logging.getLogger(__name__)
 
-# Paths
-DATA_DIR = "data"
-STRUCTURED_FILE = os.path.join(DATA_DIR, "agent_accuracy_structured.csv")
-COUNCIL_FILE = os.path.join(DATA_DIR, "council_history.csv")
-ACCURACY_FILE = os.path.join(DATA_DIR, "agent_accuracy.csv")
+# Paths — set via set_data_dir() from orchestrator init
+_data_dir = None
+
+
+def set_data_dir(data_dir: str):
+    """Set commodity-specific data directory for reconciliation paths."""
+    global _data_dir
+    _data_dir = data_dir
+
+
+def _get_paths():
+    """Return (council_file, accuracy_file) for active commodity."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        base = get_engine_data_dir()
+    except LookupError:
+        base = _data_dir or os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"))
+    return (
+        os.path.join(base, "council_history.csv"),
+        os.path.join(base, "agent_accuracy.csv"),
+    )
 
 
 def resolve_with_cycle_aware_match(dry_run: bool = False):
@@ -35,11 +51,20 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     2. Check if that cycle's council decision has been reconciled
     3. Only resolve if reconciled; otherwise classify as "awaiting reconciliation"
     """
-    if not os.path.exists(STRUCTURED_FILE) or not os.path.exists(COUNCIL_FILE):
+    COUNCIL_FILE, ACCURACY_FILE = _get_paths()
+
+    if not os.path.exists(COUNCIL_FILE):
         logger.info("Missing required files for resolution")
         return 0
 
-    predictions_df = pd.read_csv(STRUCTURED_FILE)
+    # Legacy structured CSV no longer exists — resolution is handled by
+    # the enhanced Brier system (enhanced_brier.json) directly.
+    structured_file = os.path.join(os.path.dirname(COUNCIL_FILE), "agent_accuracy_structured.csv")
+    if not os.path.exists(structured_file):
+        logger.info("agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system")
+        return 0
+
+    predictions_df = pd.read_csv(structured_file)
     council_df = pd.read_csv(COUNCIL_FILE)
 
     if predictions_df.empty or council_df.empty:
@@ -154,7 +179,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
     resolvable = total - orphaned_total
     effective_rate = (resolved_total / resolvable * 100) if resolvable > 0 else 0
 
-    logger.info(f"\n{'='*50}")
+    logger.info(f"{'='*50}")
     logger.info(f"RESOLUTION BREAKDOWN:")
     logger.info(f"  Total predictions:            {total}")
     logger.info(f"  Resolved:                     {resolved_total} (+{resolved_count} new)")
@@ -170,13 +195,13 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
 
     # Estimate potential from running reconciliation
     if awaiting_reconciliation > 0:
-        logger.info(f"\nRunning reconciliation could unlock "
+        logger.info(f"Running reconciliation could unlock "
                     f"up to {awaiting_reconciliation} more predictions")
 
     # Save changes if any (resolved or orphaned)
     if (resolved_count > 0 or orphaned_count > 0) and not dry_run:
-        predictions_df.to_csv(STRUCTURED_FILE, index=False)
-        logger.info(f"Saved updated {STRUCTURED_FILE}")
+        predictions_df.to_csv(structured_file, index=False)
+        logger.info(f"Saved updated {structured_file}")
 
         # Sync to legacy file (only resolved ones, orphans don't go to legacy)
         if resolved_count > 0:
@@ -192,7 +217,7 @@ def resolve_with_cycle_aware_match(dry_run: bool = False):
                 ).astype(int)
 
                 with open(ACCURACY_FILE, 'a') as f:
-                    for _, row in newly_resolved.iterrows():
+                    for row in newly_resolved.to_dict('records'):
                         agent = str(row.get('agent', '')).lower()
                         f.write(f"{row['timestamp']},{agent},{row['direction']},{row['actual']},{row['correct']}\n")
 

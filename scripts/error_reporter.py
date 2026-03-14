@@ -25,7 +25,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -52,6 +52,7 @@ class LogEntry:
     level: str  # "ERROR" or "CRITICAL"
     message: str
     source_file: str  # Which log file this came from
+    traceback: str = ""  # Continuation lines (exc_info tracebacks, etc.)
 
 
 @dataclass
@@ -117,7 +118,9 @@ ERROR_PATTERNS: dict[str, list[re.Pattern]] = {
     ],
 }
 
-# Patterns for transient errors that should be skipped entirely
+# Patterns for transient errors that should be skipped entirely.
+# These are operational noise — the system handles them with retries,
+# fallbacks, or circuit breakers. They should NOT create GitHub issues.
 TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"RSS.*timed?\s*out", re.IGNORECASE),
     re.compile(r"rate limit.*fallback", re.IGNORECASE),
@@ -129,11 +132,26 @@ TRANSIENT_PATTERNS: list[re.Pattern] = [
     re.compile(r"DISCONNECTED.*reconnect", re.IGNORECASE),
     re.compile(r"Connect call failed", re.IGNORECASE),
     re.compile(r"Connection refused", re.IGNORECASE),
-    # LLM provider transient errors (429 quota, 529 overloaded)
+    re.compile(r"completed orders request timed out", re.IGNORECASE),
+    re.compile(r"API connection failed.*TimeoutError", re.IGNORECASE),
+    re.compile(r"connection failed.*Next retry backoff", re.IGNORECASE),
+    re.compile(r"Thesis cleanup failed", re.IGNORECASE),
+    re.compile(r"client id.*already in use", re.IGNORECASE),
+    re.compile(r"Connectivity between IBKR and Trader Workstation has been lost", re.IGNORECASE),
+    re.compile(r"Connectivity between IBKR and Trader Workstation has been restored", re.IGNORECASE),
+    # LLM provider transient errors (429 quota, 503 overloaded, 529)
     re.compile(r"RESOURCE_EXHAUSTED", re.IGNORECASE),
     re.compile(r"429.*quota exceeded", re.IGNORECASE),
     re.compile(r"overloaded_error", re.IGNORECASE),
     re.compile(r"Error code: 529", re.IGNORECASE),
+    re.compile(r"503 UNAVAILABLE", re.IGNORECASE),
+    re.compile(r"currently experiencing high demand", re.IGNORECASE),
+    re.compile(r"Gemini timed out after", re.IGNORECASE),
+    re.compile(r"usage limits", re.IGNORECASE),
+    # Operational: handled by circuit breakers / deferral, not code bugs
+    re.compile(r"EMERGENCY_LOCK acquisition timed out", re.IGNORECASE),
+    re.compile(r"Drawdown guard check failed \(fail-closed\)", re.IGNORECASE),
+    re.compile(r"CIRCUIT BREAKER", re.IGNORECASE),
     # Fallback successes (system recovered, not an issue)
     re.compile(r"FALLBACK SUCCESS", re.IGNORECASE),
 ]
@@ -220,6 +238,32 @@ def sanitize_message(message: str) -> str:
     return result
 
 
+def wrap_in_code_block(text: str) -> str:
+    """Wraps text in a Markdown code block, adapting the fence length to avoid collisions.
+
+    Prevents Markdown injection where a log message containing '```' would close
+    the code block prematurely.
+    """
+    if not text:
+        return "```\n```"
+
+    # Find the longest sequence of backticks in the text
+    max_ticks = 0
+    current_ticks = 0
+    for char in text:
+        if char == '`':
+            current_ticks += 1
+        else:
+            max_ticks = max(max_ticks, current_ticks)
+            current_ticks = 0
+    max_ticks = max(max_ticks, current_ticks)
+
+    # Use a fence length one greater than the max found, min 3
+    fence_len = max(3, max_ticks + 1)
+    fence = "`" * fence_len
+    return f"{fence}\n{text}\n{fence}"
+
+
 # ---------------------------------------------------------------------------
 # Log file parsing
 # ---------------------------------------------------------------------------
@@ -227,6 +271,12 @@ def sanitize_message(message: str) -> str:
 # Log format: "2026-02-16 10:30:45,123 - LoggerName - ERROR - The message"
 _LOG_LINE_RE = re.compile(
     r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)\s+-\s+(\S+)\s+-\s+(ERROR|CRITICAL)\s+-\s+(.*)$"
+)
+
+# Detects the start of ANY log-format line (any level) — used to delimit entries
+# so that continuation lines (tracebacks) aren't mistaken for a new entry.
+_LOG_ANY_LINE_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+\s+-\s+"
 )
 
 # Pattern for rotated log files (date stamp in name) — skip these
@@ -277,16 +327,46 @@ def parse_log_file(
                     # We're mid-line, skip to the next line
                     f.readline()
                 # else: we're at a line boundary, no skip needed
+
+            # State machine: track the current ERROR/CRITICAL entry and
+            # accumulate continuation lines (exc_info tracebacks) that follow.
+            current_entry: "LogEntry | None" = None
+            tb_lines: list[str] = []
+
             for line in f:
-                m = _LOG_LINE_RE.match(line.rstrip())
-                if m:
-                    entries.append(LogEntry(
-                        timestamp=m.group(1),
-                        logger_name=m.group(2),
-                        level=m.group(3),
-                        message=m.group(4),
-                        source_file=filepath,
-                    ))
+                stripped = line.rstrip()
+                m = _LOG_LINE_RE.match(stripped)
+                is_any_log_line = bool(m or _LOG_ANY_LINE_RE.match(stripped))
+
+                if is_any_log_line:
+                    # Finalize the previous ERROR/CRITICAL entry (with its traceback)
+                    if current_entry is not None:
+                        if tb_lines:
+                            current_entry.traceback = "\n".join(tb_lines)
+                        entries.append(current_entry)
+                        current_entry = None
+                        tb_lines = []
+
+                    # Start tracking if this line is ERROR or CRITICAL
+                    if m:
+                        current_entry = LogEntry(
+                            timestamp=m.group(1),
+                            logger_name=m.group(2),
+                            level=m.group(3),
+                            message=m.group(4),
+                            source_file=filepath,
+                        )
+                else:
+                    # Continuation line (traceback frame, exception line, etc.)
+                    if current_entry is not None and len(tb_lines) < 30:
+                        tb_lines.append(stripped)
+
+            # Finalize the last entry in the file
+            if current_entry is not None:
+                if tb_lines:
+                    current_entry.traceback = "\n".join(tb_lines)
+                entries.append(current_entry)
+
             new_offset = f.tell()
     except OSError as e:
         logger.warning(f"Could not read {filepath}: {e}")
@@ -439,9 +519,7 @@ def format_critical_issue(sig: ErrorSignature, env_name: str = "DEV", env_label:
 
 ### Sample Log Entry
 
-```
-{sig.sample_message}
-```
+{wrap_in_code_block(sig.sample_message)}
 
 ### Impact
 
@@ -474,7 +552,11 @@ def format_summary_issue(
         cat_count = sum(s.count for s in cat_sigs)
         lines = [f"### `{cat}` — {cat_count} occurrences\n"]
         for sig in sorted(cat_sigs, key=lambda s: -s.count)[:5]:
-            lines.append(f"- **{sig.count}x** `{_truncate(sig.sample_message, 100)}`")
+            # Use wrap_in_code_block for summary line if it contains backticks,
+            # otherwise inline code is cleaner. But inline code `...` breaks if message has backticks.
+            # Simplified: escape backticks in the inline summary for safety.
+            safe_msg = sig.sample_message.replace("`", "'")
+            lines.append(f"- **{sig.count}x** `{_truncate(safe_msg, 100)}`")
         sections.append("\n".join(lines))
 
     body = f"""## Daily Error Summary — {date_str}
@@ -645,7 +727,6 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
     max_normal = er_config.get("max_issues_per_day", 3)
     max_critical = er_config.get("max_critical_issues_per_day", 5)
     summary_threshold = er_config.get("daily_summary_threshold", 5)
-    default_labels = er_config.get("default_labels", ["automated", "error-report"])
 
     # Environment detection (set in .env on each droplet)
     env_name = os.getenv("ENV_NAME", "DEV").upper()
@@ -702,7 +783,13 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
             continue  # Transient, skip
 
         sanitized = sanitize_message(entry.message)
+        # Fingerprint on first-line message only for stable deduplication.
         fp = compute_fingerprint(category, entry.message)
+        # Include traceback in sample_message so GitHub issues show full context.
+        if entry.traceback:
+            full_sample = sanitized + "\n" + sanitize_message(entry.traceback)
+        else:
+            full_sample = sanitized
 
         if fp in signatures:
             sig = signatures[fp]
@@ -714,7 +801,7 @@ def run_pipeline(config: dict, dry_run: bool = False) -> int:
             signatures[fp] = ErrorSignature(
                 category=category,
                 fingerprint=fp,
-                sample_message=sanitized,
+                sample_message=full_sample,
                 count=1,
                 first_seen=entry.timestamp,
                 last_seen=entry.timestamp,
@@ -825,6 +912,7 @@ def main() -> int:
                     title="Error Reporter: Issues Created",
                     message=f"Created {issues_created} GitHub issue(s) from log errors.",
                     priority=0,
+                    ticker="ALL",
                 )
             except Exception as e:
                 logger.warning(f"Pushover notification failed: {e}")

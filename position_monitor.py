@@ -9,8 +9,10 @@ open positions against configured stop-loss and take-profit thresholds.
 
 import asyncio
 import logging
+import os
 import random
 import signal
+import sys
 import traceback
 
 from ib_insync import IB
@@ -72,35 +74,70 @@ async def main():
 
     from trading_bot.connection_pool import IBConnectionPool
 
-    monitor_task = None
-    try:
-        # C1 FIX: Use pool instead of manual connection
-        ib = await IBConnectionPool.get_connection("monitor", config)
-        configure_market_data_type(ib)
+    MAX_RETRIES = 5
+    BASE_BACKOFF = 15  # seconds
 
-        logger.info("Position monitor connected and watching open positions.")
+    for attempt in range(1, MAX_RETRIES + 1):
+        monitor_task = None
+        try:
+            logger.info(f"Position monitor connection attempt {attempt}/{MAX_RETRIES}...")
+            ib = await IBConnectionPool.get_connection("monitor", config)
+            configure_market_data_type(ib)
 
-        # Start the main risk monitoring loop
-        monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
-        await monitor_task
+            logger.info("Position monitor connected and watching open positions.")
 
-    except ConnectionRefusedError:
-        logger.critical("Connection to TWS/Gateway was refused. Is it running?")
-    except Exception as e:
-        error_msg = f"A critical error occurred in the position monitor: {e}\n{traceback.format_exc()}"
-        logger.critical(error_msg)
-        send_pushover_notification(config.get('notifications', {}), "Monitor CRITICAL ERROR", error_msg)
-    finally:
-        if monitor_task and not monitor_task.done():
-            monitor_task.cancel()
+            # Start the main risk monitoring loop
+            monitor_task = asyncio.create_task(monitor_positions_for_risk(ib, config))
+            await monitor_task
+            break  # Normal exit (shutdown signal)
 
-        # Pool handles cleanup
-        await IBConnectionPool.release_connection("monitor")
+        except ConnectionRefusedError:
+            logger.critical("Connection to TWS/Gateway was refused. Is it running?")
+            break  # Don't retry — gateway is down, not just slow
+        except (TimeoutError, asyncio.TimeoutError, OSError) as e:
+            # Transient connection errors — retry with backoff
+            backoff = BASE_BACKOFF * attempt + random.uniform(0, 5)
+            logger.warning(
+                f"Position monitor connection failed (attempt {attempt}/{MAX_RETRIES}): {e}. "
+                f"Retrying in {backoff:.0f}s..."
+            )
+            if attempt == MAX_RETRIES:
+                error_msg = f"Position monitor failed after {MAX_RETRIES} attempts: {e}"
+                logger.critical(error_msg)
+                send_pushover_notification(config.get('notifications', {}), "Monitor CRITICAL ERROR", error_msg)
+            else:
+                await asyncio.sleep(backoff)
+        except Exception as e:
+            error_msg = f"A critical error occurred in the position monitor: {e}"
+            logger.critical(error_msg, exc_info=True)
+            send_pushover_notification(config.get('notifications', {}), "Monitor CRITICAL ERROR", f"{error_msg}\n{traceback.format_exc()}")
+            break  # Unknown error — don't retry
+        finally:
+            if monitor_task and not monitor_task.done():
+                monitor_task.cancel()
 
-        logger.info("Position monitor has shut down.")
+            try:
+                await IBConnectionPool.release_connection("monitor")
+            except Exception:
+                pass
+
+    logger.info("Position monitor has shut down.")
 
 
 if __name__ == "__main__":
+    # Guard: only run from the deployed directory, not from dev/CI clones.
+    # Prevents orphaned monitors when subprocesses are accidentally spawned
+    # from non-production working directories (e.g. Claude Code workspaces).
+    _expected_suffix = "/real_options"
+    _cwd = os.path.realpath(os.getcwd())
+    if not _cwd.endswith(_expected_suffix):
+        logger.error(
+            f"Position monitor refused to start: CWD '{_cwd}' does not end "
+            f"with '{_expected_suffix}'. This script should only run from the "
+            f"deployed directory."
+        )
+        sys.exit(1)
+
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):

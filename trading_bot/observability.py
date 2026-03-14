@@ -31,7 +31,7 @@ __all__ = [
 ]
 
 BULLISH_WORDS = {'increase', 'rise', 'surge', 'shortage', 'deficit', 'drought', 'frost', 'bullish', 'strong', 'growth', 'up', 'rose', 'gained', 'rally', 'congestion', 'bottleneck', 'backwardation', 'tightness', 'disruption', 'delay', 'restricted', 'drawdown', 'depletion', 'thinning', 'rationing', 'hawkish', 'hoarding', 'scarcity'}
-BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied', 'liquidation', 'selloff', 'selling', 'overproduction', 'ample', 'easing', 'normalizing', 'weakening', 'buildup', 'accumulation', 'stockpile', 'plentiful', 'resolved', 'resolution', 'deleverage'}
+BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied', 'liquidation', 'selloff', 'selling', 'overproduction', 'ample', 'easing', 'normalizing', 'weakening', 'buildup', 'accumulation', 'stockpile', 'plentiful', 'resolved', 'resolution', 'deleverage', 'building', 'inflows', 'arrivals', 'replenishment', 'restocking'}
 NEGATION_WORDS = {'not', 'no', 'never', 'neither', 'nor', 'rejected', 'failed',
                   'despite', 'unlikely', 'against', 'overcame', 'ignored', 'dismissed',
                   'without', 'lack', 'absence', 'declining', 'decreased'}
@@ -141,7 +141,8 @@ class HallucinationDetector:
     def __init__(
         self,
         profile,  # 'CommodityProfile' - type hint omitted to avoid circular import if needed
-        quarantine_threshold: int = 5
+        quarantine_threshold: int = 5,
+        data_dir: str = None
     ):
         """
         Initialize detector with commodity profile.
@@ -149,12 +150,17 @@ class HallucinationDetector:
         Args:
             profile: CommodityProfile instance for commodity-specific facts
             quarantine_threshold: Number of flags before quarantine
+            data_dir: Commodity-specific data directory (e.g. data/KC)
         """
         self.profile = profile
         self.quarantine_threshold = quarantine_threshold
         self.agent_flags: Dict[str, List[HallucinationFlag]] = {}
         self.quarantined_agents: Set[str] = set()
-        self._state_file = "data/quarantine_state.json"
+        import os as _os
+        if not data_dir:
+            _ticker = _os.environ.get("COMMODITY_TICKER", "KC")
+            data_dir = f"data/{_ticker}"
+        self._state_file = _os.path.join(data_dir, "quarantine_state.json")
         self._load_state()
 
         # DYNAMICALLY build known facts from the profile
@@ -274,6 +280,7 @@ class HallucinationDetector:
                 logger.error(f"Agent {agent} QUARANTINED: {len(cycles_with_flags)} flawed cycles in 7 days.")
 
         # --- AUTO-RELEASE LOGIC (AMENDMENT 2: handles empty recent_flags) ---
+        pre_quarantine = frozenset(self.quarantined_agents)
         if agent in self.quarantined_agents:
             if not recent_flags:
                 # No flags at all in 7-day window → definitely release
@@ -285,6 +292,10 @@ class HallucinationDetector:
                 if hours_since > 48:
                     self.quarantined_agents.discard(agent)
                     logger.info(f"Agent {agent} AUTO-RELEASED from quarantine (clean for {hours_since:.1f}h)")
+
+        # Persist quarantine state when it changes (not just on manual release)
+        if frozenset(self.quarantined_agents) != pre_quarantine:
+            self._save_state()
 
         return final_flags
 
@@ -530,16 +541,17 @@ class ObservabilityHub:
     commodity-agnostic hallucination detection.
     """
 
-    def __init__(self, profile):
+    def __init__(self, profile, data_dir: str = None):
         """
         Initialize hub with commodity profile.
 
         Args:
             profile: CommodityProfile for commodity-specific fact checking
+            data_dir: Commodity-specific data directory (e.g. data/KC)
         """
         self.profile = profile
         self.traces: List[AgentTrace] = []
-        self.hallucination_detector = HallucinationDetector(profile)
+        self.hallucination_detector = HallucinationDetector(profile, data_dir=data_dir)
         self.cost_tracker: Dict[str, float] = {}
 
         logger.info(f"ObservabilityHub initialized for {profile.name}")
@@ -617,11 +629,18 @@ class ObservabilityHub:
         DEFAULT_COSTS = {
             'gemini-2.0-flash': {'input': 0.00010, 'output': 0.00040},
             'gemini-2.0-pro': {'input': 0.00125, 'output': 0.00500},
+            'gemini-3-flash-preview': {'input': 0.00010, 'output': 0.00040},
+            'gemini-3-pro-preview': {'input': 0.00125, 'output': 0.00500},
+            'gemini-3.1-pro-preview': {'input': 0.00125, 'output': 0.00500},
             'gpt-4o': {'input': 0.00250, 'output': 0.01000},
             'gpt-4o-mini': {'input': 0.00015, 'output': 0.00060},
+            'gpt-5.2': {'input': 0.00175, 'output': 0.01400},
             'claude-sonnet': {'input': 0.00300, 'output': 0.01500},
             'claude-opus': {'input': 0.01500, 'output': 0.07500},
-            'grok': {'input': 0.00500, 'output': 0.01000},
+            'grok-2': {'input': 0.00500, 'output': 0.01000},
+            'grok-4-1-fast-reasoning': {'input': 0.00300, 'output': 0.01500},
+            'grok-4-fast-non-reasoning': {'input': 0.00050, 'output': 0.00200},
+            'o3': {'input': 0.01000, 'output': 0.04000},
             'default': {'input': 0.00100, 'output': 0.00200},
         }
 

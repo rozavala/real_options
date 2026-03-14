@@ -11,6 +11,7 @@ This is a CIRCUIT BREAKER, not a throttle. Once tripped, it stays tripped
 until the next reset. This prevents oscillating between modes.
 """
 
+import csv
 import json
 import logging
 import os
@@ -54,6 +55,7 @@ ROLE_PRIORITY = {
     'news_sentinel': CallPriority.LOW,
     'price_sentinel': CallPriority.LOW,
     'microstructure_sentinel': CallPriority.LOW,
+    'trade_analyst': CallPriority.LOW,  # Post-mortem utility, non-critical
 }
 
 
@@ -66,11 +68,18 @@ class BudgetGuard:
         self.warning_pct = cost_config.get('warning_threshold_pct', 0.75)
         self.sentinel_only_on_hit = cost_config.get('sentinel_only_mode_on_budget_hit', True)
 
-        self.state_file = Path("data/budget_state.json")
+        data_dir = config.get('data_dir', 'data')
+        self.state_file = Path(os.path.join(data_dir, "budget_state.json"))
+        self._costs_csv = Path(os.path.join(data_dir, "llm_daily_costs.csv"))
         self._daily_spend = 0.0
+        self._cost_by_source: dict[str, float] = {}
+        self._request_count = 0
         self._last_reset_date: Optional[str] = None
         self._budget_hit = False
         self._warning_sent = False
+        self._x_api_calls = 0
+        self._x_api_cost = 0.0
+        self._x_api_cost_per_call = self._load_x_api_pricing()
 
         self._load_state()
         self._check_reset()
@@ -81,9 +90,13 @@ class BudgetGuard:
                 with open(self.state_file, 'r') as f:
                     data = json.load(f)
                     self._daily_spend = data.get('daily_spend', 0.0)
+                    self._cost_by_source = data.get('cost_by_source', {})
+                    self._request_count = data.get('request_count', 0)
                     self._last_reset_date = data.get('last_reset_date')
                     self._budget_hit = data.get('budget_hit', False)
                     self._warning_sent = data.get('warning_sent', False)
+                    self._x_api_calls = data.get('x_api_calls', 0)
+                    self._x_api_cost = data.get('x_api_cost', 0.0)
             except Exception as e:
                 logger.warning(f"Failed to load budget state: {e}")
 
@@ -92,9 +105,13 @@ class BudgetGuard:
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
             data = {
                 'daily_spend': self._daily_spend,
+                'cost_by_source': self._cost_by_source,
+                'request_count': self._request_count,
                 'last_reset_date': self._last_reset_date,
                 'budget_hit': self._budget_hit,
-                'warning_sent': self._warning_sent
+                'warning_sent': self._warning_sent,
+                'x_api_calls': self._x_api_calls,
+                'x_api_cost': self._x_api_cost,
             }
             temp_path = str(self.state_file) + ".tmp"
             with open(temp_path, 'w') as f:
@@ -103,13 +120,67 @@ class BudgetGuard:
         except Exception as e:
             logger.error(f"Failed to save budget state: {e}")
 
+    _COSTS_HEADER = ['date', 'total_usd', 'request_count', 'cost_by_source',
+                      'x_api_calls', 'x_api_cost_usd']
+
+    def _archive_daily_costs(self):
+        """Append yesterday's costs to llm_daily_costs.csv before resetting."""
+        if self._daily_spend <= 0 and self._request_count == 0 and self._x_api_calls == 0:
+            return  # Nothing to archive
+
+        try:
+            self._costs_csv.parent.mkdir(parents=True, exist_ok=True)
+            write_header = not self._costs_csv.exists() or self._costs_csv.stat().st_size == 0
+
+            # Check for header schema mismatch (e.g., column added after file created)
+            if not write_header and self._costs_csv.exists():
+                with open(self._costs_csv, 'r') as f:
+                    existing_header = f.readline().strip().replace('\r', '')
+                expected_header = ','.join(self._COSTS_HEADER)
+                if existing_header != expected_header:
+                    logger.warning(
+                        f"Cost CSV header mismatch — migrating: "
+                        f"'{existing_header}' → '{expected_header}'"
+                    )
+                    # Re-read full file, fix header, rewrite
+                    with open(self._costs_csv, 'r') as f:
+                        lines = f.readlines()
+                    lines[0] = expected_header + '\n'
+                    with open(self._costs_csv, 'w', newline='') as f:
+                        f.writelines(lines)
+
+            with open(self._costs_csv, 'a', newline='') as f:
+                writer = csv.writer(f)
+                if write_header:
+                    writer.writerow(self._COSTS_HEADER)
+                writer.writerow([
+                    self._last_reset_date,
+                    round(self._daily_spend, 4),
+                    self._request_count,
+                    json.dumps(self._cost_by_source),
+                    self._x_api_calls,
+                    round(self._x_api_cost, 4),
+                ])
+            logger.info(
+                f"Archived daily LLM costs for {self._last_reset_date}: "
+                f"${self._daily_spend:.2f}, {self._request_count} requests, "
+                f"{self._x_api_calls} X API calls (${self._x_api_cost:.4f})"
+            )
+        except Exception as e:
+            logger.error(f"Failed to archive daily costs: {e}")
+
     def _check_reset(self):
         """Reset daily spend at midnight UTC."""
         today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         if self._last_reset_date != today:
+            self._archive_daily_costs()
             self._daily_spend = 0.0
+            self._cost_by_source = {}
+            self._request_count = 0
             self._budget_hit = False
             self._warning_sent = False
+            self._x_api_calls = 0
+            self._x_api_cost = 0.0
             self._last_reset_date = today
             self._save_state()
             logger.info(f"Budget guard reset for {today}. Limit: ${self.daily_budget:.2f}")
@@ -159,6 +230,8 @@ class BudgetGuard:
         """
         self._check_reset()
         self._daily_spend += cost_usd
+        self._request_count += 1
+        self._cost_by_source[source] = self._cost_by_source.get(source, 0.0) + cost_usd
 
         # Warning threshold
         if not self._warning_sent and self._daily_spend >= self.daily_budget * self.warning_pct:
@@ -192,6 +265,24 @@ class BudgetGuard:
         self._check_reset()
         return max(0.0, self.daily_budget - self._daily_spend)
 
+    def record_x_api_call(self):
+        """Record an X/Twitter API call with cost estimate (separate from LLM spend)."""
+        self._check_reset()
+        self._x_api_calls += 1
+        self._x_api_cost += self._x_api_cost_per_call
+        self._save_state()
+
+    @staticmethod
+    def _load_x_api_pricing() -> float:
+        """Load X API per-call cost from api_costs.json."""
+        cost_file = Path(__file__).parent.parent / "config" / "api_costs.json"
+        try:
+            with open(cost_file, 'r') as f:
+                data = json.load(f)
+            return data.get('x_api', {}).get('cost_per_call', 0.0)
+        except Exception:
+            return 0.0
+
     def get_status(self) -> dict:
         """Get current budget status for dashboard display."""
         self._check_reset()
@@ -202,6 +293,10 @@ class BudgetGuard:
             'pct_used': (self._daily_spend / self.daily_budget * 100) if self.daily_budget > 0 else 0,
             'sentinel_only_mode': self._budget_hit,
             'reset_date': self._last_reset_date,
+            'cost_by_source': dict(self._cost_by_source),
+            'request_count': self._request_count,
+            'x_api_calls': self._x_api_calls,
+            'x_api_cost': self._x_api_cost,
         }
 
 
@@ -211,7 +306,25 @@ _budget_guard_instance: Optional[BudgetGuard] = None
 
 
 def get_budget_guard(config: dict = None) -> Optional[BudgetGuard]:
-    """Get or create the singleton BudgetGuard instance."""
+    """Get the BudgetGuard for the current engine context, or the singleton.
+
+    In multi-engine mode, each CommodityEngine has its own BudgetGuard
+    stored in EngineRuntime (via ContextVar). This ensures per-commodity
+    cost tracking and state persistence to data/{TICKER}/budget_state.json.
+
+    Falls back to the module-level singleton for single-engine mode or
+    when called outside an engine context (e.g., during startup).
+    """
+    # Try per-engine instance first (multi-commodity mode)
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        rt = get_engine_runtime()
+        if rt and rt.budget_guard:
+            return rt.budget_guard
+    except (LookupError, ImportError):
+        pass
+
+    # Fallback to singleton (single-engine mode)
     global _budget_guard_instance
     if _budget_guard_instance is None and config is not None:
         _budget_guard_instance = BudgetGuard(config)
@@ -244,12 +357,16 @@ def calculate_api_cost(model_name: str, input_tokens: int, output_tokens: int) -
     costs = _load_cost_config()
     model_lower = model_name.lower()
 
-    # Find best matching model key
+    # Find longest matching model key (prevents "gpt-4o" matching "gpt-4o-mini")
     model_cost = costs.get('default', {'input': 0.001, 'output': 0.002})
+    best_key = None
+    best_len = 0
     for key in costs:
-        if key != 'default' and key in model_lower:
-            model_cost = costs[key]
-            break
+        if key != 'default' and key in model_lower and len(key) > best_len:
+            best_key = key
+            best_len = len(key)
+    if best_key:
+        model_cost = costs[best_key]
 
     if isinstance(model_cost, dict):
         return (input_tokens / 1000) * model_cost.get('input', 0.001) + \

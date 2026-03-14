@@ -8,22 +8,23 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 import sys
 import os
 import html
-from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import load_council_history, get_status_color
+from dashboard_utils import load_council_history, load_trade_journal, find_journal_entry, load_prompt_traces, _relative_time
 
 st.set_page_config(layout="wide", page_title="Council | Real Options")
+
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
 
 st.title("🧠 The Council Chamber")
 st.caption("Agent Explainability - Understand the reasoning behind every trade decision")
 
 # --- Load Data ---
-council_df = load_council_history()
+council_df = load_council_history(ticker=ticker)
 
 if council_df.empty:
     st.warning("No council history data available.")
@@ -78,10 +79,13 @@ if mode == "Calendar":
             st.warning(f"No decisions recorded for {selected_date}")
             st.stop()
 
-        daily_decisions['display'] = daily_decisions.apply(
-            lambda r: f"{r['timestamp'].strftime('%H:%M:%S')} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
-            axis=1
-        )
+        # Vectorized string building for performance
+        ts_str = daily_decisions['timestamp'].dt.strftime('%H:%M:%S')
+        rel_time_str = daily_decisions['timestamp'].map(_relative_time)
+        contract_str = daily_decisions['contract'].fillna('Unknown').astype(str) if 'contract' in daily_decisions else 'Unknown'
+        decision_str = daily_decisions['master_decision'].fillna('N/A').astype(str) if 'master_decision' in daily_decisions else 'N/A'
+
+        daily_decisions['display'] = ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
 
         selected = st.selectbox(
             f"Decisions on {selected_date} ({len(daily_decisions)} total):",
@@ -91,10 +95,13 @@ if mode == "Calendar":
         selected_idx = daily_decisions[daily_decisions['display'] == selected].index[0]
 else:
     # Traditional sorted dropdown
-    council_df['display'] = council_df.apply(
-        lambda r: f"{r['timestamp'].strftime('%Y-%m-%d %H:%M')} | {r.get('contract', 'Unknown')} | {r.get('master_decision', 'N/A')}",
-        axis=1
-    )
+    # Vectorized string building for performance
+    ts_str = council_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
+    rel_time_str = council_df['timestamp'].map(_relative_time)
+    contract_str = council_df['contract'].fillna('Unknown').astype(str) if 'contract' in council_df else 'Unknown'
+    decision_str = council_df['master_decision'].fillna('N/A').astype(str) if 'master_decision' in council_df else 'N/A'
+
+    council_df['display'] = ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
 
     selected = st.selectbox(
         "Choose a decision:",
@@ -104,6 +111,22 @@ else:
     selected_idx = council_df[council_df['display'] == selected].index[0]
 
 row = council_df.loc[selected_idx]
+
+# Display details for selected decision
+meta_col1, meta_col2 = st.columns([4, 1])
+with meta_col1:
+    st.caption(f"📍 **Selected Decision:** {row['timestamp'].strftime('%Y-%m-%d %H:%M:%S UTC')} ({_relative_time(row['timestamp'])})")
+with meta_col2:
+    # UX Improvement: Copy Cycle ID for traceability
+    cycle_id = row.get('cycle_id', 'UNKNOWN')
+    label = f"🆔 {str(cycle_id)[:8]}"
+    if hasattr(st, "popover"):
+        with st.popover(label, width="stretch"):
+            st.code(cycle_id, language=None)
+            st.caption("Full Cycle ID")
+    else:
+        with st.expander(label):
+            st.code(cycle_id, language=None)
 
 # === SIDEBAR: Consensus Meter ===
 with st.sidebar:
@@ -313,16 +336,20 @@ if vote_breakdown_raw and pd.notna(vote_breakdown_raw) and str(vote_breakdown_ra
             # Metrics row
             metric_cols = st.columns(4)
             with metric_cols[0]:
-                st.metric("Dominant Agent", row.get('dominant_agent', 'Unknown'))
+                st.metric("👑 Dominant Agent", row.get('dominant_agent', 'Unknown'),
+                          help="The agent whose vote had the highest influence on the final decision.")
             with metric_cols[1]:
                 ws = row.get('weighted_score', 0)
-                st.metric("Weighted Score", f"{float(ws):.4f}" if ws else "N/A")
+                st.metric("⚖️ Weighted Score", f"{float(ws):.4f}" if ws else "N/A",
+                          help="The final consensus score (-1.0 to 1.0) calculated from all agent votes.")
             with metric_cols[2]:
                 active = len([v for v in vote_data if v.get('direction') != 'NEUTRAL'])
-                st.metric("Active Voters", f"{active}/{len(vote_data)}")
+                st.metric("🗳️ Active Voters", f"{active}/{len(vote_data)}",
+                          help="Number of agents who provided a non-neutral sentiment.")
             with metric_cols[3]:
                 trigger = row.get('trigger_type', 'scheduled')
-                st.metric("Trigger", trigger.replace('_', ' ').title())
+                st.metric("⚡ Trigger", trigger.replace('_', ' ').title(),
+                          help="The event or schedule that initiated this Council deliberation.")
         else:
             st.info("ℹ️ Vote breakdown is empty for this decision")
 
@@ -340,10 +367,9 @@ else:
 
 st.markdown("---")
 
-# === SECTION 3: Master Decision Details ===
-st.subheader("👑 Master Decision")
+# === SECTION 2.7: Forensic Context Panel ===
 
-# Helper for NaN safety
+# Helper for NaN safety (needed before forensic context uses it)
 def safe_display(value, fallback="N/A"):
     """Convert NaN/None/empty values to a readable fallback."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
@@ -351,6 +377,78 @@ def safe_display(value, fallback="N/A"):
     if str(value).strip().lower() == 'nan' or str(value).strip() == '':
         return fallback
     return str(value)
+
+st.subheader("🔎 Forensic Context")
+st.caption("What triggered this decision and how strong was the conviction pipeline?")
+
+forensic_cols = st.columns(4)
+
+with forensic_cols[0]:
+    trigger_raw = safe_display(row.get('trigger_type'), "unknown")
+    trigger_lower = trigger_raw.lower().strip()
+    if trigger_lower == 'scheduled':
+        trigger_badge = "📅 Scheduled"
+        trigger_color = "#636EFA"
+    elif trigger_lower == 'emergency':
+        trigger_badge = "🚨 Emergency"
+        trigger_color = "#EF553B"
+    else:
+        # Sentinel-triggered (e.g., "PriceSentinel")
+        trigger_badge = f"📡 {trigger_raw}"
+        trigger_color = "#FFA15A"
+    if trigger_lower == 'scheduled':
+        st.info(f"**{trigger_badge}**", icon="📅")
+    elif trigger_lower == 'emergency':
+        st.error(f"**{trigger_badge}**", icon="🚨")
+    else:
+        st.warning(f"**{trigger_badge}**", icon="📡")
+    st.caption("Trigger Type")
+
+with forensic_cols[1]:
+    catalyst_text = safe_display(row.get('primary_catalyst'), "Not recorded")
+    # Truncate to ~100 chars
+    if len(catalyst_text) > 100:
+        catalyst_text = catalyst_text[:97] + "..."
+    st.markdown(f"**{html.escape(catalyst_text)}**")
+    st.caption("Primary Catalyst")
+
+with forensic_cols[2]:
+    conv_raw = row.get('conviction_multiplier', None)
+    conv_val = None
+    if conv_raw is not None and conv_raw != '' and pd.notna(conv_raw):
+        try:
+            conv_val = float(conv_raw)
+        except (ValueError, TypeError):
+            pass
+    if conv_val is not None:
+        st.progress(conv_val, text=f"{conv_val:.2f}")
+        st.caption("Conviction Pipeline")
+        st.caption(
+            "1.0 = full conviction. 0.70 = divergent (partial dampening). 0.50 = high disagreement",
+            help="1.0 = full conviction (FULL alignment). 0.70 = divergent (partial dampening). 0.50 = high disagreement"
+        )
+    else:
+        st.info("N/A")
+        st.caption("Conviction Pipeline")
+
+with forensic_cols[3]:
+    thesis_str = safe_display(row.get('thesis_strength'), "UNKNOWN")
+    ts_colors = {'PROVEN': '#00CC96', 'PLAUSIBLE': '#FFA15A', 'SPECULATIVE': '#EF553B'}
+    ts_color = ts_colors.get(thesis_str, '#888888')
+    if thesis_str == 'PROVEN':
+        st.success(f"**{thesis_str}**")
+    elif thesis_str == 'PLAUSIBLE':
+        st.warning(f"**{thesis_str}**")
+    elif thesis_str == 'SPECULATIVE':
+        st.error(f"**{thesis_str}**")
+    else:
+        st.info(f"**{thesis_str}**")
+    st.caption("Thesis Strength")
+
+st.markdown("---")
+
+# === SECTION 3: Master Decision Details ===
+st.subheader("👑 Master Decision")
 
 # Show prediction type badge
 pred_type = row.get('prediction_type', 'DIRECTIONAL')
@@ -366,18 +464,14 @@ else:
 # === v7.1: Thesis Strength Badge ===
 thesis_strength = safe_display(row.get('thesis_strength'), "UNKNOWN")
 if thesis_strength != "UNKNOWN":
-    thesis_colors = {
-        'PROVEN': '#00CC96',      # Green
-        'PLAUSIBLE': '#FFA15A',   # Orange
-        'SPECULATIVE': '#EF553B', # Red
-    }
-    thesis_color = thesis_colors.get(thesis_strength, '#888888')
-    st.markdown(f"""
-    <div style="display: inline-block; background-color: {thesis_color}; padding: 5px 15px;
-                border-radius: 20px; color: white; font-weight: bold; margin-bottom: 10px;">
-        Thesis: {html.escape(thesis_strength)}
-    </div>
-    """, unsafe_allow_html=True)
+    if thesis_strength == 'PROVEN':
+        st.success(f"**Thesis: {thesis_strength}**")
+    elif thesis_strength == 'PLAUSIBLE':
+        st.warning(f"**Thesis: {thesis_strength}**")
+    elif thesis_strength == 'SPECULATIVE':
+        st.error(f"**Thesis: {thesis_strength}**")
+    else:
+        st.info(f"**Thesis: {thesis_strength}**")
 
 # === v7.1: Primary Catalyst ===
 primary_catalyst = safe_display(row.get('primary_catalyst'), "N/A")
@@ -387,12 +481,12 @@ master_cols = st.columns(4)
 
 with master_cols[0]:
     decision = row.get('master_decision', 'N/A')
-    color = "#00CC96" if decision == 'BULLISH' else "#EF553B" if decision == 'BEARISH' else "#888888"
-    st.markdown(f"""
-    <div style="background-color: {color}; padding: 20px; border-radius: 10px; text-align: center;">
-        <h2 style="color: white; margin: 0;">{html.escape(decision)}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    if decision == 'BULLISH':
+        st.success(f"## {decision}")
+    elif decision == 'BEARISH':
+        st.error(f"## {decision}")
+    else:
+        st.info(f"## {decision}")
 
 with master_cols[1]:
     confidence = row.get('master_confidence', 0)
@@ -400,24 +494,27 @@ with master_cols[1]:
         confidence = 0.0
     else:
         confidence = float(confidence)
-    st.metric("Confidence", f"{confidence:.1%}")
+    st.metric("🎯 Confidence", f"{confidence:.1%}",
+              help="The Master Strategist's certainty level in the chosen strategy.")
 
 with master_cols[2]:
     approved = row.get('compliance_approved', True)
     status = "✅ Approved" if approved else "❌ Vetoed"
-    st.metric("Compliance", status)
+    st.metric("🛡️ Compliance", status,
+              help="Whether the trade passed all safety and risk guardrails.")
 
 with master_cols[3]:
     conviction = row.get('conviction_multiplier', 'N/A')
     if conviction != 'N/A' and pd.notna(conviction):
         try:
-            conv_val = float(conviction)
-            conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
-            st.metric("Consensus", conv_label)
+            conv_val = round(float(conviction), 2)
+            conv_label = {1.0: "✅ Aligned", 0.75: "⚠️ Partial", 0.70: "🔻 Divergent", 0.65: "🔻 Divergent", 0.5: "🔻 Divergent"}.get(conv_val, f"{conv_val:.2f}")
+            st.metric("🤝 Consensus", conv_label,
+                      help="Degree of alignment among voting agents.")
         except (ValueError, TypeError):
-            st.metric("Consensus", "N/A")
+            st.metric("🤝 Consensus", "N/A", help="Degree of alignment among voting agents.")
     else:
-        st.metric("Consensus", "N/A")
+        st.metric("🤝 Consensus", "N/A", help="Degree of alignment among voting agents.")
 
 # Reasoning
 st.markdown("**Master Reasoning:**")
@@ -441,8 +538,8 @@ if pd.notna(actual_trend) and actual_trend:
     with outcome_cols[0]:
         master = row.get('master_decision', 'NEUTRAL')
         is_correct = (
-            (master == 'BULLISH' and actual_trend == 'UP') or
-            (master == 'BEARISH' and actual_trend == 'DOWN')
+            (master == 'BULLISH' and actual_trend in ('UP', 'BULLISH')) or
+            (master == 'BEARISH' and actual_trend in ('DOWN', 'BEARISH'))
         )
         if master == 'NEUTRAL':
             st.info("➖ NO POSITION")
@@ -452,26 +549,124 @@ if pd.notna(actual_trend) and actual_trend:
             st.error("❌ INCORRECT")
 
     with outcome_cols[1]:
-        trend_icon = "📈" if actual_trend == "UP" else "📉"
-        st.metric("Market Move", f"{trend_icon} {actual_trend}")
+        trend_icon = "📈" if actual_trend in ("UP", "BULLISH") else "📉"
+        st.metric("📉 Market Move", f"{trend_icon} {actual_trend}",
+                  help="The actual realized direction of the market after the decision.")
 
     with outcome_cols[2]:
         exit_price = row.get('exit_price', None)
         if pd.notna(exit_price):
-            st.metric("Exit Price", f"${float(exit_price):.2f}")
+            st.metric("🚪 Exit Price", f"${float(exit_price):.2f}",
+                      help="The price at which the position was closed.")
         else:
-            st.metric("Exit Price", "Pending")
+            st.metric("🚪 Exit Price", "Pending",
+                      help="The price at which the position was closed.")
 
     with outcome_cols[3]:
         pnl = row.get('pnl_realized', None)
         if pd.notna(pnl):
             pnl_val = float(pnl)
             delta_color = "normal" if pnl_val >= 0 else "inverse"
-            st.metric("P&L", f"${pnl_val:.2f}", delta_color=delta_color)
+            st.metric("💰 P&L", f"${pnl_val:.2f}", delta_color=delta_color,
+                      help="Realized Profit and Loss for this trade.")
         else:
-            st.metric("P&L", "Pending")
+            st.metric("💰 P&L", "Pending",
+                      help="Realized Profit and Loss for this trade.")
 else:
     st.info("⏳ Decision pending reconciliation (T+1)")
+
+# === Journal Reflection (post-mortem) ===
+_pnl_val = row.get('pnl_realized', None)
+if pd.notna(actual_trend) and actual_trend and pd.notna(_pnl_val):
+    journal = load_trade_journal(ticker=ticker)
+    journal_entry = find_journal_entry(journal, row.get('contract', ''), _pnl_val)
+
+    if journal_entry:
+        narrative = journal_entry.get('narrative', '')
+
+        if isinstance(narrative, dict):
+            # LLM-generated structured reflection
+            st.markdown("#### 📓 Trade Reflection")
+
+            summary = narrative.get('summary', '')
+            if summary:
+                st.markdown(f"**Summary:** {summary}")
+
+            refl_cols = st.columns(2)
+            with refl_cols[0]:
+                went_right = narrative.get('what_went_right', [])
+                if went_right:
+                    st.markdown("**What went right:**")
+                    for item in went_right:
+                        st.markdown(f"- {item}")
+
+            with refl_cols[1]:
+                went_wrong = narrative.get('what_went_wrong', [])
+                if went_wrong:
+                    st.markdown("**What went wrong:**")
+                    for item in went_wrong:
+                        st.markdown(f"- {item}")
+
+            lesson = narrative.get('lesson', '') or journal_entry.get('key_lesson', '')
+            if lesson:
+                st.info(f"**Lesson:** {lesson}")
+
+            rule = narrative.get('rule_suggestion', '')
+            if rule:
+                st.caption(f"Rule suggestion: {rule}")
+        elif narrative:
+            # Template narrative (no LLM)
+            st.markdown("#### 📓 Trade Reflection")
+            st.markdown(narrative)
+            key_lesson = journal_entry.get('key_lesson', '')
+            if key_lesson:
+                st.info(f"**Lesson:** {key_lesson}")
+
+# === Dissent Outcome Tracking ===
+try:
+    if 'dissent_acknowledged' in council_df.columns and 'actual_trend_direction' in council_df.columns:
+        # Find rows where dissent was present and outcome is known
+        dissent_mask = council_df['dissent_acknowledged'].notna() & (council_df['dissent_acknowledged'] != '') & (council_df['dissent_acknowledged'] != 'N/A')
+        outcome_mask = council_df['actual_trend_direction'].notna() & (council_df['actual_trend_direction'] != '')
+        dissent_graded = council_df[dissent_mask & outcome_mask].copy()
+
+        if len(dissent_graded) >= 5:
+            # Compute win/loss when dissent was overruled
+            dissent_wins = 0
+            dissent_losses = 0
+            for _, drow in dissent_graded.iterrows():
+                d_master = drow.get('master_decision', 'NEUTRAL')
+                d_trend = drow.get('actual_trend_direction', '')
+                d_correct = (
+                    (d_master == 'BULLISH' and d_trend in ('UP', 'BULLISH')) or
+                    (d_master == 'BEARISH' and d_trend in ('DOWN', 'BEARISH'))
+                )
+                if d_master != 'NEUTRAL':
+                    if d_correct:
+                        dissent_wins += 1
+                    else:
+                        dissent_losses += 1
+
+            total_dissent = dissent_wins + dissent_losses
+            if total_dissent > 0:
+                pct = (dissent_wins / total_dissent) * 100
+                st.caption(f"Dissent overruled correctly: {dissent_wins}/{total_dissent} times ({pct:.0f}%)")
+        elif len(dissent_graded) > 0:
+            st.caption("Insufficient dissent data for analysis (need 5+ graded decisions with dissent)")
+except Exception:
+    pass  # Silently skip if data isn't available
+
+# --- Cross-page Navigation ---
+try:
+    _nav_cols = st.columns(3)
+    with _nav_cols[0]:
+        st.page_link("pages/2_The_Scorecard.py", label="View in Scorecard", icon="📊")
+    with _nav_cols[1]:
+        st.page_link("pages/6_Signal_Overlay.py", label="View Price Action", icon="📈")
+    with _nav_cols[2]:
+        st.page_link("pages/7_Brier_Analysis.py", label="Agent Accuracy", icon="🎯")
+except Exception:
+    pass  # st.page_link may not be available in older Streamlit versions
 
 st.markdown("---")
 
@@ -494,7 +689,15 @@ for summary_col, (name, sentiment_col) in summary_cols.items():
 
     with st.expander(f"{icon} {name} ({sentiment})"):
         summary = row.get(summary_col, 'No summary available.')
-        st.write(summary)
+
+        # UX: Color-coded container based on sentiment
+        s_upper = str(sentiment).upper()
+        if 'BULL' in s_upper:
+            st.success(summary)
+        elif 'BEAR' in s_upper:
+            st.error(summary)
+        else:
+            st.info(summary)
 
 st.markdown("---")
 
@@ -511,3 +714,81 @@ if not vetoed_df.empty:
     )
 else:
     st.success("No compliance vetoes recorded - all decisions passed compliance checks.")
+
+# === SECTION 6: Prompt Provenance ===
+st.markdown("---")
+st.subheader("🏗️ Prompt Provenance")
+st.caption("Model routing fidelity, prompt source tracking, and persona drift detection")
+
+traces_df = load_prompt_traces(ticker=ticker)
+if traces_df.empty:
+    st.info("No prompt trace data available yet. Traces are recorded during trading cycles.")
+else:
+    # Link prompt provenance to the SELECTED decision, not just the latest cycle
+    _selected_cycle_id = row.get('cycle_id', None) if 'row' in dir() else None
+    with st.expander("Agent Prompt Configuration", expanded=False):
+        latest_cycle = (
+            _selected_cycle_id
+            if (_selected_cycle_id and 'cycle_id' in traces_df.columns
+                and _selected_cycle_id in traces_df['cycle_id'].values)
+            else (traces_df['cycle_id'].iloc[-1] if 'cycle_id' in traces_df.columns and len(traces_df) > 0 else None)
+        )
+        if latest_cycle:
+            cycle_traces = traces_df[traces_df['cycle_id'] == latest_cycle]
+            display_cols = ['agent', 'phase', 'prompt_source', 'model_provider', 'model_name',
+                            'assigned_provider', 'assigned_model', 'persona_hash', 'demo_count',
+                            'latency_ms']
+            available_cols = [c for c in display_cols if c in cycle_traces.columns]
+            st.dataframe(cycle_traces[available_cols], width='stretch', hide_index=True)
+        else:
+            st.info("No cycle data found.")
+
+    with st.expander("Model Routing Fidelity", expanded=False):
+        if 'assigned_provider' in traces_df.columns and 'model_provider' in traces_df.columns:
+            routed = traces_df[traces_df['assigned_provider'] != '']
+            total = len(routed)
+            if total > 0:
+                matched = len(routed[routed['assigned_provider'] == routed['model_provider']])
+                fallback_count = total - matched
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Total Routed Calls", total, help="Total number of LLM calls made during this session")
+                col2.metric("Primary Success", matched, help="Number of calls successfully routed to the primary assigned provider")
+                col3.metric("Fallbacks", fallback_count,
+                            delta=f"-{fallback_count}" if fallback_count > 0 else None,
+                            delta_color="inverse",
+                            help="Number of calls that fell back to a secondary provider due to failure or timeout")
+                if fallback_count > 0:
+                    fallbacks = routed[routed['assigned_provider'] != routed['model_provider']]
+                    st.dataframe(
+                        fallbacks[['agent', 'assigned_provider', 'assigned_model',
+                                   'model_provider', 'model_name']],
+                        width='stretch', hide_index=True
+                    )
+            else:
+                st.info("No routed calls with assignment data yet.")
+
+    with st.expander("Prompt Source Trends", expanded=False):
+        if 'prompt_source' in traces_df.columns:
+            source_counts = traces_df['prompt_source'].value_counts()
+            if not source_counts.empty:
+                fig = px.pie(
+                    values=source_counts.values,
+                    names=source_counts.index,
+                    title="Prompt Source Distribution",
+                )
+                st.plotly_chart(fig, width='stretch')
+
+    with st.expander("Persona Drift Detection", expanded=False):
+        if 'persona_hash' in traces_df.columns and 'agent' in traces_df.columns:
+            agent_traces = traces_df[traces_df['persona_hash'] != '']
+            if not agent_traces.empty:
+                drift = agent_traces.groupby('agent')['persona_hash'].nunique().reset_index()
+                drift.columns = ['Agent', 'Unique Persona Hashes']
+                drifted = drift[drift['Unique Persona Hashes'] > 1]
+                if not drifted.empty:
+                    st.warning(f"{len(drifted)} agent(s) have changed persona text across cycles:")
+                    st.dataframe(drifted, width='stretch', hide_index=True)
+                else:
+                    st.success("All agent personas are stable (single hash per agent).")
+            else:
+                st.info("No persona hash data available.")

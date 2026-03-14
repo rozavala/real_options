@@ -20,6 +20,75 @@ from trading_bot.utils import (
 )
 
 
+def _check_combo_liquidity(
+    market_spread: float,
+    net_theoretical_price: float,
+    tick_size: float,
+    max_spread_pct: float,
+    max_spread_ticks: int,
+    contract_sym: str,
+    expiry: str,
+) -> tuple[bool, dict]:
+    """
+    Hybrid Tick/Percentage Liquidity Filter.
+
+    Determines if a combo order's market spread is acceptable using:
+        allowed = max(tick_allowance, pct_allowance)
+
+    - Tick floor protects cheap OTM options from ratio inflation.
+    - Percentage ceiling (using abs(theo)) caps slippage on expensive options.
+    - abs() handles both debit spreads (theo > 0) and credit spreads (theo < 0).
+
+    Credit spreads (SELL, theo < 0) were previously UNFILTERED (the old
+    ``if theo > 0 and ...`` skipped them entirely). They are now subject to
+    the hybrid filter using abs(theo) for the percentage term.
+
+    Returns:
+        (passed, metadata) -- metadata includes all fields for enriched
+        logging and calibration.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+
+    # Domain safety: prevent division by zero on tick_size
+    safe_tick = max(tick_size, 1e-9)
+
+    # Hybrid allowance: max(absolute_tick_floor, percentage_of_abs_theoretical)
+    absolute_tick_allowance = max_spread_ticks * safe_tick
+
+    # Use abs() to correctly handle credit spreads (negative theo).
+    # Market spread is always positive (ask - bid), so the allowance must be too.
+    # The inverted-spread guard upstream catches broken sign mismatches.
+    percentage_allowance = abs(net_theoretical_price) * max_spread_pct
+
+    allowed_spread = max(absolute_tick_allowance, percentage_allowance)
+
+    # Compute metadata (used in both PASS and FAIL logging)
+    abs_theo = abs(net_theoretical_price) if net_theoretical_price != 0 else 0.0
+    spread_pct_raw = (market_spread / abs_theo) if abs_theo > 0 else float('inf')
+    spread_ticks = (market_spread / safe_tick) if safe_tick > 0 else float('inf')
+    hour_utc = _dt.now(_tz.utc).hour
+    binding = 'TICK_FLOOR' if absolute_tick_allowance >= percentage_allowance else 'PCT_CEILING'
+
+    passed = market_spread <= allowed_spread
+
+    metadata = {
+        'contract': contract_sym,
+        'expiry': expiry,
+        'spread_pct': round(spread_pct_raw, 3),
+        'spread_ticks': round(spread_ticks, 1),
+        'abs_spread': round(market_spread, 4),
+        'theo': round(net_theoretical_price, 4),
+        'allowed': round(allowed_spread, 4),
+        'binding': binding,
+        'tick_allow': round(absolute_tick_allowance, 4),
+        'pct_allow': round(percentage_allowance, 4),
+        'hour_utc': hour_utc,
+        'passed': passed,
+    }
+
+    return passed, metadata
+
+
 async def get_option_market_data(ib: IB, contract: Contract, underlying_future: Contract) -> dict | None:
     """
     Fetches live market data for a single option contract, including bid, ask,
@@ -38,13 +107,16 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
 
         # Priority for IV: Model Option IV > Model Greeks IV
         iv = None
+        iv_source = 'FALLBACK'  # Default; overwritten if IBKR data arrives
         # 1. Try User-specified 'modelOptionImpliedVol' (Generic 106)
         if hasattr(ticker, 'modelOptionImpliedVol') and not util.isNan(ticker.modelOptionImpliedVol):
             iv = ticker.modelOptionImpliedVol
+            iv_source = 'IBKR'
             logging.info(f"Using IBKR Model Option IV: {iv:.2%}")
         # 2. Try standard ib_insync 'modelGreeks.impliedVol' (Generic 106 standard mapping)
         elif ticker.modelGreeks and not util.isNan(ticker.modelGreeks.impliedVol):
             iv = ticker.modelGreeks.impliedVol
+            iv_source = 'IBKR'
             logging.info(f"Using IBKR Model Greeks IV: {iv:.2%}")
 
     finally:
@@ -101,6 +173,7 @@ async def get_option_market_data(ib: IB, contract: Contract, underlying_future: 
         'bid': bid,
         'ask': ask,
         'implied_volatility': iv,
+        'iv_source': iv_source,
         'risk_free_rate': rfr  # M3 FIX: Use profile rate
     }
 
@@ -307,10 +380,13 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
 
     qualified_legs = leg_contracts  # All modified in-place by qualifyContractsAsync
 
-    # 4. Price each leg theoretically and get live market spread
-    net_theoretical_price = 0.0
+    # 4. Fetch market data and price each leg theoretically
     combo_bid_price = 0.0
     combo_ask_price = 0.0
+    iv_sources = []  # Track IV source per leg for mixed-source detection
+    leg_market_data = []  # Per-leg market data for IV consistency correction
+    leg_theo_prices = []  # Per-leg theoretical prices
+
     for i, q_leg in enumerate(qualified_legs):
         leg_action = legs_def[i][1]  # 'BUY' or 'SELL'
 
@@ -318,6 +394,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         if not market_data:
             logging.error(f"Failed to get market data for {q_leg.localSymbol}. Aborting order.")
             return None
+        iv_sources.append(market_data.get('iv_source', 'UNKNOWN'))
+        leg_market_data.append(market_data)
 
         # Calculate theoretical price using Black-Scholes
         pricing_result = price_option_black_scholes(
@@ -331,9 +409,8 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         if not pricing_result:
             logging.error(f"Failed to price leg {leg_action} {q_leg.localSymbol}. Aborting."); return None
 
-        price = pricing_result['price']
-        net_theoretical_price += price if leg_action == 'BUY' else -price
-        logging.info(f"  -> Leg Theoretical Price ({leg_action}): {q_leg.localSymbol} @ {price:.2f}")
+        leg_theo_prices.append(pricing_result['price'])
+        logging.info(f"  -> Leg Theoretical Price ({leg_action}): {q_leg.localSymbol} @ {pricing_result['price']:.2f}")
 
         # Aggregate combo bid/ask from live market data
         leg_bid = market_data['bid']
@@ -345,25 +422,122 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
             combo_bid_price -= leg_ask
             combo_ask_price -= leg_bid
 
+    # 4b. IV source consistency enforcement — correct fallback legs using IBKR IV
+    unique_sources = set(iv_sources)
+    if len(unique_sources) > 1 and 'FALLBACK' in unique_sources:
+        ibkr_ivs = [
+            leg_market_data[j]['implied_volatility']
+            for j in range(len(iv_sources))
+            if iv_sources[j] == 'IBKR'
+        ]
+        if ibkr_ivs:
+            consistent_iv = sum(ibkr_ivs) / len(ibkr_ivs)
+            logging.warning(
+                f"IV SOURCE MISMATCH CORRECTION: Mixed sources {iv_sources}. "
+                f"Re-pricing FALLBACK legs with IBKR-derived IV ({consistent_iv:.2%})."
+            )
+            for j in range(len(qualified_legs)):
+                if iv_sources[j] == 'FALLBACK':
+                    q_leg = qualified_legs[j]
+                    repriced = price_option_black_scholes(
+                        S=underlying_price,
+                        K=q_leg.strike,
+                        T=exp_details['days_to_exp'] / 365,
+                        r=leg_market_data[j]['risk_free_rate'],
+                        sigma=consistent_iv,
+                        option_type=q_leg.right
+                    )
+                    if repriced:
+                        old_price = leg_theo_prices[j]
+                        leg_theo_prices[j] = repriced['price']
+                        iv_sources[j] = 'IBKR_DERIVED'
+                        leg_market_data[j]['implied_volatility'] = consistent_iv
+                        leg_market_data[j]['iv_source'] = 'IBKR_DERIVED'
+                        leg_action = legs_def[j][1]
+                        logging.info(
+                            f"  -> Repriced leg {leg_action} {q_leg.localSymbol}: "
+                            f"{old_price:.2f} -> {repriced['price']:.2f} (IV: fallback -> {consistent_iv:.2%})"
+                        )
+        else:
+            logging.warning(
+                f"IV SOURCE MISMATCH: All legs on FALLBACK IV {iv_sources}. "
+                f"Proceeding with consistent (but possibly inaccurate) pricing."
+            )
+    elif len(unique_sources) > 1:
+        logging.warning(
+            f"IV SOURCE MISMATCH: Legs used mixed IV sources {iv_sources}. "
+            f"Theoretical pricing may be inconsistent."
+        )
+
+    # Calculate net theoretical price from (possibly corrected) per-leg prices
+    net_theoretical_price = 0.0
+    for j, price in enumerate(leg_theo_prices):
+        leg_action = legs_def[j][1]
+        net_theoretical_price += price if leg_action == 'BUY' else -price
+
     # 5. Add Liquidity Filter and Calculate Limit Price (Ceiling/Floor) and Initial Price (Start)
     tuning_params = config.get('strategy_tuning', {})
-    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', 0.25)
     fixed_slippage = tuning_params.get('fixed_slippage_cents', 0.5)
-    # NEW: Configurable ceiling aggression (0.0 = mid, 1.0 = full ask/bid)
     ceiling_aggression = tuning_params.get('ceiling_aggression_factor', 0.75)
 
-    market_spread = combo_ask_price - combo_bid_price
+    # --- Load hybrid liquidity filter parameters ---
+    # Priority: config.json override > commodity profile > hardcoded fallback
+    from config import get_active_profile
+    _liq_profile = get_active_profile(config)
+    _profile_spread_pct = getattr(_liq_profile, 'max_liquidity_spread_pct', 0.75)
+    _profile_spread_ticks = getattr(_liq_profile, 'max_liquidity_spread_ticks', 60)
 
-    # Liquidity Filter: Check if the market spread is too wide relative to the theoretical price
-    if net_theoretical_price > 0 and (market_spread / net_theoretical_price) > max_spread_pct:
+    max_spread_pct = tuning_params.get('max_liquidity_spread_percentage', _profile_spread_pct)
+    max_spread_ticks = tuning_params.get('max_liquidity_spread_ticks', _profile_spread_ticks)
+
+    # --- Symmetric Inverted Spread Guard ---
+    # BUY spread should be a debit (positive theoretical).
+    # SELL spread should be a credit (negative theoretical).
+    # When the sign contradicts the action, it means IV mismatch between legs
+    # (e.g., one leg used fallback IV). IB will reject these as "riskless
+    # combination orders."
+    if (action == 'BUY' and net_theoretical_price < 0) or \
+       (action == 'SELL' and net_theoretical_price > 0):
         logging.warning(
-            f"LIQUIDITY FILTER FAILED: Market spread ({market_spread:.2f}) is "
-            f"{(market_spread / net_theoretical_price):.1%} of theoretical price ({net_theoretical_price:.2f}), "
-            f"which exceeds the max of {max_spread_pct:.1%}. Aborting order."
+            f"INVERTED SPREAD FILTER: Pricing mismatch (Action '{action}' contradicts "
+            f"net theoretical {net_theoretical_price:.2f}). Likely IV mismatch between "
+            f"legs. Skipping."
         )
         return None
 
-    tick_size = get_tick_size(config)  # Commodity-agnostic tick size
+    market_spread = combo_ask_price - combo_bid_price
+
+    # --- Hybrid Tick/Percentage Liquidity Filter ---
+    _contract_sym = chain.get('tradingClass', config.get('symbol', '?'))
+    liq_passed, liq_meta = _check_combo_liquidity(
+        market_spread=market_spread,
+        net_theoretical_price=net_theoretical_price,
+        tick_size=tick_size,
+        max_spread_pct=max_spread_pct,
+        max_spread_ticks=max_spread_ticks,
+        contract_sym=_contract_sym,
+        expiry=exp_details.get('exp_date', '?'),
+    )
+
+    # Structured log tag — grep-friendly for calibration script
+    _liq_tag = '[liquidity_metric: ' + ', '.join(
+        f"{k}={v}" for k, v in liq_meta.items() if k != 'passed'
+    ) + ']'
+
+    if not liq_passed:
+        logging.warning(
+            f"LIQUIDITY FILTER FAILED: Market spread ({market_spread:.2f}) exceeds "
+            f"allowed ({liq_meta['allowed']:.2f}, binding={liq_meta['binding']}). "
+            f"Aborting order. {_liq_tag}"
+        )
+        return None
+    else:
+        logging.info(
+            f"LIQUIDITY FILTER PASSED: Market spread ({market_spread:.2f}) within "
+            f"allowed ({liq_meta['allowed']:.2f}, binding={liq_meta['binding']}). "
+            f"{_liq_tag}"
+        )
+
     market_mid = (combo_bid_price + combo_ask_price) / 2
 
     # ================================================================
@@ -404,6 +578,14 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         initial_price = round_to_tick(combo_bid_price + tick_size, tick_size, 'BUY')
         initial_price = min(initial_price, ceiling_price)
 
+        # Defense in depth: if market bid is negative (credit side), skip
+        if initial_price <= 0:
+            logging.warning(
+                f"RISKLESS COMBO FILTER: BUY spread start price is {initial_price:.2f} "
+                f"(market bid={combo_bid_price:.2f}). Order would start as credit. Skipping."
+            )
+            return None
+
         logging.info(
             f"BUY Cap Calc: Theoretical={theoretical_ceiling:.2f}, "
             f"MarketAggressive={market_aggressive_ceiling:.2f} (aggression={ceiling_aggression}), "
@@ -443,6 +625,20 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
         f"Adaptive Strategy: Start @ {initial_price:.2f}, "
         f"Cap/Floor @ {ceiling_price if action == 'BUY' else floor_price:.2f}"
     )
+
+    # 5b. Riskless combo guard: skip zero-debit spreads that IB will reject
+    if action == 'BUY' and ceiling_price <= 0:
+        logging.warning(
+            f"RISKLESS COMBO FILTER: BUY spread has zero/negative ceiling price "
+            f"({ceiling_price:.2f}). IB would reject as riskless. Skipping."
+        )
+        return None
+    if action == 'SELL' and floor_price <= 0:
+        logging.warning(
+            f"RISKLESS COMBO FILTER: SELL spread has zero/negative floor price "
+            f"({floor_price:.2f}). IB would reject as riskless. Skipping."
+        )
+        return None
 
     # 6. Build the Bag contract using qualified leg conIds
     combo = Bag(symbol=config['symbol'], exchange=chain['exchange'], currency='USD')

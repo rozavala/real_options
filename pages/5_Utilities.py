@@ -16,13 +16,16 @@ import logging
 from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import get_config
+from dashboard_utils import get_config, _resolve_data_path, _relative_time
 from trading_bot.weighted_voting import TriggerType
 
 # Load config at module level
 config = get_config()
 
 st.set_page_config(layout="wide", page_title="Utilities | Real Options")
+
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
 
 st.title("🔧 Utilities")
 st.caption("System maintenance and operational tools")
@@ -50,9 +53,11 @@ Collect and archive logs to the centralized logs branch for analysis and debuggi
 This captures orchestrator logs, dashboard logs, state files, and trading data.
 """)
 
+confirm_collect = st.checkbox("I confirm I want to collect logs", key="confirm_collect", help="Check this to enable the 'Collect Logs' button, which archives orchestrator logs, dashboard logs, state files, and trading data for analysis.")
 if st.button(
     "🚀 Collect Logs",
     type="primary",
+    disabled=not confirm_collect,
     help="Triggers the log collection script to archive system logs, state files, and trading data for analysis."
 ):
     with st.spinner(f"Collecting {current_env} logs..."):
@@ -74,7 +79,7 @@ if st.button(
                 with st.expander("View Output"):
                     st.code(result.stdout)
             else:
-                st.error(f"❌ Log collection failed")
+                st.error("❌ Log collection failed")
                 with st.expander("View Error"):
                     st.code(result.stderr or result.stdout)
 
@@ -141,7 +146,7 @@ with error_cols[0]:
 
 with error_cols[1]:
     st.markdown("&nbsp;")  # Spacer
-    if st.button(f"🚨 Show Errors", width='stretch', help=f"Filter logs for errors in the last {hours_option} hours."):
+    if st.button("🚨 Show Errors", width='stretch', help=f"Filter logs for errors in the last {hours_option} hours."):
         with st.spinner(f"Finding errors from last {hours_option} hours..."):
             try:
                 result = subprocess.run(
@@ -164,7 +169,7 @@ st.markdown("##### 📈 Performance & Health")
 perf_cols = st.columns(2)
 
 with perf_cols[0]:
-    if st.button(f"📈 Trading Performance", width='stretch', help="Show trading performance metrics from recent logs."):
+    if st.button("📈 Trading Performance", width='stretch', help="Show trading performance metrics from recent logs."):
         with st.spinner("Loading performance data..."):
             try:
                 result = subprocess.run(
@@ -179,7 +184,7 @@ with perf_cols[0]:
                 st.error(f"Error: {e}")
 
 with perf_cols[1]:
-    if st.button(f"🏥 System Health", width='stretch', help="Check system health: memory, disk, processes, and service status."):
+    if st.button("🏥 System Health", width='stretch', help="Check system health: memory, disk, processes, and service status."):
         with st.spinner("Checking system health..."):
             try:
                 result = subprocess.run(
@@ -211,12 +216,17 @@ with manual_cols[0]:
     st.caption("Runs full order generation cycle: data pull → Council deliberation → signals → order placement")
 
     # Safety Interlock
-    confirm_exec = st.checkbox("I confirm I want to execute live trades", key="confirm_exec_orders")
+    confirm_exec = st.checkbox("I confirm I want to execute live trades", key="confirm_exec_orders", help="Check this to enable the 'Force Generate & Execute Orders' button, which immediately triggers a full data pull, analysis, and order placement cycle.")
     confirm_text = st.text_input("Type 'EXECUTE' to confirm:", key="confirm_text_orders")
 
     is_authorized = confirm_exec and confirm_text == "EXECUTE"
 
-    if st.button("🚀 Force Generate & Execute Orders", type="primary", disabled=not is_authorized):
+    if st.button(
+        "🚀 Force Generate & Execute Orders",
+        type="primary",
+        disabled=not is_authorized,
+        help="Bypasses the normal schedule to run a full analysis and trade cycle immediately (Data Pull → Council → Signals → Orders). Requires 'EXECUTE' confirmation."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -274,7 +284,7 @@ with manual_cols[0]:
                             else:
                                 st.success(f"✅ Order generation completed! {queued_count} orders queued.")
 
-                        except Exception as diag_e:
+                        except Exception:
                             st.success("✅ Order generation and execution completed!")
                             # Diagnostic failure should not prevent success message
 
@@ -300,8 +310,12 @@ with manual_cols[1]:
     st.warning("⚠️ **Cancel All Open Orders**")
     st.caption("Immediately cancels all unfilled DAY orders in IB")
 
-    confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all")
-    if st.button("🛑 Cancel All Open Orders", disabled=not confirm_cancel_all):
+    confirm_cancel_all = st.checkbox("I confirm I want to CANCEL all open orders", key="confirm_cancel_all", help="Check this to enable the 'Cancel All Open Orders' button, which immediately cancels all unfilled DAY orders in Interactive Brokers.")
+    if st.button(
+        "🛑 Cancel All Open Orders",
+        disabled=not confirm_cancel_all,
+        help="Immediately cancels all unfilled DAY orders in Interactive Brokers."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -332,8 +346,12 @@ with manual_cols2[0]:
     st.warning("⚠️ **Close Stale Positions**")
     st.caption("Closes positions held longer than max_holding_days")
 
-    confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale")
-    if st.button("🔄 Force Close Stale Positions", disabled=not confirm_close_stale):
+    confirm_close_stale = st.checkbox("I confirm I want to CLOSE stale positions", key="confirm_close_stale", help="Check this to enable the 'Force Close Stale Positions' button, which immediately attempts to close any open positions that have exceeded their maximum configured holding period.")
+    if st.button(
+        "🔄 Force Close Stale Positions",
+        disabled=not confirm_close_stale,
+        help="Forces the closure of any open positions that have exceeded their maximum configured holding period."
+    ):
         if not config:
             st.error("❌ Config not loaded")
         else:
@@ -362,8 +380,10 @@ with manual_cols2[1]:
     st.info("ℹ️ **Sync Equity Data**")
     st.caption("Forces fresh equity sync from IB Flex Query")
 
+    confirm_sync = st.checkbox("I confirm I want to force equity sync", key="confirm_sync", help="Check this to enable the 'Force Equity Sync' button, which triggers a fresh data pull from Interactive Brokers Flex Query reports to update equity balances.")
     if st.button(
         "💰 Force Equity Sync",
+        disabled=not confirm_sync,
         help="Manually triggers a fresh equity data pull from Interactive Brokers Flex Query reports."
     ):
         if not config:
@@ -492,7 +512,131 @@ with diag_cols[2]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 5: State Management
+# SECTION 5: System Health Digest
+# ==============================================================================
+st.subheader("📋 System Health Digest")
+st.markdown("""
+Generate a comprehensive health assessment that synthesizes ~15 data files per commodity
+into a single JSON report. Covers feedback loops, agent calibration, sentinel efficiency,
+risk rails, decision traces, portfolio trends, and a composite health score.
+**Read-only** — no IB connections, no LLM calls.
+""")
+
+digest_cols = st.columns([2, 1])
+
+with digest_cols[0]:
+    if st.button("📋 Generate Health Digest", type="primary", width='stretch',
+                 help="Generates a comprehensive system health report from current data files (~5s). Safe to run anytime."):
+        with st.spinner("Generating System Health Digest..."):
+            try:
+                from trading_bot.system_digest import generate_system_digest
+                digest = generate_system_digest(config)
+
+                if digest:
+                    # Health score banner
+                    health = digest.get('system_health_score', {})
+                    overall = health.get('overall')
+                    if overall is not None:
+                        if overall >= 0.75:
+                            st.success(f"System Health: **{overall:.2f}/1.00** — Healthy")
+                        elif overall >= 0.50:
+                            st.warning(f"System Health: **{overall:.2f}/1.00** — Degraded")
+                        else:
+                            st.error(f"System Health: **{overall:.2f}/1.00** — Critical")
+
+                    # Health score components
+                    components = health.get('components', {})
+                    if components:
+                        comp_cols = st.columns(4)
+                        labels = {
+                            'feedback_health': ('Feedback', '🔄'),
+                            'prediction_accuracy': ('Prediction', '🎯'),
+                            'execution_quality': ('Execution', '⚡'),
+                            'sentinel_efficiency': ('Sentinels', '📡'),
+                        }
+                        for i, (key, (label, icon)) in enumerate(labels.items()):
+                            with comp_cols[i]:
+                                val = components.get(key)
+                                st.metric(f"{icon} {label}", f"{val:.2f}" if val is not None else "N/A", help=f"Health score for the {label} component (0.0 to 1.0).")
+
+                    # Executive summary
+                    st.info(f"**Summary:** {digest.get('executive_summary', 'N/A')}")
+
+                    # Improvement opportunities
+                    opportunities = digest.get('improvement_opportunities', [])
+                    if opportunities:
+                        high = [o for o in opportunities if o['priority'] == 'HIGH']
+                        medium = [o for o in opportunities if o['priority'] == 'MEDIUM']
+                        if high:
+                            for o in high:
+                                st.error(f"**HIGH** [{o['component']}] {o['observation']}")
+                        if medium:
+                            for o in medium:
+                                st.warning(f"**MEDIUM** [{o['component']}] {o['observation']}")
+
+                    # Per-commodity details
+                    for t, block in digest.get('commodities', {}).items():
+                        if block.get('status') == 'no_data_directory':
+                            continue
+                        with st.expander(f"**{t}** — Details"):
+                            cog = block.get('cognitive_layer', {})
+                            regime = block.get('regime_context', {}).get('regime', 'UNKNOWN')
+                            st.write(f"**Decisions today:** {cog.get('decisions_today', 0)} | **Regime:** {regime}")
+
+                            fb = block.get('feedback_loop', {})
+                            st.write(f"**Feedback loop:** {fb.get('status', 'N/A')} (resolution rate: {fb.get('resolution_rate', 'N/A')})")
+
+                            freshness = block.get('data_freshness', {})
+                            st.write(f"**Data freshness:** {freshness.get('status', 'N/A')} ({freshness.get('stale_count', 0)} stale)")
+
+                            traces = block.get('decision_traces', [])
+                            if traces:
+                                st.write(f"**Last {len(traces)} decisions:**")
+                                for trace in traces:
+                                    direction = trace.get('direction', '?')
+                                    conf = trace.get('confidence')
+                                    strategy = trace.get('strategy', '')
+                                    conf_str = f" ({conf:.0%})" if conf else ""
+                                    st.caption(f"  {trace.get('timestamp', '')[:16]} — {direction}{conf_str} → {strategy}")
+
+                    # Full JSON in expander
+                    with st.expander("📄 Full Digest JSON"):
+                        st.json(digest)
+
+                    st.caption(f"Digest ID: `{digest.get('digest_id', 'N/A')}` | Schema v{digest.get('schema_version', '?')}")
+                else:
+                    st.error("❌ Digest generation returned None — check orchestrator logs")
+
+            except Exception as e:
+                st.error(f"❌ Digest generation failed: {str(e)}")
+                with st.expander("View Error Details"):
+                    st.code(traceback.format_exc())
+
+with digest_cols[1]:
+    # Show last digest if available
+    st.markdown("**Last Digest**")
+    try:
+        digest_path = _resolve_data_path("system_health_digest.json")
+        if os.path.exists(digest_path):
+            mtime = os.path.getmtime(digest_path)
+            st.caption(f"🕒 {datetime.fromtimestamp(mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+            with open(digest_path, 'r') as f:
+                last_digest = json.load(f)
+            score = last_digest.get('system_health_score', {}).get('overall')
+            if score is not None:
+                st.metric("Health Score", f"{score:.2f}", help="Overall system health score from the last digest (0.0 to 1.0).")
+            opps = last_digest.get('improvement_opportunities', [])
+            high_count = sum(1 for o in opps if o.get('priority') == 'HIGH')
+            st.metric("Issues", f"{high_count} HIGH / {len(opps)} total", help="Number of HIGH priority issues identified in the last digest.")
+        else:
+            st.caption("No previous digest found")
+    except Exception:
+        st.caption("Could not load last digest")
+
+st.markdown("---")
+
+# ==============================================================================
+# SECTION 6: State Management (renumbered from 5)
 # ==============================================================================
 st.subheader("📁 State Management")
 
@@ -502,8 +646,11 @@ with state_cols[0]:
     st.info("**View System State**")
     if st.button("👁️ Show state.json Contents", help="Display the current orchestrator state file (sentinels, triggers, flags)."):
         try:
-            state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+            state_path = _resolve_data_path("state.json")
             if os.path.exists(state_path):
+                mtime = os.path.getmtime(state_path)
+                last_upd = datetime.fromtimestamp(mtime, tz=timezone.utc)
+                st.caption(f"🕒 Last updated: {last_upd.strftime('%Y-%m-%d %H:%M:%S UTC')} ({_relative_time(last_upd)})")
                 with open(state_path, 'r') as f:
                     state_data = json.load(f)
                     st.json(state_data)
@@ -518,7 +665,7 @@ with state_cols[1]:
 
     # Use a form with confirmation checkbox to prevent accidental clicks
     with st.form("clear_state_form"):
-        confirm_clear = st.checkbox("I understand this will clear all state data")
+        confirm_clear = st.checkbox("I understand this will clear all state data", help="Check this to enable the 'Clear State File' button, which completely deletes all application state (sentinels, triggers, deduplicators) and forces a fresh rebuild on next run.")
         submit_clear = st.form_submit_button("🗑️ Clear State File")
 
         if submit_clear:
@@ -526,7 +673,7 @@ with state_cols[1]:
                 st.error("❌ Please confirm by checking the box")
             else:
                 try:
-                    state_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+                    state_path = _resolve_data_path("state.json")
                     if os.path.exists(state_path):
                         # Create backup first
                         backup_path = f"{state_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -546,7 +693,7 @@ with state_cols[1]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 6: System Validation
+# SECTION 7: System Validation
 # ==============================================================================
 st.subheader("🔍 System Validation")
 st.markdown("""
@@ -557,11 +704,12 @@ This validates the entire architecture from sentinels to council to order execut
 validation_cols = st.columns([2, 1])
 
 with validation_cols[0]:
-    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
+    confirm_val = st.checkbox("I confirm I want to run system validation", key="confirm_val", help="Check this to enable the 'Run System Validation' button, which executes comprehensive preflight diagnostic checks on infrastructure and trading components.")
+    run_validation = st.button("🚀 Run System Validation", type="primary", width='stretch', disabled=not confirm_val, help="Run preflight checks on all system components (~30s in quick mode, ~2min full).")
 
 with validation_cols[1]:
-    json_output = st.checkbox("JSON Output", value=False)
-    quick_mode = st.checkbox("Quick Mode (Skip slow tests)", value=True)
+    json_output = st.checkbox("JSON Output", value=False, help="Outputs the validation results in raw JSON format rather than human-readable text.")
+    quick_mode = st.checkbox("Quick Mode (Skip slow tests)", value=True, help="Skips slow external API checks (like LLM endpoint validation) to return results faster.")
 
 if run_validation:
     with st.spinner("Running comprehensive system validation..."):
@@ -612,13 +760,13 @@ if run_validation:
                         total = summary.get('total', 0)
                         passed = summary.get('passed', 0)
                         health = (passed / total * 100) if total > 0 else 0
-                        st.metric("Health", f"{health:.1f}%")
+                        st.metric("Health", f"{health:.1f}%", help="Percentage of successful validation checks.")
                     with metric_cols[1]:
-                        st.metric("Passed", summary.get('passed', 0), delta=None)
+                        st.metric("Passed", summary.get('passed', 0), delta=None, help="Number of validation checks that passed successfully.")
                     with metric_cols[2]:
-                        st.metric("Warnings", summary.get('warnings', 0), delta=None, delta_color="off")
+                        st.metric("Warnings", summary.get('warnings', 0), delta=None, delta_color="off", help="Number of validation checks that returned a warning.")
                     with metric_cols[3]:
-                        st.metric("Failures", summary.get('failed', 0), delta=None, delta_color="inverse")
+                        st.metric("Failures", summary.get('failed', 0), delta=None, delta_color="inverse", help="Number of validation checks that failed.")
 
                     # Results table
                     if data.get('checks'):
@@ -639,7 +787,7 @@ if run_validation:
                         # Select relevant columns
                         display_df = df[['status', 'name', 'message', 'details', 'duration_ms']]
 
-                        styled_df = display_df.style.applymap(color_status, subset=['status'])
+                        styled_df = display_df.style.map(color_status, subset=['status'])
                         st.dataframe(styled_df, width='stretch', hide_index=True)
 
                 except json.JSONDecodeError:
@@ -659,7 +807,7 @@ if run_validation:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 7: Data Reconciliation
+# SECTION 8: Data Reconciliation
 # ==============================================================================
 st.subheader("🔄 Data Reconciliation")
 st.markdown("""
@@ -668,7 +816,93 @@ These processes normally run automatically in the orchestrator but can be trigge
 on-demand for debugging or immediate verification.
 """)
 
-confirm_recon = st.checkbox("Unlock reconciliation tools", key="confirm_recon")
+# --- Last-run timestamps for each reconciliation process ---
+import re as _re
+
+_RECON_STATE_PATH = _resolve_data_path("reconciliation_runs.json")
+
+def _load_recon_timestamps() -> dict:
+    """Load last-run timestamps for reconciliation processes."""
+    try:
+        if os.path.exists(_RECON_STATE_PATH):
+            with open(_RECON_STATE_PATH, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def _save_recon_timestamp(process_name: str):
+    """Record the current time as the last run for a reconciliation process."""
+    try:
+        data = _load_recon_timestamps()
+        data[process_name] = datetime.now(timezone.utc).isoformat()
+        os.makedirs(os.path.dirname(_RECON_STATE_PATH), exist_ok=True)
+        with open(_RECON_STATE_PATH, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+def _format_last_run(process_name: str) -> str:
+    """Return a human-readable 'last run' string."""
+    ts_data = _load_recon_timestamps()
+    ts_str = ts_data.get(process_name)
+    if not ts_str:
+        return "Never run"
+    try:
+        ts = datetime.fromisoformat(ts_str)
+        delta = datetime.now(timezone.utc) - ts
+        hours = delta.total_seconds() / 3600
+        if hours < 1:
+            return f"{int(delta.total_seconds() / 60)}m ago"
+        elif hours < 24:
+            return f"{int(hours)}h ago"
+        else:
+            return f"{int(hours / 24)}d ago"
+    except Exception:
+        return ts_str
+
+def _parse_recon_summary(raw_output: str) -> str:
+    """Parse reconciliation subprocess output into a concise summary."""
+    lines = raw_output.strip().splitlines() if raw_output else []
+    if not lines:
+        return "Completed (no output)"
+
+    summaries = []
+    # Look for common patterns in reconciliation output
+    for line in lines:
+        line_lower = line.lower()
+        # Match "Updated N rows", "Resolved N predictions", "N discrepancies", etc.
+        if any(kw in line_lower for kw in ['updated', 'resolved', 'backfilled', 'synced', 'processed', 'found', 'graded', 'wrote']):
+            summaries.append(line.strip())
+        elif _re.search(r'\d+\s+(row|record|prediction|trade|position|entr)', line_lower):
+            summaries.append(line.strip())
+
+    if summaries:
+        return " | ".join(summaries[:3])  # Show up to 3 summary lines
+    # Fallback: last non-empty line
+    for line in reversed(lines):
+        if line.strip():
+            return line.strip()[:120]
+    return "Completed"
+
+# Show last-run overview
+recon_names = {
+    'council_history': 'Council History',
+    'trade_ledger': 'Trade Ledger',
+    'positions': 'Active Positions',
+    'brier': 'Brier Scores',
+}
+last_run_cols = st.columns(len(recon_names))
+for i, (key, label) in enumerate(recon_names.items()):
+    with last_run_cols[i]:
+        st.caption(f"**{label}**")
+        st.text(_format_last_run(key))
+
+confirm_recon = st.checkbox(
+    "Unlock reconciliation tools",
+    key="confirm_recon",
+    help="Safety interlock to prevent accidental execution of long-running data reconciliation tasks (~2-5 minutes).",
+)
 
 # Create a 2x2 grid for reconciliation buttons
 recon_row1 = st.columns(2)
@@ -690,23 +924,25 @@ with recon_row1[0]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    st.success("✅ Council history reconciliation complete!")
-                    # Clear cache to show updated data
+                    _save_recon_timestamp('council_history')
+                    summary = _parse_recon_summary(raw_output)
+                    st.success(f"Council history reconciled: {summary}")
                     st.cache_data.clear()
-                    with st.expander("View Details"):
-                        st.code(result.stdout)
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Council history reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (180s)")
+                st.error("Reconciliation timed out (180s)")
             except FileNotFoundError:
-                st.error("❌ backfill_council_history.py not found")
+                st.error("backfill_council_history.py not found")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # --- Trade Ledger Reconciliation ---
 with recon_row1[1]:
@@ -724,27 +960,28 @@ with recon_row1[1]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    # Check if discrepancies were found
-                    output = result.stdout
-                    if "No discrepancies found" in output:
-                        st.success("✅ Trade ledger is perfectly in sync!")
+                    _save_recon_timestamp('trade_ledger')
+                    if "No discrepancies found" in raw_output:
+                        st.success("Trade ledger is perfectly in sync!")
                     else:
-                        st.warning("⚠️ Discrepancies found - check archive_ledger/ directory")
+                        summary = _parse_recon_summary(raw_output)
+                        st.warning(f"Discrepancies found: {summary}")
 
-                    with st.expander("View Details"):
-                        st.code(output)
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Trade reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (120s)")
+                st.error("Reconciliation timed out (120s)")
             except FileNotFoundError:
-                st.error("❌ reconcile_trades.py not found")
+                st.error("reconcile_trades.py not found")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # --- Active Positions Reconciliation ---
 with recon_row2[0]:
@@ -776,55 +1013,31 @@ asyncio.run(main())
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    output = result.stdout
-                    if "No discrepancies found" in output:
-                        st.success("✅ Positions are in sync!")
+                    _save_recon_timestamp('positions')
+                    if "No discrepancies found" in raw_output:
+                        st.success("Positions are in sync!")
                     else:
-                        st.warning("⚠️ Position discrepancies detected")
+                        summary = _parse_recon_summary(raw_output)
+                        st.warning(f"Position discrepancies: {summary}")
 
-                    with st.expander("View Details"):
-                        st.code(output)
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Position reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (60s)")
+                st.error("Reconciliation timed out (60s)")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
-# --- Equity Sync (Legacy/Subprocess) ---
+# --- Equity Sync (reference to Section 3) ---
 with recon_row2[1]:
-    st.markdown("**💰 Equity History (Subprocess)**")
-    st.caption("Sync equity data from IBKR Flex Query (Legacy)")
-
-    if st.button("🔄 Sync Equity Data", width='stretch', key="recon_equity", help="Sync equity history from IBKR Flex Query (~30s).", disabled=not confirm_recon):
-        with st.spinner("Syncing equity data from Flex Query..."):
-            try:
-                result = subprocess.run(
-                    [sys.executable, "equity_logger.py", "--sync"],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-
-                if result.returncode == 0:
-                    st.success("✅ Equity data synced successfully!")
-                    st.cache_data.clear()
-                    with st.expander("View Output"):
-                        st.code(result.stdout)
-                else:
-                    st.error("❌ Sync failed")
-                    with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
-
-            except subprocess.TimeoutExpired:
-                st.error("⏱️ Sync timed out (60s)")
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+    st.markdown("**💰 Equity History**")
+    st.caption("Use **Force Equity Sync** in Manual Trading Operations above")
 
 recon_row3 = st.columns(2)
 
@@ -833,13 +1046,15 @@ with recon_row3[0]:
     st.markdown("**🎯 Brier Score Reconciliation**")
     st.caption("Grade pending agent predictions against market outcomes")
 
-    # Show pending count
+    # Show pending count from enhanced Brier JSON
     try:
-        import pandas as pd
-        structured_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "agent_accuracy_structured.csv")
-        if os.path.exists(structured_path):
-            structured_df = pd.read_csv(structured_path)
-            pending_count = (structured_df['actual'] == 'PENDING').sum() if 'actual' in structured_df.columns else 0
+        import json as _json
+        _brier_path = _resolve_data_path("enhanced_brier.json")
+        if os.path.exists(_brier_path):
+            with open(_brier_path, 'r') as _bf:
+                _brier_data = _json.load(_bf)
+            _preds = _brier_data.get('predictions', [])
+            pending_count = sum(1 for p in _preds if not p.get('resolved_at'))
             if pending_count > 0:
                 st.warning(f"**{pending_count}** predictions pending resolution")
             else:
@@ -858,20 +1073,23 @@ with recon_row3[0]:
                     cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 )
 
+                raw_output = (result.stdout + result.stderr).strip()
                 if result.returncode == 0:
-                    st.success("✅ Brier reconciliation complete!")
+                    _save_recon_timestamp('brier')
+                    summary = _parse_recon_summary(raw_output)
+                    st.success(f"Brier reconciliation complete: {summary}")
                     st.cache_data.clear()
-                    with st.expander("View Details"):
-                        st.code(result.stdout)
+                    with st.expander("View Full Output"):
+                        st.code(raw_output or "No output")
                 else:
                     st.error("❌ Brier reconciliation failed")
                     with st.expander("View Error"):
-                        st.code(result.stderr or result.stdout)
+                        st.code(raw_output or "No output")
 
             except subprocess.TimeoutExpired:
-                st.error("⏱️ Reconciliation timed out (300s)")
+                st.error("Reconciliation timed out (300s)")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 st.markdown("---")
 
@@ -894,9 +1112,9 @@ with st.expander("ℹ️ About Reconciliation Processes"):
     to ensure `daily_equity.csv` matches broker records. Uses 17:00 NY time as the daily close.
 
     **Brier Scores**: Three-step process: (1) backfills `actual_trend_direction` in council history
-    via IB historical prices, (2) resolves pending predictions in `agent_accuracy_structured.csv`
-    by matching to reconciled council decisions, (3) syncs resolutions to `enhanced_brier.json`.
-    Only grades predictions older than 20 hours.
+    via IB historical prices, (2) resolves pending predictions in `enhanced_brier.json`
+    by matching to reconciled council decisions, (3) updates agent reliability multipliers.
+    Grades predictions once their calculated exit time has passed (same-day on Fridays).
 
     ### When to Use
 
@@ -917,7 +1135,7 @@ with st.expander("ℹ️ About Reconciliation Processes"):
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 8: Cache Management
+# SECTION 9: Cache Management
 # ==============================================================================
 st.subheader("🗑️ Cache Management")
 st.markdown("Clear cached data to force fresh data loads from sources.")
@@ -925,7 +1143,7 @@ st.markdown("Clear cached data to force fresh data loads from sources.")
 cache_cols = st.columns(2)
 
 with cache_cols[0]:
-    confirm_clear_cache = st.checkbox("I confirm I want to clear all cached data", key="confirm_clear_cache")
+    confirm_clear_cache = st.checkbox("I confirm I want to clear all cached data", key="confirm_clear_cache", help="Check this to enable the 'Clear All Caches' button, which purges all loaded data from memory, forcing fresh fetches on the next page load.")
     if st.button(
         "🔄 Clear All Caches",
         disabled=not confirm_clear_cache,
@@ -941,21 +1159,21 @@ with cache_cols[1]:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 9: System Info
+# SECTION 10: System Info
 # ==============================================================================
 st.subheader("ℹ️ System Information")
 
 info_cols = st.columns(3)
 
 with info_cols[0]:
-    st.metric("Python Version", sys.version.split()[0])
+    st.metric("Python Version", sys.version.split()[0], help="The version of the Python interpreter running this application.")
 
 with info_cols[1]:
     import streamlit
-    st.metric("Streamlit Version", streamlit.__version__)
+    st.metric("Streamlit Version", streamlit.__version__, help="The version of the Streamlit framework used to build this dashboard.")
 
 with info_cols[2]:
-    st.metric("Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"))
+    st.metric("Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"), help="Current system time in UTC. All bot schedules and log timestamps use UTC for consistency.")
 
 # Display recent log files
 st.markdown("### 📄 Recent Log Files")
@@ -967,15 +1185,29 @@ if os.path.exists(logs_dir):
         filepath = os.path.join(logs_dir, f)
         if os.path.isfile(filepath):
             stat = os.stat(filepath)
+            mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+            icon = "\U0001f916 " if "orchestrator" in f.lower() else "\U0001f4ca "
             log_files.append({
-                "File": f,
-                "Size": f"{stat.st_size / 1024:.1f} KB",
-                "Modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+                "File": f"{icon}{f}",
+                "Size (KB)": round(stat.st_size / 1024, 1),
+                "Modified": mtime,
+                "Relative Age": _relative_time(mtime),
             })
 
     if log_files:
         import pandas as pd
-        st.dataframe(pd.DataFrame(log_files), hide_index=True)
+        df_logs = pd.DataFrame(log_files).sort_values("Modified", ascending=False)
+        st.dataframe(
+            df_logs,
+            hide_index=True,
+            width='stretch',
+            column_config={
+                "File": st.column_config.TextColumn("File", width="medium"),
+                "Size (KB)": st.column_config.NumberColumn("Size", format="%.1f KB", width="small"),
+                "Modified": st.column_config.DatetimeColumn("Modified", format="YYYY-MM-DD HH:mm", width="medium"),
+                "Relative Age": st.column_config.TextColumn("Relative Age", width="small"),
+            },
+        )
     else:
         st.info("No log files found.")
 else:
@@ -984,7 +1216,7 @@ else:
 st.markdown("---")
 
 # ==============================================================================
-# SECTION 10: Sentinel Statistics
+# SECTION 11: Sentinel Statistics
 # ==============================================================================
 st.subheader("🛡️ Sentinel Statistics")
 
@@ -1007,7 +1239,8 @@ try:
                     st.metric(
                         label=name.replace('Sentinel', '').strip(),
                         value=f"{data['alerts_today']} today",
-                        delta=f"{data['conversion_rate']:.0%} → trades"
+                        delta=f"{data['conversion_rate']:.0%} → trades",
+                        help=f"**{name}** stats for today. 'Conversion rate' shows the percentage of alerts that were validated by the Council and resulted in a trade decision."
                     )
     else:
         st.info("No sentinel alerts recorded yet.")

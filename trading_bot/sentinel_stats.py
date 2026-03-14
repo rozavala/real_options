@@ -6,26 +6,55 @@ v3.1: Tracks sentinel performance for dashboard display.
 
 import json
 import logging
+import os
 from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-STATS_FILE = Path("data/sentinel_stats.json")
+STATS_FILE = Path(os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "sentinel_stats.json"))
+
+
+def set_data_dir(data_dir: str):
+    """Configure sentinel stats path for a commodity-specific data directory.
+
+    Also reloads in-memory stats from the new path.
+    """
+    global STATS_FILE
+    STATS_FILE = Path(data_dir) / "sentinel_stats.json"
+    # Reload stats from new path into the module-level singleton
+    SENTINEL_STATS.stats = SENTINEL_STATS._load_stats()
+    logger.info(f"SentinelStats data_dir set to: {data_dir}")
+
+
+def _get_stats_file() -> Path:
+    """Resolve stats file via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return Path(get_engine_data_dir()) / "sentinel_stats.json"
+    except LookupError:
+        return STATS_FILE
 
 
 class SentinelStats:
-    """Collect and expose sentinel performance statistics."""
+    """Collect and expose sentinel performance statistics.
+
+    In multi-engine mode, multiple engines share this singleton but write to
+    different files (via ContextVar-resolved _get_stats_file()). To prevent
+    cross-engine data contamination, every mutating operation reloads from
+    disk first (read-modify-write pattern).
+    """
 
     def __init__(self):
         self.stats = self._load_stats()
 
     def _load_stats(self) -> dict:
         """Load stats from file."""
-        if STATS_FILE.exists():
+        stats_file = _get_stats_file()
+        if stats_file.exists():
             try:
-                with open(STATS_FILE, 'r') as f:
+                with open(stats_file, 'r') as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load sentinel stats: {e}")
@@ -33,10 +62,19 @@ class SentinelStats:
 
     def _save_stats(self):
         """Save stats to file."""
+        stats_file = _get_stats_file()
         self.stats['last_updated'] = datetime.now(timezone.utc).isoformat()
-        STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(STATS_FILE, 'w') as f:
+        stats_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(stats_file, 'w') as f:
             json.dump(self.stats, f, indent=2)
+
+    def _reload(self):
+        """Reload stats from disk for the current engine's data dir.
+
+        Prevents cross-engine contamination when a singleton is shared
+        across CommodityEngines in multi-engine mode.
+        """
+        self.stats = self._load_stats()
 
     def record_alert(self, sentinel_name: str, triggered_trade: bool):
         """
@@ -46,6 +84,7 @@ class SentinelStats:
             sentinel_name: Name of the sentinel
             triggered_trade: Whether alert led to trade execution
         """
+        self._reload()
         if sentinel_name not in self.stats['sentinels']:
             self.stats['sentinels'][sentinel_name] = {
                 'total_alerts': 0,
@@ -78,6 +117,7 @@ class SentinelStats:
             sentinel_name: Name of the sentinel (e.g., 'WeatherSentinel')
             error_type: Type of error (e.g., 'TIMEOUT', 'CRASH: ValueError')
         """
+        self._reload()
         if sentinel_name not in self.stats['sentinels']:
             self.stats['sentinels'][sentinel_name] = {
                 'total_alerts': 0,
@@ -109,10 +149,12 @@ class SentinelStats:
         Returns:
             Dict of {sentinel_name: stats_dict}
         """
+        self._reload()
         return self.stats.get('sentinels', {})
 
     def get_dashboard_stats(self) -> dict:
         """Get stats formatted for dashboard display."""
+        self._reload()
         result = {}
         today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 

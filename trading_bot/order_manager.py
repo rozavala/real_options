@@ -13,6 +13,7 @@ import traceback
 from collections import defaultdict
 from ib_insync import *
 from datetime import timezone
+import numpy as np
 
 from config_loader import load_config
 from notifications import send_pushover_notification
@@ -36,6 +37,7 @@ from trading_bot.connection_pool import IBConnectionPool
 from trading_bot.position_sizer import DynamicPositionSizer
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
 from trading_bot.order_queue import OrderQueueManager
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 # --- Module-level storage for orders ---
 # Structure: [(contract, order, decision_data), ...]
@@ -47,13 +49,31 @@ _CAPITAL_LOCK = asyncio.Lock()
 from pathlib import Path
 import json
 
-CAPITAL_STATE_FILE = Path("data/capital_state.json")
+CAPITAL_STATE_FILE = Path(os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "capital_state.json"))
+
+
+def set_capital_state_dir(data_dir: str):
+    """Configure capital state path for a commodity-specific data directory."""
+    global CAPITAL_STATE_FILE
+    CAPITAL_STATE_FILE = Path(os.path.join(data_dir, "capital_state.json"))
+    logger.info(f"OrderManager capital state dir set to: {data_dir}")
+
+
+def _get_capital_state_file() -> Path:
+    """Resolve capital state file via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return Path(os.path.join(get_engine_data_dir(), "capital_state.json"))
+    except LookupError:
+        return CAPITAL_STATE_FILE
+
 
 def _load_committed_capital() -> float:
     """Load persisted committed capital or 0.0 if none."""
-    if CAPITAL_STATE_FILE.exists():
+    cap_file = _get_capital_state_file()
+    if cap_file.exists():
         try:
-            with open(CAPITAL_STATE_FILE, 'r') as f:
+            with open(cap_file, 'r') as f:
                 data = json.load(f)
                 return data.get('committed_capital', 0.0)
         except Exception as e:
@@ -62,14 +82,15 @@ def _load_committed_capital() -> float:
 
 def _save_committed_capital(amount: float):
     """Persist committed capital to disk (atomic write)."""
-    CAPITAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = str(CAPITAL_STATE_FILE) + ".tmp"
+    cap_file = _get_capital_state_file()
+    cap_file.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = str(cap_file) + ".tmp"
     with open(temp_path, 'w') as f:
         json.dump({
             'committed_capital': amount,
             'last_updated': datetime.now(timezone.utc).isoformat()
         }, f)
-    os.replace(temp_path, str(CAPITAL_STATE_FILE))
+    os.replace(temp_path, str(cap_file))
 
 async def _reconcile_working_orders(ib: IB, config: dict) -> float:
     """
@@ -136,6 +157,457 @@ async def _reconcile_working_orders(ib: IB, config: dict) -> float:
         logger.warning(f"Working order query failed: {e}. Assuming no committed capital.")
         return 0.0
 
+
+# Track phantom order IDs (Error 10147) to avoid repeated cancel attempts
+_known_phantom_order_ids: set = set()
+
+async def _cancel_orphaned_catastrophe_stops(ib: IB, config: dict):
+    """Cancel any CATASTROPHE_ stop orders whose parent spread is no longer active.
+
+    When a spread order times out, the companion catastrophe stop should be
+    cancelled. If the bot crashed or restarted between the spread cancellation
+    and the stop cleanup, the stop can linger as a GTC order and fill later,
+    creating an untracked naked futures position.
+
+    This function runs at the start of each order batch and during position
+    audits as a safety net. It does NOT filter by clientId because each IB
+    connection gets a randomized client ID, so stops from previous sessions
+    would be missed.
+
+    In multi-engine mode, it DOES filter by contract symbol so each engine
+    only cleans up its own commodity's orphaned stops. Without this filter,
+    Engine A would cancel Engine B's legitimate active catastrophe stops.
+    """
+    try:
+        try:
+            open_orders = await asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
+        except asyncio.TimeoutError:
+            logger.warning("reqAllOpenOrdersAsync timed out in catastrophe stop cleanup")
+            return
+        if not open_orders:
+            return
+
+        # Only cancel stops for THIS engine's commodity
+        ticker = config.get('commodity', {}).get('ticker', '')
+
+        to_cancel = []
+        skipped_other = 0
+        skipped_phantom = 0
+        for trade in open_orders:
+            ref = trade.order.orderRef or ''
+            if not ref.startswith('CATASTROPHE_'):
+                continue
+            # Don't cancel auto-close orders from fill remediation
+            if ref.startswith('CATASTROPHE_CLOSE_'):
+                continue
+            # Skip stops belonging to other commodities' engines
+            if ticker and getattr(trade.contract, 'symbol', '') != ticker:
+                skipped_other += 1
+                continue
+            # Skip orders already in terminal states
+            status = getattr(trade.orderStatus, 'status', '')
+            if status in ('Cancelled', 'Inactive', 'ApiCancelled', 'Filled'):
+                continue
+            # Skip orders already identified as phantom (Error 10147 on prior attempt)
+            if trade.order.orderId in _known_phantom_order_ids:
+                skipped_phantom += 1
+                continue
+            to_cancel.append(trade)
+
+        if skipped_other > 0:
+            logger.info(
+                f"Catastrophe stop cleanup: skipped {skipped_other} stop(s) "
+                f"belonging to other commodities"
+            )
+        if skipped_phantom > 0:
+            logger.debug(
+                f"Catastrophe stop cleanup: skipped {skipped_phantom} known phantom order(s)"
+            )
+
+        if not to_cancel:
+            return
+
+        # Fire cancel requests
+        for trade in to_cancel:
+            ref = trade.order.orderRef or ''
+            logger.info(
+                f"Cancelling orphaned catastrophe stop: order {trade.order.orderId} "
+                f"(client {trade.order.clientId}, {trade.order.action} "
+                f"{trade.contract.localSymbol} @ {trade.order.auxPrice:.2f}), ref={ref}"
+            )
+            ib.cancelOrder(trade.order)
+
+        # Wait briefly for cancel confirmations / Error 10147 callbacks
+        await asyncio.sleep(2)
+
+        # Count how many actually reached a terminal state
+        confirmed = 0
+        phantom = 0
+        for trade in to_cancel:
+            status = getattr(trade.orderStatus, 'status', '')
+            if status in ('Cancelled', 'ApiCancelled'):
+                confirmed += 1
+            else:
+                # Still 'Submitted' after cancel attempt → phantom GTC order
+                # (IBKR expired it but Gateway cache is stale, Error 10147)
+                phantom += 1
+
+        if phantom > 0:
+            # CRITICAL: "Phantom" orders may have actually FILLED.
+            # After bot restart, Gateway cache is stale — Error 10147 does NOT mean
+            # the order expired. Check positions for untracked fills.
+            phantom_trades = [t for t in to_cancel
+                              if getattr(t.orderStatus, 'status', '')
+                              not in ('Cancelled', 'ApiCancelled')]
+
+            try:
+                detected_fills = await _check_positions_for_catastrophe_fills(
+                    ib, phantom_trades, config
+                )
+            except Exception as e:
+                logger.error(f"Catastrophe fill detection failed: {e}")
+                detected_fills = []
+
+            if detected_fills:
+                ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'UNK'))
+                logger.critical(
+                    f"CATASTROPHE STOP FILL DETECTED: {len(detected_fills)} stop(s) "
+                    f"filled creating naked position(s)!"
+                )
+                for fill_info in detected_fills:
+                    try:
+                        await _remediate_filled_catastrophe_stop(ib, fill_info, config)
+                    except Exception as e:
+                        logger.error(f"Catastrophe fill remediation failed: {e}")
+                        try:
+                            send_pushover_notification(
+                                config.get('notifications', {}),
+                                f"CATASTROPHE FILL — MANUAL ACTION [{ticker}]",
+                                f"Auto-remediation failed: {e}\n"
+                                f"Check positions immediately.",
+                                priority=2
+                            )
+                        except Exception:
+                            pass
+                genuinely_phantom = phantom - len(detected_fills)
+            else:
+                genuinely_phantom = phantom
+
+            if genuinely_phantom > 0:
+                # Add to known phantom set so we don't retry on subsequent cycles
+                for t in phantom_trades:
+                    if t not in (detected_fills or []):
+                        _known_phantom_order_ids.add(t.order.orderId)
+                logger.info(
+                    f"Catastrophe stop cleanup: {genuinely_phantom} phantom GTC order(s) "
+                    f"not found on IBKR (verified — no matching fills or positions). "
+                    f"Silenced for future cycles."
+                )
+
+        if confirmed > 0:
+            from notifications import send_pushover_notification
+            ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"⚠️ Orphaned Catastrophe Stops Cancelled [{ticker}]",
+                f"Cancelled {confirmed} orphaned catastrophe stop order(s) "
+                f"from a previous session. These were left behind when their "
+                f"parent spread orders timed out without filling.",
+                priority=1
+            )
+    except Exception as e:
+        logger.error(f"Catastrophe stop cleanup failed (non-fatal): {e}")
+
+
+# Module-level deduplication guard for catastrophe fill remediation
+_remediated_catastrophe_fills: set = set()
+
+
+async def _check_positions_for_catastrophe_fills(
+    ib: IB, phantom_orders: list, config: dict
+) -> list:
+    """Check if phantom catastrophe stops actually filled by checking IBKR positions.
+
+    reqExecutionsAsync() only returns fills from the current IB session, so if the
+    bot was down when the stop filled, executions won't help. Instead, we check
+    current positions directly — if there's a naked futures position matching the
+    phantom stop's localSymbol/action that isn't in the trade ledger, it's an
+    untracked catastrophe fill.
+
+    Returns list of dicts: [{phantom_trade, position, localSymbol, action, avg_cost}, ...]
+    """
+    detected = []
+    try:
+        positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+    except asyncio.TimeoutError:
+        logger.warning("reqPositionsAsync timed out in catastrophe fill detection")
+        return detected
+
+    # Load trade ledger to check what's already tracked
+    from trading_bot.utils import _get_data_dir
+    import pandas as pd
+    eff_dir = _get_data_dir()
+    ledger_path = os.path.join(eff_dir, 'trade_ledger.csv') if eff_dir else 'trade_ledger.csv'
+    try:
+        ledger = pd.read_csv(ledger_path) if os.path.exists(ledger_path) else pd.DataFrame()
+    except Exception:
+        ledger = pd.DataFrame()
+
+    # Build set of localSymbols with non-zero net quantity in ledger
+    tracked_symbols = set()
+    if not ledger.empty and 'local_symbol' in ledger.columns:
+        # ⚡ Bolt: Vectorized net quantity calculation is ~100x faster than iterrows()
+        signed_qty = np.where(ledger['action'] == 'BUY', ledger['quantity'], -ledger['quantity'])
+        net_qty = ledger.assign(signed_qty=signed_qty).groupby('local_symbol')['signed_qty'].sum()
+        tracked_symbols = set(net_qty[net_qty != 0].index)
+
+    for phantom in phantom_orders:
+        phantom_local = getattr(phantom.contract, 'localSymbol', '')
+        phantom_action = phantom.order.action  # BUY or SELL
+        if not phantom_local:
+            continue
+
+        for pos in positions:
+            if pos.position == 0:
+                continue
+            # CRITICAL: Match on localSymbol + secType (not just symbol)
+            if (pos.contract.localSymbol == phantom_local
+                    and pos.contract.secType == 'FUT'
+                    and pos.contract.localSymbol not in tracked_symbols):
+                # Direction match: BUY stop → long position (pos > 0)
+                #                  SELL stop → short position (pos < 0)
+                position_matches_action = (
+                    (phantom_action == 'BUY' and pos.position > 0) or
+                    (phantom_action == 'SELL' and pos.position < 0)
+                )
+                if position_matches_action:
+                    # CRITICAL: avgCost is total cost basis (price × multiplier),
+                    # NOT the per-unit fill price. Convert to per-unit for ledger
+                    # consistency with fill.execution.avgPrice format.
+                    multiplier = float(pos.contract.multiplier or 1)
+                    fill_price = pos.avgCost / multiplier if multiplier > 1 else pos.avgCost
+
+                    detected.append({
+                        'phantom_trade': phantom,
+                        'position': pos,
+                        'localSymbol': pos.contract.localSymbol,
+                        'symbol': pos.contract.symbol,
+                        'action': phantom_action,
+                        'quantity': abs(pos.position),
+                        'avg_cost': pos.avgCost,
+                        'fill_price': fill_price,
+                        'contract': pos.contract,
+                    })
+                    logger.critical(
+                        f"CATASTROPHE FILL DETECTED: {phantom_action} "
+                        f"{pos.contract.localSymbol} — untracked position "
+                        f"qty={pos.position}, fill_price={fill_price:.2f}"
+                    )
+
+    return detected
+
+
+async def _remediate_filled_catastrophe_stop(
+    ib: IB, detected_fill: dict, config: dict
+):
+    """Auto-remediate a catastrophe stop that filled without being tracked.
+
+    Actions:
+    1. Log to trade_ledger.csv with reason "CATASTROPHE_FILL (auto-detected)"
+    2. Record TMS thesis for traceability (immediately invalidated)
+    3. Send P0 Pushover notification (priority=2)
+    4. Place bounded limit order to close the naked position
+    """
+    local_sym = detected_fill['localSymbol']
+
+    # Deduplication: skip if already remediated this session
+    if local_sym in _remediated_catastrophe_fills:
+        logger.info(f"Catastrophe fill {local_sym} already remediated this session, skipping")
+        return
+    _remediated_catastrophe_fills.add(local_sym)
+
+    from datetime import datetime, timezone as _tz
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'UNK'))
+    contract = detected_fill['contract']
+    qty = detected_fill['quantity']
+    action = detected_fill['action']
+
+    # 1. Log to trade_ledger.csv
+    try:
+        position_id = f"catastrophe_{local_sym}_{datetime.now(_tz.utc).strftime('%Y%m%d_%H%M%S')}"
+        await _log_catastrophe_fill_to_ledger(detected_fill, position_id, config)
+        logger.info(f"Logged catastrophe fill to ledger: {local_sym} position_id={position_id}")
+    except Exception as e:
+        logger.error(f"Failed to log catastrophe fill to ledger: {e}")
+
+    # 2. Record TMS thesis (immediately invalidated — audit trail only)
+    # CRITICAL: If we set active="true", the position audit will try to manage this
+    # thesis and place a SECOND close order → position flip risk.
+    thesis_id = f"catastrophe_{local_sym}"
+    try:
+        tms = TransactiveMemory()
+        thesis_data = {
+            'strategy_type': 'CATASTROPHE_HEDGE_FILL',
+            'guardian_agent': 'System',
+            'primary_rationale': (
+                f"Untracked {action} {qty} {local_sym} filled from orphaned GTC stop. "
+                f"Auto-detected and queued for close."
+            ),
+            'invalidation_triggers': ['auto_close_order_placed'],
+            'supporting_data': {
+                'entry_price': detected_fill['fill_price'],
+                'underlying_symbol': detected_fill.get('symbol', ''),
+                'auto_remediated': True,
+            },
+            'entry_timestamp': datetime.now(_tz.utc).isoformat(),
+            'entry_regime': 'UNKNOWN',
+        }
+        tms.record_trade_thesis(thesis_id, thesis_data)
+        # Immediately invalidate — this thesis is for audit trail ONLY.
+        # Leaving it active would cause position audit to place a duplicate close order.
+        tms.invalidate_thesis(thesis_id, "Auto-close order placed by catastrophe fill remediation")
+    except Exception as e:
+        logger.error(f"Failed to record catastrophe fill TMS thesis: {e}")
+
+    # 3. P0 Pushover notification (priority=2 = emergency)
+    try:
+        send_pushover_notification(
+            config.get('notifications', {}),
+            f"CATASTROPHE STOP FILLED [{ticker}]",
+            (
+                f"{action} {qty} {local_sym} filled from orphaned GTC stop.\n"
+                f"Fill price: ~{detected_fill['fill_price']:.2f}\n"
+                f"NOT part of any spread thesis.\n"
+                f"Auto-close order queued. Manual verification required."
+            ),
+            priority=2
+        )
+    except Exception as e:
+        logger.error(f"Failed to send catastrophe fill notification: {e}")
+
+    # 4. Place bounded limit close order
+    # NOTE: Intentionally NOT checking is_trading_off() here.
+    # Catastrophe fill remediation must execute even when trading is disabled
+    # — an untracked naked futures position is a safety emergency.
+    try:
+        close_action = 'SELL' if action == 'BUY' else 'BUY'
+
+        # Qualify contract before order placement — reqPositionsAsync() returns
+        # basic fields but may lack exchange routing details needed for orders
+        try:
+            await asyncio.wait_for(ib.qualifyContractsAsync(contract), timeout=10)
+        except Exception as e:
+            logger.warning(f"Contract qualification failed for {local_sym}: {e}")
+
+        # Get current market price for limit bound
+        ticker_data = ib.reqMktData(contract, '', True, False)
+        await asyncio.sleep(1)
+        ref_price = ticker_data.last if not util.isNan(ticker_data.last) else ticker_data.close
+        try:
+            ib.cancelMktData(contract)
+        except Exception:
+            pass
+
+        if ref_price and ref_price > 0:
+            # 1% worse than market: SELL lower, BUY higher
+            if close_action == 'SELL':
+                limit_price = round_to_tick(ref_price * 0.99, action='SELL', config=config)
+            else:
+                limit_price = round_to_tick(ref_price * 1.01, action='BUY', config=config)
+
+            close_order = LimitOrder(
+                action=close_action,
+                totalQuantity=qty,
+                lmtPrice=limit_price,
+                tif='GTC',
+                outsideRth=True,
+            )
+        else:
+            # No market data — fall back to market order as last resort
+            logger.warning(f"No market data for {local_sym}, using market order for close")
+            close_order = MarketOrder(
+                action=close_action,
+                totalQuantity=qty,
+                tif='GTC',
+                outsideRth=True,
+            )
+
+        close_order.orderRef = f"CATASTROPHE_CLOSE_{local_sym}"
+        close_trade = ib.placeOrder(contract, close_order)
+        logger.critical(
+            f"CATASTROPHE AUTO-CLOSE: {close_action} {qty} {local_sym} "
+            f"@ {getattr(close_order, 'lmtPrice', 'MKT')} "
+            f"(order {close_trade.order.orderId})"
+        )
+    except Exception as e:
+        logger.error(f"Failed to place catastrophe close order for {local_sym}: {e}")
+        # Escalate notification — manual intervention needed
+        try:
+            send_pushover_notification(
+                config.get('notifications', {}),
+                f"CATASTROPHE CLOSE FAILED [{ticker}]",
+                f"Auto-close order failed for {local_sym}: {e}\n"
+                f"MANUAL INTERVENTION REQUIRED — close position in TWS immediately.",
+                priority=2
+            )
+        except Exception:
+            pass
+
+
+import csv
+
+
+async def _log_catastrophe_fill_to_ledger(detected_fill: dict, position_id: str, config: dict):
+    """Write a catastrophe fill entry directly to trade_ledger.csv.
+
+    Reads the existing CSV header to ensure schema compatibility — unknown
+    columns default to empty string rather than being omitted.
+    Acquires TRADE_LEDGER_LOCK for consistency with other ledger writers.
+    """
+    from trading_bot.utils import _get_data_dir, TRADE_LEDGER_LOCK
+    from datetime import datetime
+    eff_dir = _get_data_dir()
+    ledger_path = os.path.join(eff_dir, 'trade_ledger.csv') if eff_dir else 'trade_ledger.csv'
+
+    # Known fields we can populate
+    row = {
+        'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+        'position_id': position_id,
+        'combo_id': 'CATASTROPHE',
+        'local_symbol': detected_fill['localSymbol'],
+        'action': detected_fill['action'],
+        'quantity': detected_fill['quantity'],
+        'avg_fill_price': detected_fill['fill_price'],
+        'strike': 'N/A',
+        'right': 'N/A',
+        'total_value_usd': 0,
+        'reason': 'CATASTROPHE_FILL (auto-detected)',
+    }
+
+    async with TRADE_LEDGER_LOCK:
+        try:
+            file_exists = os.path.exists(ledger_path) and os.path.getsize(ledger_path) > 0
+        except OSError:
+            file_exists = False
+
+        if file_exists:
+            # Read existing header so row matches full schema
+            with open(ledger_path, 'r') as f:
+                reader = csv.reader(f)
+                existing_header = next(reader)
+            full_row = {col: row.get(col, '') for col in existing_header}
+            fieldnames = existing_header
+        else:
+            full_row = row
+            fieldnames = list(row.keys())
+
+        with open(ledger_path, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(full_row)
+
+
 # Module-level set for TMS thesis deduplication
 _recorded_thesis_positions = set()
 
@@ -195,7 +667,7 @@ def _describe_bag(contract) -> str:
     return ticker
 
 
-async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None):
+async def generate_and_execute_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None, schedule_id: str = None):
     """
     Generates, queues, and immediately places orders.
     This ensures that order placement isn't skipped if generation takes
@@ -224,16 +696,11 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
             f"Holding-time gate: Only {remaining_hours:.1f}h until weekly close "
             f"(minimum: {min_holding_hours}h). Skipping order generation."
         )
-        send_pushover_notification(
-            config.get('notifications', {}),
-            "📅 Order Gen Skipped",
-            f"Weekly close in {remaining_hours:.1f}h — below {min_holding_hours}h minimum. "
-            f"No new positions today."
-        )
+        # Pushover removed — routine Friday behavior, not actionable
         return
 
     logger.info(">>> Starting combined task: Generate and Execute Orders <<<")
-    await generate_and_queue_orders(config, connection_purpose=connection_purpose, shutdown_check=shutdown_check, trigger_type=trigger_type)
+    await generate_and_queue_orders(config, connection_purpose=connection_purpose, shutdown_check=shutdown_check, trigger_type=trigger_type, schedule_id=schedule_id)
 
     # Only proceed to placement if orders were actually queued
     if not ORDER_QUEUE.is_empty():
@@ -243,7 +710,143 @@ async def generate_and_execute_orders(config: dict, connection_purpose: str = "o
     logger.info(">>> Combined task 'Generate and Execute Orders' complete <<<")
 
 
-async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None):
+# === THESIS COHERENCE GATE ===
+# Maps strategy types to directional stance for contradiction detection
+_STRATEGY_DIRECTION = {
+    'BULL_CALL_SPREAD': 'BULLISH',
+    'BEAR_PUT_SPREAD': 'BEARISH',
+    'IRON_CONDOR': 'NEUTRAL',
+    'LONG_STRADDLE': 'NEUTRAL',
+    'CATASTROPHE_HEDGE_FILL': 'UNKNOWN',
+}
+
+# Volatility axis: opposite vol stances contradict each other
+_STRATEGY_VOL_STANCE = {
+    'IRON_CONDOR': 'LOW_VOL',
+    'LONG_STRADDLE': 'HIGH_VOL',
+}
+_VOL_CONTRADICTIONS = {('LOW_VOL', 'HIGH_VOL'), ('HIGH_VOL', 'LOW_VOL')}
+
+
+def _check_thesis_coherence(
+    signal: dict, config: dict, approved_in_this_cycle: list
+) -> tuple:
+    """Check if a new signal conflicts with existing active theses.
+
+    Checks two axes:
+    1. Directional: BULLISH vs BEARISH → CONTRADICT
+    2. Volatility: IRON_CONDOR (low vol) vs LONG_STRADDLE (high vol) → CONTRADICT
+
+    Returns (action, conflicting_theses) where action is:
+        PROCEED / BLOCK_INTRA_CYCLE / CONTRADICT
+    """
+    contract_month = signal.get('contract_month', '')
+    direction = signal.get('direction', 'NEUTRAL')
+    symbol = config.get('symbol', 'KC')
+    pred_type = signal.get('prediction_type', 'DIRECTIONAL')
+
+    if not contract_month:
+        return "PROCEED", []
+
+    # Determine new strategy type for vol-axis check
+    if pred_type == 'DIRECTIONAL':
+        new_type = 'BULL_CALL_SPREAD' if direction == 'BULLISH' else 'BEAR_PUT_SPREAD'
+    else:
+        new_type = 'IRON_CONDOR' if signal.get('level') == 'LOW' else 'LONG_STRADDLE'
+
+    new_vol_stance = _STRATEGY_VOL_STANCE.get(new_type, '')
+
+    # Skip gate entirely only if NEUTRAL direction AND no vol stance
+    if direction == 'NEUTRAL' and not new_vol_stance:
+        return "PROCEED", []
+
+    from trading_bot.tms import normalize_contract_month
+    norm_month = normalize_contract_month(contract_month)
+
+    # Check 1: Intra-cycle duplicates (same direction in this batch)
+    for prev in approved_in_this_cycle:
+        prev_month = normalize_contract_month(prev.get('contract_month', ''))
+        prev_dir = prev.get('direction', '')
+        if prev_month == norm_month and prev_dir == direction:
+            # For vol strategies, also match on prediction_type to avoid
+            # blocking a directional + vol combo in the same batch
+            if direction != 'NEUTRAL' or pred_type == prev.get('prediction_type', ''):
+                return "BLOCK_INTRA_CYCLE", [{'strategy_type': 'in_batch',
+                    '_metadata': {'trade_id': 'in_this_cycle'}}]
+
+    # Check 1b: Intra-cycle contradictions (warning only, v1)
+    for prev in approved_in_this_cycle:
+        prev_month = normalize_contract_month(prev.get('contract_month', ''))
+        prev_dir = prev.get('direction', '')
+        if prev_month == norm_month:
+            # Directional contradiction
+            if (prev_dir in ('BULLISH', 'BEARISH')
+                    and direction in ('BULLISH', 'BEARISH')
+                    and prev_dir != direction):
+                logger.warning(
+                    f"INTRA-CYCLE CONTRADICTION: {direction} on {norm_month} "
+                    f"opposes {prev_dir} from earlier in this batch. "
+                    f"Both will proceed — second fill will trigger auto-close.")
+                break
+            # Vol contradiction
+            prev_type_inferred = ('IRON_CONDOR' if prev.get('level') == 'LOW'
+                                  else 'LONG_STRADDLE') if prev.get('prediction_type') == 'VOLATILITY' else ''
+            prev_vol = _STRATEGY_VOL_STANCE.get(prev_type_inferred, '')
+            if prev_vol and new_vol_stance and (prev_vol, new_vol_stance) in _VOL_CONTRADICTIONS:
+                logger.warning(
+                    f"INTRA-CYCLE VOL CONTRADICTION: {new_type} on {norm_month} "
+                    f"opposes {prev_type_inferred} from earlier in this batch. "
+                    f"Both will proceed — second fill will trigger auto-close.")
+                break
+
+    # Check 2: TMS active theses — look for directional + vol contradictions
+    try:
+        from trading_bot.tms import TransactiveMemory
+        tms = TransactiveMemory()
+        if not tms.collection:
+            logger.warning("Thesis coherence: TMS collection unavailable (FAIL OPEN)")
+            return "PROCEED", []
+        existing = tms.get_active_theses_by_contract(symbol, contract_month)
+    except Exception as e:
+        logger.warning(f"Thesis coherence check failed (FAIL OPEN): {e}")
+        return "PROCEED", []
+
+    if not existing:
+        return "PROCEED", []
+
+    contradictions = []
+    for thesis in existing:
+        meta = thesis.get('_metadata', {})
+        existing_dir = (meta.get('direction', '')
+                       or _STRATEGY_DIRECTION.get(thesis.get('strategy_type', ''), ''))
+        existing_type = thesis.get('strategy_type', 'UNKNOWN')
+
+        if not existing_dir or existing_dir == 'UNKNOWN':
+            logger.debug(
+                f"Thesis {meta.get('trade_id', '?')} has unmapped strategy_type "
+                f"'{existing_type}', treating as non-conflicting")
+            continue
+
+        # Axis 1: Directional contradiction (BULLISH vs BEARISH)
+        if (existing_dir in ('BULLISH', 'BEARISH')
+              and direction in ('BULLISH', 'BEARISH')
+              and existing_dir != direction):
+            contradictions.append(thesis)
+            continue
+
+        # Axis 2: Volatility contradiction (IRON_CONDOR vs LONG_STRADDLE)
+        existing_vol = _STRATEGY_VOL_STANCE.get(existing_type, '')
+        if (existing_vol and new_vol_stance
+                and (existing_vol, new_vol_stance) in _VOL_CONTRADICTIONS):
+            contradictions.append(thesis)
+
+    if contradictions:
+        return "CONTRADICT", contradictions
+
+    return "PROCEED", []
+
+
+async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None, schedule_id: str = None):
     """
     Generates trading strategies based on market data and API predictions,
     and queues them for later execution.
@@ -260,7 +863,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             logger.info(f"Connected to IB for signal generation (purpose: {connection_purpose}).")
 
             logger.info("Step 1: Generating structured signals via Council...")
-            signals = await generate_signals(ib, config, shutdown_check=shutdown_check, trigger_type=trigger_type)
+            signals = await generate_signals(ib, config, shutdown_check=shutdown_check, trigger_type=trigger_type, schedule_id=schedule_id)
             logger.info(f"Generated {len(signals)} signals: {signals}")
 
             futures = await get_active_futures(ib, config['symbol'], config['exchange'], count=5)
@@ -389,6 +992,9 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             persisted_capital = _load_committed_capital()
             working_capital = await _reconcile_working_orders(ib, config)  # v4.1: now takes config
 
+            # Safety net: Cancel orphaned catastrophe stops from previous timed-out spreads
+            await _cancel_orphaned_catastrophe_stops(ib, config)
+
             # Trust IBKR as source of truth — persisted file may be stale from
             # cancelled/expired orders that were never cleaned up.
             # Use max() only when IBKR shows active orders, otherwise reset.
@@ -413,10 +1019,22 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
             # F.4.1: Confidence threshold gate — block low-confidence signals before processing
             min_confidence = config.get('risk_management', {}).get('min_confidence_threshold', 0.60)
 
+            # Thesis coherence: track signals approved in this batch
+            approved_in_this_cycle = []
+
             for signal in signals:
                 # === F.4.1: Confidence gate (before NEUTRAL skip so low-confidence gets logged) ===
                 sig_confidence = signal.get('confidence', 0.0)
                 if sig_confidence < min_confidence:
+                    log_funnel_event(
+                        cycle_id=signal.get('_cycle_id', 'unknown'),
+                        contract=signal.get('contract_month', 'unknown'),
+                        stage=FunnelStage.CONFIDENCE_THRESHOLD,
+                        outcome="BLOCK",
+                        detail=f"confidence={sig_confidence:.2f}, threshold={min_confidence:.2f}, direction={signal.get('direction', 'N/A')}",
+                        price_snapshot=signal.get('price'),
+                        regime=signal.get('regime', 'UNKNOWN'),
+                    )
                     logger.info(
                         f"BLOCKED BY CONFIDENCE: {signal.get('contract_month', 'N/A')} — "
                         f"confidence {sig_confidence:.2f} < threshold {min_confidence:.2f}. "
@@ -441,6 +1059,69 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                 # Also skip explicit NEUTRAL (legacy path)
                 if sig_direction == 'NEUTRAL':
                     continue
+
+                # === THESIS COHERENCE GATE ===
+                coherence_action, conflicting = _check_thesis_coherence(
+                    signal, config, approved_in_this_cycle)
+
+                if coherence_action == "BLOCK_INTRA_CYCLE":
+                    log_funnel_event(
+                        cycle_id=signal.get('_cycle_id', 'unknown'),
+                        contract=signal.get('contract_month', 'unknown'),
+                        stage=FunnelStage.THESIS_COHERENCE,
+                        outcome="BLOCK",
+                        detail=f"action=BLOCK_INTRA_CYCLE, direction={signal.get('direction')}",
+                        price_snapshot=signal.get('price'),
+                        regime=signal.get('regime', 'UNKNOWN'),
+                    )
+                    logger.info(
+                        f"BLOCKED (intra-cycle duplicate): {signal.get('contract_month')} "
+                        f"{signal.get('direction')} — already approved in this batch. Skipping."
+                    )
+                    continue
+
+                if coherence_action == "CONTRADICT":
+                    log_funnel_event(
+                        cycle_id=signal.get('_cycle_id', 'unknown'),
+                        contract=signal.get('contract_month', 'unknown'),
+                        stage=FunnelStage.THESIS_COHERENCE,
+                        outcome="INFO",
+                        detail=f"action=CONTRADICT, direction={signal.get('direction')}",
+                        price_snapshot=signal.get('price'),
+                        regime=signal.get('regime', 'UNKNOWN'),
+                    )
+                    # IMMEDIATE CLOSE: Mark for closure before new orders are placed.
+                    # The pending_close flag in TMS is the durable record of intent.
+                    # place_queued_orders() will query TMS and close these positions
+                    # BEFORE placing any new orders (eliminates race conditions).
+                    superseded_ids = []
+                    try:
+                        from trading_bot.tms import TransactiveMemory
+                        tms_mark = TransactiveMemory()
+                        for thesis in conflicting:
+                            tid = thesis.get('_metadata', {}).get('trade_id', '')
+                            if tid:
+                                superseded_ids.append(tid)
+                                tms_mark.mark_pending_close(
+                                    tid, 'CONTRADICT', signal.get('direction', ''))
+                                logger.warning(
+                                    f"THESIS CONTRADICT: {tid} ({thesis.get('strategy_type')}) "
+                                    f"marked pending_close — will be closed before new "
+                                    f"{signal.get('direction')} order on {signal.get('contract_month')}."
+                                )
+                    except Exception as e:
+                        logger.error(f"Failed to mark pending_close on contradicted theses: {e}")
+                    try:
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "Contradictory Thesis Detected",
+                            f"New {signal.get('direction')} on {signal.get('contract_month')} "
+                            f"contradicts {', '.join(s[:8] for s in superseded_ids)}. "
+                            f"Old position will be closed immediately before new order."
+                        )
+                    except Exception:
+                        pass
+                    # Proceed to generate new order — close happens in place_queued_orders
 
                 future = next((f for f in active_futures if f.lastTradeDateOrContractMonth.startswith(signal.get("contract_month", ""))), None)
                 if not future:
@@ -551,12 +1232,29 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                             # Calculate and track committed capital
                             estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
 
+                            # Guard: skip riskless combos (IB rejects with Error 201)
+                            if estimated_risk <= 0:
+                                logger.warning(
+                                    f"Skipping {future.localSymbol}: estimated risk ${estimated_risk:,.2f} "
+                                    f"(riskless combo — IB would reject)."
+                                )
+                                continue
+
                             # Already inside outer _CAPITAL_LOCK (line 451); no nested acquire
                             committed_capital += estimated_risk
                             _save_committed_capital(committed_capital)
 
                             # Issue #4: Early abort if capital exhausted
                             if committed_capital > account_value:
+                                log_funnel_event(
+                                    cycle_id=signal.get('_cycle_id', 'unknown'),
+                                    contract=signal.get('contract_month', 'unknown'),
+                                    stage=FunnelStage.CAPITAL_CHECK,
+                                    outcome="BLOCK",
+                                    detail=f"committed={committed_capital:,.2f}, account={account_value:,.2f}, this_order={estimated_risk:,.2f}",
+                                    price_snapshot=signal.get('price'),
+                                    regime=signal.get('regime', 'UNKNOWN'),
+                                )
                                 logger.warning(f"Capital exhausted (${committed_capital:,.2f} committed vs ${account_value:,.2f} available). Stopping order generation.")
                                 break
 
@@ -569,6 +1267,17 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                             # Store signal data with the order
                             signal['strategy_def'] = strategy_def
                             await ORDER_QUEUE.add((contract, order, signal))
+                            approved_in_this_cycle.append(signal)
+                            _strategy_name = strategy_def.get('strategy_name', 'unknown') if isinstance(strategy_def, dict) else 'unknown'
+                            log_funnel_event(
+                                cycle_id=signal.get('_cycle_id', 'unknown'),
+                                contract=signal.get('contract_month', 'unknown'),
+                                stage=FunnelStage.ORDER_QUEUED,
+                                outcome="PASS",
+                                detail=f"strategy={_strategy_name}, qty={strategy_def.get('quantity', 0) if isinstance(strategy_def, dict) else 0}, risk=${estimated_risk:,.2f}",
+                                price_snapshot=signal.get('price'),
+                                regime=signal.get('regime', 'UNKNOWN'),
+                            )
                             logger.info(f"Successfully queued order for {future.localSymbol}.")
         except Exception as e:
             logger.error(f"Error in order generation block: {e}")
@@ -630,9 +1339,9 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
         send_pushover_notification(config.get('notifications', {}), "Trading Orders Queued", message)
 
     except Exception as e:
-        msg = f"A critical error occurred during order generation: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", msg)
+        msg = f"A critical error occurred during order generation: {type(e).__name__}: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Generation CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
@@ -722,9 +1431,40 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
             else:
                 logger.warning(f"Could not match fill conId {fill.contract.conId} to any leg in {trade.contract.localSymbol}.")
 
-        # This now calls the async version of the function, passing the unique position ID
-        await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
-        logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
+        # Log fill to ledger with retry — a single failure here silently drops the record
+        _ledger_logged = False
+        for _attempt in range(3):
+            try:
+                await log_trade_to_ledger(ib, trade, "Strategy Execution", specific_fill=corrected_fill, combo_id=combo_id, position_id=position_uuid)
+                _ledger_logged = True
+                break
+            except Exception as _ledger_err:
+                if _attempt < 2:
+                    logger.warning(f"Ledger write attempt {_attempt + 1}/3 failed: {_ledger_err}, retrying in 2s...")
+                    await asyncio.sleep(2)
+                else:
+                    logger.error(f"LEDGER WRITE FAILED after 3 attempts for order {trade.order.orderId}: {_ledger_err}")
+                    try:
+                        send_pushover_notification(
+                            (config or {}).get('notifications', {}),
+                            "LEDGER WRITE FAILED",
+                            f"Fill for {detailed_contract.localSymbol} qty={corrected_fill.execution.shares if corrected_fill else 'N/A'} "
+                            f"NOT recorded after 3 attempts. Manual reconciliation required."
+                        )
+                    except Exception:
+                        pass
+        if _ledger_logged:
+            logger.info(f"Successfully logged fill for {detailed_contract.localSymbol} (Order ID: {trade.order.orderId}, Position ID: {position_uuid})")
+
+            # --- Funnel: POSITION_OPENED ---
+            log_funnel_event(
+                cycle_id=decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown',
+                contract=detailed_contract.localSymbol,
+                stage=FunnelStage.POSITION_OPENED,
+                outcome="PASS",
+                detail=f"position_id={position_uuid}, order_id={trade.order.orderId}",
+                fill_price=fill.execution.avgPrice if fill.execution else None,
+            )
 
         # --- NEW: Record Trade Thesis to TMS (DEDUPLICATED) ---
         if decision_data and position_uuid:
@@ -757,7 +1497,7 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
                             future_contract = Future(
                                 symbol=config.get('symbol', 'KC'),
                                 lastTradeDateOrContractMonth=contract_month,
-                                exchange=config.get('exchange', 'NYBOT')
+                                exchange=config['exchange']
                             )
                             # Define a quick fetch with timeout
                             async def _quick_fetch(c):
@@ -793,12 +1533,227 @@ async def _handle_and_log_fill(ib: IB, trade: Trade, fill: Fill, combo_id: int, 
             else:
                 logger.debug(f"TMS: Thesis already recorded for {position_uuid}, skipping duplicate.")
 
+        # === LEGACY: DEFERRED THESIS INVALIDATION (superseded by immediate close) ===
+        # CONTRADICT closures are now handled immediately in place_queued_orders()
+        # before new orders are placed. This block is retained as a defensive
+        # warning ONLY for any edge case where supersedes_trade_ids might still
+        # be attached (e.g., signals generated before this code change deployed).
+        superseded_ids = (decision_data or {}).get('supersedes_trade_ids', [])
+        if superseded_ids:
+            logger.warning(
+                f"Fill handler received supersedes_trade_ids={superseded_ids} — "
+                f"this should no longer happen. CONTRADICT closures are now "
+                f"handled before order placement. Logging only, NOT auto-closing. "
+                f"The pending_close flag in TMS (if set) will be handled by "
+                f"place_queued_orders or the position audit safety net."
+            )
+
     except Exception as e:
-        logger.error(f"Error processing and logging fill for order {trade.order.orderId}: {e}\n{traceback.format_exc()}")
+        logger.exception(f"Error processing and logging fill for order {trade.order.orderId}: {e}")
 
 
-async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple[bool, str]:
-    """Check if liquidity conditions are safe for execution."""
+async def _auto_close_superseded(
+    ib: IB, old_trade_id: str, reason: str, config: dict,
+    tms: 'TransactiveMemory'
+):
+    """Close IB positions for a superseded thesis.
+
+    Called from _handle_and_log_fill() after deferred invalidation.
+    Uses _close_spread_position() from orchestrator (lazy import to avoid
+    circular dependency — orchestrator imports from order_manager at module level,
+    but at runtime orchestrator is fully loaded before any fill fires).
+    """
+    # 0. Check IB connection is still alive
+    if not ib.isConnected():
+        logger.warning(
+            f"Auto-close {old_trade_id}: IB connection no longer active. "
+            f"Deferring to position audit cycle.")
+        return
+
+    # 1. Get current IB positions
+    positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+
+    # 2. Find old trade's contracts from trade ledger
+    trade_ledger = get_trade_ledger_df(config.get('data_dir'))
+    if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+        logger.warning(f"Auto-close {old_trade_id}: trade ledger empty/missing position_id")
+        return
+
+    old_rows = trade_ledger[trade_ledger['position_id'] == old_trade_id]
+    if old_rows.empty:
+        logger.warning(f"Auto-close {old_trade_id}: no ledger entries found")
+        return
+
+    old_symbols = set(old_rows['local_symbol'].unique())
+
+    # 3. Calculate expected quantity per symbol for THIS thesis only
+    # ⚡ Bolt: Vectorized net quantity calculation is ~100x faster than iterrows()
+    signed_qty = np.where(old_rows['action'] == 'BUY', old_rows['quantity'], -old_rows['quantity'])
+    expected_qty = old_rows.assign(signed_qty=signed_qty).groupby('local_symbol')['signed_qty'].sum().to_dict()
+
+    # 4. Match IB positions to old trade's contracts
+    legs = [p for p in positions
+            if p.contract.localSymbol in old_symbols and p.position != 0]
+
+    if not legs:
+        logger.info(
+            f"Auto-close {old_trade_id}: no matching IB positions "
+            f"(may already be closed)")
+        return
+
+    # 5. SAFETY CHECK: Aggregated position detection
+    # If IB qty > thesis qty for any symbol, another thesis shares these
+    # legs. Bail out — position audit cycle uses quantity-aware matching.
+    for leg in legs:
+        sym = leg.contract.localSymbol
+        thesis_qty = abs(expected_qty.get(sym, 0))
+        ib_qty = abs(leg.position)
+        if ib_qty > thesis_qty:
+            logger.warning(
+                f"Auto-close {old_trade_id}: IB qty ({ib_qty}) > thesis qty "
+                f"({thesis_qty}) for {sym} — aggregated position detected. "
+                f"Deferring to position audit to avoid closing other theses' legs.")
+            return  # Bail out entirely
+
+    # 6. Close via battle-tested _close_spread_position
+    from orchestrator import _close_spread_position  # Lazy import
+
+    thesis = tms.retrieve_thesis(old_trade_id)
+    fully_closed = await _close_spread_position(
+        ib, legs, old_trade_id,
+        f"CONTRADICT: {reason}", config, thesis)
+
+    if not fully_closed:
+        logger.warning(
+            f"Auto-close {old_trade_id}: partial/failed close. "
+            f"Position audit will retry.")
+    else:
+        logger.info(f"Auto-close {old_trade_id}: successfully closed superseded position.")
+
+
+async def _close_contradicted_thesis(
+    ib: IB, trade_id: str, config: dict, tms: 'TransactiveMemory'
+) -> bool:
+    """Close IB positions for a contradicted thesis immediately.
+
+    Called from place_queued_orders() BEFORE placing new orders, and from
+    the position audit safety net for retry. Key differences from
+    _auto_close_superseded (legacy fill-handler path):
+
+    - Executes at detection time, not gated on a new order fill
+    - Uses thesis-specific quantities (handles IB aggregation correctly)
+    - Invalidates thesis ONLY on successful close (atomic)
+    - Preserves pending_close flag on failure for audit retry
+
+    Returns True if fully closed + invalidated, False otherwise.
+    """
+    if not ib.isConnected():
+        logger.warning(
+            f"CONTRADICT close {trade_id}: IB not connected. "
+            f"pending_close flag will be picked up by audit cycle.")
+        return False
+
+    # 1. Get current IB positions
+    try:
+        positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
+    except asyncio.TimeoutError:
+        logger.error(f"CONTRADICT close {trade_id}: reqPositionsAsync timed out")
+        return False
+
+    # 2. Get thesis legs from trade ledger
+    trade_ledger = get_trade_ledger_df(config.get('data_dir'))
+    if trade_ledger.empty or 'position_id' not in trade_ledger.columns:
+        logger.warning(f"CONTRADICT close {trade_id}: trade ledger empty/missing")
+        return False
+
+    old_rows = trade_ledger[trade_ledger['position_id'] == trade_id]
+    if old_rows.empty:
+        logger.warning(f"CONTRADICT close {trade_id}: no ledger entries found")
+        return False
+
+    old_symbols = set(old_rows['local_symbol'].unique())
+
+    # 3. Calculate expected quantity per symbol for THIS thesis only
+    # ⚡ Bolt: Vectorized net quantity calculation is ~100x faster than iterrows()
+    signed_qty = np.where(old_rows['action'] == 'BUY', old_rows['quantity'], -old_rows['quantity'])
+    expected_qty = old_rows.assign(signed_qty=signed_qty).groupby('local_symbol')['signed_qty'].sum().to_dict()
+
+    # 4. Match IB positions to thesis contracts
+    legs = [p for p in positions
+            if p.contract.localSymbol in old_symbols and p.position != 0]
+
+    if not legs:
+        # No IB positions — already closed (externally or by stale close).
+        # Safe to invalidate thesis and clear flag.
+        logger.info(
+            f"CONTRADICT close {trade_id}: no matching IB positions "
+            f"(may already be closed). Invalidating thesis.")
+        tms.invalidate_thesis(trade_id, "CONTRADICT: position already closed")
+        tms.clear_pending_close(trade_id)
+        return True
+
+    # 5. Handle aggregated positions: cap leg quantities to thesis-specific
+    # amounts. If IB shows qty=2 for a symbol but this thesis only owns
+    # qty=1, we create a lightweight wrapper with the thesis's quantity so
+    # _close_spread_position only closes what belongs to this thesis.
+    from types import SimpleNamespace
+    adjusted_legs = []
+    for leg in legs:
+        sym = leg.contract.localSymbol
+        thesis_qty = expected_qty.get(sym, 0)  # signed: +1 long, -1 short
+        ib_qty = leg.position                   # signed: +2 long, -2 short
+
+        if thesis_qty == 0:
+            continue  # This symbol isn't part of this thesis
+
+        # If IB qty exceeds thesis qty (aggregation), cap to thesis qty
+        if abs(ib_qty) > abs(thesis_qty):
+            logger.info(
+                f"CONTRADICT close {trade_id}: {sym} IB qty={ib_qty}, "
+                f"thesis qty={thesis_qty}. Closing thesis portion only.")
+            adjusted_leg = SimpleNamespace(
+                contract=leg.contract,
+                position=thesis_qty,
+            )
+            adjusted_legs.append(adjusted_leg)
+        else:
+            adjusted_legs.append(leg)
+
+    if not adjusted_legs:
+        logger.warning(f"CONTRADICT close {trade_id}: no legs after adjustment")
+        return False
+
+    # 6. Close via _close_spread_position
+    from orchestrator import _close_spread_position  # Lazy import (established pattern)
+
+    thesis = tms.retrieve_thesis(trade_id)
+    fully_closed = await _close_spread_position(
+        ib, adjusted_legs, trade_id,
+        f"CONTRADICT: direction reversal", config, thesis)
+
+    # 7. Invalidate ONLY on success (atomic with closure)
+    if fully_closed:
+        tms.invalidate_thesis(trade_id, "CONTRADICT: closed on direction reversal")
+        tms.clear_pending_close(trade_id)
+        logger.info(f"CONTRADICT close {trade_id}: fully closed and invalidated.")
+        return True
+    else:
+        logger.warning(
+            f"CONTRADICT close {trade_id}: partial/failed close. "
+            f"pending_close flag preserved for audit cycle retry.")
+        return False
+
+
+async def check_liquidity_conditions(ib: IB, contract, order_size: int, config: dict = None) -> tuple[bool, str]:
+    """Check if liquidity conditions are safe for execution.
+
+    Args:
+        ib: Connected IB instance
+        contract: Contract to check
+        order_size: Intended order quantity
+        config: Optional config dict for parameterized thresholds.
+            If None, uses hardcoded defaults (backward-compatible).
+    """
     try:
         # --- PATCH: Bypass Depth Check for Combos (BAG) ---
         # IBKR returns 0 depth for synthetic combos even when legs have liquidity.
@@ -824,9 +1779,11 @@ async def check_liquidity_conditions(ib: IB, contract, order_size: int) -> tuple
 
         ib.cancelMktDepth(contract)
 
-        # Safety checks
-        min_depth = order_size * 3  # Want 3x our order size in book
-        max_spread_pct = 0.5  # Max 0.5% spread
+        # Safety checks (parameterized — commodity-agnostic)
+        _tuning = (config or {}).get('strategy_tuning', {})
+        min_depth_multiplier = _tuning.get('min_book_depth_multiplier', 3)
+        min_depth = order_size * min_depth_multiplier
+        max_spread_pct = _tuning.get('max_single_leg_spread_pct', 0.5)
 
         if total_depth < min_depth:
             return False, f"Insufficient depth: {total_depth} (need {min_depth})"
@@ -882,12 +1839,51 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         ib = await IBConnectionPool.get_connection(connection_purpose, config)
         configure_market_data_type(ib)
     except Exception as e:
-        msg = f"Failed to establish IB connection for order placement: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Placement Connection Failed", msg)
+        msg = f"Failed to establish IB connection for order placement: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Placement Connection Failed", f"{msg}\n{traceback.format_exc()}")
         return  # Fail closed - cannot place orders without connection
 
+    # === CONTRADICT IMMEDIATE CLOSE ===
+    # Close positions marked pending_close BEFORE placing any new orders.
+    # This ensures:
+    # 1. No IB qty aggregation with new orders (eliminates race condition)
+    # 2. Close is not gated on new order filling (eliminates timeout gap)
+    # 3. Thesis invalidation only on successful close (atomicity)
+    try:
+        from trading_bot.tms import TransactiveMemory
+        tms_close = TransactiveMemory()
+        pending = tms_close.get_pending_close_theses()
+        if pending:
+            logger.info(
+                f"Found {len(pending)} theses with pending_close — "
+                f"executing CONTRADICT closures before placing new orders"
+            )
+            for item in pending:
+                tid = item['trade_id']
+                reason = item['pending_close']
+                ts = item.get('pending_close_timestamp', '')
+                logger.info(
+                    f"CONTRADICT close: {tid} (reason={reason}, flagged_at={ts})")
+                try:
+                    closed = await _close_contradicted_thesis(
+                        ib, tid, config, tms_close)
+                    if closed:
+                        logger.info(f"CONTRADICT close successful: {tid[:8]}")
+                    else:
+                        logger.warning(
+                            f"CONTRADICT close failed/partial for {tid[:8]}. "
+                            f"pending_close flag preserved for audit cycle retry.")
+                except Exception as e:
+                    logger.error(
+                        f"CONTRADICT close error for {tid[:8]}: {e}. "
+                        f"pending_close flag preserved for audit cycle retry.",
+                        exc_info=True)
+    except Exception as e:
+        logger.error(f"Failed to process pending_close theses: {e}", exc_info=True)
+
     live_orders = {} # Dictionary to track order status by orderId
+    _fill_tasks = []  # Collect fill handler tasks so we can await them before disconnect
 
     # --- Event Handlers ---
     def on_order_status(trade: Trade):
@@ -903,14 +1899,20 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         """
         Handles trade execution details for each leg, logs the trade, and
         tracks the overall fill status of the combo order.
+
+        For multi-lot orders (qty > 1), IB sends separate fill events per lot.
+        filled_legs tracks fill count per conId to accept all lots.
         """
         order_id = trade.order.orderId
         if order_id in live_orders:
             leg_con_id = fill.contract.conId
             order_details = live_orders[order_id]
+            expected_qty = int(order_details['trade'].order.totalQuantity)
+            current_fills = order_details['filled_legs'].get(leg_con_id, 0)
 
-            if leg_con_id in order_details['filled_legs']:
-                logger.info(f"Duplicate fill event for leg {leg_con_id} in order {order_id}. Ignoring.")
+            if current_fills >= expected_qty:
+                logger.info(f"Duplicate fill event for leg {leg_con_id} in order {order_id} "
+                            f"(already {current_fills}/{expected_qty}). Ignoring.")
                 return
 
             parent_trade = order_details['trade']
@@ -919,22 +1921,28 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             position_uuid = parent_trade.order.orderRef
             decision_data = order_details.get('decision_data')
 
-            logger.info(f"Fill received for leg {leg_con_id} in order {order_id}. Processing with Position ID {position_uuid}.")
+            lot_num = current_fills + 1
+            logger.info(f"Fill received for leg {leg_con_id} in order {order_id} "
+                        f"(lot {lot_num}/{expected_qty}). Processing with Position ID {position_uuid}.")
             fill_task = asyncio.create_task(_handle_and_log_fill(ib, trade, fill, combo_perm_id, position_uuid, decision_data, config))
             fill_task.add_done_callback(lambda t: _log_task_exception(t, f"fill_logging_{order_id}"))
+            _fill_tasks.append(fill_task)
 
-            order_details['filled_legs'].add(leg_con_id)
+            order_details['filled_legs'][leg_con_id] = lot_num
             order_details['fill_prices'][leg_con_id] = fill.execution.avgPrice
 
-            # --- Check if all legs of the combo are now filled ---
-            if len(order_details['filled_legs']) == order_details['total_legs']:
-                logger.info(f"All {order_details['total_legs']} legs of combo order {order_id} are now filled.")
-                order_details['is_filled'] = True # Mark the entire order as filled
+            # --- Check if all legs of the combo are fully filled (all lots) ---
+            total_legs = order_details['total_legs']
+            if (len(order_details['filled_legs']) == total_legs
+                    and all(v >= expected_qty for v in order_details['filled_legs'].values())):
+                logger.info(f"All {total_legs} legs of combo order {order_id} fully filled ({expected_qty} lots).")
+                order_details['is_filled'] = True
 
     def on_error(reqId: int, errorCode: int, errorString: str, contract):
         """
-        Handle IB API errors, specifically Error 201 (Invalid Price).
+        Handle IB API errors, specifically Error 201 (order rejection / invalid price).
         When a modification is rejected, revert to the last known good price.
+        For margin-related rejections, send notification.
         """
         if errorCode == 201 and reqId in live_orders:
             details = live_orders[reqId]
@@ -958,6 +1966,24 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"Disabling adaptive walking - order will sit at {last_good:.2f} until fill or timeout."
                 )
                 details['adaptive_ceiling_price'] = last_good
+
+        # Catch margin-related rejections for ANY order (including catastrophe stops)
+        if errorCode == 201 and reqId not in live_orders:
+            error_lower = errorString.lower()
+            if "margin" in error_lower or "insufficient" in error_lower:
+                symbol = getattr(contract, 'localSymbol', 'unknown') if contract else 'unknown'
+                logger.error(
+                    f"ORDER REJECTED (margin): Order {reqId} for {symbol}: {errorString}"
+                )
+                try:
+                    send_pushover_notification(
+                        config.get('notifications', {}),
+                        "ORDER REJECTED - MARGIN",
+                        f"Order {reqId} for {symbol} rejected:\n{errorString[:200]}",
+                        priority=1
+                    )
+                except Exception:
+                    pass
 
     try:
         # Note: Connection already established above via Pool
@@ -994,6 +2020,15 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             logger.error("reqPositionsAsync timed out (15s) in order placement. Aborting.")
             return
         current_position_count = sum(1 for p in positions if p.position != 0)
+
+        # --- VaR Refresh: Update portfolio VaR before compliance checks ---
+        try:
+            from trading_bot.var_calculator import get_var_calculator
+            var_calc = get_var_calculator(config)
+            await asyncio.wait_for(var_calc.compute_portfolio_var(ib, config), timeout=30.0)
+            logger.info("Pre-batch VaR refresh complete")
+        except Exception as e:
+            logger.warning(f"Pre-batch VaR refresh failed (non-fatal): {e}")
 
         # Filter Queue based on Margin Impact AND Compliance Review
         orders_to_place = []
@@ -1033,14 +2068,38 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     # Maybe check once before the loop?
                     # Yes, but let's check strict status here.
                     if not drawdown_guard.is_entry_allowed():
+                        _dd_cycle_id = decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown'
+                        log_funnel_event(
+                            cycle_id=_dd_cycle_id,
+                            contract=display_name,
+                            stage=FunnelStage.DRAWDOWN_GATE,
+                            outcome="BLOCK",
+                            detail="Circuit breaker active",
+                        )
                         logger.warning(f"DRAWDOWN GATE BLOCKED {display_name}: Circuit Breaker Active")
                         continue
 
                 # 0b. Liquidity Gate (Fail Closed)
                 liq_ok, liq_msg = await check_liquidity_conditions(ib, contract, order.totalQuantity)
+                _liq_cycle_id = decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown'
                 if not liq_ok:
+                    log_funnel_event(
+                        cycle_id=_liq_cycle_id,
+                        contract=display_name,
+                        stage=FunnelStage.LIQUIDITY_GATE,
+                        outcome="BLOCK",
+                        detail=liq_msg,
+                    )
                     logger.warning(f"LIQUIDITY GATE BLOCKED {contract.localSymbol}: {liq_msg}. Skipping order.")
                     continue
+                else:
+                    log_funnel_event(
+                        cycle_id=_liq_cycle_id,
+                        contract=display_name,
+                        stage=FunnelStage.LIQUIDITY_GATE,
+                        outcome="PASS",
+                        detail=liq_msg,
+                    )
 
                 # 1. Fetch Market Context (Spread & Trend)
 
@@ -1057,19 +2116,32 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 # Fetch Trend (Fix Trend Blindness)
                 trend_pct = 0.0
                 try:
-                    # Identify underlying contract
+                    # Identify underlying FUTURES contract for daily bars
+                    # (IB has no EODChart data for FOP/BAG — must resolve to future)
                     target_contract = None
+                    query_contract = None
                     if isinstance(contract, Bag):
-                        # Extract first leg
+                        # Extract first leg's conId
                         if contract.comboLegs:
-                            first_leg_conid = contract.comboLegs[0].conId
-                            details = await asyncio.wait_for(
-                                ib.reqContractDetailsAsync(Contract(conId=first_leg_conid)), timeout=10
-                            )
-                            if details:
-                                target_contract = details[0].contract
+                            query_contract = Contract(conId=contract.comboLegs[0].conId)
+                    elif contract.secType == 'FOP':
+                        query_contract = Contract(conId=contract.conId) if contract.conId else contract
                     else:
-                        target_contract = contract
+                        target_contract = contract  # Already a future
+
+                    if query_contract and not target_contract:
+                        details = await asyncio.wait_for(
+                            ib.reqContractDetailsAsync(query_contract), timeout=10
+                        )
+                        if details:
+                            under_id = getattr(details[0], 'underConId', 0)
+                            if under_id:
+                                fut = Contract(conId=under_id)
+                                qualified = await asyncio.wait_for(
+                                    ib.qualifyContractsAsync(fut), timeout=8
+                                )
+                                if qualified:
+                                    target_contract = qualified[0]
 
                     if target_contract:
                         # Fetch 2 days of daily bars
@@ -1129,10 +2201,30 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 except asyncio.TimeoutError:
                     logger.error(f"whatIfOrderAsync timed out (30s) for {display_name}. Skipping.")
                     continue
-                if what_if is None or what_if.initMarginChange == '':
-                    logger.error(f"whatIfOrderAsync returned empty result for {display_name}. Skipping.")
+                if what_if is None:
+                    logger.error(f"whatIfOrderAsync returned None for {display_name}. Skipping.")
                     continue
-                margin_impact = float(what_if.initMarginChange)
+                if isinstance(what_if, list):
+                    # IB rejected combo whatIfOrder (common for "riskless combination").
+                    # Fall back to synthetic max-risk calculation from leg strikes.
+                    logger.warning(
+                        f"whatIfOrderAsync returned list for {display_name} "
+                        f"(IB rejected combo). Falling back to calculate_spread_max_risk."
+                    )
+                    try:
+                        margin_impact = await calculate_spread_max_risk(ib, contract, order, config)
+                        if margin_impact <= 0:
+                            logger.error(f"Synthetic margin for {display_name} is ${margin_impact:,.2f}. Skipping.")
+                            continue
+                        logger.info(f"Synthetic margin for {display_name}: ${margin_impact:,.2f}")
+                    except Exception as fallback_err:
+                        logger.error(f"Synthetic margin fallback failed for {display_name}: {fallback_err}. Skipping.")
+                        continue
+                elif not hasattr(what_if, 'initMarginChange') or what_if.initMarginChange == '':
+                    logger.error(f"whatIfOrderAsync returned empty/invalid result for {display_name}. Skipping.")
+                    continue
+                else:
+                    margin_impact = float(what_if.initMarginChange)
 
                 if margin_impact < current_available_funds:
                     orders_to_place.append((contract, order, decision_data))
@@ -1181,6 +2273,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             logger.warning(f"Invalid tick size ({TICK_SIZE}), falling back to 0.05")
             TICK_SIZE = 0.05
 
+        # Dynamic decimal precision for log messages (NG=3, KC=2, CC=0)
+        import math as _math
+        _price_decimals = max(2, -int(_math.floor(_math.log10(TICK_SIZE)))) if TICK_SIZE > 0 else 2
+
         # --- PLACEMENT LOOP (ENHANCED LOGGING & NOTIFICATIONS) ---
         for contract, order, decision_data in orders_to_place:
             
@@ -1215,7 +2311,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             leg_state_for_log = ", ".join(leg_state_strings)
 
             # --- 3. Create Enhanced Log and Place Order ---
-            price_info_log = f"Limit: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "Market Order"
+            price_info_log = f"Limit: {order.lmtPrice:.{_price_decimals}f}" if order.orderType == "LMT" else "Market Order"
             display_name = _get_order_display_name(contract, strategy_def=decision_data.get('strategy_def'))
             market_state_message = (
                 f"Placing Order for {display_name}. {price_info_log}. "
@@ -1226,87 +2322,109 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
             # --- 4. Place the actual order ---
             # Check for Catastrophe Protection Requirement
+            _catastrophe_stop_trade = None  # Track companion stop for cleanup on timeout
             enable_protection = config.get('catastrophe_protection', {}).get('enable_directional_stops', False)
             is_directional = decision_data.get('prediction_type') == 'DIRECTIONAL'
 
             if enable_protection and is_directional and isinstance(contract, Bag):
-                # We need the underlying contract. Ideally passed or inferred.
-                # In define_directional_strategy, we have future_contract.
-                # But here we only have 'contract' (the BAG).
-                # We need to re-fetch or infer the underlying future.
-                # For safety, let's extract the symbol and expiry from the BAG or first leg.
-                # Or better, pass 'future_contract' in decision_data? No.
-                # We can construct it.
-
-                # Fetch first leg details
+                # NLV gate: only place catastrophe stops when account can afford margin
+                _skip_cat_stop = False
                 try:
-                    underlying_future = None
-
-                    # --- Primary: Extract from decision_data pipeline (BUG-6 Fix) ---
-                    if isinstance(decision_data, dict):
-                        strategy_def = decision_data.get('strategy_def')
-                        # Amendment C: Explicit None guard
-                        if strategy_def and isinstance(strategy_def, dict):
-                            future_contract = strategy_def.get('future_contract')
-                            if future_contract is not None:
-                                underlying_future = future_contract
-                                logger.info(f"Catastrophe stop: Resolved underlying future from strategy_def: {underlying_future}")
-
-                    # --- Fallback: Resolve from first leg's underConId ---
-                    if underlying_future is None:
-                        leg1_conid = contract.comboLegs[0].conId
-                        leg_details = await asyncio.wait_for(
-                            ib.reqContractDetailsAsync(Contract(conId=leg1_conid)), timeout=10
+                    from config import get_active_profile
+                    _profile = get_active_profile(config)
+                    _nlv_min = _profile.catastrophe_stop_nlv_minimum
+                    _account_values = ib.accountValues()
+                    _nlv = None
+                    for av in _account_values:
+                        if av.tag == 'NetLiquidation' and av.currency == 'USD':
+                            _nlv = float(av.value)
+                            break
+                    if _nlv is not None and _nlv < _nlv_min:
+                        logger.info(
+                            f"CATASTROPHE STOP: Disabled. NLV=${_nlv:,.0f} < "
+                            f"minimum=${_nlv_min:,.0f}. Spread routes with defined max loss only."
                         )
-
-                        if leg_details:
-                            # BUG-6 Fix: Use underConId, NOT option expiry
-                            # Option expiry != Future expiry for FOPs
-                            under_conid = leg_details[0].underConId
-                            if under_conid:
-                                underlying_future = Contract(conId=under_conid)
-                                await asyncio.wait_for(ib.qualifyContractsAsync(underlying_future), timeout=10)
-                                logger.info(f"Catastrophe stop: Resolved underlying future from underConId: {underlying_future}")
-                            else:
-                                # Last ditch: try constructing from symbol if underConId missing (risky but better than nothing?)
-                                # Actually, without underConId or strategy_def, we can't reliably guess the future contract month
-                                # because option expiry is different. Failsafe to standard order.
-                                pass
-
-                    if underlying_future is None:
-                        raise ValueError("Could not resolve underlying future for catastrophe protection")
-
-                    # Entry Price for Stop Calculation
-                    # Use 'price' from decision_data (snapshot price at signal generation)
-                    # or 'market_trend_pct' logic?
-                    # decision_data['price'] is reliable enough.
-                    entry_price_ref = decision_data.get('price')
-                    if not entry_price_ref:
-                         # Fallback to current ticker last
-                         entry_price_ref = ticker.last
-
-                    is_bullish = decision_data.get('direction') == 'BULLISH'
-
-                    trade, stop_trade = await place_directional_spread_with_protection(
-                        ib=ib,
-                        combo_contract=contract,
-                        combo_order=order,
-                        underlying_contract=underlying_future,
-                        entry_price=entry_price_ref,
-                        stop_distance_pct=config.get('catastrophe_protection', {}).get('stop_distance_pct', 0.03),
-                        is_bullish_strategy=is_bullish
-                    )
-                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
+                        _skip_cat_stop = True
+                    elif _nlv is not None:
+                        logger.info(
+                            f"CATASTROPHE STOP: Enabled. NLV=${_nlv:,.0f} >= "
+                            f"minimum=${_nlv_min:,.0f}"
+                        )
+                    else:
+                        logger.warning("CATASTROPHE STOP: NLV unavailable. Defaulting to disabled (fail-closed).")
+                        _skip_cat_stop = True
                 except Exception as e:
-                    logger.error(f"Failed to place protected order, falling back to standard: {e}")
-                    send_pushover_notification(
-                        config.get('notifications', {}),
-                        "CATASTROPHE STOP FAILED",
-                        f"Protection failed for {display_name}: {e}\nOrder placed WITHOUT stop protection.",
-                        priority=1
-                    )
+                    logger.warning(f"CATASTROPHE STOP: NLV check failed ({e}). Defaulting to disabled (fail-closed).")
+                    _skip_cat_stop = True
+
+                if _skip_cat_stop:
+                    # Place spread without catastrophe stop
                     trade = place_order(ib, contract, order)
-                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [UNPROTECTED FALLBACK]")
+                    log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [No Cat Stop - NLV Gate]")
+                else:
+                    # Fetch first leg details
+                    try:
+                        underlying_future = None
+
+                        # --- Primary: Extract from decision_data pipeline (BUG-6 Fix) ---
+                        if isinstance(decision_data, dict):
+                            strategy_def = decision_data.get('strategy_def')
+                            # Amendment C: Explicit None guard
+                            if strategy_def and isinstance(strategy_def, dict):
+                                future_contract = strategy_def.get('future_contract')
+                                if future_contract is not None:
+                                    underlying_future = future_contract
+                                    logger.info(f"Catastrophe stop: Resolved underlying future from strategy_def: {underlying_future}")
+
+                        # --- Fallback: Resolve from first leg's underConId ---
+                        if underlying_future is None:
+                            leg1_conid = contract.comboLegs[0].conId
+                            leg_details = await asyncio.wait_for(
+                                ib.reqContractDetailsAsync(Contract(conId=leg1_conid)), timeout=10
+                            )
+
+                            if leg_details:
+                                # BUG-6 Fix: Use underConId, NOT option expiry
+                                # Option expiry != Future expiry for FOPs
+                                under_conid = leg_details[0].underConId
+                                if under_conid:
+                                    underlying_future = Contract(conId=under_conid)
+                                    await asyncio.wait_for(ib.qualifyContractsAsync(underlying_future), timeout=10)
+                                    logger.info(f"Catastrophe stop: Resolved underlying future from underConId: {underlying_future}")
+                                else:
+                                    pass
+
+                        if underlying_future is None:
+                            raise ValueError("Could not resolve underlying future for catastrophe protection")
+
+                        entry_price_ref = decision_data.get('price')
+                        if not entry_price_ref:
+                            entry_price_ref = ticker.last
+
+                        is_bullish = decision_data.get('direction') == 'BULLISH'
+
+                        trade, stop_trade = await place_directional_spread_with_protection(
+                            ib=ib,
+                            combo_contract=contract,
+                            combo_order=order,
+                            underlying_contract=underlying_future,
+                            entry_price=entry_price_ref,
+                            stop_distance_pct=config.get('catastrophe_protection', {}).get('stop_distance_pct', 0.03),
+                            is_bullish_strategy=is_bullish
+                        )
+                        # Store stop_trade so timeout handler can cancel it if spread never fills
+                        _catastrophe_stop_trade = stop_trade
+                        log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [Protected]")
+                    except Exception as e:
+                        logger.error(f"Failed to place protected order, falling back to standard: {e}")
+                        send_pushover_notification(
+                            config.get('notifications', {}),
+                            "CATASTROPHE STOP FAILED",
+                            f"Protection failed for {display_name}: {e}\nOrder placed WITHOUT stop protection.",
+                            priority=1
+                        )
+                        trade = place_order(ib, contract, order)
+                        log_order_event(trade, trade.orderStatus.status, f"{market_state_message} [UNPROTECTED FALLBACK]")
             else:
                 trade = place_order(ib, contract, order)
                 log_order_event(trade, trade.orderStatus.status, market_state_message)
@@ -1317,7 +2435,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 'display_name': display_name,  # FIX-004: Store for timeout logging
                 'is_filled': False,
                 'total_legs': len(contract.comboLegs) if isinstance(contract, Bag) else 1,
-                'filled_legs': set(),
+                'filled_legs': {},  # conId -> fill_count (supports multi-lot orders)
                 'fill_prices': {}, # Stores fill prices by conId
                 'last_update_time': time.time(),
                 'adaptive_ceiling_price': getattr(order, 'adaptive_limit_price', None), # Store ceiling/floor
@@ -1326,10 +2444,28 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 'last_known_good_price': order.lmtPrice,
                 'modification_error_count': 0,
                 'max_modification_errors': 3,
+                # Catastrophe stop trade (if any) — must be cancelled if spread times out
+                'catastrophe_stop_trade': _catastrophe_stop_trade,
+                # Funnel: initial limit for slippage tracking
+                'initial_limit': order.lmtPrice if order.orderType == "LMT" else None,
+                '_walk_log_counter': 0,
             }
 
+            # --- Funnel: ORDER_PLACED ---
+            _op_cycle_id = decision_data.get('_cycle_id', 'unknown') if isinstance(decision_data, dict) else 'unknown'
+            log_funnel_event(
+                cycle_id=_op_cycle_id,
+                contract=display_name,
+                stage=FunnelStage.ORDER_PLACED,
+                outcome="PASS",
+                detail=f"action={order.action}, qty={int(order.totalQuantity)}, type={order.orderType}",
+                initial_limit=order.lmtPrice if order.orderType == "LMT" else None,
+                bid=ticker.bid if not util.isNan(ticker.bid) else None,
+                ask=ticker.ask if not util.isNan(ticker.ask) else None,
+            )
+
             # --- 5. Build Notification String (ENHANCED FOR ALL DATA) ---
-            price_info_notify = f"LMT: {order.lmtPrice:.2f}" if order.orderType == "LMT" else "MKT"
+            price_info_notify = f"LMT: {order.lmtPrice:.{_price_decimals}f}" if order.orderType == "LMT" else "MKT"
             # Use the rich display_name (e.g. KC-P295.0+P290.0) instead of generic _describe_bag
             direction = decision_data.get('direction', '?') if isinstance(decision_data, dict) else '?'
             confidence = decision_data.get('confidence', '?') if isinstance(decision_data, dict) else '?'
@@ -1355,8 +2491,10 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
         # --- Monitoring Loop ---
         start_time = time.time()
-        monitoring_duration = 1800  # 30 minutes
-        PRICE_TOLERANCE = 0.001  # $0.001 tolerance for floating point comparison
+        monitoring_duration = config.get('strategy_tuning', {}).get('monitoring_duration_seconds', 1800)
+        # Tolerance must be smaller than the tick size to avoid blocking 1-tick walks.
+        # NG tick=0.001 was equal to the old hardcoded 0.001, killing all walks.
+        PRICE_TOLERANCE = TICK_SIZE * 0.1
 
         logger.info(f"Monitoring orders for up to {monitoring_duration / 60} minutes...")
         while time.time() - start_time < monitoring_duration:
@@ -1454,21 +2592,84 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                                 details['last_known_good_price'] = new_price  # Track for rollback
                                 details['modification_error_count'] = 0  # Reset on attempt
                                 log_order_event(trade, "Updated", f"Adaptive Walk: Price updated to {new_price}")
+
+                                # Funnel: PRICE_WALK_STEP (every 3rd step to limit CSV bloat)
+                                details['_walk_log_counter'] = details.get('_walk_log_counter', 0) + 1
+                                if details['_walk_log_counter'] % 3 == 0:
+                                    _wk_cycle_id = details.get('decision_data', {}).get('_cycle_id', 'unknown') if isinstance(details.get('decision_data'), dict) else 'unknown'
+                                    log_funnel_event(
+                                        cycle_id=_wk_cycle_id,
+                                        contract=stored_display_name,
+                                        stage=FunnelStage.PRICE_WALK_STEP,
+                                        outcome="INFO",
+                                        detail=f"step={details['_walk_log_counter']}, old={current_limit}, new={new_price}, cap={ceiling}",
+                                        initial_limit=details.get('initial_limit'),
+                                    )
                             else:
                                 # Price at or very near cap/floor - log once then stop checking
                                 if not details.get('cap_reached_logged', False):
                                     stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
-                                    logger.info(f"Order {order_id} ({stored_display_name}): Reached cap/floor at {ceiling:.2f}. Waiting for fill or timeout.")
+                                    logger.info(f"Order {order_id} ({stored_display_name}): Reached cap/floor at {ceiling:.{_price_decimals}f}. Waiting for fill or timeout.")
                                     details['cap_reached_logged'] = True
                                     details['cap_reached_time'] = time.time()
 
-                    # FIX-003: Periodic status report for orders at cap (every 5 minutes)
+                    # FIX-003: Cap timeout + periodic status report
                     if details.get('cap_reached_logged', False):
                         time_at_cap = time.time() - details.get('cap_reached_time', time.time())
-                        if time_at_cap > 0 and int(time_at_cap) % 300 == 0:  # Every 5 minutes
+                        cap_timeout = tuning.get('cap_timeout_seconds', 600)
+
+                        # Cancel order if sitting at cap too long (market not converging)
+                        if time_at_cap >= cap_timeout:
+                            display = details.get('display_name', 'UNKNOWN')
+                            logger.warning(
+                                f"CAP TIMEOUT: Order {order_id} ({display}) "
+                                f"at cap {ceiling:.{_price_decimals}f} for {int(time_at_cap/60)} min. "
+                                f"Cancelling (market not converging)."
+                            )
+                            try:
+                                ib.cancelOrder(trade.order)
+                                log_order_event(trade, "Cancelled", f"Cap timeout after {int(time_at_cap/60)} min")
+                            except Exception as e:
+                                logger.error(f"Failed to cancel order {order_id} on cap timeout: {e}")
+
+                            # Cancel companion catastrophe stop — the post-loop cleanup
+                            # at L1677 skips cancelled orders, so this is the only chance
+                            cat_stop = details.get('catastrophe_stop_trade')
+                            cat_cancelled = False
+                            if cat_stop:
+                                cat_status = cat_stop.orderStatus.status
+                                if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                                    logger.warning(
+                                        f"Cancelling orphaned catastrophe stop (order {cat_stop.order.orderId}, "
+                                        f"status={cat_status}) for cap-timed-out spread {order_id}"
+                                    )
+                                    try:
+                                        ib.cancelOrder(cat_stop.order)
+                                        cat_cancelled = True
+                                    except Exception as e:
+                                        logger.error(f"Failed to cancel catastrophe stop {cat_stop.order.orderId}: {e}")
+                                else:
+                                    logger.info(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+                                    cat_cancelled = True
+
+                            # Fallback: if Trade reference was stale/None, search by orderRef
+                            if not cat_cancelled and trade.order.orderRef:
+                                stop_ref = f"CATASTROPHE_{trade.order.orderRef}"
+                                logger.info(f"Attempting orderRef-based catastrophe stop cleanup: {stop_ref}")
+                                try:
+                                    await close_spread_with_protection_cleanup(ib, None, stop_ref)
+                                except Exception as e:
+                                    logger.warning(f"orderRef-based catastrophe cleanup failed: {e}")
+                            continue
+
+                        # Periodic status report every 5 minutes (debounced)
+                        minutes_at_cap = int(time_at_cap / 60)
+                        last_report_min = details.get('_last_cap_report_min', 0)
+                        if minutes_at_cap > 0 and minutes_at_cap % 5 == 0 and minutes_at_cap != last_report_min:
+                            details['_last_cap_report_min'] = minutes_at_cap
                             logger.info(
                                 f"Order {order_id} ({details.get('display_name', 'UNKNOWN')}): "
-                                f"Still at cap {ceiling:.2f} for {int(time_at_cap/60)} minutes. "
+                                f"Still at cap {ceiling:.{_price_decimals}f} for {minutes_at_cap} minutes. "
                                 f"Current market: {trade.orderStatus.status}"
                             )
 
@@ -1488,7 +2689,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
             # Check the new 'is_filled' flag which confirms all legs are filled
             if details.get('is_filled', False):
                 # --- Build Enhanced Fill Notification ---
-                price_info = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
+                price_info = f"LMT: {trade.order.lmtPrice:.{_price_decimals}f}" if trade.order.orderType == "LMT" else "MKT"
 
                 # Use the official avgFillPrice from the parent trade status, which is correct for both combos and single legs
                 avg_fill_price = trade.orderStatus.avgFillPrice
@@ -1502,7 +2703,35 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"    Filled @ {avg_fill_price:.2f} (qty {int(trade.order.totalQuantity)})"
                 )
                 filled_orders.append(fill_line)
-            
+
+                # --- Funnel: ORDER_FILLED ---
+                _fill_cycle_id = dd.get('_cycle_id', 'unknown')
+                log_funnel_event(
+                    cycle_id=_fill_cycle_id,
+                    contract=stored_display_name,
+                    stage=FunnelStage.ORDER_FILLED,
+                    outcome="PASS",
+                    detail=f"action={trade.order.action}, qty={int(trade.orderStatus.filled)}, direction={fill_direction}",
+                    fill_price=avg_fill_price,
+                    initial_limit=details.get('initial_limit'),
+                )
+
+                # Cancel companion catastrophe stop — spread filled, stop is no longer needed
+                cat_stop = details.get('catastrophe_stop_trade')
+                if cat_stop:
+                    cat_status = cat_stop.orderStatus.status
+                    if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                        logger.info(
+                            f"Cancelling catastrophe stop (order {cat_stop.order.orderId}) "
+                            f"for filled spread {order_id}"
+                        )
+                        try:
+                            ib.cancelOrder(cat_stop.order)
+                        except Exception as e:
+                            logger.error(f"Failed to cancel catastrophe stop {cat_stop.order.orderId}: {e}")
+                    else:
+                        logger.debug(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+
             elif details['status'] not in OrderStatus.DoneStates:
                 
                 # --- 1. Get FINAL BAG (Spread) Market Data with a robust polling loop ---
@@ -1538,7 +2767,7 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                 final_leg_state_for_log = ", ".join(final_leg_state_strings)
 
                 # --- 3. Create Enhanced Log and Cancel Order ---
-                price_info_log = f"Original Limit: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "Original Order: MKT"
+                price_info_log = f"Original Limit: {trade.order.lmtPrice:.{_price_decimals}f}" if trade.order.orderType == "LMT" else "Original Order: MKT"
                 stored_display_name = details.get('display_name', 'UNKNOWN')
                 log_message = (
                     f"Order {trade.order.orderId} ({stored_display_name}) TIMED OUT. "
@@ -1551,8 +2780,33 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
 
                 ib.cancelOrder(trade.order)
 
+                # Cancel companion catastrophe stop if spread never filled
+                cat_stop = details.get('catastrophe_stop_trade')
+                cat_cancelled = False
+                if cat_stop:
+                    cat_status = cat_stop.orderStatus.status
+                    if cat_status not in {'Filled', 'Cancelled', 'ApiCancelled'}:
+                        logger.warning(
+                            f"Cancelling orphaned catastrophe stop (order {cat_stop.order.orderId}, "
+                            f"status={cat_status}) for unfilled spread {trade.order.orderId}"
+                        )
+                        ib.cancelOrder(cat_stop.order)
+                        cat_cancelled = True
+                    else:
+                        logger.info(f"Catastrophe stop {cat_stop.order.orderId} already terminal: {cat_status}")
+                        cat_cancelled = True  # Already done
+
+                # Fallback: if Trade reference was stale/None, search by orderRef
+                if not cat_cancelled and trade.order.orderRef:
+                    stop_ref = f"CATASTROPHE_{trade.order.orderRef}"
+                    logger.info(f"Attempting orderRef-based catastrophe stop cleanup: {stop_ref}")
+                    try:
+                        await close_spread_with_protection_cleanup(ib, None, stop_ref)
+                    except Exception as e:
+                        logger.warning(f"orderRef-based catastrophe cleanup failed: {e}")
+
                 # --- 4. Update Notification String (ENHANCED FOR ALL DATA) ---
-                price_info_notify = f"LMT: {trade.order.lmtPrice:.2f}" if trade.order.orderType == "LMT" else "MKT"
+                price_info_notify = f"LMT: {trade.order.lmtPrice:.{_price_decimals}f}" if trade.order.orderType == "LMT" else "MKT"
                 stored_display_name = details.get('display_name', trade.contract.localSymbol or 'UNKNOWN')
                 dd = details.get('decision_data', {}) or {}
                 cancel_direction = dd.get('direction', '')
@@ -1562,6 +2816,19 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
                     f"    {price_info_notify} — Unfilled, cancelled"
                 )
                 cancelled_orders.append(cancel_line)
+
+                # --- Funnel: ORDER_CANCELLED ---
+                _cancel_cycle_id = dd.get('_cycle_id', 'unknown')
+                log_funnel_event(
+                    cycle_id=_cancel_cycle_id,
+                    contract=stored_display_name,
+                    stage=FunnelStage.ORDER_CANCELLED,
+                    outcome="BLOCK",
+                    detail=f"direction={cancel_direction}, reason=monitoring_timeout",
+                    walk_away_price=trade.order.lmtPrice,
+                    initial_limit=details.get('initial_limit'),
+                )
+
                 await asyncio.sleep(0.2)
 
         # Build and send the final summary notification
@@ -1585,9 +2852,9 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
         logger.info("--- Finished monitoring and cleanup. ---")
 
     except Exception as e:
-        msg = f"A critical error occurred during order placement/monitoring: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", msg)
+        msg = f"A critical error occurred during order placement/monitoring: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Placement CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
@@ -1596,6 +2863,25 @@ async def place_queued_orders(config: dict, orders_list: list = None, connection
     finally:
         # NOTE: _recorded_thesis_positions is cleared at START of next run,
         # not here, to avoid racing with inflight _handle_and_log_fill tasks.
+
+        # Await all inflight fill handler tasks before disconnecting IB.
+        # Without this, fill tasks that create TMS theses or trigger CONTRADICT
+        # auto-close would lose the IB connection mid-flight.
+        if _fill_tasks:
+            pending = [t for t in _fill_tasks if not t.done()]
+            if pending:
+                logger.info(f"Awaiting {len(pending)} inflight fill tasks before disconnect...")
+                try:
+                    await asyncio.wait_for(
+                        asyncio.gather(*pending, return_exceptions=True),
+                        timeout=15.0
+                    )
+                    logger.info("All fill tasks completed.")
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        f"Fill task await timed out after 15s — "
+                        f"{sum(1 for t in pending if not t.done())} tasks still pending"
+                    )
 
         try:
             if ib.isConnected():
@@ -1615,15 +2901,21 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 import os
 
-def get_trade_ledger_df():
+def get_trade_ledger_df(data_dir: str = None):
     """
     Reads and consolidates the main and archived trade ledgers for analysis.
     This function is now robust to historical ledgers that may be missing
     the 'position_id' column, using 'combo_id' as a fallback.
     """
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    from trading_bot.utils import _get_data_dir
+    effective_dir = data_dir or _get_data_dir()
+    if effective_dir:
+        ledger_path = os.path.join(effective_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(effective_dir, 'archive_ledger')
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 
@@ -1691,7 +2983,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         return
 
     from trading_bot.calendars import get_exchange_calendar
-    cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+    cal = get_exchange_calendar(config['exchange'])
 
     # Check if today is Friday
     if weekday == 4:
@@ -1767,14 +3059,18 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         logger.info(f"Found {len(live_positions)} live position legs in the IB account.")
 
-        non_zero_positions = [p for p in live_positions if p.position != 0]
-        if len(non_zero_positions) != len(live_positions):
-            logger.info(
-                f"  Filtered to {len(non_zero_positions)} positions with non-zero quantity "
-                f"({len(live_positions) - len(non_zero_positions)} already closed/zero-qty excluded)"
-            )
+        # Filter to this commodity only (prevent cross-engine contamination)
+        commodity_symbol = config.get('symbol', config.get('commodity', {}).get('ticker', 'KC'))
+        non_zero_positions = [
+            p for p in live_positions
+            if p.position != 0 and p.contract.symbol == commodity_symbol
+        ]
+        logger.info(
+            f"  Filtered to {len(non_zero_positions)} {commodity_symbol} positions with non-zero quantity "
+            f"(from {len(live_positions)} total across all commodities)"
+        )
         if not non_zero_positions:
-            logger.info("All returned positions have zero quantity — nothing to close.")
+            logger.info(f"No open {commodity_symbol} positions to close.")
             return
 
         # --- 2. Load trade ledger to get historical data (open dates) ---
@@ -1788,7 +3084,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         # --- 3. Calculate trading day logic ---
         # M4 FIX: Use Exchange Holiday Calendar
-        cal = get_exchange_calendar(config.get('exchange', 'ICE'))
+        cal = get_exchange_calendar(config['exchange'])
         holidays = cal.holidays(start=date(date.today().year - 1, 1, 1), end=date.today()).to_pydatetime().tolist()
         today = datetime.now(timezone.utc).date()
         custom_bday = pd.offsets.CustomBusinessDay(holidays=holidays)
@@ -1800,7 +3096,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         # --- 4. FIFO Reconstruction and Age Verification ---
         # Map unique local symbols to live positions
         # Note: If multiple accounts, this assumes unique local_symbol per account or aggregated.
-        live_pos_map = {p.contract.localSymbol: p for p in live_positions if p.position != 0}
+        live_pos_map = {p.contract.localSymbol: p for p in non_zero_positions}
 
         for symbol, pos in live_pos_map.items():
             live_qty = abs(pos.position)
@@ -1829,7 +3125,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         'action': close_action,
                         'quantity': live_qty,
                         'multiplier': pos.contract.multiplier,
-                        'currency': pos.contract.currency
+                        'currency': pos.contract.currency,
+                        'ib_contract': pos.contract,  # Pre-qualified from reqPositionsAsync
                     })
                     logger.warning(
                         f"WEEKLY CLOSE OVERRIDE: Closing orphaned position {symbol} "
@@ -1842,7 +3139,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
             # Reconstruct the stack (Newest -> Oldest)
             accumulated_qty = 0
 
-            for _, trade in symbol_ledger.iterrows():
+            # ⚡ Bolt: Convert to list of dicts to avoid iterrows() overhead
+            for trade in symbol_ledger.to_dict('records'):
                 if accumulated_qty >= live_qty:
                     break # We have accounted for all live shares
 
@@ -1871,7 +3169,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                         'action': close_action,
                         'quantity': qty_to_attribute,
                         'multiplier': pos.contract.multiplier,
-                        'currency': pos.contract.currency
+                        'currency': pos.contract.currency,
+                        'ib_contract': pos.contract,  # Pre-qualified from reqPositionsAsync
                     })
                 else:
                     kept_positions_details.append(f"{trade['position_id']} ({symbol}) - Age: {age_in_trading_days} days")
@@ -1903,54 +3202,45 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     contract.currency = final_legs_list[0]['currency']
                     contract.exchange = final_legs_list[0]['exchange'] or config.get('exchange', 'SMART')
 
+                    # IB BAG orders: ratio must be 1 (per leg), totalQuantity
+                    # carries the size.  Compute GCD so unbalanced legs are
+                    # still possible (e.g. 2:1 ratio condor).
+                    from math import gcd
+                    from functools import reduce
+                    leg_qtys = [int(leg['quantity']) for leg in final_legs_list]
+                    qty_gcd = reduce(gcd, leg_qtys)
+
                     combo_legs = []
                     for leg in final_legs_list:
                         combo_leg = ComboLeg()
                         combo_leg.conId = leg['conId']
-                        combo_leg.ratio = int(leg['quantity']) # Assuming integer ratios for now
+                        combo_leg.ratio = int(leg['quantity']) // qty_gcd
                         combo_leg.action = leg['action']
                         combo_leg.exchange = leg['exchange'] or config.get('exchange', 'SMART')
                         combo_legs.append(combo_leg)
 
                     contract.comboLegs = combo_legs
-
-                    # For BAG orders, the totalQuantity is usually 1 (multiplied by ratio)
-                    # Use the GCD of quantities if possible, but for simple closes, usually ratio is quantity and bag size is 1.
-                    # Or ratio is 1 and bag size is quantity?
-                    # If we have 5 spreads, we usually set ratio 1, size 5.
-                    # Here we might have different quantities for different legs? (Unbalanced close).
-                    # If quantities differ (e.g. 2 calls, 1 put), we can't do a simple 1:1 spread.
-                    # We will assume balanced spread or use ratio=qty, size=1.
-
-                    # Logic: Find GCD of quantities?
-                    # Simplification: Set Ratio = Quantity, Bag Order Size = 1.
-                    # This works for "Closing what we have".
-
-                    order_size = 1
+                    order_size = qty_gcd
 
                     logger.info(f"Constructed BAG order for Pos ID {pos_id}: {[l.action + ' ' + str(l.ratio) + ' x ' + str(l.conId) for l in combo_legs]}")
 
                 else:
-                    # Single Leg Order
+                    # Single Leg Order — use pre-qualified contract from reqPositionsAsync
+                    # to avoid Error 478 strike format mismatch (e.g., 270.0 vs 2.7 for KC coffee)
                     leg = final_legs_list[0]
+                    contract = leg.get('ib_contract')
+                    if contract is None:
+                        logger.warning(f"No pre-qualified contract for conId {leg['conId']}, falling back to re-qualify")
+                        minimal = Contract(conId=leg['conId'])
+                        try:
+                            qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
+                        except asyncio.TimeoutError:
+                            qualified = None
+                        contract = qualified[0] if qualified and qualified[0].conId != 0 else minimal
 
-                    # CRITICAL FIX: Re-qualify by conId only to get correct strike format
-                    minimal = Contract(conId=leg['conId'])
-                    try:
-                        qualified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
-                    except asyncio.TimeoutError:
-                        logger.error(f"qualifyContractsAsync timed out (10s) for conId {leg['conId']}")
-                        qualified = None
-                    if qualified and qualified[0].conId != 0:
-                        contract = qualified[0]
-                    else:
-                        logger.error(f"Could not re-qualify conId {leg['conId']} for close order")
-                        # Fallback to manual construction (risky)
-                        contract = Contract()
-                        contract.conId = leg['conId']
-                        contract.symbol = config.get('symbol', 'KC')
-                        contract.secType = leg.get('secType', 'FOP')
-                        contract.exchange = leg['exchange'] or config.get('exchange', 'SMART')
+                    # reqPositionsAsync may return contracts without exchange (Error 321)
+                    if not contract.exchange:
+                        contract.exchange = leg.get('exchange') or config.get('exchange', 'SMART')
 
                     order_size = leg['quantity']
                     logger.info(f"Constructed SINGLE order for Pos ID {pos_id}: {leg['action']} {order_size} {leg['symbol']}")
@@ -2080,10 +3370,12 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                 # IB Algo does NOT support BAG orders - must use custom logic
 
                 fill_detected = False
-                INITIAL_TIMEOUT_SECONDS = 45
-                PRICE_WALK_INTERVAL = 5  # Walk price every 5 seconds
-                MAX_WALKS = 6  # Maximum price adjustments
-                WALK_INCREMENT_PCT = 0.01  # 1% per walk
+                # Config-driven close timeouts (H2 fix: parity with entry patience)
+                _close_cfg = config.get('strategy_tuning', {})
+                INITIAL_TIMEOUT_SECONDS = _close_cfg.get('close_timeout_seconds', 300)
+                PRICE_WALK_INTERVAL = _close_cfg.get('close_walk_interval_seconds', 15)
+                MAX_WALKS = _close_cfg.get('close_walk_steps', 10)
+                WALK_INCREMENT_PCT = _close_cfg.get('close_walk_increment_pct', 0.04)
 
                 is_limit_order = isinstance(order, LimitOrder)
                 initial_price = order.lmtPrice if is_limit_order else 0.0
@@ -2161,8 +3453,14 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                     market_order.outsideRth = True
                     market_trade = place_order(ib, trade.contract, market_order)
 
-                    # Brief wait for market fill
-                    for _ in range(15):
+                    # Wait for market fill (profile-driven timeout, was hardcoded 15s)
+                    try:
+                        from config import get_active_profile
+                        _mkt_timeout = get_active_profile(config).market_order_fallback_timeout_seconds
+                    except Exception:
+                        _mkt_timeout = 60
+                    logger.info(f"Market order fallback: waiting up to {_mkt_timeout}s for fill")
+                    for _ in range(_mkt_timeout):
                         await asyncio.sleep(1)
                         if market_trade.orderStatus.status == OrderStatus.Filled:
                             trade = market_trade
@@ -2171,7 +3469,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             break
 
                     if not fill_detected:
-                        logger.error(f"CRITICAL: Market order {market_trade.order.orderId} also failed to fill!")
+                        logger.error(f"CRITICAL: Market order {market_trade.order.orderId} not filled after {_mkt_timeout}s!")
 
                 if fill_detected and trade.orderStatus.status == OrderStatus.Filled:
                     # Log to ledger.
@@ -2238,13 +3536,18 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
             try:
                 verify_positions = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
-                remaining = [p for p in (verify_positions or []) if p.position != 0]
+                # Filter to this commodity only — IB returns ALL positions across commodities.
+                # Without this filter, KC engine would try to close NG/CC positions.
+                remaining = [
+                    p for p in (verify_positions or [])
+                    if p.position != 0 and p.contract.symbol == commodity_symbol
+                ]
 
                 if remaining:
                     remaining_symbols = [p.contract.localSymbol for p in remaining]
                     logger.critical(
                         f"⚠️ POST-CLOSE VERIFICATION FAILED: "
-                        f"{len(remaining)} positions still open: {remaining_symbols}"
+                        f"{len(remaining)} {commodity_symbol} positions still open: {remaining_symbols}"
                     )
 
                     # RETRY: Attempt individual market orders for each remaining leg
@@ -2254,10 +3557,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             qty = abs(pos.position)
                             order = MarketOrder(close_action, qty)
 
-                            # Re-qualify to get correct strike format
-                            minimal = Contract(conId=pos.contract.conId)
-                            requalified = await asyncio.wait_for(ib.qualifyContractsAsync(minimal), timeout=10)
-                            close_contract = requalified[0] if requalified and requalified[0].conId != 0 else pos.contract
+                            # Use pos.contract directly — already has correct strike format
+                            # from reqPositionsAsync (avoids Error 478 strike mismatch)
+                            close_contract = pos.contract
+                            if not close_contract.exchange:
+                                close_contract.exchange = config.get('exchange', 'SMART')
 
                             trade = ib.placeOrder(close_contract, order)
                             logger.warning(
@@ -2272,10 +3576,13 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                                 f"{pos.contract.localSymbol} (RETRY FAILED: {retry_e})"
                             )
 
-                    # Re-verify after retries
+                    # Re-verify after retries (filtered to this commodity)
                     await asyncio.sleep(5)
                     final_check = await asyncio.wait_for(ib.reqPositionsAsync(), timeout=30)
-                    final_remaining = [p for p in (final_check or []) if p.position != 0]
+                    final_remaining = [
+                        p for p in (final_check or [])
+                        if p.position != 0 and p.contract.symbol == commodity_symbol
+                    ]
 
                     if final_remaining:
                         final_symbols = [p.contract.localSymbol for p in final_remaining]
@@ -2377,8 +3684,23 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         if kept_positions_details:
             unique_kept = sorted(list(set(kept_positions_details)))
-            message_parts.append(f"\n<b> Positions held ({len(unique_kept)} unique legs/combos):</b>")
-            message_parts.extend([f"  - {reason}" for reason in unique_kept])
+            # Group legs by position_id for clearer reporting
+            kept_by_pos = {}
+            for detail in unique_kept:
+                # Format: "pos_id (symbol) - Age: N days"
+                pos_id = detail.split(' (')[0] if ' (' in detail else detail
+                # Extract symbol from "pos_id (symbol) - Age: N days"
+                sym = detail.split('(')[1].split(')')[0] if '(' in detail else '?'
+                # Extract age from "- Age: N days"
+                age = detail.split('Age: ')[1] if 'Age: ' in detail else '?'
+                kept_by_pos.setdefault(pos_id, []).append((sym, age))
+            num_positions = len(kept_by_pos)
+            num_legs = sum(len(legs) for legs in kept_by_pos.values())
+            message_parts.append(f"\n<b>Positions held ({num_positions} positions, {num_legs} legs):</b>")
+            for pos_id, legs in sorted(kept_by_pos.items()):
+                syms = ", ".join(sym for sym, _ in legs)
+                age = legs[0][1]  # All legs in a position have the same age
+                message_parts.append(f"  - {pos_id[:12]} ({syms}) - Age: {age}")
 
         if orphaned_positions:
              message_parts.append(f"\n<b>️ Orphaned Positions Found:</b>")
@@ -2392,17 +3714,18 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
         else:
             message = "\n".join(message_parts)
 
+        ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
         if is_weekly_close:
-            notification_title = f"Weekly Market Close Report: P&L ${total_pnl:,.2f}"
+            notification_title = f"Weekly Market Close Report [{ticker}]: P&L ${total_pnl:,.2f}"
         else:
-            notification_title = f"Stale Position Close Report: P&L ${total_pnl:,.2f}"
+            notification_title = f"Stale Position Close Report [{ticker}]: P&L ${total_pnl:,.2f}"
 
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
     except Exception as e:
-        msg = f"A critical error occurred while closing positions: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Position Closing CRITICAL", msg)
+        msg = f"A critical error occurred while closing positions: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Position Closing CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)
@@ -2450,6 +3773,7 @@ async def record_entry_thesis_for_trade(
 
     thesis_data = {
         'strategy_type': strategy_type,
+        'direction': decision.get('direction', 'UNKNOWN'),
         'guardian_agent': guardian,
         'primary_rationale': reason,
         'invalidation_triggers': invalidation_triggers,
@@ -2549,26 +3873,37 @@ async def cancel_all_open_orders(config: dict, connection_purpose: str = "orches
             logger.info("No open orders found to cancel.")
             return
 
-        logger.info(f"Found {len(open_trades)} open orders to cancel.")
-        for trade in list(open_trades): # Iterate over a copy
+        # Filter to only THIS bot's orders (prevent cross-commodity cancellation)
+        my_client_id = ib.client.clientId
+        my_orders = [t for t in open_trades if t.order.clientId == my_client_id]
+        skipped = len(open_trades) - len(my_orders)
+        if skipped:
+            logger.info(f"Skipped {skipped} orders belonging to other client IDs.")
+
+        if not my_orders:
+            logger.info("No open orders belonging to this instance found to cancel.")
+            return
+
+        logger.info(f"Found {len(my_orders)} open orders to cancel (clientId={my_client_id}).")
+        for trade in list(my_orders):
             ib.cancelOrder(trade.order)
             logger.info(f"Cancelled order ID {trade.order.orderId}.")
             await asyncio.sleep(0.2)
 
-        logger.info(f"--- Finished canceling {len(open_trades)} orders ---")
+        logger.info(f"--- Finished canceling {len(my_orders)} orders ---")
         # Create a detailed notification message
-        if open_trades:
-            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in open_trades]
-            message = f"<b>Canceled {len(open_trades)} unfilled DAY orders:</b>\n" + "\n".join(summary_items)
+        if my_orders:
+            summary_items = [f"  - {trade.contract.localSymbol} ({trade.order.action} {trade.order.totalQuantity}) ID: {trade.order.orderId}" for trade in my_orders]
+            message = f"<b>Canceled {len(my_orders)} unfilled DAY orders:</b>\n" + "\n".join(summary_items)
         else:
             message = "No open orders were found to cancel."
 
         send_pushover_notification(config.get('notifications', {}), "Open Orders Canceled", message)
 
     except Exception as e:
-        msg = f"A critical error occurred while canceling orders: {e}\n{traceback.format_exc()}"
-        logger.critical(msg)
-        send_pushover_notification(config.get('notifications', {}), "Order Cancellation CRITICAL", msg)
+        msg = f"A critical error occurred while canceling orders: {e}"
+        logger.critical(msg, exc_info=True)
+        send_pushover_notification(config.get('notifications', {}), "Order Cancellation CRITICAL", f"{msg}\n{traceback.format_exc()}")
         # Force-reset pooled connection on critical error so next get_connection() creates fresh
         try:
             await IBConnectionPool._force_reset_connection(connection_purpose)

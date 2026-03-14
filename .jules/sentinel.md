@@ -12,3 +12,18 @@
 **Vulnerability:** `TradingCouncil` agents interpolated `search_instruction` (containing untrusted social media/news content) directly into prompt instructions without sanitization.
 **Learning:** Even "internal" task descriptions become attack vectors if they include data derived from external triggers (e.g. `SentinelTrigger.payload`).
 **Prevention:** Implemented `escape_xml` utility. Prompts now wrap untrusted task context in `<task>...</task>` tags with explicit instructions to treat the block as data/context only.
+
+## 2026-02-27 - URL Parameter Injection in Sentinels
+**Vulnerability:** `LogisticsSentinel` and `NewsSentinel` constructed Google News RSS URLs using string concatenation and `replace(' ', '+')` instead of proper URL encoding.
+**Learning:** Manual URL construction is brittle. Special characters (like `&` in "Port & Terminal" or `Coffee (Arabica)`) can break the URL structure or inject new parameters if not properly escaped.
+**Prevention:** Always use `urllib.parse.quote_plus` (or `urlencode`) when constructing query strings, even if the source data (like `profile.name`) comes from configuration.
+
+## 2026-03-03 - Cross-Site Scripting (XSS) in Streamlit UI
+**Vulnerability:** `pages/3_The_Council.py` used `st.markdown(..., unsafe_allow_html=True)` to render custom HTML badges for agent decisions and trigger events.
+**Learning:** Bypassing Streamlit's native HTML sanitization (`unsafe_allow_html=True`) exposes the dashboard to XSS if the data rendered (like agent strings or trigger payloads) contains malicious scripts.
+**Prevention:** Strictly avoid `unsafe_allow_html=True`. Use native, safe Streamlit components like `st.info`, `st.success`, `st.warning`, and `st.error` which automatically sanitize input while providing similar visual hierarchy.
+
+## 2026-03-05 - XML External Entity (XXE) Vulnerability in Parsing Flex Queries
+**Vulnerability:** The script `reconcile_trades.py` parsed potentially untrusted XML from IBKR Flex Queries using the insecure standard library `xml.etree.ElementTree` via `ET.fromstring()`.
+**Learning:** Parsing external XML directly with the standard library opens the application to XML External Entity (XXE) attacks, which can lead to local file disclosure, internal port scanning, or XML bomb denial-of-service, even if the source is ostensibly trusted like a broker API.
+**Prevention:** Always use the `defusedxml` package (e.g., `import defusedxml.ElementTree as ET`) instead of the standard library for any XML parsing tasks involving external data.

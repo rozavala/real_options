@@ -66,6 +66,7 @@ async def test_friday_weekly_close(mock_ib, mock_ledger, mock_notification, mock
     # Live Position: Opened today (Age 0 days)
     mock_pos = MagicMock()
     mock_pos.contract.localSymbol = 'KCZ23'
+    mock_pos.contract.symbol = 'KC'
     mock_pos.contract.conId = 12345
     mock_pos.position = 1
     mock_ib.reqPositionsAsync.return_value = [mock_pos]
@@ -119,6 +120,7 @@ async def test_thursday_holiday_close(mock_ib, mock_ledger, mock_notification, m
     # Live Position: Opened today (Age 0)
     mock_pos = MagicMock()
     mock_pos.contract.localSymbol = 'KCZ20'
+    mock_pos.contract.symbol = 'KC'
     mock_pos.contract.conId = 67890
     mock_pos.position = 1
     mock_ib.reqPositionsAsync.return_value = [mock_pos]
@@ -155,6 +157,7 @@ async def test_standard_thursday_no_close(mock_ib, mock_ledger, mock_notificatio
     # Live Position: Opened today (Age 0)
     mock_pos = MagicMock()
     mock_pos.contract.localSymbol = 'KCZ23'
+    mock_pos.contract.symbol = 'KC'
     mock_pos.contract.conId = 11111
     mock_pos.position = 1
     mock_ib.reqPositionsAsync.return_value = [mock_pos]

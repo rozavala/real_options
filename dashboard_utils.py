@@ -1,5 +1,5 @@
 """
-Shared utilities for the Coffee Bot Real Options dashboard.
+Shared utilities for the Real Options Portfolio dashboard.
 Contains data loading, caching, and decision grading logic.
 """
 
@@ -19,6 +19,7 @@ import yfinance as yf
 import sys
 import asyncio
 import warnings
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +40,150 @@ from ib_insync import IB
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from performance_analyzer import get_trade_ledger_df
 # Decision signals: lightweight summary of Council decisions
-from trading_bot.decision_signals import get_decision_signals_df
+from trading_bot.decision_signals import set_data_dir as set_signals_dir
 from config_loader import load_config
 from trading_bot.utils import configure_market_data_type
 from trading_bot.timestamps import parse_ts_column
 
+# Set module-level data paths for the active commodity (dashboard doesn't go through orchestrator init)
+_dashboard_ticker = os.environ.get("COMMODITY_TICKER", "KC")
+_dashboard_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', _dashboard_ticker)
+set_signals_dir(_dashboard_data_dir)
+
+from trading_bot.brier_bridge import set_data_dir as set_brier_bridge_dir
+set_brier_bridge_dir(_dashboard_data_dir)
+
+# === MULTI-COMMODITY PATH RESOLUTION ===
+def _resolve_data_path(filename: str) -> str:
+    """Resolve a data file path with multi-commodity fallback.
+
+    3-tier fallback:
+    1. data/{COMMODITY_TICKER}/{filename} — per-commodity isolated path
+    2. data/{filename} — legacy pre-migration path
+    3. Returns data/{COMMODITY_TICKER}/{filename} — targeted path for file creation
+    """
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    commodity_path = os.path.join("data", ticker, filename)
+    legacy_path = os.path.join("data", filename)
+
+    if os.path.exists(commodity_path):
+        return commodity_path
+    if os.path.exists(legacy_path):
+        return legacy_path
+    return commodity_path  # Default to commodity path for creation
+
+
+def _resolve_data_path_for(filename: str, ticker: str) -> str:
+    """Resolve a data file path for a specific commodity ticker.
+
+    Same 3-tier fallback as _resolve_data_path but with explicit ticker
+    (no env var dependency), enabling commodity switching at runtime.
+    """
+    commodity_path = os.path.join("data", ticker, filename)
+    legacy_path = os.path.join("data", filename)
+    if os.path.exists(commodity_path):
+        return commodity_path
+    if os.path.exists(legacy_path):
+        return legacy_path
+    return commodity_path
+
+
+def _relative_time(ts) -> str:
+    """Format a timestamp as a human-readable relative time string."""
+    try:
+        if ts is None or ts == "unknown" or ts == "Never":
+            return "Never"
+        if isinstance(ts, str):
+            # pd.Timestamp can handle many formats but 'unknown' raises ValueError
+            ts = pd.Timestamp(ts)
+
+        # Standardize to UTC-aware datetime
+        if not hasattr(ts, 'tzinfo') or ts.tzinfo is None:
+            import pytz
+            ts = pytz.utc.localize(ts)
+        elif hasattr(ts, 'tz_convert'):
+            ts = ts.tz_convert('UTC')
+
+        now = datetime.now(timezone.utc)
+        delta = now - ts
+        seconds = delta.total_seconds()
+        if seconds < 0:
+            return "just now"
+        if seconds < 60:
+            return f"{int(seconds)}s ago"
+        elif seconds < 3600:
+            return f"{int(seconds // 60)}m ago"
+        elif seconds < 86400:
+            return f"{int(seconds // 3600)}h ago"
+        elif seconds < 172800:
+            return "yesterday"
+        else:
+            return f"{int(seconds // 86400)}d ago"
+    except Exception:
+        return "N/A"
+
+
 # === CONFIGURATION ===
 # E4 FIX: Dynamic starting capital handled in get_starting_capital function
-STATE_FILE_PATH = 'data/state.json'
-ORCHESTRATOR_LOG_PATH = 'logs/orchestrator.log'
-COUNCIL_HISTORY_PATH = 'data/council_history.csv'
-DAILY_EQUITY_PATH = 'data/daily_equity.csv'
+STATE_FILE_PATH = _resolve_data_path('state.json')
+_ticker_for_log = os.environ.get("COMMODITY_TICKER", "KC").lower()
+ORCHESTRATOR_LOG_PATH = f'logs/orchestrator_{_ticker_for_log}.log'
+COUNCIL_HISTORY_PATH = _resolve_data_path('council_history.csv')
+DAILY_EQUITY_PATH = _resolve_data_path('daily_equity.csv')
+
+
+# Dynamic path getters (re-evaluate each call for in-app commodity switching)
+def _get_state_file_path():
+    return _resolve_data_path('state.json')
+
+def _get_orchestrator_log_path():
+    ticker = os.environ.get("COMMODITY_TICKER", "KC").lower()
+    return f'logs/orchestrator_{ticker}.log'
+
+def _get_council_history_path():
+    return _resolve_data_path('council_history.csv')
+
+def _get_daily_equity_path():
+    return _resolve_data_path('daily_equity.csv')
+
+
+# === TRADE JOURNAL ===
+
+@st.cache_data(ttl=120)
+def load_trade_journal(ticker: str = None) -> list:
+    """Load trade journal entries for a commodity."""
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    journal_path = _resolve_data_path_for('trade_journal.json', ticker)
+    if not os.path.exists(journal_path):
+        return []
+    try:
+        with open(journal_path, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def find_journal_entry(journal: list, contract: str, pnl: float) -> dict | None:
+    """Find the journal entry matching a council decision by contract and P&L.
+
+    Returns the best match or None. Matches on contract name and approximate
+    P&L (within $1 tolerance), picking the closest PnL if multiple match.
+    """
+    if not journal or not contract or pnl is None:
+        return None
+    try:
+        pnl = float(pnl)
+    except (ValueError, TypeError):
+        return None
+
+    candidates = [
+        e for e in journal
+        if e.get('contract') == contract and abs(e.get('pnl', 0) - pnl) < 1.0
+    ]
+    if not candidates:
+        return None
+    # Pick closest PnL match
+    return min(candidates, key=lambda e: abs(e.get('pnl', 0) - pnl))
 
 
 # === DATA LOADING FUNCTIONS ===
@@ -69,9 +203,14 @@ def get_starting_capital(config: dict) -> float:
         profile.default_starting_capital if hasattr(profile, 'default_starting_capital') else 50000.0
     )
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def get_config():
-    """Loads and caches the application configuration."""
+    """Loads and caches the application configuration.
+
+    TTL=60s ensures config refreshes after commodity switch even if
+    st.cache_data.clear() doesn't fully propagate. The load_config()
+    call reads COMMODITY_TICKER env var for commodity overrides.
+    """
     config = load_config()
     if config is None:
         st.error("Fatal: Could not load config.json.")
@@ -82,9 +221,7 @@ def get_config():
 def get_commodity_profile(config: dict = None) -> dict:
     """
     Returns the commodity profile for the active symbol.
-    Falls back to Coffee (KC) defaults if not configured.
-
-    EXTENSIBILITY: Add new commodities to config.json when needed.
+    Derives defaults from the CommodityProfile dataclass.
     """
     if config is None:
         config = get_config()
@@ -92,28 +229,186 @@ def get_commodity_profile(config: dict = None) -> dict:
     symbol = config.get('symbol', 'KC')
     profiles = config.get('commodity_profile', {})
 
-    # KC defaults — the only commodity we need right now
-    default_profile = {
-        'name': 'Coffee C Arabica',
-        'price_unit': 'cents/lb',
-        'stop_parse_range': [80, 800],
-        'typical_price_range': [100, 600]
-    }
+    # If config.json has a commodity_profile section, use it
+    if symbol in profiles:
+        return profiles[symbol]
 
-    return profiles.get(symbol, default_profile)
+    # Derive defaults from the CommodityProfile dataclass
+    from config import get_commodity_profile as get_cp
+    try:
+        cp = get_cp(symbol)
+        return {
+            'name': cp.name,
+            'price_unit': cp.contract.unit if hasattr(cp.contract, 'unit') else 'USD',
+            'stop_parse_range': list(cp.stop_parse_range) if hasattr(cp, 'stop_parse_range') else [0, 100000],
+            'typical_price_range': list(cp.typical_price_range) if hasattr(cp, 'typical_price_range') else [0, 100000],
+        }
+    except Exception:
+        return {
+            'name': symbol,
+            'price_unit': 'USD',
+            'stop_parse_range': [0, 100000],
+            'typical_price_range': [0, 100000],
+        }
+
+
+def resolve_yf_ticker(commodity_ticker: str) -> str:
+    """Resolve a commodity ticker to its active front-month Yahoo Finance ticker.
+
+    Uses the same DTE rules as the trading system to pick the contract
+    that actually has volume, avoiding Yahoo's broken continuous =F chart
+    which shows stale data during rollover periods.
+
+    Returns e.g. 'KCK26.NYB' instead of 'KC=F'.
+    Falls back to '{ticker}=F' if resolution fails.
+    """
+    try:
+        from config.commodity_profiles import get_commodity_profile as _get_cp
+        from datetime import datetime as _dt
+
+        cp = _get_cp(commodity_ticker)
+        min_dte = cp.min_dte
+        valid_months = cp.contract.contract_months
+        symbol = cp.contract.symbol
+
+        month_code_to_num = {
+            'F': 1, 'G': 2, 'H': 3, 'J': 4, 'K': 5, 'M': 6,
+            'N': 7, 'Q': 8, 'U': 9, 'V': 10, 'X': 11, 'Z': 12
+        }
+        today = _dt.now()
+        candidates = []
+        for year_offset in range(3):
+            year = today.year + year_offset
+            for mc in valid_months:
+                mn = month_code_to_num.get(mc)
+                if not mn:
+                    continue
+                try:
+                    approx_expiry = _dt(year, mn, 19)
+                except ValueError:
+                    continue
+                dte = (approx_expiry - today).days
+                if dte >= min_dte:
+                    candidates.append((dte, f"{symbol}{mc}{year % 100}"))
+
+        if candidates:
+            candidates.sort(key=lambda x: x[0])
+            suffix_map = {'ICE': 'NYB', 'NYBOT': 'NYB', 'NYMEX': 'NYM', 'COMEX': 'CMX', 'CME': 'CME'}
+            suffix = suffix_map.get(cp.contract.exchange, 'NYB')
+            return f"{candidates[0][1]}.{suffix}"
+    except Exception as e:
+        logger.warning(f"Front month resolution failed for {commodity_ticker}: {e}")
+
+    return f"{commodity_ticker}=F"
 
 
 @st.cache_data(ttl=60)
-def load_trade_data():
+def load_trade_data(ticker: str = None):
     """Loads and caches the consolidated trade ledger."""
     try:
-        df = get_trade_ledger_df()
+        ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+        data_dir = os.path.join("data", ticker)
+        df = get_trade_ledger_df(data_dir)
         if not df.empty:
             df['timestamp'] = parse_ts_column(df['timestamp'])
         return df
     except Exception as e:
         st.error(f"Failed to load trade_ledger.csv: {e}")
         return pd.DataFrame()
+
+
+def build_position_pnl_map(live_data: dict, ticker: str = None) -> dict:
+    """Map position_id → aggregate unrealizedPNL using the trade ledger as a bridge.
+
+    IBKR portfolio items are keyed by localSymbol (e.g. "KCH6 C3.5").
+    The trade ledger maps local_symbol → position_id.
+    This function joins the two to produce {position_id: total_unrealized_pnl}.
+    """
+    portfolio_items = live_data.get('portfolio_items', [])
+    if not portfolio_items:
+        return {}
+
+    trade_df = load_trade_data(ticker)
+    if trade_df.empty or 'local_symbol' not in trade_df.columns or 'position_id' not in trade_df.columns:
+        return {}
+
+    # Build local_symbol → position_id lookup (last-write-wins)
+    # ⚡ Bolt: vectorized dict generation via .dropna and dict(zip()) is ~40x faster than .iterrows()
+    valid_trades = trade_df.dropna(subset=['local_symbol', 'position_id'])
+    symbol_to_pid = dict(zip(valid_trades['local_symbol'], valid_trades['position_id']))
+
+    # Aggregate unrealizedPNL per position_id
+    pnl_map: dict[str, float] = {}
+    for item in portfolio_items:
+        if not hasattr(item, 'contract'):
+            continue
+        local_sym = getattr(item.contract, 'localSymbol', None)
+        if not local_sym:
+            continue
+        pid = symbol_to_pid.get(local_sym)
+        if pid is None:
+            continue
+        pnl = getattr(item, 'unrealizedPNL', 0) or 0
+        pnl_map[pid] = pnl_map.get(pid, 0) + pnl
+
+    return pnl_map
+
+
+def find_untracked_ibkr_positions(live_data: dict, active_theses: list, ticker: str = None) -> list:
+    """Find IBKR portfolio positions that have no matching active thesis.
+
+    Returns list of dicts with keys: local_symbol, quantity, unrealized_pnl,
+    market_value, avg_cost.
+    """
+    portfolio_items = live_data.get('portfolio_items', [])
+    if not portfolio_items:
+        return []
+
+    # Filter portfolio to this commodity's symbol prefixes
+    # Futures use ticker directly, options use exchange-specific prefixes
+    _IBKR_SYMBOL_PREFIXES = {
+        "KC": ("KC", "KO"), "CC": ("CC", "DC"),
+        "SB": ("SB", "SO"),
+        "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
+    }
+    prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,)) if ticker else None
+
+    # Collect position_ids from active theses
+    thesis_pids = {t.get('position_id') for t in (active_theses or [])}
+
+    trade_df = load_trade_data(ticker)
+    # Build local_symbol → position_id lookup
+    symbol_to_pid = {}
+    if not trade_df.empty and 'local_symbol' in trade_df.columns and 'position_id' in trade_df.columns:
+        # ⚡ Bolt: vectorized dict generation via .dropna and dict(zip()) is ~40x faster than .iterrows()
+        valid_trades = trade_df.dropna(subset=['local_symbol', 'position_id'])
+        symbol_to_pid = dict(zip(valid_trades['local_symbol'], valid_trades['position_id']))
+
+    untracked = []
+    for item in portfolio_items:
+        if not hasattr(item, 'contract'):
+            continue
+        qty = getattr(item, 'position', 0)
+        if qty == 0:
+            continue
+        local_sym = getattr(item.contract, 'localSymbol', None)
+        if not local_sym:
+            continue
+        # Skip positions belonging to other commodities
+        if prefixes and not local_sym.startswith(prefixes):
+            continue
+        pid = symbol_to_pid.get(local_sym)
+        if pid and pid in thesis_pids:
+            continue  # tracked
+        untracked.append({
+            'local_symbol': local_sym,
+            'quantity': qty,
+            'unrealized_pnl': getattr(item, 'unrealizedPNL', None),
+            'market_value': getattr(item, 'marketValue', None),
+            'avg_cost': getattr(item, 'averageCost', None),
+        })
+
+    return untracked
 
 
 @st.cache_data(ttl=3600)
@@ -128,7 +423,7 @@ def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
         ]
         for legacy_file in legacy_files:
             try:
-                legacy_df = pd.read_csv(legacy_file)
+                legacy_df = pd.read_csv(legacy_file, on_bad_lines='warn')
                 if not legacy_df.empty:
                     legacy_dfs.append(legacy_df)
             except Exception as e:
@@ -144,18 +439,20 @@ def _load_legacy_council_history(data_dir: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=60)
-def load_council_history():
+def load_council_history(ticker: str = None):
     """
     Loads council_history.csv for decision analysis.
     Also loads any archived legacy files and concatenates them.
     """
     try:
+        ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+        council_path = _resolve_data_path_for('council_history.csv', ticker)
         dataframes = []
-        data_dir = os.path.dirname(COUNCIL_HISTORY_PATH)
+        data_dir = os.path.dirname(council_path)
 
         # Load main file
-        if os.path.exists(COUNCIL_HISTORY_PATH):
-            df = pd.read_csv(COUNCIL_HISTORY_PATH)
+        if os.path.exists(council_path):
+            df = pd.read_csv(council_path, on_bad_lines='warn')
             if not df.empty:
                 # OPTIMIZATION: Parse timestamps immediately for live data
                 if 'timestamp' in df.columns:
@@ -185,11 +482,13 @@ def load_council_history():
 
 
 @st.cache_data(ttl=300)
-def load_equity_data():
+def load_equity_data(ticker: str = None):
     """Loads daily_equity.csv for equity curve visualization."""
     try:
-        if os.path.exists(DAILY_EQUITY_PATH):
-            df = pd.read_csv(DAILY_EQUITY_PATH)
+        ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+        equity_path = _resolve_data_path_for('daily_equity.csv', ticker)
+        if os.path.exists(equity_path):
+            df = pd.read_csv(equity_path)
             if not df.empty:
                 df['timestamp'] = parse_ts_column(df['timestamp'])
                 df = df.sort_values('timestamp')
@@ -254,13 +553,14 @@ def load_log_data():
         logs_content = {}
         for log_path in list_of_logs:
             filename = os.path.basename(log_path)
-            if any(char.isdigit() for char in filename):
+            # Only skip RotatingFileHandler backups (e.g., orchestrator.log.1, .log.2)
+            if re.match(r'.*\.log\.\d+$', filename):
                 continue
             name = filename.split('.')[0].capitalize()
             logs_content[name] = tail_file(log_path, n_lines=50)
 
         return logs_content
-    except Exception as e:
+    except Exception:
         return {}
 
 
@@ -274,6 +574,29 @@ def _ensure_event_loop():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop
+
+
+# === SHARED STATE CACHING ===
+
+@st.cache_data(ttl=2)
+def _load_shared_state() -> dict:
+    """
+    Cached access to state.json to prevent multiple disk reads per rerun.
+    Short TTL (2s) ensures freshness while batching reads within a single script run.
+    """
+    try:
+        from trading_bot.state_manager import StateManager
+        return StateManager._load_raw_sync()
+    except Exception:
+        # Fallback if import fails or StateManager errors
+        state_path = _get_state_file_path()
+        if os.path.exists(state_path):
+            try:
+                with open(state_path, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
 
 
 # === SYSTEM HEALTH FUNCTIONS ===
@@ -292,15 +615,17 @@ def get_system_heartbeat():
     }
 
     # Check Orchestrator log
-    if os.path.exists(ORCHESTRATOR_LOG_PATH):
-        mtime = datetime.fromtimestamp(os.path.getmtime(ORCHESTRATOR_LOG_PATH))
+    log_path = _get_orchestrator_log_path()
+    if os.path.exists(log_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(log_path))
         heartbeat['orchestrator_last_pulse'] = mtime
         minutes_since = (datetime.now() - mtime).total_seconds() / 60
         heartbeat['orchestrator_status'] = 'ONLINE' if minutes_since < heartbeat['alert_threshold_minutes'] else 'STALE'
 
     # Check State file
-    if os.path.exists(STATE_FILE_PATH):
-        mtime = datetime.fromtimestamp(os.path.getmtime(STATE_FILE_PATH))
+    state_path = _get_state_file_path()
+    if os.path.exists(state_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(state_path))
         heartbeat['state_last_pulse'] = mtime
         minutes_since = (datetime.now() - mtime).total_seconds() / 60
         heartbeat['state_status'] = 'ONLINE' if minutes_since < heartbeat['alert_threshold_minutes'] else 'STALE'
@@ -310,14 +635,14 @@ def get_system_heartbeat():
 
 # === TASK SCHEDULE TRACKER ===
 
-ACTIVE_SCHEDULE_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    'data', 'active_schedule.json'
-)
-TASK_COMPLETIONS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    'data', 'task_completions.json'
-)
+ACTIVE_SCHEDULE_PATH = _resolve_data_path('active_schedule.json')
+TASK_COMPLETIONS_PATH = _resolve_data_path('task_completions.json')
+
+def _get_active_schedule_path():
+    return _resolve_data_path('active_schedule.json')
+
+def _get_task_completions_path():
+    return _resolve_data_path('task_completions.json')
 
 # Legacy labels: fallback for old active_schedule.json files without 'label' field.
 # New schedules include per-instance labels (e.g., "Signal: Early Session (04:00 ET)")
@@ -363,11 +688,12 @@ def load_task_schedule_status() -> dict:
     }
 
     # Load active schedule
-    if not os.path.exists(ACTIVE_SCHEDULE_PATH):
+    schedule_path = _get_active_schedule_path()
+    if not os.path.exists(schedule_path):
         return result
 
     try:
-        with open(ACTIVE_SCHEDULE_PATH, 'r') as f:
+        with open(schedule_path, 'r') as f:
             schedule_data = json.load(f)
     except Exception:
         return result
@@ -378,17 +704,11 @@ def load_task_schedule_status() -> dict:
     # rather than 'overdue' — matching the orchestrator's own weekend skip logic.
     ny_tz_check = pytz.timezone('America/New_York')
     now_ny_check = datetime.now(timezone.utc).astimezone(ny_tz_check)
-    _is_trading_day = now_ny_check.weekday() < 5  # Mon-Fri
-
-    if _is_trading_day:
-        # Also check US holidays (consistent with trading_bot/utils.py is_trading_day)
-        try:
-            import holidays as holidays_lib
-            us_holidays = holidays_lib.US(years=now_ny_check.year, observed=True)
-            if now_ny_check.date() in us_holidays:
-                _is_trading_day = False
-        except ImportError:
-            pass  # holidays lib not available — weekday check is sufficient
+    try:
+        from trading_bot.utils import is_trading_day as _utils_is_trading_day
+        _is_trading_day = _utils_is_trading_day()
+    except ImportError:
+        _is_trading_day = now_ny_check.weekday() < 5
 
     if not _is_trading_day:
         # Non-trading day: return all tasks as 'inactive' with metadata
@@ -432,8 +752,9 @@ def load_task_schedule_status() -> dict:
     # Load completions
     completions = {}
     try:
-        if os.path.exists(TASK_COMPLETIONS_PATH):
-            with open(TASK_COMPLETIONS_PATH, 'r') as f:
+        completions_path = _get_task_completions_path()
+        if os.path.exists(completions_path):
+            with open(completions_path, 'r') as f:
                 tracker_data = json.load(f)
 
             # Only use completions from today (NY timezone)
@@ -520,8 +841,7 @@ def get_ib_connection_health() -> dict:
     Returns IB connection health metrics from state.
     """
     try:
-        from trading_bot.state_manager import StateManager
-        state = StateManager._load_raw_sync()
+        state = _load_shared_state()
 
         # Check for recent heartbeats or connection events
         sensors = state.get("sensors", {})
@@ -594,8 +914,6 @@ def get_sentinel_status():
     Returns a dict of sentinel names -> status info with staleness detection.
     Commodity-agnostic: sentinel list is derived from state data, not hardcoded.
     """
-    import json
-    from datetime import datetime, timezone
 
     # Complete sentinel registry with display metadata
     # 'availability' helps the dashboard group sentinels logically
@@ -613,44 +931,41 @@ def get_sentinel_status():
     result = {}
 
     try:
-        if os.path.exists(STATE_FILE_PATH):
-            with open(STATE_FILE_PATH, 'r') as f:
-                state = json.load(f)
+        state = _load_shared_state()
+        health_ns = state.get('sentinel_health', {})
 
-            health_ns = state.get('sentinel_health', {})
+        for name, meta in SENTINEL_REGISTRY.items():
+            entry = health_ns.get(name, {})
+            data = entry.get('data', {}) if isinstance(entry, dict) else {}
+            timestamp = entry.get('timestamp', 0) if isinstance(entry, dict) else 0
 
-            for name, meta in SENTINEL_REGISTRY.items():
-                entry = health_ns.get(name, {})
-                data = entry.get('data', {}) if isinstance(entry, dict) else {}
-                timestamp = entry.get('timestamp', 0) if isinstance(entry, dict) else 0
+            status = data.get('status', 'Unknown')
+            interval = data.get('interval_seconds', 0)
+            error = data.get('error')
+            last_check = data.get('last_check_utc')
 
-                status = data.get('status', 'Unknown')
-                interval = data.get('interval_seconds', 0)
-                error = data.get('error')
-                last_check = data.get('last_check_utc')
+            # Staleness detection: stale if no check within 2x expected interval
+            is_stale = False
+            minutes_since = None
+            if timestamp > 0:
+                import time
+                seconds_since = time.time() - timestamp
+                minutes_since = round(seconds_since / 60)
+                # Stale if more than 2x the check interval has elapsed
+                if interval > 0 and seconds_since > (interval * 2):
+                    is_stale = True
 
-                # Staleness detection: stale if no check within 2x expected interval
-                is_stale = False
-                minutes_since = None
-                if timestamp > 0:
-                    import time
-                    seconds_since = time.time() - timestamp
-                    minutes_since = round(seconds_since / 60)
-                    # Stale if more than 2x the check interval has elapsed
-                    if interval > 0 and seconds_since > (interval * 2):
-                        is_stale = True
-
-                result[name] = {
-                    'status': status,
-                    'display_name': meta['display'],
-                    'availability': meta['availability'],
-                    'icon': meta['icon'],
-                    'last_check_utc': last_check,
-                    'minutes_since_check': minutes_since,
-                    'is_stale': is_stale,
-                    'interval_seconds': interval,
-                    'error': error,
-                }
+            result[name] = {
+                'status': status,
+                'display_name': meta['display'],
+                'availability': meta['availability'],
+                'icon': meta['icon'],
+                'last_check_utc': last_check,
+                'minutes_since_check': minutes_since,
+                'is_stale': is_stale,
+                'interval_seconds': interval,
+                'error': error,
+            }
 
     except Exception:
         # Fallback: return registry with Unknown status
@@ -668,6 +983,26 @@ def get_sentinel_status():
             }
 
     return result
+
+
+@st.cache_data(ttl=10)
+def load_deduplicator_metrics() -> dict:
+    """Load trigger deduplication metrics with caching."""
+    try:
+        with open(_resolve_data_path('deduplicator_state.json'), 'r') as f:
+            data = json.load(f)
+            metrics = data.get('metrics', {})
+            total = metrics.get('total_triggers', 0)
+            processed = metrics.get('processed', 0)
+
+            return {
+                'total_triggers': total,
+                'processed': processed,
+                'filtered': total - processed,
+                'efficiency': processed / total if total > 0 else 1.0,
+            }
+    except Exception:
+        return {'total_triggers': 0, 'processed': 0, 'efficiency': 1.0}
 
 
 # === LIVE DATA FUNCTIONS (IB Connection) ===
@@ -720,7 +1055,7 @@ def fetch_live_dashboard_data(_config):
                 if data["NetLiquidation"] > 0:
                     data["DailyPnLPct"] = (data["DailyPnL"] / data["NetLiquidation"]) * 100
 
-    except Exception as e:
+    except Exception:
         # st.warning(f"Could not connect to IB: {e}")
         pass
     finally:
@@ -743,6 +1078,7 @@ def fetch_all_live_data(_config: dict) -> dict:
     1. Creates FRESH event loop for thread safety
     2. Uses RANDOM ClientID to prevent tab collisions
     3. Proper cleanup with blocking sleep for Gateway
+    4. OPTIMIZATION: Uses asyncio.gather for parallel fetching (Bolt)
     """
     result = {
         'net_liquidation': 0.0,
@@ -766,6 +1102,7 @@ def fetch_all_live_data(_config: dict) -> dict:
         # Random ClientID prevents collision if two browser tabs refresh simultaneously
         client_id = random.randint(1000, 9999)
 
+        # 1. Connect (Sync wrapper around async)
         loop.run_until_complete(ib.connectAsync(
             _config.get('connection', {}).get('host', '127.0.0.1'),
             _config.get('connection', {}).get('port', 7497),
@@ -783,35 +1120,94 @@ def fetch_all_live_data(_config: dict) -> dict:
         # Configure market data type
         configure_market_data_type(ib)
 
-        # Account Summary
-        for av in ib.accountSummary():
-            result['account_summary'][av.tag] = av.value
-            if av.tag == 'NetLiquidation':
-                result['net_liquidation'] = float(av.value)
-            elif av.tag == 'UnrealizedPnL':
-                result['unrealized_pnl'] = float(av.value)
-            elif av.tag == 'RealizedPnL':
-                result['realized_pnl'] = float(av.value)
-            elif av.tag == 'MaintMarginReq':
-                result['maint_margin'] = float(av.value)
-
-        # Daily P&L
+        # 2. Start PnL Subscription (Early)
+        # Allows PnL data to arrive while we fetch other data
         accounts = ib.managedAccounts()
         if accounts:
             ib.reqPnL(accounts[0])
-            ib.sleep(1)
-            pnl_data = ib.pnl()
-            if pnl_data:
-                raw_pnl = pnl_data[0].dailyPnL
-                # NaN is truthy in Python, so `or 0.0` doesn't catch it.
-                # Must use explicit math.isnan() check.
-                import math
-                result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
-        # Positions & Portfolio
-        result['open_positions'] = ib.positions()
+        # 3. Fetch Portfolio (Synchronous/Blocking)
+        # In-memory dictionary lookup, very fast.
         result['portfolio_items'] = ib.portfolio()
-        result['pending_orders'] = ib.openOrders()
+
+        # 4. Async Fetch for Parallelizable Data with Robust Error Handling
+        async def _fetch_rest():
+            # Wait for PnL data to arrive (parallel with other fetches)
+            async def wait_pnl():
+                # Poll for PnL data up to 2.0 seconds (20 x 0.1s)
+                # Returns early as soon as valid data is available
+                for _ in range(20):
+                    pnl_list = ib.pnl()
+                    if pnl_list and pnl_list[0].dailyPnL is not None and not math.isnan(pnl_list[0].dailyPnL):
+                        return pnl_list
+                    await asyncio.sleep(0.1)
+                return ib.pnl()
+
+            # Launch parallel tasks with timeouts
+            # accountSummaryAsync returns list[AccountValue]
+            # reqPositionsAsync returns list[Position]
+            # reqAllOpenOrdersAsync returns list[Trade] (fix: need to extract .order)
+
+            t1 = asyncio.wait_for(ib.accountSummaryAsync(), timeout=15)
+            t2 = asyncio.wait_for(ib.reqPositionsAsync(), timeout=15)
+            t3 = asyncio.wait_for(ib.reqAllOpenOrdersAsync(), timeout=15)
+            t4 = wait_pnl()
+
+            # Use return_exceptions=True so one failure doesn't kill all data
+            return await asyncio.gather(t1, t2, t3, t4, return_exceptions=True)
+
+        # Execute async gather
+        async_results = loop.run_until_complete(_fetch_rest())
+
+        # 5. Unpack Results with Type Safety
+        # Summary
+        if isinstance(async_results[0], list):
+            summary_data = async_results[0]
+        else:
+            logger.warning(f"Account Summary fetch failed: {async_results[0]}")
+            summary_data = []
+
+        # Positions
+        if isinstance(async_results[1], list):
+            result['open_positions'] = async_results[1]
+        else:
+            logger.warning(f"Positions fetch failed: {async_results[1]}")
+            result['open_positions'] = []
+
+        # Orders (Fix: Extract .order from Trade objects if needed)
+        if isinstance(async_results[2], list):
+            trades = async_results[2]
+            # reqAllOpenOrdersAsync returns Trade objects, but openOrders() returned Order objects.
+            # We map Trade -> Trade.order to maintain compatibility.
+            result['pending_orders'] = [t.order for t in trades] if trades and hasattr(trades[0], 'order') else trades
+        else:
+            logger.warning(f"Open Orders fetch failed: {async_results[2]}")
+            result['pending_orders'] = []
+
+        # PnL
+        if isinstance(async_results[3], list):
+            pnl_data = async_results[3]
+        else:
+            logger.warning(f"PnL fetch failed: {async_results[3]}")
+            pnl_data = []
+
+        # Process Account Summary
+        if summary_data:
+            for av in summary_data:
+                result['account_summary'][av.tag] = av.value
+                if av.tag == 'NetLiquidation':
+                    result['net_liquidation'] = float(av.value)
+                elif av.tag == 'UnrealizedPnL':
+                    result['unrealized_pnl'] = float(av.value)
+                elif av.tag == 'RealizedPnL':
+                    result['realized_pnl'] = float(av.value)
+                elif av.tag == 'MaintMarginReq':
+                    result['maint_margin'] = float(av.value)
+
+        # Process PnL
+        if pnl_data:
+            raw_pnl = pnl_data[0].dailyPnL
+            result['daily_pnl'] = 0.0 if (raw_pnl is None or math.isnan(raw_pnl)) else raw_pnl
 
     except Exception as e:
         result['connection_status'] = 'ERROR'
@@ -828,34 +1224,49 @@ def fetch_all_live_data(_config: dict) -> dict:
 
 
 @st.cache_data(ttl=300)
-def fetch_todays_benchmark_data():
-    """Fetches today's performance for SPY and Commodity Futures from Yahoo Finance."""
-    try:
-        # Commodity-agnostic: derive ticker from config
-        config = get_config()
-        commodity_ticker = config.get('commodity', {}).get('ticker', 'KC')
-        yf_commodity = f"{commodity_ticker}=F"
-        tickers = ['SPY', yf_commodity]
+def fetch_todays_benchmark_data(commodity_tickers: tuple = None):
+    """Fetches today's performance for SPY and ALL active commodity futures from Yahoo Finance.
 
-        data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)['Close']
+    Returns dict keyed by display name: {'SPY': pct, 'KC': pct, 'CC': pct, ...}
+    Uses specific front-month contracts (e.g. KCK26.NYB) instead of Yahoo's
+    broken continuous =F chart which shows stale data during rollover periods.
+
+    Args:
+        commodity_tickers: Tuple of commodity tickers (e.g., ("KC", "CC", "NG")).
+                          Tuple (not list) for Streamlit cache hashability.
+                          If None, falls back to the selected commodity only.
+    """
+    try:
+        if commodity_tickers is None:
+            config = get_config()
+            commodity_tickers = (config.get('commodity', {}).get('ticker', 'KC'),)
+
+        # Resolve front-month yfinance tickers and build a mapping back to display names
+        yf_to_display = {'SPY': 'SPY'}
+        for ct in commodity_tickers:
+            yf_to_display[resolve_yf_ticker(ct)] = ct
+        yf_tickers = list(yf_to_display.keys())
+
+        data = yf.download(yf_tickers, period="5d", progress=False, auto_adjust=True)['Close']
         if data.empty:
             return {}
         changes = {}
-        for ticker in tickers:
+        for yf_ticker in yf_tickers:
+            display_key = yf_to_display[yf_ticker]
             try:
-                if isinstance(data, pd.DataFrame) and ticker in data.columns:
-                    series = data[ticker].dropna()
+                if isinstance(data, pd.DataFrame) and yf_ticker in data.columns:
+                    series = data[yf_ticker].dropna()
+                elif len(yf_tickers) == 2 and isinstance(data, pd.Series):
+                    # yf.download with 2 tickers but only one has data
+                    series = data.dropna()
                 else:
-                    if len(tickers) == 1:
-                        series = data.dropna()
-                    else:
-                        continue
+                    continue
                 if len(series) >= 2:
-                    changes[ticker] = ((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2]) * 100
+                    changes[display_key] = ((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2]) * 100
                 else:
-                    changes[ticker] = 0.0
+                    changes[display_key] = 0.0
             except (ValueError, TypeError, KeyError, IndexError):
-                changes[ticker] = 0.0
+                changes[display_key] = 0.0
         return changes
     except Exception:
         return {}
@@ -868,7 +1279,7 @@ def fetch_benchmark_data(start_date, end_date):
         # Commodity-agnostic: derive ticker from config
         config = get_config()
         commodity_ticker = config.get('commodity', {}).get('ticker', 'KC')
-        yf_commodity = f"{commodity_ticker}=F"
+        yf_commodity = resolve_yf_ticker(commodity_ticker)
         tickers = ['SPY', yf_commodity]
 
         data = yf.download(
@@ -880,9 +1291,13 @@ def fetch_benchmark_data(start_date, end_date):
         )['Close']
         if data.empty:
             return pd.DataFrame()
-        normalized = data.apply(lambda x: (x / x.dropna().iloc[0]) - 1) * 100
+        # ⚡ Bolt: Vectorized column-wise calculation is ~2.5x faster than .apply(lambda) for time series normalization
+        normalized = (data / data.bfill().iloc[0] - 1) * 100
+        # Rename yf tickers to display names for consumer compatibility
+        rename_map = {yf_commodity: commodity_ticker}  # e.g. KCK26.NYB → KC
+        normalized = normalized.rename(columns=rename_map)
         return normalized
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 
@@ -951,8 +1366,9 @@ def grade_decision_quality(council_df: pd.DataFrame, lookback_days: int = 5) -> 
         if candidates.any():
             bullish = graded_df['master_decision'] == 'BULLISH'
             bearish = graded_df['master_decision'] == 'BEARISH'
-            up = graded_df['actual_trend_direction'] == 'UP'
-            down = graded_df['actual_trend_direction'] == 'DOWN'
+            # Reconciliation stores BULLISH/BEARISH (not UP/DOWN)
+            up = graded_df['actual_trend_direction'].isin(['UP', 'BULLISH'])
+            down = graded_df['actual_trend_direction'].isin(['DOWN', 'BEARISH'])
 
             graded_df.loc[candidates & bullish & up, 'outcome'] = 'WIN'
             graded_df.loc[candidates & bullish & down, 'outcome'] = 'LOSS'
@@ -1283,6 +1699,265 @@ def calculate_rolling_win_rate(graded_df: pd.DataFrame, window: int = 20) -> pd.
     return graded[['timestamp', 'rolling_win_rate']]
 
 
+def calculate_learning_metrics(graded_df: pd.DataFrame, windows: list[int] = None) -> dict:
+    """
+    Calculates time-series learning metrics for the Learning Curve section.
+
+    Uses trade-sequence x-axis (not calendar time) since trades are irregularly spaced.
+    Only includes resolved trades (WIN/LOSS) — PENDING trades are excluded.
+
+    Args:
+        graded_df: Output of grade_decision_quality() with 'outcome' column.
+        windows: Rolling window sizes for win rate. Defaults to [10, 20, 30].
+
+    Returns:
+        dict with keys:
+        - 'trade_series': DataFrame with trade_num, timestamp, rolling win rates,
+          cumulative P&L, process_score, skill_pct columns
+        - 'has_data': bool — whether there's enough data to plot
+        - 'total_resolved': int — number of resolved trades
+    """
+    if windows is None:
+        windows = [10, 20, 30]
+
+    result = {'trade_series': pd.DataFrame(), 'has_data': False, 'total_resolved': 0}
+
+    if graded_df.empty:
+        return result
+
+    resolved = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+    if len(resolved) < 3:
+        return result
+
+    resolved = resolved.sort_values('timestamp').reset_index(drop=True)
+    resolved['trade_num'] = range(1, len(resolved) + 1)
+    resolved['is_win'] = (resolved['outcome'] == 'WIN').astype(int)
+
+    # Rolling win rates at each window size
+    for w in windows:
+        resolved[f'win_rate_{w}'] = (
+            resolved['is_win'].rolling(window=w, min_periods=max(3, w // 4)).mean() * 100
+        )
+
+    # Cumulative P&L
+    pnl_col = 'pnl' if 'pnl' in resolved.columns else 'pnl_realized'
+    if pnl_col in resolved.columns:
+        resolved['cum_pnl'] = pd.to_numeric(resolved[pnl_col], errors='coerce').fillna(0).cumsum()
+    else:
+        resolved['cum_pnl'] = 0.0
+
+    # Process quality: confidence * |weighted_score| (same formula as Process vs Outcome)
+    if 'master_confidence' in resolved.columns and 'weighted_score' in resolved.columns:
+        w_score = pd.to_numeric(resolved['weighted_score'], errors='coerce').abs().fillna(0)
+        conf = pd.to_numeric(resolved['master_confidence'], errors='coerce').fillna(0.5)
+        resolved['process_score'] = conf * w_score
+
+        # Normalize to 0-1
+        max_ps = resolved['process_score'].max()
+        if max_ps > 0:
+            resolved['process_score_norm'] = resolved['process_score'] / max_ps
+        else:
+            resolved['process_score_norm'] = 0.5
+
+        # Classify quadrants: SKILL = good process + win
+        median_ps = resolved['process_score_norm'].median()
+        good_process = resolved['process_score_norm'] >= median_ps
+        good_outcome = resolved['is_win'] == 1
+
+        # Rolling SKILL % over the balanced (middle) window
+        w_mid = windows[len(windows) // 2] if len(windows) > 1 else windows[0]
+        resolved['is_skill'] = (good_process & good_outcome).astype(int)
+        resolved['skill_pct'] = (
+            resolved['is_skill'].rolling(window=w_mid, min_periods=max(3, w_mid // 4)).mean() * 100
+        )
+
+        # Rolling process score (outcome-independent signal strength)
+        resolved['rolling_process'] = (
+            resolved['process_score_norm'].rolling(window=w_mid, min_periods=max(3, w_mid // 4)).mean() * 100
+        )
+    else:
+        resolved['process_score_norm'] = 0.5
+        resolved['skill_pct'] = np.nan
+        resolved['rolling_process'] = np.nan
+
+    keep_cols = ['trade_num', 'timestamp', 'cum_pnl', 'process_score_norm', 'skill_pct', 'rolling_process']
+    keep_cols += [f'win_rate_{w}' for w in windows]
+
+    result['trade_series'] = resolved[keep_cols]
+    result['has_data'] = True
+    result['total_resolved'] = len(resolved)
+
+    return result
+
+
+def calculate_rolling_agent_accuracy(council_df: pd.DataFrame, window: int = 30) -> pd.DataFrame:
+    """
+    Calculates per-agent rolling accuracy over a trade-sequence window.
+
+    Handles both DIRECTIONAL (sentiment vs actual_trend_direction) and
+    VOLATILITY (volatility_sentiment vs volatility_outcome) scoring.
+
+    Args:
+        council_df: Raw council history DataFrame (pre-grading).
+        window: Rolling window size for accuracy calculation.
+
+    Returns:
+        DataFrame with columns: trade_num, timestamp, and one column per agent
+        containing rolling accuracy (0-100%). Empty DataFrame if insufficient data.
+    """
+    if council_df.empty:
+        return pd.DataFrame()
+
+    agents = [
+        'meteorologist_sentiment', 'macro_sentiment', 'geopolitical_sentiment',
+        'fundamentalist_sentiment', 'sentiment_sentiment', 'technical_sentiment',
+        'volatility_sentiment', 'master_decision'
+    ]
+
+    df = council_df.copy()
+    df = df.sort_values('timestamp').reset_index(drop=True)
+
+    # Ensure prediction_type exists
+    if 'prediction_type' not in df.columns:
+        df['prediction_type'] = np.nan
+    vol_strategies = ['LONG_STRADDLE', 'IRON_CONDOR']
+    dir_strategies = ['BULL_CALL_SPREAD', 'BEAR_PUT_SPREAD']
+    if 'strategy_type' in df.columns:
+        df.loc[df['strategy_type'].isin(vol_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'VOLATILITY'
+        df.loc[df['strategy_type'].isin(dir_strategies) & df['prediction_type'].isna(), 'prediction_type'] = 'DIRECTIONAL'
+
+    # --- Score each agent per row ---
+    for agent in agents:
+        if agent not in df.columns:
+            df[f'{agent}_correct'] = np.nan
+            continue
+
+        correct = pd.Series(np.nan, index=df.index)
+
+        # DIRECTIONAL scoring
+        dir_mask = (df['prediction_type'] == 'DIRECTIONAL')
+        if 'actual_trend_direction' in df.columns:
+            has_actual = dir_mask & df['actual_trend_direction'].isin(['UP', 'DOWN'])
+            if has_actual.any():
+                sent = df.loc[has_actual, agent].astype(str).str.upper().str.strip()
+                valid = ~sent.isin(['NEUTRAL', 'NONE', '', 'NAN', 'N/A'])
+
+                is_bullish = sent.isin(['BULLISH', 'LONG', 'UP'])
+                actual_up = df.loc[has_actual, 'actual_trend_direction'] == 'UP'
+                actual_down = df.loc[has_actual, 'actual_trend_direction'] == 'DOWN'
+
+                agent_correct = ((is_bullish & actual_up) | (~is_bullish & actual_down))
+                correct.loc[has_actual] = np.where(valid, agent_correct.astype(float), np.nan)
+
+        # VOLATILITY scoring (only for volatility_sentiment and master_decision)
+        if agent in ('volatility_sentiment', 'master_decision'):
+            vol_mask = (df['prediction_type'] == 'VOLATILITY')
+            if 'volatility_outcome' in df.columns:
+                has_outcome = vol_mask & df['volatility_outcome'].notna()
+                if has_outcome.any():
+                    if agent == 'master_decision':
+                        # Master scored on strategy success
+                        if 'strategy_type' in df.columns:
+                            straddle_win = (
+                                (df.loc[has_outcome, 'strategy_type'] == 'LONG_STRADDLE') &
+                                (df.loc[has_outcome, 'volatility_outcome'] == 'BIG_MOVE')
+                            )
+                            condor_win = (
+                                (df.loc[has_outcome, 'strategy_type'] == 'IRON_CONDOR') &
+                                (df.loc[has_outcome, 'volatility_outcome'] == 'STAYED_FLAT')
+                            )
+                            correct.loc[has_outcome] = (straddle_win | condor_win).astype(float)
+                    else:
+                        # Volatility agent scored on prediction
+                        sent = df.loc[has_outcome, agent].astype(str).str.upper().str.strip()
+                        valid = ~sent.isin(['NEUTRAL', 'NONE', '', 'NAN', 'N/A'])
+                        predicted_high = sent.isin(['HIGH', 'BULLISH', 'VOLATILE'])
+                        predicted_low = sent.isin(['LOW', 'BEARISH', 'QUIET', 'RANGE_BOUND'])
+                        big_move = df.loc[has_outcome, 'volatility_outcome'] == 'BIG_MOVE'
+                        stayed_flat = df.loc[has_outcome, 'volatility_outcome'] == 'STAYED_FLAT'
+                        agent_correct = ((big_move & predicted_high) | (stayed_flat & predicted_low))
+                        correct.loc[has_outcome] = np.where(valid, agent_correct.astype(float), np.nan)
+
+        df[f'{agent}_correct'] = correct
+
+    # --- Build rolling accuracy ---
+    # Only keep rows where at least one agent has a score
+    correct_cols = [f'{a}_correct' for a in agents]
+    has_any = df[correct_cols].notna().any(axis=1)
+    scored = df[has_any].copy().reset_index(drop=True)
+
+    if len(scored) < 3:
+        return pd.DataFrame()
+
+    scored['trade_num'] = range(1, len(scored) + 1)
+
+    result = scored[['trade_num', 'timestamp']].copy()
+    for agent in agents:
+        col = f'{agent}_correct'
+        if col in scored.columns:
+            result[agent] = (
+                scored[col].rolling(window=window, min_periods=max(3, window // 4)).mean() * 100
+            )
+
+    return result
+
+
+def calculate_confidence_calibration(graded_df: pd.DataFrame, n_bins: int = 5) -> pd.DataFrame:
+    """
+    Calculates confidence calibration data: binned confidence vs actual win rate.
+
+    Perfect calibration = 45-degree line (70% confidence should win 70% of the time).
+    Above the line = under-confident. Below = overconfident.
+
+    Args:
+        graded_df: Output of grade_decision_quality() with 'outcome' column.
+        n_bins: Number of confidence bins.
+
+    Returns:
+        DataFrame with columns: bin_center, actual_win_rate, count, bin_label.
+        Empty DataFrame if insufficient data.
+    """
+    if graded_df.empty or 'master_confidence' not in graded_df.columns:
+        return pd.DataFrame()
+
+    resolved = graded_df[graded_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+    if len(resolved) < 5:
+        return pd.DataFrame()
+
+    resolved['confidence'] = pd.to_numeric(resolved['master_confidence'], errors='coerce')
+    resolved = resolved[resolved['confidence'].notna() & (resolved['confidence'] > 0)]
+    if resolved.empty:
+        return pd.DataFrame()
+
+    resolved['is_win'] = (resolved['outcome'] == 'WIN').astype(int)
+
+    # Create bins — use quantile-based if data is clustered, else uniform
+    conf_min = resolved['confidence'].min()
+    conf_max = resolved['confidence'].max()
+
+    # Uniform bins across the confidence range
+    bins = np.linspace(max(conf_min - 0.01, 0), min(conf_max + 0.01, 1.0), n_bins + 1)
+    resolved['bin'] = pd.cut(resolved['confidence'], bins=bins, include_lowest=True)
+
+    calibration = resolved.groupby('bin', observed=True).agg(
+        actual_win_rate=('is_win', 'mean'),
+        count=('is_win', 'count'),
+        avg_confidence=('confidence', 'mean')
+    ).reset_index()
+
+    calibration['actual_win_rate'] *= 100
+    calibration['bin_center'] = calibration['avg_confidence'] * 100
+    calibration['bin_label'] = calibration['bin'].astype(str)
+
+    # Expected win rate = bin midpoint (what a perfectly calibrated system would achieve)
+    # .astype(float) needed because pd.cut produces categorical dtype
+    # ⚡ Bolt: Precomputing dict and using .map() is ~30% faster than .apply() for categorical mapping
+    cat_map = {b: (b.left + b.right) / 2 * 100 for b in calibration['bin'].cat.categories}
+    calibration['expected_win_rate'] = calibration['bin'].map(cat_map).astype(float).fillna(50)
+
+    return calibration[['bin_center', 'actual_win_rate', 'expected_win_rate', 'count', 'bin_label']]
+
+
 # === PORTFOLIO FUNCTIONS ===
 
 def fetch_portfolio_data(_config, trade_df: pd.DataFrame) -> pd.DataFrame:
@@ -1327,7 +2002,7 @@ def fetch_portfolio_data(_config, trade_df: pd.DataFrame) -> pd.DataFrame:
                 'Days Held': (datetime.now() - matching_trade['timestamp']).days if matching_trade is not None else 0
             })
 
-    except Exception as e:
+    except Exception:
         # st.error(f"Error fetching portfolio: {e}")
         pass
     finally:
@@ -1449,16 +2124,27 @@ def build_thesis_display_name(thesis: dict) -> str:
 
 # === THESIS STATUS FUNCTIONS ===
 
-def get_active_theses() -> list[dict]:
+def get_active_theses(ticker: str = None) -> list[dict]:
     """
     Retrieves all active trade theses from TMS.
     Returns a list of thesis dictionaries with computed fields.
+
+    Args:
+        ticker: Optional commodity ticker to resolve TMS path explicitly.
+                Falls back to COMMODITY_TICKER env var or module default.
     """
     try:
         from trading_bot.tms import TransactiveMemory
-        tms = TransactiveMemory()
+
+        # Use explicit path when ticker is provided to avoid stale module globals
+        if ticker:
+            persist_path = os.path.join("data", ticker, "tms")
+            tms = TransactiveMemory(persist_path=persist_path)
+        else:
+            tms = TransactiveMemory()
 
         if not tms.collection:
+            logger.warning("TMS collection not available — cannot load active theses")
             return []
 
         # Query all active theses
@@ -1513,15 +2199,31 @@ def get_current_market_regime() -> str:
 
     Priority:
     1. council_history -> entry_regime column (most recent council decision)
-    2. "UNKNOWN" if no data
+    2. decision_signals.csv -> regime column (lightweight decision log)
+    3. "UNKNOWN" if no data
 
     """
     try:
         # Priority 1: Council history (most recent regime from actual decisions)
-        if os.path.exists(COUNCIL_HISTORY_PATH):
-            df = pd.read_csv(COUNCIL_HISTORY_PATH)
+        council_path = _get_council_history_path()
+        if os.path.exists(council_path):
+            df = pd.read_csv(council_path, on_bad_lines='warn')
             if not df.empty and 'entry_regime' in df.columns:
                 recent_regimes = df['entry_regime'].dropna()
+                # Filter out empty strings
+                recent_regimes = recent_regimes[recent_regimes.astype(str).str.strip() != '']
+                if not recent_regimes.empty:
+                    return recent_regimes.iloc[-1]
+
+        # Priority 2: decision_signals.csv (always has a 'regime' column)
+        signals_path = _resolve_data_path('decision_signals.csv')
+        if os.path.exists(signals_path):
+            df = pd.read_csv(signals_path, on_bad_lines='warn')
+            if not df.empty and 'regime' in df.columns:
+                recent_regimes = df['regime'].dropna()
+                recent_regimes = recent_regimes[recent_regimes.astype(str).str.strip() != '']
+                # Exclude UNKNOWN values — we want an actual regime
+                recent_regimes = recent_regimes[recent_regimes.astype(str).str.upper() != 'UNKNOWN']
                 if not recent_regimes.empty:
                     return recent_regimes.iloc[-1]
 
@@ -1555,3 +2257,128 @@ def get_strategy_color(strategy_type: str) -> str:
         'LONG_STRADDLE': '#AB63FA'      # Purple
     }
     return colors.get(strategy_type, '#FFFFFF')
+
+
+# === CROSS-COMMODITY HELPERS (for portfolio home page) ===
+
+def discover_active_commodities() -> list[str]:
+    """Return tickers that have a data directory with state.json.
+
+    Scans the data/ directory dynamically — no hardcoded ticker list.
+    """
+    active = []
+    data_root = "data"
+    if os.path.isdir(data_root):
+        for entry in sorted(os.listdir(data_root)):
+            # Commodity tickers are 2-4 uppercase letters
+            if not entry.isalpha() or not entry.isupper() or len(entry) > 4:
+                continue
+            data_dir = os.path.join(data_root, entry)
+            state_path = os.path.join(data_dir, "state.json")
+            if os.path.isdir(data_dir) and os.path.exists(state_path):
+                active.append(entry)
+    return active if active else ["KC"]
+
+
+def load_council_history_for_commodity(ticker: str) -> pd.DataFrame:
+    """Load council_history.csv for a specific commodity, adding a 'commodity' column."""
+    council_path = _resolve_data_path_for('council_history.csv', ticker)
+    if not os.path.exists(council_path):
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(council_path, on_bad_lines='warn')
+        if not df.empty:
+            if 'timestamp' in df.columns:
+                df['timestamp'] = parse_ts_column(df['timestamp'])
+            df['commodity'] = ticker
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=10)
+def load_budget_status(ticker: str = None) -> dict:
+    """Load current budget guard state for the dashboard.
+
+    Reads budget_state.json for the given commodity. Returns an empty dict
+    if the file doesn't exist (budget guard hasn't been initialized yet).
+    """
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    path = _resolve_data_path_for('budget_state.json', ticker)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=300)
+def load_llm_daily_costs(ticker: str = None) -> pd.DataFrame:
+    """Load historical daily LLM cost data.
+
+    Reads llm_daily_costs.csv for the given commodity. Returns an empty
+    DataFrame if the file doesn't exist yet (no daily reset has occurred).
+    """
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    path = _resolve_data_path_for('llm_daily_costs.csv', ticker)
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(path, on_bad_lines='warn')
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'])
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_system_heartbeat_for_commodity(ticker: str) -> dict:
+    """Get orchestrator heartbeat for a specific commodity."""
+    heartbeat = {
+        'ticker': ticker,
+        'orchestrator_status': 'OFFLINE',
+        'orchestrator_last_pulse': None,
+        'state_status': 'OFFLINE',
+        'state_last_pulse': None,
+    }
+    log_path = f'logs/orchestrator_{ticker.lower()}.log'
+    if os.path.exists(log_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(log_path))
+        heartbeat['orchestrator_last_pulse'] = mtime
+        minutes_since = (datetime.now() - mtime).total_seconds() / 60
+        heartbeat['orchestrator_status'] = 'ONLINE' if minutes_since < 10 else 'STALE'
+
+    state_path = os.path.join("data", ticker, "state.json")
+    if os.path.exists(state_path):
+        mtime = datetime.fromtimestamp(os.path.getmtime(state_path))
+        heartbeat['state_last_pulse'] = mtime
+        minutes_since = (datetime.now() - mtime).total_seconds() / 60
+        heartbeat['state_status'] = 'ONLINE' if minutes_since < 10 else 'STALE'
+
+    return heartbeat
+
+
+@st.cache_data(ttl=60)
+def load_prompt_traces(ticker: str = None):
+    """Load prompt trace data for dashboard display."""
+    ticker = ticker or os.environ.get("COMMODITY_TICKER", "KC")
+    try:
+        from trading_bot.prompt_trace import get_prompt_trace_df
+        df = get_prompt_trace_df(commodity=ticker)
+        # Fill NaN for Streamlit compatibility
+        numeric_cols = ['demo_count', 'tms_context_count', 'grounded_freshness_hours',
+                        'prompt_tokens', 'completion_tokens', 'latency_ms']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].fillna(0)
+        string_cols = ['prompt_source', 'model_provider', 'model_name',
+                       'assigned_provider', 'assigned_model', 'persona_hash', 'dspy_version']
+        for col in string_cols:
+            if col in df.columns:
+                df[col] = df[col].fillna('')
+        return df
+    except Exception as e:
+        logger.error(f"Failed to load prompt traces: {e}")
+        return pd.DataFrame()

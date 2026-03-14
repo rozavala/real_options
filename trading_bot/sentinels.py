@@ -16,6 +16,7 @@ import pytz
 import aiohttp
 import json
 import re
+from urllib.parse import quote_plus
 from functools import wraps
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager
@@ -97,6 +98,18 @@ def with_retry(max_attempts: int = 3, backoff: float = 2.0):
         return wrapper
     return decorator
 
+def _record_sentinel_cost(config, model, input_tokens, output_tokens, source):
+    """Record LLM cost from direct sentinel calls to the budget guard."""
+    try:
+        from trading_bot.budget_guard import calculate_api_cost, get_budget_guard
+        budget = get_budget_guard()
+        if budget and (input_tokens or output_tokens):
+            cost = calculate_api_cost(model, input_tokens, output_tokens)
+            budget.record_cost(cost, source=source)
+    except Exception:
+        pass  # Cost tracking must never break sentinel operation
+
+
 class SentinelTrigger:
     """Represents an event triggered by a sentinel."""
     def __init__(self, source: str, reason: str, payload: Dict[str, Any] = None, severity: int = 5):
@@ -111,7 +124,7 @@ class SentinelTrigger:
 
 class Sentinel:
     """Base class for all sentinels."""
-    CACHE_DIR = "data/sentinel_caches"
+    CACHE_DIR = os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "sentinel_caches")
 
     def __init__(self, config: dict):
         self.config = config
@@ -119,6 +132,11 @@ class Sentinel:
         self.last_triggered = 0 # Timestamp of last trigger
         self.last_payload_hash = None
         self._session: Optional[aiohttp.ClientSession] = None
+
+        # Derive cache dir from config data_dir for multi-commodity isolation
+        data_dir = config.get('data_dir')
+        if data_dir:
+            self.CACHE_DIR = os.path.join(data_dir, "sentinel_caches")
 
         # Persistent seen cache
         self._cache_file = Path(self.CACHE_DIR) / f"{self.__class__.__name__}_seen.json"
@@ -315,9 +333,9 @@ class PriceSentinel(Sentinel):
         super().__init__(config)
         self.ib = ib_instance
         self.sentinel_config = config.get('sentinels', {}).get('price', {})
-        self.pct_change_threshold = self.sentinel_config.get('pct_change_threshold', 1.5)
+        self.pct_change_threshold = self.sentinel_config.get('pct_change_threshold', 2.5)
         self.symbol = config.get('symbol', 'KC')
-        self.exchange = config.get('exchange', 'NYBOT')
+        self.exchange = config['exchange']
 
     async def check(self, cached_contract=None) -> Optional[SentinelTrigger]:
         # Guard: Check connection before doing anything
@@ -331,24 +349,24 @@ class PriceSentinel(Sentinel):
         if (now - self.last_triggered) < 3600:
             return None
 
-        # Market Hours Check: 09:00 - 17:00 NY, Mon-Fri
-        # Logic: Calculate local NY times then convert to UTC for comparison
-        utc = timezone.utc
-        ny_tz = pytz.timezone('America/New_York')
-        now_utc = datetime.now(utc)
-        now_ny = now_utc.astimezone(ny_tz)
-
-        if now_ny.weekday() >= 5: # Sat(5) or Sun(6)
-            return None
-
-        market_start_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
-        market_end_ny = now_ny.replace(hour=17, minute=0, second=0, microsecond=0)
-
-        market_start_utc = market_start_ny.astimezone(utc)
-        market_end_utc = market_end_ny.astimezone(utc)
-
-        if not (market_start_utc <= now_utc <= market_end_utc):
-            return None
+        # Market State Check: skip when SLEEPING (replaces hardcoded 09:00-17:00)
+        try:
+            from trading_bot.utils import get_market_state
+            market_state = get_market_state(self.config)
+            if market_state == 'SLEEPING':
+                return None
+        except Exception:
+            # Fallback: hardcoded hours if state resolver fails
+            utc = timezone.utc
+            ny_tz = pytz.timezone('America/New_York')
+            now_utc = datetime.now(utc)
+            now_ny = now_utc.astimezone(ny_tz)
+            if now_ny.weekday() >= 5:
+                return None
+            market_start_ny = now_ny.replace(hour=9, minute=0, second=0, microsecond=0)
+            market_end_ny = now_ny.replace(hour=17, minute=0, second=0, microsecond=0)
+            if not (market_start_ny.astimezone(utc) <= now_utc <= market_end_ny.astimezone(utc)):
+                return None
 
         try:
             contract = cached_contract
@@ -446,10 +464,14 @@ class WeatherSentinel(Sentinel):
     Monitors specific coffee-growing regions for frost or drought risks.
     Frequency: Every 4 Hours (24/7).
     """
-    ALERT_STATE_FILE = "data/weather_sentinel_alerts.json"
+    ALERT_STATE_FILE = os.path.join("data", os.environ.get("COMMODITY_TICKER", "KC"), "weather_sentinel_alerts.json")
 
     def __init__(self, config: dict):
         super().__init__(config)
+        # Derive alert state file from config data_dir for multi-commodity isolation
+        data_dir = config.get('data_dir')
+        if data_dir:
+            self.ALERT_STATE_FILE = os.path.join(data_dir, "weather_sentinel_alerts.json")
         self.sentinel_config = config.get('sentinels', {}).get('weather', {})
         self.api_url = self.sentinel_config.get('api_url', "https://api.open-meteo.com/v1/forecast")
         self.params = self.sentinel_config.get('params', "daily=temperature_2m_min,precipitation_sum&timezone=auto&forecast_days=10")
@@ -521,10 +543,15 @@ class WeatherSentinel(Sentinel):
     async def _fetch_weather(self, region: GrowingRegion) -> List[Dict]:
         """Fetch weather data for a region."""
         try:
-            url = f"{self.api_url}?latitude={region.latitude}&longitude={region.longitude}&{self.params}"
+            from urllib.parse import parse_qsl
+
+            # Use params dict to safely encode URL parameters and prevent injection
+            query_params = dict(parse_qsl(self.params))
+            query_params['latitude'] = str(region.latitude)
+            query_params['longitude'] = str(region.longitude)
 
             session = await self._get_session()
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(self.api_url, params=query_params, timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status != 200:
                     logger.warning(f"Weather API returned {response.status} for {region.name}")
                     return []
@@ -607,7 +634,13 @@ class WeatherSentinel(Sentinel):
                         "severity": "CRITICAL"
                      }
 
-            if current_month in region.flowering_months:
+            # Determine if this is an energy commodity (no agricultural calendar)
+            is_energy = not (region.flowering_months or region.harvest_months
+                            or region.bean_filling_months)
+
+            if is_energy:
+                stage = "INFRASTRUCTURE"
+            elif current_month in region.flowering_months:
                 stage = "FLOWERING"
             elif current_month in region.harvest_months:
                 stage = "HARVEST"
@@ -625,7 +658,7 @@ class WeatherSentinel(Sentinel):
                     "threshold": region.drought_threshold_mm,
                     "stage": stage,
                     "direction": self._determine_drought_direction(stage),
-                    "severity": "CRITICAL" if stage == "FLOWERING" else "HIGH"
+                    "severity": "HIGH" if is_energy else ("CRITICAL" if stage == "FLOWERING" else "HIGH")
                 }
 
             # Flood Detection (NEW)
@@ -637,7 +670,7 @@ class WeatherSentinel(Sentinel):
                     "threshold": region.flood_threshold_mm,
                     "stage": stage,
                     "direction": self._determine_flood_direction(stage),
-                    "severity": "CRITICAL" if stage == "HARVEST" else "MODERATE"
+                    "severity": "HIGH" if is_energy else ("CRITICAL" if stage == "HARVEST" else "MODERATE")
                 }
 
             # Goldilocks Detection (>150% of historical = relief from prior drought)
@@ -660,11 +693,14 @@ class WeatherSentinel(Sentinel):
 
     def _determine_drought_direction(self, stage: str) -> str:
         """
-        Determine if drought is BULLISH or BEARISH based on agronomic stage.
+        Determine if drought is BULLISH or BEARISH based on stage.
 
-        Flight Director: "Correct implementation" ✓
+        Agricultural: stage-dependent impact on crop yields.
+        Energy (INFRASTRUCTURE): drought is NEUTRAL — no direct supply impact.
         """
-        if stage == "FLOWERING":
+        if stage == "INFRASTRUCTURE":
+            return "NEUTRAL"  # Drought doesn't directly affect gas/energy production
+        elif stage == "FLOWERING":
             return "BULLISH"  # Drought during flowering = yield loss
         elif stage == "BEAN_FILLING":
             return "BULLISH"  # Drought during bean-filling = smaller beans
@@ -675,9 +711,15 @@ class WeatherSentinel(Sentinel):
 
     def _determine_flood_direction(self, stage: str) -> str:
         """
-        Determine if heavy rain is BULLISH or BEARISH based on agronomic stage.
+        Determine if heavy rain/flooding is BULLISH or BEARISH based on stage.
+
+        Agricultural: stage-dependent impact on crop quality.
+        Energy (INFRASTRUCTURE): flooding disrupts pipelines, terminals, production
+        facilities — BULLISH for commodity price.
         """
-        if stage == "HARVEST":
+        if stage == "INFRASTRUCTURE":
+            return "BULLISH"  # Flooding disrupts pipelines, LNG terminals, wellheads
+        elif stage == "HARVEST":
             return "BULLISH"  # Rain during harvest = delays, quality loss
         elif stage == "FLOWERING":
             return "BEARISH"  # Excessive rain during flowering = too much water
@@ -693,39 +735,43 @@ class WeatherSentinel(Sentinel):
         _sentinel_diag.info(f"WeatherSentinel: checking {len(self.profile.primary_regions)} regions")
         all_alerts = []
 
-        for region in self.profile.primary_regions:
-            try:
-                alert = await self.async_check_region_weather(region)
+        # OPTIMIZATION: Fetch weather data for all regions concurrently.
+        # This reduces total latency from sum(regions) to max(regions).
+        tasks = [self.async_check_region_weather(region) for region in self.profile.primary_regions]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                if alert:
-                    # Alert Cooldown Logic
-                    alert_key = self._normalize_alert_key(alert['type'], region.name)
-                    current_value = alert.get('weekly_precip_mm', 0)
+        for region, result in zip(self.profile.primary_regions, results):
+            if isinstance(result, Exception):
+                logger.error(f"Weather Sentinel failed for {region.name}: {result}")
+                _sentinel_diag.error(f"WeatherSentinel: exception for {region.name}: {result}")
+                continue
 
-                    # Calculate a numeric severity for internal logic
-                    severity_val = 0
-                    if alert['type'] == 'DROUGHT':
-                        severity_val = alert['threshold'] - current_value
-                    elif alert['type'] == 'FLOOD':
-                        severity_val = current_value - alert['threshold']
+            alert = result
+            if alert:
+                # Alert Cooldown Logic
+                alert_key = self._normalize_alert_key(alert['type'], region.name)
+                current_value = alert.get('weekly_precip_mm', 0)
 
-                    if self._should_alert(alert_key, severity_val):
-                        self._active_alerts[alert_key] = {
-                            "time": datetime.now(timezone.utc),
-                            "value": severity_val
-                        }
+                # Calculate a numeric severity for internal logic
+                severity_val = 0
+                if alert['type'] == 'DROUGHT':
+                    severity_val = alert['threshold'] - current_value
+                elif alert['type'] == 'FLOOD':
+                    severity_val = current_value - alert['threshold']
 
-                        msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
-                        logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
+                if self._should_alert(alert_key, severity_val):
+                    self._active_alerts[alert_key] = {
+                        "time": datetime.now(timezone.utc),
+                        "value": severity_val
+                    }
 
-                        # Map severity string to int (9 for CRITICAL to bypass debounce)
-                        sev_int = 9 if "CRITICAL" in alert.get('severity','') else (7 if "HIGH" in alert.get('severity','') else 4)
+                    msg = f"{alert['type']} in {alert['region']}: {alert.get('weekly_precip_mm',0):.1f}mm ({alert.get('direction')}, {alert.get('stage')} stage)"
+                    logger.warning(f"WEATHER SENTINEL DETECTED: {msg}")
 
-                        all_alerts.append(SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int))
+                    # Map severity string to int (9 for CRITICAL to bypass debounce)
+                    sev_int = 9 if "CRITICAL" in alert.get('severity','') else (7 if "HIGH" in alert.get('severity','') else 4)
 
-            except Exception as e:
-                logger.error(f"Weather Sentinel failed for {region.name}: {e}")
-                _sentinel_diag.error(f"WeatherSentinel: exception for {region.name}: {e}")
+                    all_alerts.append(SentinelTrigger("WeatherSentinel", msg, alert, severity=sev_int))
 
         self._save_alert_state()
 
@@ -811,19 +857,21 @@ class LogisticsSentinel(Sentinel):
         if config_urls:
             return config_urls
 
-        base = "https://news.google.com/rss/search?q="
-        commodity_name = self.profile.name.lower().replace(' ', '+')
+        from urllib.parse import urlencode
+        base = "https://news.google.com/rss/search"
+        commodity_name = self.profile.name.lower()
 
         urls = []
 
         # Monitor specific logistics hubs defined in profile
         for hub in self.profile.logistics_hubs:
-            hub_name = hub.name.replace(' ', '+')
-            urls.append(f"{base}{hub_name}+logistics+{commodity_name}")
+            hub_name = hub.name
+            q = f"{hub_name} logistics {commodity_name}"
+            urls.append(f"{base}?{urlencode({'q': q})}")
 
         # General supply chain search
-        urls.append(f"{base}{commodity_name}+supply+chain+bottlenecks")
-        urls.append(f"{base}Red+Sea+Suez+{commodity_name}+shipping+delays")
+        urls.append(f"{base}?{urlencode({'q': f'{commodity_name} supply chain bottlenecks'})}")
+        urls.append(f"{base}?{urlencode({'q': f'Red Sea Suez {commodity_name} shipping delays'})}")
 
         if not urls:
              # Fallback to legacy key
@@ -842,6 +890,13 @@ class LogisticsSentinel(Sentinel):
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            _record_sentinel_cost(
+                self.config, self.model,
+                response.usage_metadata.prompt_token_count or 0,
+                response.usage_metadata.candidates_token_count or 0,
+                source="sentinel/LogisticsSentinel",
+            )
         text = response.text.strip()
         if text.startswith("```json"): text = text[7:]
         elif text.startswith("```"): text = text[3:]
@@ -988,28 +1043,32 @@ class NewsSentinel(Sentinel):
         if config_urls:
             return config_urls
 
-        base = "https://news.google.com/rss/search?q="
-        commodity_name = self.profile.name.lower().replace(' ', '+')
+        from urllib.parse import urlencode
+        base = "https://news.google.com/rss/search"
+        commodity_name = self.profile.name.lower()
         keywords = self.profile.news_keywords or [commodity_name]
 
         urls = []
 
         # Core market feeds (site-restricted for quality)
         for source in ['reuters.com', 'bloomberg.com']:
-            primary_kw = keywords[0].replace(' ', '+')
-            urls.append(f"{base}{primary_kw}+markets+site:{source}")
+            primary_kw = keywords[0]
+            q = f"{primary_kw} markets site:{source}"
+            urls.append(f"{base}?{urlencode({'q': q})}")
 
         # Region-specific feeds (top 2 producing regions)
         sorted_regions = sorted(self.profile.primary_regions, key=lambda r: r.production_share, reverse=True)
         top_regions = sorted_regions[:2]
 
         for region in top_regions:
-            region_name = region.name.replace(' ', '+')
-            urls.append(f"{base}{region_name}+{commodity_name}")
+            region_name = region.name
+            q = f"{region_name} {commodity_name}"
+            urls.append(f"{base}?{urlencode({'q': q})}")
 
         # General sentiment feed
-        primary_kw = keywords[0].replace(' ', '+')
-        urls.append(f"{base}{primary_kw}+futures+market+sentiment")
+        primary_kw = keywords[0]
+        q = f"{primary_kw} futures market sentiment"
+        urls.append(f"{base}?{urlencode({'q': q})}")
 
         if not urls:
             # Absolute fallback to config
@@ -1029,6 +1088,13 @@ class NewsSentinel(Sentinel):
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            _record_sentinel_cost(
+                self.config, self.model,
+                response.usage_metadata.prompt_token_count or 0,
+                response.usage_metadata.candidates_token_count or 0,
+                source="sentinel/NewsSentinel",
+            )
         text = response.text.strip()
         if text.startswith("```json"): text = text[7:]
         elif text.startswith("```"): text = text[3:]
@@ -1154,7 +1220,16 @@ class XSentimentSentinel(Sentinel):
 
         self.sentiment_threshold = self.sentinel_config.get('sentiment_threshold', 6.5)
         self.min_engagement = self.sentinel_config.get('min_engagement', 5)
+        # Default 20; `or 20` guards against explicit None in config
+        self.max_search_limit = self.sentinel_config.get('max_search_limit', 20) or 20
         self.volume_spike_multiplier = self.sentinel_config.get('volume_spike_multiplier', 2.0)
+
+        # --- Gate broad fallback (default OFF to save costs) ---
+        self.use_broad_fallback = self.sentinel_config.get('use_broad_fallback', False)
+
+        # --- Configurable polling intervals ---
+        self.open_market_interval_min = self.sentinel_config.get('open_market_interval_min', 45)
+        self.closed_market_interval_hours = self.sentinel_config.get('closed_market_interval_hours', 6)
 
         api_key = config.get('xai', {}).get('api_key')
         if not api_key or api_key == "LOADED_FROM_ENV":
@@ -1186,11 +1261,27 @@ class XSentimentSentinel(Sentinel):
         self.degraded_until: Optional[datetime] = None
         self.sensor_status = "ONLINE"
 
+        # --- Spend cap circuit breaker (v4.0 — three-level) ---
+        self._spend_cap_until: Optional[datetime] = None
+        self._spend_cap_state_file = Path(self.CACHE_DIR) / "x_spend_cap.json"
+        self._load_spend_cap_state()
+
         self._request_interval = 1.5
         self._last_request_time = 0
 
-        self._volume_state_file = Path(self.CACHE_DIR) / "XSentimentSentinel_volume.json"
+        self._volume_state_file = Path(self.CACHE_DIR) / f"XSentimentSentinel_volume_{ticker}.json"
         self._load_volume_state()
+
+        # --- Track last seen tweet ID per query to avoid re-fetching ---
+        self._since_ids: dict = {}  # {md5_hash_of_profile_query: newest_tweet_id}
+        self._since_ids_file = Path(self.CACHE_DIR) / f"x_since_ids_{ticker}.json"
+        self._load_since_ids()
+
+        # --- Per-cycle Grok token tracking ---
+        self._cycle_grok_prompt_tokens = 0
+        self._cycle_grok_completion_tokens = 0
+
+        self._last_open_market_check = None
 
         logger.info(f"XSentimentSentinel initialized with model: {self.model}")
 
@@ -1217,21 +1308,140 @@ class XSentimentSentinel(Sentinel):
         except Exception as e:
             logger.warning(f"Failed to save X volume state: {e}")
 
+    def _load_spend_cap_state(self):
+        """Load persisted spend cap lockout (survives restarts)."""
+        try:
+            if self._spend_cap_state_file.exists():
+                with open(self._spend_cap_state_file, 'r') as f:
+                    data = json.load(f)
+                    reset_iso = data.get('reset_date')
+                    if reset_iso:
+                        reset_dt = datetime.fromisoformat(reset_iso)
+                        if reset_dt.tzinfo is None:
+                            reset_dt = reset_dt.replace(tzinfo=timezone.utc)
+                        if datetime.now(timezone.utc) < reset_dt:
+                            self._spend_cap_until = reset_dt
+                            self.sensor_status = "SPEND_CAP"
+                            logger.warning(
+                                f"XSentimentSentinel: Spend cap active until "
+                                f"{reset_dt.isoformat()}"
+                            )
+                        else:
+                            # Cap expired, clean up
+                            self._spend_cap_state_file.unlink(missing_ok=True)
+                            logger.info(
+                                "XSentimentSentinel: Spend cap expired, resuming"
+                            )
+        except Exception as e:
+            logger.warning(f"Failed to load spend cap state: {e}")
+        # --- Housekeeping: clean up orphaned pre-ticker volume file (one-time) ---
+        try:
+            orphan = Path(self.CACHE_DIR) / "XSentimentSentinel_volume.json"
+            if orphan.exists():
+                orphan.unlink()
+                logger.info(
+                    "XSentimentSentinel: Deleted orphaned volume file "
+                    "(replaced by per-ticker version)"
+                )
+        except Exception:
+            pass  # Non-critical cleanup
+
+    def _activate_spend_cap(self, reset_dt: datetime):
+        """Activate spend cap lockout and persist to disk."""
+        try:
+            if reset_dt.tzinfo is None:
+                reset_dt = reset_dt.replace(tzinfo=timezone.utc)
+            self._spend_cap_until = reset_dt
+            self.sensor_status = "SPEND_CAP"
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            with open(self._spend_cap_state_file, 'w') as f:
+                json.dump({'reset_date': reset_dt.isoformat()}, f)
+            logger.error(
+                f"X SPEND CAP REACHED — all X API calls suspended until "
+                f"{reset_dt.isoformat()}"
+            )
+            StateManager.save_state(
+                {"x_sentiment": self.get_sensor_status()}, namespace="sensors"
+            )
+        except Exception as e:
+            logger.error(f"Failed to persist spend cap state: {e}")
+            # Fail-safe: set a conservative 30-day lockout even if persistence fails
+            self._spend_cap_until = datetime.now(timezone.utc) + timedelta(days=30)
+            self.sensor_status = "SPEND_CAP"
+
+    def _load_since_ids(self):
+        """Load per-query since_id state from disk."""
+        try:
+            if self._since_ids_file.exists():
+                with open(self._since_ids_file, 'r') as f:
+                    self._since_ids = json.load(f)
+                logger.info(
+                    f"XSentimentSentinel: Loaded {len(self._since_ids)} since_ids"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to load since_ids: {e}")
+            self._since_ids = {}
+
+    def _save_since_ids(self):
+        """Persist since_id state to disk with size cap."""
+        try:
+            # Housekeeping: cap at 50 entries to prevent unbounded growth
+            if len(self._since_ids) > 50:
+                keys = list(self._since_ids.keys())
+                self._since_ids = {k: self._since_ids[k] for k in keys[-50:]}
+            os.makedirs(self.CACHE_DIR, exist_ok=True)
+            with open(self._since_ids_file, 'w') as f:
+                json.dump(self._since_ids, f)
+        except Exception as e:
+            logger.warning(f"Failed to save since_ids: {e}")
+
     def get_sensor_status(self) -> dict:
         return {
             "sentiment_sensor_status": self.sensor_status,
             "consecutive_failures": self.consecutive_failures,
-            "degraded_until": self.degraded_until.isoformat() if self.degraded_until else None
+            "degraded_until": self.degraded_until.isoformat() if self.degraded_until else None,
+            "spend_cap_until": (
+                self._spend_cap_until.isoformat()
+                if self._spend_cap_until else None
+            ),
         }
 
     def _build_search_query(self, base_query: str) -> str:
+        """Build curated search query with from: handles and exclusions.
+
+        If the combined query exceeds 480 chars (X API v2 limit is 512,
+        _fetch_x_posts appends ~20 chars for -is:retweet lang:en),
+        gracefully degrade by dropping from: handles rather than
+        truncating mid-string which produces malformed queries.
+        """
+        MAX_QUERY_LEN = 480  # Safety margin under 512
         query_parts = [base_query]
         if self.from_handles:
-            handle_filter = " OR ".join([f"from:{h.lstrip('@')}" for h in self.from_handles])
+            handle_filter = " OR ".join(
+                [f"from:{h.lstrip('@')}" for h in self.from_handles]
+            )
             query_parts.append(f"({handle_filter})")
         for keyword in self.exclude_keywords:
             query_parts.append(f"-{keyword}")
-        return " ".join(query_parts)
+        full_query = " ".join(query_parts)
+        # Graceful degradation: if too long, drop handles (largest component)
+        if len(full_query) > MAX_QUERY_LEN:
+            logger.warning(
+                f"Curated query too long ({len(full_query)} chars) — "
+                f"dropping from: handles to stay under {MAX_QUERY_LEN}"
+            )
+            query_parts_no_handles = [base_query]
+            for keyword in self.exclude_keywords:
+                query_parts_no_handles.append(f"-{keyword}")
+            full_query = " ".join(query_parts_no_handles)
+            # If STILL too long (base_query itself is huge), hard truncate
+            if len(full_query) > MAX_QUERY_LEN:
+                logger.error(
+                    f"Base query alone too long ({len(full_query)} chars) — "
+                    f"truncating to {MAX_QUERY_LEN}"
+                )
+                full_query = full_query[:MAX_QUERY_LEN]
+        return full_query
 
     def _build_broad_search_query(self, base_query: str) -> str:
         query_parts = [base_query]
@@ -1243,8 +1453,16 @@ class XSentimentSentinel(Sentinel):
             full_query = base_query
         return full_query
 
-    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str, min_likes: int = None) -> list:
+    async def _fetch_x_posts(self, query: str, limit: int, sort_order: str,
+                             min_likes: int = None,
+                             since_id_key: str = None) -> list:
         from datetime import timedelta
+        # --- Level 3 backstop: prevent X API calls during spend cap ---
+        if self._spend_cap_until and datetime.now(timezone.utc) < self._spend_cap_until:
+            _sentinel_diag.debug(
+                "XSentimentSentinel._fetch_x_posts: spend cap active — skipping"
+            )
+            return []
         _sentinel_diag.info(f"XSentimentSentinel._fetch_x_posts: calling X API (query='{query[:60]}', limit={limit})")
         headers = {
             "Authorization": f"Bearer {self.x_bearer_token}",
@@ -1252,15 +1470,26 @@ class XSentimentSentinel(Sentinel):
         }
         query_with_filters = f"{query} -is:retweet lang:en"
         since_datetime = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # --- since_id: skip tweets we've already seen ---
+        sid_key = hashlib.md5(
+            (since_id_key or query).encode()
+        ).hexdigest()[:16]
+        since_id = self._since_ids.get(sid_key)
+        # Enforce max limit (default 20, stored in __init__)
         params = {
             "query": query_with_filters,
             "start_time": since_datetime,
-            "max_results": max(10, min(limit, 100)),
+            "max_results": max(10, min(limit, self.max_search_limit)),
             "tweet.fields": "text,created_at,public_metrics,author_id",
             "expansions": "author_id",
             "user.fields": "username",
             "sort_order": sort_order
         }
+        # Only add since_id if we have one (skip on first run per query).
+        # Twitter API forbids since_id + start_time together.
+        if since_id:
+            params["since_id"] = since_id
+            params.pop("start_time", None)
         try:
             session = await self._get_session()
             async with session.get(
@@ -1278,7 +1507,47 @@ class XSentimentSentinel(Sentinel):
                     error_text = await response.text()
                     logger.error(f"X API error {response.status}: {error_text}")
                     _sentinel_diag.error(f"  X API error {response.status}: {error_text[:200]}")
+                    # --- Detect SpendCapReached and activate circuit breaker ---
+                    if response.status == 403 and "SpendCapReached" in error_text:
+                        try:
+                            error_data = json.loads(error_text)
+                            reset_str = (
+                                error_data.get("reset_date")
+                                or error_data.get("reset")
+                            )
+                            if reset_str:
+                                if "T" in reset_str:
+                                    reset_dt = datetime.fromisoformat(
+                                        reset_str.replace("Z", "+00:00")
+                                    )
+                                else:
+                                    reset_dt = datetime.strptime(
+                                        reset_str, "%Y-%m-%d"
+                                    ).replace(tzinfo=timezone.utc)
+                                self._activate_spend_cap(reset_dt)
+                            else:
+                                logger.error(
+                                    "SpendCapReached but no reset_date in response"
+                                )
+                                self._activate_spend_cap(
+                                    datetime.now(timezone.utc) + timedelta(days=30)
+                                )
+                        except Exception as e:
+                            logger.error(
+                                f"SpendCap parse failed: {e} — 30-day fallback"
+                            )
+                            self._activate_spend_cap(
+                                datetime.now(timezone.utc) + timedelta(days=30)
+                            )
                     return []
+                # Track X API usage (separate from LLM spend)
+                try:
+                    from trading_bot.budget_guard import get_budget_guard
+                    budget = get_budget_guard()
+                    if budget:
+                        budget.record_x_api_call()
+                except Exception:
+                    pass
                 data = await response.json()
                 raw_count = len(data.get("data", []))
                 posts = []
@@ -1300,6 +1569,12 @@ class XSentimentSentinel(Sentinel):
                 _sentinel_diag.info(
                     f"  X API: {raw_count} raw tweets, {len(posts)} after engagement filter (>={likes_threshold} likes)"
                 )
+                # --- Track newest tweet ID for incremental fetching ---
+                if data.get("data"):
+                    newest_id = data["data"][0].get("id")
+                    if newest_id:
+                        self._since_ids[sid_key] = newest_id
+                        self._save_since_ids()
                 if posts:
                     logger.debug(f"Top post: {posts[0]['text'][:50]}...")
                 return posts
@@ -1358,6 +1633,20 @@ class XSentimentSentinel(Sentinel):
 
     @with_retry(max_attempts=3)
     async def _search_x_and_analyze(self, query: str) -> Optional[dict]:
+        # --- Level 2: Defense-in-depth — prevent Grok calls during spend cap ---
+        if self._spend_cap_until and datetime.now(timezone.utc) < self._spend_cap_until:
+            _sentinel_diag.debug(
+                "XSentimentSentinel._search_x_and_analyze: "
+                "spend cap active — returning neutral (no Grok call)"
+            )
+            return {
+                "sentiment_score": 5.0,
+                "confidence": 0.0,
+                "post_volume": 0,
+                "summary": "spend cap active — no data",
+                "key_themes": [],
+                "notable_posts": [],
+            }
         if not self.client:
             logger.error("XAI Client not initialized (missing API key)")
             return None
@@ -1418,6 +1707,19 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                     max_tokens=2000,
                     response_format={"type": "json_object"}
                 )
+                if hasattr(response, 'usage') and response.usage:
+                    _record_sentinel_cost(
+                        self.config, self.model,
+                        response.usage.prompt_tokens or 0,
+                        response.usage.completion_tokens or 0,
+                        source="sentinel/XSentimentSentinel(grok)",
+                    )
+                    self._cycle_grok_prompt_tokens += (
+                        response.usage.prompt_tokens or 0
+                    )
+                    self._cycle_grok_completion_tokens += (
+                        response.usage.completion_tokens or 0
+                    )
                 message = response.choices[0].message
                 if message.content and message.content.strip():
                     _sentinel_diag.info(f"  Grok returned content (iteration {iteration}), parsing JSON...")
@@ -1459,7 +1761,9 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
                         args = {"query": query}
                     _sentinel_diag.info(f"  Tool args: {args}")
                     if function_name == "x_search":
-                        tool_result = await self._execute_x_search(args)
+                        tool_result = await self._execute_x_search(
+                            args, original_query=query
+                        )
                         _sentinel_diag.info(
                             f"  x_search result: {tool_result.get('post_volume', 0)} posts, "
                             f"stage={tool_result.get('search_stage')}, quality={tool_result.get('data_quality')}"
@@ -1487,7 +1791,7 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
             _sentinel_diag.error(f"  X search EXCEPTION for query '{query}': {type(e).__name__}: {e}")
             return None
 
-    async def _execute_x_search(self, args: dict) -> dict:
+    async def _execute_x_search(self, args: dict, original_query: str = None) -> dict:
         if not self.x_bearer_token:
             return {"error": "X API not configured", "posts": [], "post_volume": 0, "data_quality": "unavailable"}
         commodity_name = self.config.get('commodity', {}).get('name', 'coffee')
@@ -1501,14 +1805,25 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         sanitized_query = re.sub(r'\(from:[^)]+\)', '', sanitized_query)
         sanitized_query = re.sub(r'from:\w+', '', sanitized_query)
         sanitized_query = ' '.join(sanitized_query.split()).strip()
-        search_stage = "strict"
+        # Fallback: if original_query wasn't threaded, use sanitized version
+        if not original_query:
+            original_query = sanitized_query
+        search_stage = "curated"
         strict_query = self._build_search_query(sanitized_query)
-        posts = await self._fetch_x_posts(strict_query, limit, sort_order)
-        if not posts:
+        posts = await self._fetch_x_posts(
+            strict_query, limit, sort_order,
+            since_id_key=original_query,
+        )
+        # Broad fallback: gated by config (default OFF)
+        if not posts and self.use_broad_fallback:
             search_stage = "broad"
             broad_query = self._build_broad_search_query(sanitized_query)
             broad_threshold = self.sentinel_config.get('broad_min_faves', 3)
-            posts = await self._fetch_x_posts(broad_query, limit, sort_order, min_likes=broad_threshold)
+            posts = await self._fetch_x_posts(
+                broad_query, limit, sort_order,
+                min_likes=broad_threshold,
+                since_id_key=original_query,
+            )
         data_quality = "high" if len(posts) >= 5 else ("low" if len(posts) < 3 else "medium")
         return {"posts": posts, "post_volume": len(posts), "query": query, "search_stage": search_stage, "data_quality": data_quality}
 
@@ -1522,17 +1837,44 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
             now = datetime.now(timezone.utc)
             if self._last_closed_market_check:
                 hours_since_last = (now - self._last_closed_market_check).total_seconds() / 3600
-                if hours_since_last < 4:
-                    _sentinel_diag.debug(f"XSentimentSentinel: skipped (market closed, {hours_since_last:.1f}h since last closed-market check < 4h)")
+                if hours_since_last < self.closed_market_interval_hours:
+                    _sentinel_diag.debug(
+                        f"XSentimentSentinel: skipped (market closed, "
+                        f"{hours_since_last:.1f}h since last closed-market check "
+                        f"< {self.closed_market_interval_hours}h)"
+                    )
                     return None
             self._last_closed_market_check = now
-            _sentinel_diag.info("XSentimentSentinel: running closed-market check (4h+ since last)")
+            _sentinel_diag.info("XSentimentSentinel: running closed-market check")
         else:
+            # --- Throttle open-market checks ---
+            now = datetime.now(timezone.utc)
+            if self._last_open_market_check:
+                minutes_since_last = (
+                    now - self._last_open_market_check
+                ).total_seconds() / 60
+                if minutes_since_last < self.open_market_interval_min:
+                    _sentinel_diag.debug(
+                        f"XSentimentSentinel: skipped "
+                        f"({minutes_since_last:.0f}min since last "
+                        f"< {self.open_market_interval_min}min)"
+                    )
+                    return None
+            self._last_open_market_check = now
             _sentinel_diag.info("XSentimentSentinel: running (market open)")
         if self.degraded_until and datetime.now(timezone.utc) < self.degraded_until:
             self.sensor_status = "OFFLINE"
             StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
             _sentinel_diag.warning(f"XSentimentSentinel: DEGRADED until {self.degraded_until.isoformat()}")
+            return None
+        # --- Level 1: Skip entire cycle including ALL Grok calls (v4.0) ---
+        if self._spend_cap_until and datetime.now(timezone.utc) < self._spend_cap_until:
+            _sentinel_diag.info(
+                f"XSentimentSentinel: spend cap active until "
+                f"{self._spend_cap_until.isoformat()} — skipping entire cycle "
+                f"(saves Grok + X API tokens)"
+            )
+            self.sensor_status = "SPEND_CAP"
             return None
         _sentinel_diag.info(f"XSentimentSentinel: querying {len(self.search_queries)} queries: {self.search_queries}")
         tasks = [self._sem_bound_search(query) for query in self.search_queries]
@@ -1571,6 +1913,17 @@ If the x_search tool returns no results, provide neutral sentiment with low conf
         self.consecutive_failures = 0
         self.sensor_status = "ONLINE"
         StateManager.save_state({"x_sentiment": self.get_sensor_status()}, namespace="sensors")
+        # --- Log cycle cost summary ---
+        _sentinel_diag.info(
+            f"XSentimentSentinel [{self.profile.ticker}]: cycle complete — "
+            f"{len(valid_results)}/{len(all_results)} queries valid, "
+            f"grok_tokens={self._cycle_grok_prompt_tokens}p/"
+            f"{self._cycle_grok_completion_tokens}c, "
+            f"broad_fallback={'ON' if self.use_broad_fallback else 'OFF'}, "
+            f"spend_cap={'ACTIVE' if self._spend_cap_until else 'clear'}"
+        )
+        self._cycle_grok_prompt_tokens = 0
+        self._cycle_grok_completion_tokens = 0
         total_weight = 0.0
         weighted_sentiment = 0.0
         for r in valid_results:
@@ -1648,6 +2001,7 @@ class PredictionMarketSentinel(Sentinel):
         self.min_liquidity = self.sentinel_config.get('min_liquidity_usd', 50000)
         self.min_volume = self.sentinel_config.get('min_volume_usd', 10000)
         self.hwm_decay_hours = self.sentinel_config.get('hwm_decay_hours', 24)
+        self._topic_failure_counts: Dict[str, int] = {}
         self.state_cache: Dict[str, Dict[str, Any]] = {}
         self._load_state_cache()
         self._cleanup_misaligned_cache()
@@ -1668,7 +2022,6 @@ class PredictionMarketSentinel(Sentinel):
             '20_to_30_pct': 7,
             '30_plus_pct': 9
         })
-        self._topic_failure_counts: Dict[str, int] = {}
         self._last_slug_check = datetime.now(timezone.utc)
         logger.info(f"PredictionMarketSentinel v2.0 initialized: {len(self.topics)} topics")
 
@@ -1720,7 +2073,8 @@ class PredictionMarketSentinel(Sentinel):
                     self.state_cache.pop(topic_key)
 
     def _merge_discovered_topics(self, static_topics: List[Dict]) -> List[Dict]:
-        discovered_file = "data/discovered_topics.json"
+        data_dir = self.config.get('data_dir', 'data')
+        discovered_file = os.path.join(data_dir, "discovered_topics.json")
 
         # Filter out disabled static topics BEFORE merging.
         # Disabled topics should not inflate the active count or occupy
@@ -1746,6 +2100,10 @@ class PredictionMarketSentinel(Sentinel):
         """Reload topics from config + discovered topics, pruning orphaned cache entries."""
         logger.info("Reloading prediction market topics...")
         static_topics = self.sentinel_config.get('topics_to_watch', [])
+
+        # Prune stale discovered topics before merging
+        self._prune_stale_discovered_topics()
+
         self.topics = self._merge_discovered_topics(static_topics)
 
         # Prune orphaned cache entries for topics no longer active
@@ -1757,9 +2115,43 @@ class PredictionMarketSentinel(Sentinel):
 
         if orphaned:
             self._save_state_cache()
-            logger.info(f"Pruned {len(orphaned)} orphaned cache entries")
+            # Also delete from StateManager (save_state merges, won't remove keys)
+            StateManager.delete_state_keys("prediction_market_state", orphaned)
+            logger.info(f"Pruned {len(orphaned)} orphaned cache entries from state")
 
         logger.info(f"Topics reloaded: {len(self.topics)}")
+
+    def _prune_stale_discovered_topics(self):
+        """Remove discovered topics older than max_topic_age_hours."""
+        max_age_hours = self.sentinel_config.get('max_topic_age_hours', 240)  # 10 days default
+        data_dir = self.config.get('data_dir', 'data')
+        discovered_file = os.path.join(data_dir, "discovered_topics.json")
+        if not os.path.exists(discovered_file):
+            return
+        try:
+            with open(discovered_file, 'r') as f:
+                topics = json.load(f)
+            now = datetime.now(timezone.utc)
+            kept = []
+            pruned = []
+            for topic in topics:
+                discovered_at = topic.get('_discovery', {}).get('discovered_at')
+                if discovered_at:
+                    try:
+                        dt = datetime.fromisoformat(discovered_at)
+                        age_hours = (now - dt).total_seconds() / 3600
+                        if age_hours > max_age_hours:
+                            pruned.append(topic.get('display_name', topic.get('query', '?')))
+                            continue
+                    except (ValueError, TypeError):
+                        pass
+                kept.append(topic)
+            if pruned:
+                with open(discovered_file, 'w') as f:
+                    json.dump(kept, f, indent=2)
+                logger.info(f"Pruned {len(pruned)} stale discovered topics (>{max_age_hours}h): {pruned}")
+        except Exception as e:
+            logger.warning(f"Failed to prune stale discovered topics: {e}")
 
     def _load_state_cache(self):
         try:
@@ -1769,6 +2161,11 @@ class PredictionMarketSentinel(Sentinel):
                 for key, value in cached.items():
                     if isinstance(value, dict): validated[key] = value
                 self.state_cache = validated
+                # Restore persisted failure counts
+                for key, value in self.state_cache.items():
+                    fc = value.get('failure_count', 0)
+                    if fc > 0:
+                        self._topic_failure_counts[key] = fc
                 logger.info(f"Loaded state for {len(self.state_cache)} prediction market topics")
         except Exception as e:
             logger.warning(f"Failed to load prediction market state: {e}")
@@ -1826,17 +2223,22 @@ class PredictionMarketSentinel(Sentinel):
 
         return False
 
-    async def _fetch_by_slug(self, slug: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_by_slug(self, slug: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
         Fetch a specific Polymarket event by slug.
         Used for slug pinning — avoids re-searching the API.
 
         Returns candidate dict or None if slug is invalid/closed/low-liquidity.
         """
-        url = f"{self.api_url}?slug={slug}&closed=false&active=true&limit=1"
+        params = {
+            "slug": slug,
+            "closed": "false",
+            "active": "true",
+            "limit": "1"
+        }
         try:
             session = await self._get_session()
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(self.api_url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status != 200:
                     return None
                 data = await response.json()
@@ -1851,10 +2253,16 @@ class PredictionMarketSentinel(Sentinel):
                 if not markets:
                     return None
 
-                # Find best market by liquidity
+                # Find best market by liquidity, but prefer the pinned
+                # sub-market to prevent phantom deltas when liquidity
+                # rankings shift between sub-markets of the same event.
+                pinned_market_id = kwargs.get('pinned_market_id')
                 best_market = None
                 best_liq = -1
                 best_vol = 0
+                pinned_market = None
+                pinned_liq = 0
+                pinned_vol = 0
                 for m in markets:
                     if not isinstance(m, dict):
                         continue
@@ -1862,6 +2270,15 @@ class PredictionMarketSentinel(Sentinel):
                         m_liq = float(m.get('liquidity', 0) or 0)
                     except (ValueError, TypeError):
                         continue
+                    m_id = m.get('conditionId') or m.get('id', '')
+                    # Track the pinned sub-market if it still exists
+                    if pinned_market_id and str(m_id) == str(pinned_market_id):
+                        pinned_market = m
+                        pinned_liq = m_liq
+                        try:
+                            pinned_vol = float(m.get('volume', 0) or 0)
+                        except (ValueError, TypeError):
+                            pinned_vol = 0
                     if m_liq > best_liq:
                         best_liq = m_liq
                         best_market = m
@@ -1870,19 +2287,31 @@ class PredictionMarketSentinel(Sentinel):
                         except (ValueError, TypeError):
                             best_vol = 0
 
-                if best_market is None:
+                # Prefer pinned sub-market if it meets minimum thresholds
+                if pinned_market and pinned_liq >= self.min_liquidity and pinned_vol >= self.min_volume:
+                    selected = pinned_market
+                    selected_liq = pinned_liq
+                    selected_vol = pinned_vol
+                else:
+                    selected = best_market
+                    selected_liq = best_liq
+                    selected_vol = best_vol
+
+                if selected is None:
                     return None
-                if best_liq < self.min_liquidity:
+                if selected_liq < self.min_liquidity:
                     return None
-                if best_vol < self.min_volume:
+                if selected_vol < self.min_volume:
                     return None
 
+                selected_id = selected.get('conditionId') or selected.get('id', '')
                 return {
                     'slug': event.get('slug'),
                     'title': event.get('title', ''),
-                    'market': best_market,
-                    'liquidity': best_liq,
-                    'volume': best_vol
+                    'market': selected,
+                    'market_id': str(selected_id),
+                    'liquidity': selected_liq,
+                    'volume': selected_vol
                 }
         except (aiohttp.ClientError, OSError) as e:
             logger.debug(f"Slug pin fetch failed for '{slug}': {e}")
@@ -2012,7 +2441,9 @@ class PredictionMarketSentinel(Sentinel):
                 market_data = None
 
                 if pinned_slug:
-                    market_data = await self._fetch_by_slug(pinned_slug)
+                    # Pass pinned market_id so _fetch_by_slug prefers the same sub-market
+                    _cached_market_id = self.state_cache.get(query, {}).get('market_id')
+                    market_data = await self._fetch_by_slug(pinned_slug, pinned_market_id=_cached_market_id)
                     if market_data:
                         # Validate pinned result still passes global excludes
                         if not self._passes_global_exclude_filter(market_data.get('title', '')):
@@ -2027,15 +2458,29 @@ class PredictionMarketSentinel(Sentinel):
                 if not market_data:
                     self._topic_failure_counts[query] = self._topic_failure_counts.get(query, 0) + 1
                     fail_count = self._topic_failure_counts[query]
-                    _sentinel_diag.warning(f"  PredictionMarket: no data for '{display_name}' (failures={fail_count})")
-                    MAX_CONSECUTIVE_FAILURES = 50
-                    if fail_count >= MAX_CONSECUTIVE_FAILURES:
+                    max_failures = self.sentinel_config.get('max_consecutive_failures', 50)
+                    _sentinel_diag.warning(f"  PredictionMarket: no data for '{display_name}' (failures={fail_count}/{max_failures})")
+                    if fail_count >= max_failures:
                         topic['enabled'] = False
-                        continue
+                        logger.warning(
+                            f"PredictionMarket: topic '{display_name}' disabled after "
+                            f"{fail_count} consecutive failures (no active market found)"
+                        )
+                        try:
+                            send_pushover_notification(
+                                self.config.get('notifications', {}),
+                                f"Prediction Market Topic Disabled",
+                                f"'{display_name}' disabled after {fail_count} failures. "
+                                f"No active Polymarket market found.",
+                                priority=-1
+                            )
+                        except Exception:
+                            pass
                     continue
                 self._topic_failure_counts[query] = 0
                 current_slug = market_data['slug']
                 current_title = market_data['title']
+                current_market_id = market_data.get('market_id', '')
                 try:
                     outcomes = market_data['market'].get('outcomePrices', [])
                     if isinstance(outcomes, str):
@@ -2048,11 +2493,22 @@ class PredictionMarketSentinel(Sentinel):
                     cached = self.state_cache[query]
                     last_slug = cached.get('slug')
                     last_price = cached.get('price', current_price)
+                    last_market_id = cached.get('market_id', '')
                     severity_hwm = cached.get('severity_hwm', 0)
                     hwm_timestamp = cached.get('hwm_timestamp')
                     if last_slug and last_slug != current_slug:
                         send_pushover_notification(self.config.get('notifications', {}), f"Market Rollover: {display_name}", f"Now tracking: {current_title[:50]}...", priority=-1)
-                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
+                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'market_id': current_market_id, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
+                        continue
+                    # Sub-market rotation within the same event (e.g., liquidity shifted
+                    # between "Cut-Pause-Pause" and "Other"). Reset baseline to avoid
+                    # phantom price deltas from comparing different sub-markets.
+                    if last_market_id and current_market_id and last_market_id != current_market_id:
+                        _sentinel_diag.info(
+                            f"  PredictionMarket [{display_name}]: sub-market rotation "
+                            f"({last_market_id} -> {current_market_id}), resetting baseline"
+                        )
+                        self.state_cache[query] = {'slug': current_slug, 'title': current_title, 'market_id': current_market_id, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat(), 'severity_hwm': 0, 'hwm_timestamp': None}
                         continue
                     if self._should_decay_hwm(hwm_timestamp):
                         severity_hwm = 0
@@ -2075,10 +2531,14 @@ class PredictionMarketSentinel(Sentinel):
                             cached['severity_hwm'] = current_severity
                             cached['hwm_timestamp'] = datetime.now(timezone.utc).isoformat()
                 if query not in self.state_cache: self.state_cache[query] = {'severity_hwm': 0, 'hwm_timestamp': None}
-                self.state_cache[query].update({'slug': current_slug, 'title': current_title, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat()})
+                self.state_cache[query].update({'slug': current_slug, 'title': current_title, 'market_id': current_market_id, 'price': current_price, 'timestamp': datetime.now(timezone.utc).isoformat()})
             except Exception as topic_error:
                 logger.warning(f"Error processing prediction market topic '{query}': {topic_error}")
                 continue
+        # Persist failure counts alongside state cache
+        for query_key, fail_count in self._topic_failure_counts.items():
+            if query_key in self.state_cache:
+                self.state_cache[query_key]['failure_count'] = fail_count
         self._save_state_cache()
         if triggers:
             triggers.sort(key=lambda t: t.severity, reverse=True)
@@ -2101,26 +2561,66 @@ class MacroContagionSentinel(Sentinel):
         self.sentinel_config = config.get('sentinels', {}).get('MacroContagionSentinel', {})
         self.dxy_threshold_1d = 0.01  # 1% daily move
         self.dxy_threshold_2d = 0.02  # 2% two-day move
+        self.min_correlation_obs = self.sentinel_config.get('min_correlation_observations', 5)
         self.last_dxy_value = None
         self.last_dxy_timestamp = None
-        self.last_policy_check = None
         self.policy_check_interval = 86400  # Check policy news once per day
+        # Fed policy shock is commodity-agnostic — share state across all instances
+        # so only one commodity's sentinel calls the LLM per interval.
+        data_dir = config.get('data_dir', 'data')
+        self._shared_policy_file = Path(data_dir).parent / "macro_contagion_state.json"
+        self.last_policy_check = self._load_last_policy_check()
 
         api_key = config.get('gemini', {}).get('api_key')
         self.client = genai.Client(api_key=api_key)
-        self.model = self.sentinel_config.get('model', "gemini-3-flash-preview")
+        # Fed policy shock detection (severity=9) needs Pro-tier reasoning;
+        # runs once/day so negligible quota impact on the 250 RPD limit.
+        registry = config.get('model_registry', {}).get('gemini', {})
+        self.model = self.sentinel_config.get('model', registry.get('pro', 'gemini-3.1-pro-preview'))
 
         _sentinel_diag.info(f"MacroContagionSentinel initialized with model: {self.model} | "
                      f"DXY thresholds: 1d={self.dxy_threshold_1d:.0%}, 2d={self.dxy_threshold_2d:.0%} | "
                      f"Commodity: {self.profile.name}")
 
+    def _load_last_policy_check(self):
+        """Load last_policy_check from shared cross-commodity cache."""
+        if self._shared_policy_file.exists():
+            try:
+                with open(self._shared_policy_file, 'r') as f:
+                    data = json.load(f)
+                ts = data.get('last_policy_check')
+                if ts:
+                    loaded = datetime.fromisoformat(ts)
+                    _sentinel_diag.info(f"MacroContagionSentinel: restored last_policy_check={loaded}")
+                    return loaded
+            except Exception as e:
+                logger.warning(f"Failed to load macro contagion state: {e}")
+        return None
+
+    def _save_last_policy_check(self):
+        """Persist last_policy_check to shared cross-commodity cache."""
+        try:
+            self._shared_policy_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._shared_policy_file, 'w') as f:
+                json.dump({'last_policy_check': self.last_policy_check.isoformat()}, f)
+        except Exception as e:
+            logger.warning(f"Failed to save macro contagion state: {e}")
+
     async def _get_history(self, ticker_symbol, period="5d", interval="1h"):
         import yfinance as yf
+        import pandas as pd
         loop = asyncio.get_running_loop()
         def fetch():
             t = yf.Ticker(ticker_symbol)
-            return t.history(period=period, interval=interval)
-        return await loop.run_in_executor(None, fetch)
+            result = t.history(period=period, interval=interval)
+            if result is None:
+                return pd.DataFrame()
+            return result
+        try:
+            return await loop.run_in_executor(None, fetch)
+        except Exception as e:
+            logger.warning(f"yfinance fetch failed for {ticker_symbol}: {e}")
+            return pd.DataFrame()
 
     async def check_dxy_shock(self) -> Optional[Dict]:
         try:
@@ -2176,19 +2676,44 @@ class MacroContagionSentinel(Sentinel):
             tickers = {own_key: yf_ticker, **basket}
 
             returns = {}
-            for name, ticker in tickers.items():
-                hist = await self._get_history(ticker, period="5d", interval="1d")
+            names = list(tickers.keys())
+            # OPTIMIZATION: Fetch historical data for all tickers concurrently.
+            # This reduces total latency for the contagion check.
+            tasks = [self._get_history(ticker, period="10d", interval="1d") for ticker in tickers.values()]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for name, result in zip(names, results):
+                if isinstance(result, Exception):
+                    logger.debug(f"Insufficient data for {name} ({tickers[name]}), skipping from contagion check: {result}")
+                    continue
+                hist = result
                 if len(hist) < 2:
-                    return None
+                    logger.debug(f"Insufficient data for {name} ({tickers[name]}), skipping from contagion check")
+                    continue
                 returns[name] = hist['Close'].pct_change().dropna()
+
+            # Need at least the own commodity + 2 basket members for meaningful correlation
+            if own_key not in returns or len(returns) < 3:
+                return None
 
             import pandas as pd
             df = pd.DataFrame(returns)
+
+            # Guard: correlation from <N observations is statistically degenerate
+            # (2 points always give +/-1.0, 3-4 are extremely noisy)
+            n_obs = len(df.dropna())
+            if n_obs < self.min_correlation_obs:
+                _sentinel_diag.info(
+                    f"MacroContagionSentinel: contagion check skipped for {profile.name}: "
+                    f"only {n_obs} return observations (min {self.min_correlation_obs} required)"
+                )
+                return None
+
             corr = df.corr()
 
             # Dynamically compute correlations against the active commodity
-            precious_keys = [k for k in basket if k in ('gold', 'silver')]
-            grain_keys = [k for k in basket if k in ('wheat', 'soybeans', 'corn')]
+            precious_keys = [k for k in basket if k in ('gold', 'silver') and k in returns]
+            grain_keys = [k for k in basket if k in ('wheat', 'soybeans', 'corn') and k in returns]
 
             if precious_keys:
                 avg_precious_corr = sum(corr.loc[own_key, k] for k in precious_keys) / len(precious_keys)
@@ -2217,10 +2742,15 @@ class MacroContagionSentinel(Sentinel):
 
     async def check_fed_policy_shock(self) -> Optional[Dict]:
         now = datetime.now(timezone.utc)
+        # Reload from shared file — another commodity instance may have updated it
+        shared_ts = self._load_last_policy_check()
+        if shared_ts and (not self.last_policy_check or shared_ts > self.last_policy_check):
+            self.last_policy_check = shared_ts
         if self.last_policy_check and (now - self.last_policy_check).total_seconds() < self.policy_check_interval:
             return None
 
         self.last_policy_check = now
+        self._save_last_policy_check()
 
         try:
             prompt = """
@@ -2240,10 +2770,22 @@ class MacroContagionSentinel(Sentinel):
             If no significant shock, respond: {"shock_detected": false}
             """
 
+            await acquire_api_slot('gemini')
             response = await self.client.aio.models.generate_content(
                 model=self.model,
-                contents=prompt
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                    response_mime_type="application/json",
+                )
             )
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                _record_sentinel_cost(
+                    self.config, self.model,
+                    response.usage_metadata.prompt_token_count or 0,
+                    response.usage_metadata.candidates_token_count or 0,
+                    source="sentinel/MacroContagionSentinel",
+                )
 
             # Clean JSON
             text = response.text.strip()
@@ -2253,6 +2795,10 @@ class MacroContagionSentinel(Sentinel):
             text = text.strip()
 
             result = json.loads(text)
+
+            # Gemini sometimes returns a JSON array instead of an object
+            if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                result = result[0]
 
             if result.get('shock_detected'):
                 return {
@@ -2299,7 +2845,8 @@ class MacroContagionSentinel(Sentinel):
             _sentinel_diag.info(f"MacroContagionSentinel: Fed policy shock! {policy_shock['policy_type']}")
             return SentinelTrigger(
                 source="MacroContagionSentinel",
-                reason=f"Fed Policy Shock: {policy_shock['policy_type']} - {policy_shock['summary']}",
+                # Stable reason (no LLM summary) so dedup hash is deterministic
+                reason=f"Fed Policy Shock: {policy_shock['policy_type']}",
                 payload=policy_shock,
                 severity=9
             )
@@ -2317,7 +2864,8 @@ class FundamentalRegimeSentinel(Sentinel):
         ticker = config.get('commodity', {}).get('ticker', 'KC')
         self.profile = get_commodity_profile(ticker)
         self.check_interval = 604800  # 1 week
-        self.regime_file = Path("data/fundamental_regime.json")
+        data_dir = config.get('data_dir', 'data')
+        self.regime_file = Path(os.path.join(data_dir, "fundamental_regime.json"))
         self.current_regime = self._load_regime()
         self.last_check = 0
 
@@ -2342,21 +2890,44 @@ class FundamentalRegimeSentinel(Sentinel):
         # Placeholder logic
         return "BALANCED" # Assume balanced if no data
 
-    def check_news_sentiment(self) -> str:
+    async def _fetch_rss_count(self, url: str) -> tuple[int, bool]:
+        """Async fetch and parse of RSS feed to get entry count."""
         try:
-            commodity_q = self.profile.name.lower().replace(' ', '+')
-            surplus_url = f"https://news.google.com/rss/search?q={commodity_q}+market+surplus"
-            deficit_url = f"https://news.google.com/rss/search?q={commodity_q}+market+deficit"
+            session = await self._get_session()
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    logger.warning(f"Fundamental RSS fetch failed: {response.status} for {url}")
+                    return 0, True  # Treat as error (bozo=True)
+                content = await response.read()
 
-            surplus_feed = feedparser.parse(surplus_url)
-            deficit_feed = feedparser.parse(deficit_url)
+            loop = asyncio.get_running_loop()
+            feed = await loop.run_in_executor(None, feedparser.parse, content)
+            return len(feed.entries), feed.bozo
+        except Exception as e:
+            logger.error(f"Fundamental RSS error for {url}: {e}")
+            return 0, True
 
-            if surplus_feed.bozo or deficit_feed.bozo:
-                logger.warning("RSS feed error detected, preserving previous regime")
+    async def check_news_sentiment(self) -> str:
+        try:
+            from urllib.parse import urlencode
+            base = "https://news.google.com/rss/search"
+            commodity_name = self.profile.name.lower()
+
+            surplus_q = f"{commodity_name} market surplus"
+            deficit_q = f"{commodity_name} market deficit"
+
+            surplus_url = f"{base}?{urlencode({'q': surplus_q})}"
+            deficit_url = f"{base}?{urlencode({'q': deficit_q})}"
+
+            # Parallel fetch
+            (surplus_count, surplus_bozo), (deficit_count, deficit_bozo) = await asyncio.gather(
+                self._fetch_rss_count(surplus_url),
+                self._fetch_rss_count(deficit_url)
+            )
+
+            if surplus_bozo or deficit_bozo:
+                logger.warning("RSS feed error detected (async), preserving previous regime")
                 return self.current_regime.get('regime', 'UNKNOWN')
-
-            surplus_count = len(surplus_feed.entries)
-            deficit_count = len(deficit_feed.entries)
 
             if surplus_count > deficit_count * 2:
                 return "SURPLUS"
@@ -2376,10 +2947,8 @@ class FundamentalRegimeSentinel(Sentinel):
             return None
         self.last_check = now
 
-        loop = asyncio.get_running_loop()
-
-        # Run blocking news check in executor
-        news_regime = await loop.run_in_executor(None, self.check_news_sentiment)
+        # Async news check
+        news_regime = await self.check_news_sentiment()
         stocks_regime = self.check_ice_stocks_trend() # Placeholder is fast
 
         from collections import Counter

@@ -79,7 +79,7 @@ def verify_safe_to_test():
 
     print(f"✅ Using dev client_id={client_id}")
     print(f"   Dev range: {DEV_CLIENT_ID_START}-{DEV_CLIENT_ID_END}")
-    print(f"   Production ranges (100-279, 300-399, 998-999, 1000-9999) are protected")
+    print("   Production ranges (100-279, 300-399, 998-999, 1000-9999) are protected")
     return client_id
 
 

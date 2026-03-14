@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
-from orchestrator import TriggerDeduplicator, GLOBAL_DEDUPLICATOR
+from orchestrator import TriggerDeduplicator
 from trading_bot.sentinels import SentinelTrigger
 
 @pytest.fixture

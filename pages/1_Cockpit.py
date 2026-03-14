@@ -8,141 +8,49 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta, timezone
+import json
 import pytz
 import sys
 import os
 import asyncio
-import json
-import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import (
     get_config,
     get_system_heartbeat,
+    get_system_heartbeat_for_commodity,
     get_sentinel_status,
     get_ib_connection_health,
     fetch_all_live_data,
     fetch_todays_benchmark_data,
+    discover_active_commodities,
     load_council_history,
     grade_decision_quality,
     calculate_rolling_win_rate,
     get_active_theses,
     get_current_market_regime,
-    get_commodity_profile,
-    load_task_schedule_status
+    load_task_schedule_status,
+    load_deduplicator_metrics,
+    _resolve_data_path,
+    _relative_time,
+    build_position_pnl_map,
+    find_untracked_ibkr_positions,
 )
 from trading_bot.calendars import is_trading_day
-
-def load_deduplicator_metrics() -> dict:
-    """Load trigger deduplication metrics."""
-    try:
-        with open('data/deduplicator_state.json', 'r') as f:
-            data = json.load(f)
-            metrics = data.get('metrics', {})
-            total = metrics.get('total_triggers', 0)
-            processed = metrics.get('processed', 0)
-
-            return {
-                'total_triggers': total,
-                'processed': processed,
-                'filtered': total - processed,
-                'efficiency': processed / total if total > 0 else 1.0,
-            }
-    except Exception:
-        return {'total_triggers': 0, 'processed': 0, 'efficiency': 1.0}
+from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
+from trading_bot.utils import get_market_state
 
 
-def _parse_price_from_text(text: str, entry_price: float, min_price: float, max_price: float) -> float | None:
-    """Helper to extract price from trigger text."""
-    text_upper = text.upper()
-
-    # Look for price keywords
-    if any(kw in text_upper for kw in ['STOP', 'CLOSE', 'EXIT', 'PRICE <', 'PRICE >', 'BELOW', 'ABOVE', 'BREACH']):
-        match = re.search(r'\$?(\d+(?:\.\d{1,2})?)', text)
-        if match:
-            price = float(match.group(1))
-            if min_price <= price <= max_price:
-                return price
-
-    # Check for percentage-based stops
-    pct_match = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
-    if pct_match and entry_price and entry_price > 0:
-        pct = float(pct_match.group(1)) / 100
-        calculated_stop = entry_price * (1 - pct)
-        if min_price <= calculated_stop <= max_price:
-            return calculated_stop
-
-    return None
-
-
-def extract_stop_price_from_triggers(
-    triggers: any,
-    entry_price: float,
-    config: dict = None
-) -> float | None:
-    """
-    Extracts stop/invalidation price from various trigger formats.
-
-    Handles:
-    - Dict: {'stop_loss_price': 320.0}
-    - List: ['Close if price < 320', 'Monitor frost']
-    - String: 'Stop at 5% loss'
-
-    Uses config-driven price bounds to filter false positives.
-    """
-    if triggers is None:
-        return None
-
-    # Get commodity-specific bounds (defaults to KC)
-    profile = get_commodity_profile(config)
-    min_price, max_price = profile.get('stop_parse_range', [80, 800])
-
-    # === Dict format ===
-    if isinstance(triggers, dict):
-        for key in ['stop_loss_price', 'stop_price', 'invalidation_price', 'exit_price']:
-            if key in triggers:
-                price = float(triggers[key])
-                if min_price <= price <= max_price:
-                    return price
-        return None
-
-    # === List format ===
-    if isinstance(triggers, list):
-        for trigger in triggers:
-            if isinstance(trigger, str):
-                price = _parse_price_from_text(trigger, entry_price, min_price, max_price)
-                if price is not None:
-                    return price
-        return None
-
-    # === String format ===
-    if isinstance(triggers, str):
-        return _parse_price_from_text(triggers, entry_price, min_price, max_price)
-
-    return None
-
-
-def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = None):
-    """Renders thesis card with live P&L and distance to invalidation."""
+def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = None, pnl_map: dict = None):
+    """Renders thesis card with live P&L and invalidation triggers inline."""
     position_id = thesis.get('position_id', 'UNKNOWN')
     strategy = thesis.get('strategy_type', 'DIRECTIONAL')
     entry_price = thesis.get('entry_price', 0) or thesis.get('supporting_data', {}).get('entry_price', 0)
 
-    # Find matching position in portfolio
-    unrealized_pnl = None
-    for item in live_data.get('portfolio_items', []):
-        if hasattr(item, 'contract') and position_id in str(item.contract.localSymbol):
-            unrealized_pnl = getattr(item, 'unrealizedPNL', None)
-            break
+    # P&L lookup via pre-built map (bridges localSymbol → position_id via ledger)
+    unrealized_pnl = pnl_map.get(position_id) if pnl_map else None
 
-    # Extract stop price from triggers
     triggers = thesis.get('invalidation_triggers', [])
-    stop_price = extract_stop_price_from_triggers(triggers, entry_price, config)
-
-    # Calculate distance to stop
-    distance_pct = None
-    if stop_price and entry_price and entry_price != 0:
-        distance_pct = abs(entry_price - stop_price) / entry_price
 
     # Render
     with st.container():
@@ -154,7 +62,6 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 f"Guardian: {thesis.get('guardian_agent', 'Master')}"
             )
         with head_cols[1]:
-            # UX Improvement: Copy ID Button
             label = f"🆔 {position_id[:8]}"
             if hasattr(st, "popover"):
                 with st.popover(label, width="stretch"):
@@ -164,10 +71,9 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 with st.expander(label):
                     st.code(position_id, language=None)
 
-        cols = st.columns(4)
+        cols = st.columns(3)
 
         with cols[0]:
-            # Format entry timestamp for tooltip
             entry_ts = thesis.get('entry_timestamp', 'Unknown')
             if isinstance(entry_ts, datetime):
                 entry_ts_str = entry_ts.strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -187,49 +93,26 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                     f"${unrealized_pnl:+,.2f}",
                     delta=f"${unrealized_pnl:+,.2f}",
                     delta_color="normal",
+                    help="Current open profit/loss on active positions"
                 )
             else:
-                st.metric("Unrealized P&L", "N/A")
+                st.metric("Unrealized P&L", "N/A", help="Current open profit/loss on active positions")
 
         with cols[2]:
-            stop_help = "Calculated from invalidation triggers"
-            if isinstance(triggers, list) and triggers:
-                stop_help += ":\n\n" + "\n".join([f"• {t}" for t in triggers])
-            elif isinstance(triggers, str):
-                stop_help += f":\n\n• {triggers}"
-
             st.metric(
-                "Stop Price",
-                f"${stop_price:.2f}" if stop_price else "N/A",
-                help=stop_help
+                "Strategy",
+                strategy.replace('_', ' ').title(),
+                help="Trading strategy used for this position"
             )
 
-        with cols[3]:
-            dist_help = "Distance between current entry price and stop price"
-            if distance_pct is not None:
-                if distance_pct < 0.05:
-                    st.error(f"⚠️ {distance_pct:.1%} to stop", help=dist_help)
-                elif distance_pct < 0.10:
-                    st.warning(f"🔶 {distance_pct:.1%} to stop", help=dist_help)
-                else:
-                    st.success(f"✅ {distance_pct:.1%} to stop", help=dist_help)
-            else:
-                # Issue 6 Fix: Strategy-aware stop display
-                MULTI_LEG_STRATEGIES = {'IRON_CONDOR', 'LONG_STRADDLE', 'IRON_BUTTERFLY', 'STRANGLE'}
-                if strategy.upper() in MULTI_LEG_STRATEGIES:
-                    st.info("📑 Uses invalidation triggers")
-                else:
-                    st.error("No stop defined")
-
-        with st.expander("📜 Invalidation Triggers"):
-            if isinstance(triggers, list):
-                for t in triggers:
-                    st.write(f"• {t}")
-            else:
-                st.write(str(triggers) if triggers else "None defined")
+        # Show invalidation triggers inline
+        if isinstance(triggers, list) and triggers:
+            st.caption("Triggers: " + "  \u2022  ".join(str(t) for t in triggers))
+        elif isinstance(triggers, str) and triggers:
+            st.caption(f"Triggers: {triggers}")
 
 
-def render_portfolio_risk_summary(live_data: dict):
+def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
     """Portfolio risk using margin/P&L proxies (not live Greeks)."""
     st.subheader("📊 Portfolio Risk")
 
@@ -241,7 +124,7 @@ def render_portfolio_risk_summary(live_data: dict):
 
     with cols[0]:
         st.metric(
-            "Net Liquidation",
+            "💰 Net Liquidation",
             f"${net_liq:,.0f}",
             help="Total account value including cash and market value of positions"
         )
@@ -250,28 +133,67 @@ def render_portfolio_risk_summary(live_data: dict):
         if net_liq > 0:
             margin_util = (margin / net_liq) * 100
             st.metric(
-                "Margin Util",
+                "🛡️ Margin Util",
                 f"{margin_util:.1f}%",
                 help="Percentage of Net Liquidation currently used for maintenance margin"
             )
         else:
-            st.metric("Margin Util", "N/A")
+            st.metric("🛡️ Margin Util", "N/A", help="Percentage of Net Liquidation currently used for maintenance margin")
 
     with cols[2]:
         import math
+        pnl_help = "Total change in account equity since prior day close (as reported by IBKR)."
         if daily_pnl is None or (isinstance(daily_pnl, float) and math.isnan(daily_pnl)):
-            st.metric("Daily P&L", "$0", delta="No data", delta_color="off")
+            st.metric("💵 Daily P&L", "$0", delta="No data", delta_color="off", help=pnl_help)
         else:
             st.metric(
-                "Daily P&L",
+                "💵 Daily P&L",
                 f"${daily_pnl:+,.0f}",
                 delta=f"${daily_pnl:+,.0f}",
                 delta_color="normal",
+                help=pnl_help
             )
 
     with cols[3]:
-        pos_count = len([p for p in live_data.get('open_positions', []) if p.position != 0])
-        st.metric("Open Positions", pos_count)
+        # Filter for active positions (quantity != 0)
+        positions = [p for p in live_data.get('open_positions', []) if p.position != 0]
+        leg_count = len(positions)
+
+        # Count positions (spreads) from TMS theses
+        if active_theses:
+            pos_count = len(active_theses)
+            pos_label = "💼 Open Positions"
+            pos_help = (
+                f"{pos_count} spread positions (from TMS theses), "
+                f"{leg_count} individual legs visible in IB."
+            )
+        else:
+            pos_count = leg_count
+            pos_label = "💼 Open Legs"
+            pos_help = (
+                f"{leg_count} individual option legs in IB. "
+                "TMS theses unavailable — showing raw leg count."
+            )
+
+        if positions:
+            sorted_pos = sorted(
+                positions,
+                key=lambda p: getattr(p.contract, 'localSymbol', getattr(p.contract, 'symbol', 'Unknown'))
+            )
+
+            details = []
+            for p in sorted_pos[:10]:
+                contract = p.contract
+                symbol = getattr(contract, 'localSymbol', getattr(contract, 'symbol', 'Unknown'))
+                qty = p.position
+                details.append(f"\u2022 {symbol}: {qty:g}")
+
+            if len(positions) > 10:
+                details.append(f"...and {len(positions) - 10} more")
+
+            pos_help += "\n\n" + "\n".join(details)
+
+        st.metric(pos_label, pos_count, help=pos_help)
 
 
 def render_prediction_markets():
@@ -383,10 +305,13 @@ def render_prediction_markets():
                         from datetime import datetime
                         ts = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                         age_min = (datetime.now(ts.tzinfo) - ts).total_seconds() / 60
+
+                        help_text = f"Last update: {ts.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+
                         if age_min < 60:
-                            st.caption(f"Updated {age_min:.0f}m ago")
+                            st.caption(f"Updated {age_min:.0f}m ago", help=help_text)
                         else:
-                            st.caption(f"Updated {age_min/60:.1f}h ago")
+                            st.caption(f"Updated {age_min/60:.1f}h ago", help=help_text)
                     except (ValueError, TypeError, AttributeError):
                         pass
 
@@ -404,7 +329,8 @@ def render_prediction_markets():
             static_topics = pm_cfg.get('topics_to_watch', [])
             enabled_static = [t for t in static_topics if t.get('enabled', True)]
 
-            discovered_file = "data/discovered_topics.json"
+            from dashboard_utils import _resolve_data_path
+            discovered_file = _resolve_data_path("discovered_topics.json")
             all_topic_queries = set()
             for t in enabled_static:
                 q = t.get('query', '')
@@ -438,7 +364,12 @@ def render_prediction_markets():
     except Exception as e:
         st.error(f"Error loading prediction market data: {e}")
 
+
+
 st.set_page_config(layout="wide", page_title="Cockpit | Real Options")
+
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
 
 st.title("🦅 The Cockpit")
 st.caption("Situational Awareness - System health, capital safety, and emergency controls")
@@ -446,51 +377,104 @@ st.caption("Situational Awareness - System health, capital safety, and emergency
 if os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF":
     st.warning("TRADING OFF — No real orders are being placed. Analysis pipeline runs normally.")
 
-# --- Global Time Settings ---
-st.markdown("### 🕒 **All times displayed in UTC**")
-
-# --- Load Data ---
+# --- Load Data (needed for health banner) ---
 config = get_config()
 heartbeat = get_system_heartbeat()
+
+# === SYSTEM HEALTH BANNER (cross-commodity) ===
+try:
+    _health_issues = []
+    _all_tickers = discover_active_commodities()
+
+    # Cross-commodity engine health check
+    for _ck in _all_tickers:
+        _ck_hb = get_system_heartbeat_for_commodity(_ck)
+        if _ck_hb['orchestrator_status'] == 'OFFLINE':
+            _health_issues.append(f"{_ck} Offline")
+        elif _ck_hb['orchestrator_status'] == 'STALE':
+            _health_issues.append(f"{_ck} Stale")
+
+    # Selected commodity detailed checks
+    if heartbeat.get('state_status') == 'OFFLINE':
+        _health_issues.append("State Manager Offline")
+    _ib_health = get_ib_connection_health()
+    if _ib_health.get('sentinel_ib') != 'CONNECTED':
+        _health_issues.append("IB Disconnected")
+    _sentinels = get_sentinel_status()
+    _stale_count = sum(1 for s in _sentinels.values() if s.get('is_stale', False))
+    _error_count = sum(1 for s in _sentinels.values() if s.get('status') == 'ERROR')
+    if _error_count > 0:
+        _health_issues.append(f"{_error_count} Sentinel Error{'s' if _error_count > 1 else ''}")
+    elif _stale_count > 0:
+        _health_issues.append(f"{_stale_count} Stale Sentinel{'s' if _stale_count > 1 else ''}")
+
+    if not _health_issues:
+        st.success(f"All Systems Operational ({len(_all_tickers)} engine{'s' if len(_all_tickers) != 1 else ''})")
+    elif any(kw in ' '.join(_health_issues) for kw in ['Offline', 'Disconnected', 'Error']):
+        st.error(f"{len(_health_issues)} issue{'s' if len(_health_issues) > 1 else ''}: {', '.join(_health_issues)}")
+    else:
+        st.warning(f"{len(_health_issues)} issue{'s' if len(_health_issues) > 1 else ''}: {', '.join(_health_issues)}")
+except Exception:
+    pass  # Health banner is non-critical
+
+# --- Global Time Settings ---
+st.markdown("### 🕒 **All times displayed in UTC**")
 
 # --- Market Clock Widget ---
 utc_now = datetime.now(timezone.utc)
 ny_tz = pytz.timezone('America/New_York')
 ny_now = utc_now.astimezone(ny_tz)
 
-# Determine Market Status (check hours, weekday, AND holidays)
-market_open_ny = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
-market_close_ny = ny_now.replace(hour=14, minute=0, second=0, microsecond=0)
+# Load trading hours and exchange from the selected commodity profile
+try:
+    _clock_profile = get_profile_dataclass(ticker)
+    _open_time, _close_time = parse_trading_hours(_clock_profile.trading_hours_et)
+    _clock_exchange = _clock_profile.contract.exchange
+    _hours_label = _clock_profile.trading_hours_et
+except Exception:
+    from datetime import time as _dtime
+    _open_time, _close_time = _dtime(4, 15), _dtime(13, 30)
+    _clock_exchange = 'ICE'
+    _hours_label = "04:15-13:30"
+
+# Determine Market Status using three-tier state resolver
+# Build a minimal config dict for the state resolver
+_state_config = get_config()
+market_state = get_market_state(_state_config)
+
+market_open_ny = ny_now.replace(hour=_open_time.hour, minute=_open_time.minute, second=0, microsecond=0)
+market_close_ny = ny_now.replace(hour=_close_time.hour, minute=_close_time.minute, second=0, microsecond=0)
 is_weekday = ny_now.weekday() < 5
-is_within_hours = market_open_ny <= ny_now <= market_close_ny
-is_trading = is_trading_day(ny_now.date(), exchange='ICE')
+is_trading = is_trading_day(ny_now.date(), exchange=_clock_exchange)
 
-is_open = is_weekday and is_within_hours and is_trading
+if market_state == 'ACTIVE':
+    status_color = "🟢"
+    status_text = "ACTIVE"
+elif market_state == 'PASSIVE':
+    status_color = "🟡"
+    status_text = "PASSIVE (Surveillance)"
+else:
+    status_color = "🔴"
+    status_text = "SLEEPING"
 
-status_color = "🟢" if is_open else "🔴"
-status_text = "OPEN" if is_open else "CLOSED"
 countdown_text = None
 
-# Add specific reason for closure and compute countdown
-if not is_open:
+if market_state == 'SLEEPING':
     if not is_weekday:
-        status_text += " (Weekend)"
+        status_text += " — Weekend"
     elif not is_trading:
-        status_text += " (Holiday)"
-    elif not is_within_hours:
-        status_text += " (After Hours)"
-    # Calculate "opens in" countdown to next trading day open
-    next_open = ny_now.replace(hour=3, minute=30, second=0, microsecond=0)
+        status_text += " — Holiday"
+    # Calculate "opens in" countdown to next active window
+    next_open = ny_now.replace(hour=_open_time.hour, minute=_open_time.minute, second=0, microsecond=0)
     if ny_now >= next_open:
         next_open += timedelta(days=1)
-    # Advance to next trading day
-    while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange='ICE'):
+    while next_open.weekday() >= 5 or not is_trading_day(next_open.date(), exchange=_clock_exchange):
         next_open += timedelta(days=1)
     delta = next_open - ny_now
     total_mins = int(delta.total_seconds() // 60)
     h, m = divmod(total_mins, 60)
-    countdown_text = f"Opens in {h}h {m}m"
-else:
+    countdown_text = f"Active in {h}h {m}m"
+elif market_state == 'ACTIVE':
     delta = market_close_ny - ny_now
     if delta.total_seconds() > 0:
         total_mins = int(delta.total_seconds() // 60)
@@ -499,12 +483,12 @@ else:
 
 clock_cols = st.columns(3)
 with clock_cols[0]:
-    st.metric("UTC Time", utc_now.strftime("%H:%M:%S"))
+    st.metric("🕒 UTC Time", utc_now.strftime("%H:%M:%S"), help=utc_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[1]:
-    st.metric("New York Time (Market)", ny_now.strftime("%H:%M:%S"))
+    st.metric("🗽 New York Time", ny_now.strftime("%H:%M:%S"), help=ny_now.strftime("%A, %Y-%m-%d"))
 with clock_cols[2]:
-    st.metric("Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
-              help="Trading Hours (ET): 03:30 - 14:00 (Mon-Fri)")
+    st.metric("🚦 Market Status", f"{status_color} {status_text}", delta=countdown_text, delta_color="off",
+              help=f"Trading Hours (ET): {_hours_label} (Mon-Fri)")
 
 st.markdown("---")
 
@@ -518,14 +502,14 @@ with hb_cols[0]:
     orch_color = "🟢" if orch_status == "ONLINE" else "🔴" if orch_status == "OFFLINE" else "🟡"
     orch_delta = None
     if heartbeat['orchestrator_last_pulse']:
-        orch_delta = f"Last pulse: {heartbeat['orchestrator_last_pulse'].strftime('%H:%M:%S')}"
+        orch_delta = f"Pulse: {_relative_time(heartbeat['orchestrator_last_pulse'])}"
 
     st.metric(
         "Orchestrator",
         f"{orch_color} {orch_status}",
         delta=orch_delta,
         delta_color="off",
-        help="Green if log updated within 10 minutes"
+        help=f"Last pulse: {heartbeat.get('orchestrator_last_pulse', 'N/A')}\nGreen if log updated within 10 minutes"
     )
 
 with hb_cols[1]:
@@ -534,14 +518,14 @@ with hb_cols[1]:
 
     state_delta = None
     if heartbeat['state_last_pulse']:
-        state_delta = f"Last pulse: {heartbeat['state_last_pulse'].strftime('%H:%M:%S')}"
+        state_delta = f"Pulse: {_relative_time(heartbeat['state_last_pulse'])}"
 
     st.metric(
         "State Manager",
         f"{state_color} {state_status}",
         delta=state_delta,
         delta_color="off",
-        help="Green if state.json updated within 10 minutes"
+        help=f"Last pulse: {heartbeat.get('state_last_pulse', 'N/A')}\nGreen if state.json updated within 10 minutes"
     )
 
 with hb_cols[2]:
@@ -551,8 +535,13 @@ with hb_cols[2]:
                    if s.get('status') in ('OK', 'IDLE', 'INITIALIZING'))
     error_count = sum(1 for s in sentinels.values() if s.get('status') == 'ERROR')
     sentinel_icon = "🟢" if error_count == 0 else "🟡" if error_count <= 2 else "🔴"
+    sentinel_help = "Sentinels reporting OK or IDLE vs total registered"
+    if error_count > 0:
+        errors = [s.get('display_name', 'Unknown Sentinel') for s in sentinels.values() if s.get('status') == 'ERROR']
+        sentinel_help += "\n\n🚨 **Errors:**\n" + "\n".join([f"- {name}" for name in errors])
+
     st.metric("Sentinel Array", f"{sentinel_icon} {ok_count}/{len(sentinels)}",
-              help="Sentinels reporting OK or IDLE vs total registered")
+              help=sentinel_help)
     if error_count > 0:
         st.caption(f"⚠️ {error_count} sentinel(s) in error state")
 
@@ -560,7 +549,21 @@ with hb_cols[3]:
     ib_health = get_ib_connection_health()
     ib_status = "ONLINE" if ib_health.get("sentinel_ib") == "CONNECTED" else "OFFLINE"
     ib_color = "🟢" if ib_status == "ONLINE" else "🔴"
-    st.metric("IB Gateway", f"{ib_color} {ib_status}", help="Connection status to Interactive Brokers Gateway")
+
+    ib_help = "Connection status to Interactive Brokers Gateway"
+    last_conn = ib_health.get('last_successful_connection')
+    if ib_status != "ONLINE":
+        ib_help += f"\n\nLast successful: {last_conn or 'Never'}"
+
+    ib_delta = f"Last: {_relative_time(last_conn)}" if last_conn else "No connection"
+
+    st.metric(
+        "IB Gateway",
+        f"{ib_color} {ib_status}",
+        delta=ib_delta,
+        delta_color="off",
+        help=ib_help
+    )
 
     if ib_health.get("reconnect_backoff", 0) > 0:
         st.caption(f"⏳ Backoff: {ib_health['reconnect_backoff']}s")
@@ -701,6 +704,37 @@ if task_data['available']:
         skipped = summary['skipped']
         upcoming = summary['upcoming']
 
+        # Palette UX Improvement: Next Up Countdown
+        upcoming_tasks = [t for t in task_data['tasks'] if t['status'] == 'upcoming']
+        if upcoming_tasks:
+            # Sort by time just in case
+            upcoming_tasks.sort(key=lambda x: x['time_et'])
+            next_task = upcoming_tasks[0]
+
+            # Calculate countdown
+            ny_tz = pytz.timezone('America/New_York')
+            now_ny = datetime.now(timezone.utc).astimezone(ny_tz)
+
+            try:
+                task_time = datetime.strptime(next_task['time_et'], '%H:%M').time()
+                task_dt = now_ny.replace(hour=task_time.hour, minute=task_time.minute, second=0, microsecond=0)
+                if task_dt < now_ny:
+                    # Handle midnight wrap if any (unlikely for daily schedule)
+                    task_dt += timedelta(days=1)
+
+                delta = task_dt - now_ny
+                minutes_remaining = int(delta.total_seconds() / 60)
+
+                if minutes_remaining < 60:
+                    time_str = f"in {minutes_remaining} min"
+                else:
+                    h, m = divmod(minutes_remaining, 60)
+                    time_str = f"in {h}h {m}m"
+
+                st.info(f"🔜 **Next Up:** {next_task['label']} at {next_task['time_et']} ET ({time_str})")
+            except Exception:
+                pass
+
         # Progress bar
         progress = completed / total if total > 0 else 0
         st.progress(progress, text=f"{completed}/{total} tasks completed")
@@ -708,21 +742,21 @@ if task_data['available']:
         # Summary metrics
         ts_cols = st.columns(5)
         with ts_cols[0]:
-            st.metric("Total Tasks", total)
+            st.metric("📋 Total Tasks", total, help="Total number of tasks scheduled for today.")
         with ts_cols[1]:
-            st.metric("Completed", f"✅ {completed}")
+            st.metric("✅ Completed", completed, help="Tasks successfully executed today.")
         with ts_cols[2]:
-            if overdue > 0:
-                st.metric("Overdue", f"⚠️ {overdue}")
-            else:
-                st.metric("Overdue", "0")
+            st.metric(
+                "⚠️ Overdue",
+                overdue,
+                delta=overdue if overdue > 0 else None,
+                delta_color="inverse",
+                help="Tasks that missed their scheduled time window."
+            )
         with ts_cols[3]:
-            if skipped > 0:
-                st.metric("Skipped", f"⏭️ {skipped}")
-            else:
-                st.metric("Skipped", "0")
+            st.metric("⏭️ Skipped", skipped, help="Tasks skipped (e.g., due to market conditions or system state).")
         with ts_cols[4]:
-            st.metric("Upcoming", f"⏳ {upcoming}")
+            st.metric("⏳ Upcoming", upcoming, help="Tasks yet to be executed today.")
 
         # Task timeline table
         STATUS_ICONS = {
@@ -756,7 +790,17 @@ if task_data['available']:
 
         import pandas as pd
         df = pd.DataFrame(table_rows)
-        st.dataframe(df, hide_index=True, width="stretch")
+        st.dataframe(
+            df,
+            hide_index=True,
+            width='stretch',
+            column_config={
+                "Status": st.column_config.TextColumn("Status", width="medium", help="Current operational status of the task."),
+                "Scheduled (ET)": st.column_config.TextColumn("Scheduled (ET)", width="small", help="Planned execution time in New York (Eastern) time."),
+                "Task": st.column_config.TextColumn("Task Description", width="large", help="The semantic name or purpose of the scheduled task."),
+                "Completed At": st.column_config.TextColumn("Completed At", width="medium", help="The actual time the task finished execution."),
+            }
+        )
 
         # Environment badge
         env = task_data['schedule_env']
@@ -774,30 +818,131 @@ else:
 st.markdown("---")
 
 # === SECTION 2: Financial HUD ===
+# Load active theses once for all sections (Portfolio Risk + Active Theses)
+_active_theses = get_active_theses(ticker=ticker)
+
 if config:
     live_data = fetch_all_live_data(config)
-    benchmarks = fetch_todays_benchmark_data()
+    _all_commodities = tuple(discover_active_commodities())
+    benchmarks = fetch_todays_benchmark_data(commodity_tickers=_all_commodities)
 
     # Render Portfolio Risk
-    render_portfolio_risk_summary(live_data)
+    render_portfolio_risk_summary(live_data, _active_theses)
 
-    # Render Benchmarks
+    # === E.1: Portfolio VaR Display ===
+    try:
+        var_state_path = os.path.join('data', 'var_state.json')
+        if os.path.exists(var_state_path):
+            with open(var_state_path, 'r') as f:
+                var_data = json.load(f)
+
+            var_limit = config.get('compliance', {}).get('var_limit_pct', 0.03)
+            var_95_pct = var_data.get('var_95_pct', 0)
+            var_99_pct = var_data.get('var_99_pct', 0)
+            var_95_usd = var_data.get('var_95', 0)
+            var_99_usd = var_data.get('var_99', 0)
+            computed_epoch = var_data.get('computed_epoch', 0)
+            pos_count = var_data.get('position_count', 0)
+            commodities = var_data.get('commodities', [])
+            status = var_data.get('last_attempt_status', 'OK')
+
+            # Staleness indicator
+            import time as _t
+            age_hours = (_t.time() - computed_epoch) / 3600 if computed_epoch else 999
+            if age_hours < 1:
+                stale_color = "green"
+                stale_label = f"{age_hours*60:.0f}m ago"
+            elif age_hours < 2:
+                stale_color = "orange"
+                stale_label = f"{age_hours:.1f}h ago"
+            else:
+                stale_color = "red"
+                stale_label = f"{age_hours:.1f}h ago"
+
+            # Utilization color
+            if var_limit > 0:
+                util = var_95_pct / var_limit
+                if util < 0.67:
+                    util_color = "green"
+                elif util <= 1.0:
+                    util_color = "orange"
+                else:
+                    util_color = "red"
+            else:
+                util = 0
+                util_color = "green"
+
+            st.caption(f"Portfolio VaR (:{stale_color}[{stale_label}])")
+            var_cols = st.columns(4)
+            with var_cols[0]:
+                st.metric("VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}", help="Value at Risk (95% confidence): Estimated maximum loss over 1 day in normal market conditions.")
+            with var_cols[1]:
+                st.metric("VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}", help="Value at Risk (99% confidence): Estimated maximum loss over 1 day in extreme market conditions.")
+            with var_cols[2]:
+                st.metric("Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
+            with var_cols[3]:
+                st.metric("Legs", f"{pos_count} ({', '.join(commodities)})", help="Individual option contract legs held in IB across all active commodities.")
+
+            # Failure indicator
+            if status == "FAILED":
+                st.warning(f"Last VaR computation failed: {var_data.get('last_attempt_error', 'Unknown')}")
+
+            # Risk Narrative expander
+            narrative = var_data.get('narrative', {})
+            if narrative:
+                with st.expander("Risk Narrative (L1 Interpreter)"):
+                    st.markdown(f"**Dominant Risk:** {narrative.get('dominant_risk', 'N/A')}")
+                    st.markdown(f"**Correlation Warning:** {narrative.get('correlation_warning', 'N/A')}")
+                    st.markdown(f"**Trend:** {narrative.get('trend', 'N/A')}")
+                    st.markdown(f"**Urgency:** {narrative.get('urgency', 'N/A')}")
+                    if narrative.get('recommendation'):
+                        st.markdown(f"**Recommendation:** {narrative['recommendation']}")
+
+            # Stress Scenarios expander
+            scenarios = var_data.get('scenarios', [])
+            if scenarios:
+                with st.expander("Stress Scenarios (L2 Scenario Architect)"):
+                    for s in scenarios:
+                        pnl = s.get('pnl', 0)
+                        pnl_color = "red" if pnl < 0 else "green"
+                        st.markdown(
+                            f"**{s.get('name', 'Unnamed')}** "
+                            f"({s.get('probability', 'N/A')}) — "
+                            f":{pnl_color}[P&L: ${pnl:+,.0f}]"
+                        )
+                        if s.get('description'):
+                            st.caption(s['description'])
+
+            # VaR Enforcement Mode Badge
+            _var_mode = config.get('compliance', {}).get('var_enforcement_mode', 'log_only')
+            _var_badge = {
+                'log_only': "VaR: Log Only (not enforcing)",
+                'warn': "VaR: Warning Mode",
+                'enforce': "VaR: Enforcing (will block trades above limit)",
+            }
+            st.caption(_var_badge.get(_var_mode, f"VaR: {_var_mode}"))
+    except Exception:
+        pass  # VaR display is non-critical
+
+    # Render Benchmarks — show S&P 500 + ALL active commodities
     st.caption("Market Benchmarks")
-    bench_cols = st.columns(6)
+    bench_cols = st.columns(min(1 + len(_all_commodities), 6))
     with bench_cols[0]:
-        st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%")
-    with bench_cols[1]:
-        # Dynamic commodity from config
-        ticker = config.get('commodity', {}).get('ticker', 'KC')
-        name = config.get('commodity', {}).get('name', 'Coffee')
-        yf_ticker = f"{ticker}=F"
-        st.metric(name, f"{benchmarks.get(yf_ticker, 0):+.2f}%")
+        st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%", help="Year-to-date performance of the S&P 500 index.")
+    for _bi, _bt in enumerate(_all_commodities):
+        if _bi + 1 >= len(bench_cols):
+            break
+        with bench_cols[_bi + 1]:
+            _pct = benchmarks.get(_bt, 0)
+            # Highlight selected commodity
+            _label = f"**{_bt}**" if _bt == ticker else _bt
+            st.metric(_label, f"{_pct:+.2f}%", help=f"Year-to-date performance of the {_bt} commodity.")
 
     # Rolling Win Rate Sparkline
     st.markdown("---")
     st.subheader("📊 Rolling Win Rate (Last 20 Decisions)")
 
-    council_df = load_council_history()
+    council_df = load_council_history(ticker=ticker)
     if not council_df.empty:
         graded = grade_decision_quality(council_df)
         rolling = calculate_rolling_win_rate(graded, window=20)
@@ -822,6 +967,67 @@ if config:
             st.info("Not enough graded decisions for sparkline.")
     else:
         st.info("No council history available.")
+
+    # === SECTION: Recent Decisions Feed ===
+    st.markdown("---")
+    st.subheader("📜 Recent Decisions")
+    try:
+        if not council_df.empty:
+            _recent = council_df.head(10).copy()
+            _display_rows = []
+            for _, _r in _recent.iterrows():
+                _ts = _r.get('timestamp', '')
+                _pnl_val = pd.to_numeric(_r.get('pnl_realized', None), errors='coerce')
+                # Keep outcome as numeric for proper sorting and formatting via NumberColumn
+                _outcome_val = _pnl_val if (pd.notna(_pnl_val) and _pnl_val != 0) else None
+
+                _trigger = str(_r.get('trigger_type', 'scheduled')).replace('_', ' ').title()
+                _decision = _r.get('master_decision', 'N/A')
+                _strategy = str(_r.get('strategy_type', 'N/A')).replace('_', ' ').title()
+                _conf = _r.get('master_confidence', None)
+                # Keep confidence as float for ProgressColumn (0-100)
+                _conf_val = float(_conf) * 100 if pd.notna(_conf) else None
+
+                _display_rows.append({
+                    'Time': _relative_time(_ts),
+                    'Trigger': _trigger,
+                    'Decision': _decision,
+                    'Confidence': _conf_val,
+                    'Strategy': _strategy,
+                    'Strength': _r.get('thesis_strength', 'N/A'),
+                    'Outcome': _outcome_val,
+                })
+            _display_df = pd.DataFrame(_display_rows)
+            st.dataframe(
+                _display_df,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    'Time': st.column_config.TextColumn("Time", width='small', help="Time since the decision was made."),
+                    'Trigger': st.column_config.TextColumn("Trigger", width='small', help="The event or sentinel that triggered this decision cycle."),
+                    'Decision': st.column_config.TextColumn("Decision", width='small', help="The final decision rendered by the Master Strategist."),
+                    'Confidence': st.column_config.ProgressColumn(
+                        "Confidence",
+                        width='small',
+                        min_value=0,
+                        max_value=100,
+                        format="%.0f%%",
+                        help="The confidence level of the Master Strategist's decision (0-100%)."
+                    ),
+                    'Strategy': st.column_config.TextColumn("Strategy", width='medium', help="The trading strategy applied for this decision."),
+                    'Strength': st.column_config.TextColumn("Strength", width='small', help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    'Outcome': st.column_config.NumberColumn(
+                        "Outcome",
+                        width='small',
+                        format="$%.2f",
+                        help="The realized Profit and Loss for this trade."
+                    ),
+                }
+            )
+        else:
+            st.info("No recent decisions")
+    except Exception:
+        st.info("No recent decisions")
 
 else:
     st.error("Configuration not loaded. Cannot fetch live data.")
@@ -852,15 +1058,15 @@ st.write(f"{icon} Current Market Regime: **{label}**")
 
 st.markdown("")
 
-# Active Theses Table
-active_theses = get_active_theses()
+# Active Theses Table (reuse precomputed from Financial HUD section)
+active_theses = _active_theses
 
 if active_theses:
     # Summary metrics
     thesis_cols = st.columns(4)
 
     with thesis_cols[0]:
-        st.metric("Active Positions", len(active_theses))
+        st.metric("Active Positions", len(active_theses), help="Number of currently active positions.")
 
     with thesis_cols[1]:
         # Count by strategy
@@ -869,23 +1075,31 @@ if active_theses:
             s = t['strategy_type']
             strategy_counts[s] = strategy_counts.get(s, 0) + 1
         dominant = max(strategy_counts.items(), key=lambda x: x[1])[0] if strategy_counts else 'None'
-        st.metric("Dominant Strategy", dominant.replace('_', ' ').title())
+        st.metric("Dominant Strategy", dominant.replace('_', ' ').title(), help="The most common strategy among active positions.")
 
     with thesis_cols[2]:
         # Average age
         avg_age = sum(t['age_hours'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Position Age", f"{avg_age:.1f}h")
+        st.metric("Avg Position Age", f"{avg_age:.1f}h", help="Average time elapsed since positions were opened.")
 
     with thesis_cols[3]:
         # Average confidence
         avg_conf = sum(t['confidence'] for t in active_theses) / len(active_theses)
-        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}")
+        st.metric("Avg Entry Confidence", f"{avg_conf:.0%}", help="Average Council confidence score across all active positions.")
 
     st.markdown("")
 
     # Detailed thesis cards
+    pnl_map = build_position_pnl_map(live_data, ticker=ticker)
     for thesis in active_theses:
-        render_thesis_card_enhanced(thesis, live_data, config)
+        render_thesis_card_enhanced(thesis, live_data, config, pnl_map=pnl_map)
+
+    # Untracked IBKR positions warning
+    _untracked = find_untracked_ibkr_positions(live_data, active_theses, ticker=ticker)
+    if _untracked:
+        st.warning(f"⚠️ {len(_untracked)} IBKR position(s) with no active thesis")
+        with st.expander(f"View {len(_untracked)} untracked position(s)"):
+            st.dataframe(pd.DataFrame(_untracked), width='stretch')
 
 else:
     st.info("No active position theses. The system has no open positions or theses haven't been recorded yet.")
@@ -914,7 +1128,7 @@ with ctrl_cols[0]:
     st.caption("No active cooldown")
 
 with ctrl_cols[1]:
-    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt")
+    confirm_halt = st.checkbox("I confirm I want to HALT all orders", key="confirm_halt", help="Check this to enable the 'EMERGENCY HALT' button, which immediately cancels all unfilled orders across all positions.")
     if st.button(
         "🛑 EMERGENCY HALT",
         type="primary",
@@ -947,7 +1161,7 @@ with ctrl_cols[1]:
             st.error("Config not loaded")
 
 with ctrl_cols[2]:
-    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh")
+    confirm_refresh = st.checkbox("I confirm I want to reload all data", key="confirm_refresh", help="Check this to enable the 'Refresh All Data' button, which clears application cache and forces a full data reload from external sources.")
     if st.button(
         "🔄 Refresh All Data",
         width="stretch",
@@ -957,6 +1171,35 @@ with ctrl_cols[2]:
         with st.spinner("Refreshing data..."):
             st.cache_data.clear()
             st.rerun()
+
+# === Compliance Rejection Feed ===
+with st.expander("Recent Compliance Decisions"):
+    try:
+        _compliance_path = _resolve_data_path("compliance_decisions.csv")
+        if os.path.exists(_compliance_path):
+            _comp_df = pd.read_csv(_compliance_path)
+            if not _comp_df.empty and 'approved' in _comp_df.columns:
+                # Filter to rejections (approved == False or "False" string)
+                _comp_df['_approved'] = _comp_df['approved'].astype(str).str.strip().str.lower()
+                _rejections = _comp_df[_comp_df['_approved'] == 'false'].tail(5).iloc[::-1]
+                if not _rejections.empty:
+                    _rej_rows = []
+                    for _, row in _rejections.iterrows():
+                        _rej_rows.append({
+                            'Time': _relative_time(row.get('timestamp', '')),
+                            'Contract': str(row.get('contract', 'N/A'))[:20],
+                            'Strategy': str(row.get('strategy_type', 'N/A')).replace('_', ' ').title(),
+                            'Reason': str(row.get('reason', 'N/A'))[:80],
+                        })
+                    st.dataframe(pd.DataFrame(_rej_rows), hide_index=True, width="stretch")
+                else:
+                    st.info("No compliance rejections recorded")
+            else:
+                st.info("No compliance rejections recorded")
+        else:
+            st.info("Compliance log not available")
+    except Exception:
+        st.info("Compliance log not available")
 
 st.markdown("---")
 
@@ -999,7 +1242,8 @@ try:
         with router_cols[3]:
             st.metric(
                 "Since Reset",
-                metrics.get('last_reset', 'N/A')[:10] if metrics.get('last_reset') else 'N/A'
+                metrics.get('last_reset', 'N/A')[:10] if metrics.get('last_reset') else 'N/A',
+                help="Date when the router metrics were last reset"
             )
 
         # Provider breakdown

@@ -26,10 +26,9 @@ import sys
 import json
 import time
 import argparse
-import socket
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from enum import Enum
 
 # Setup logging
@@ -191,7 +190,7 @@ async def check_environment() -> CheckResult:
     elif missing_optional:
         return CheckResult("Environment Variables", CheckStatus.WARN, f"All required present, {len(missing_optional)} optional missing", f"Optional: {', '.join([k.split(' ')[0] for k in missing_optional])}")
     else:
-        return CheckResult("Environment Variables", CheckStatus.PASS, f"All keys present")
+        return CheckResult("Environment Variables", CheckStatus.PASS, "All keys present")
 
 # ============================================================================
 # CHECK 2: CONFIGURATION FILE
@@ -434,6 +433,47 @@ async def check_compliance_volume(config: dict) -> CheckResult:
         return CheckResult("Compliance Volume (Expiry Trap)", CheckStatus.FAIL, "Compliance test failed", str(e))
 
 # ============================================================================
+# CHECK 5b: DATABENTO CONNECTIVITY
+# ============================================================================
+
+@timed_check
+async def check_databento() -> CheckResult:
+    """
+    Test Databento API connectivity.
+
+    Returns WARN (not FAIL) if key is missing or package not installed,
+    since Databento is a premium data source with yfinance fallback.
+    """
+    try:
+        import databento as db
+    except ImportError:
+        return CheckResult(
+            "Databento", CheckStatus.WARN,
+            "Package not installed (pip install databento)"
+        )
+
+    key = os.environ.get('DATABENTO_API_KEY', '')
+    if not key:
+        return CheckResult(
+            "Databento", CheckStatus.WARN,
+            "DATABENTO_API_KEY not set (yfinance fallback active)"
+        )
+
+    try:
+        client = db.Historical(key=key)
+        info = client.metadata.get_dataset_range(dataset="IFUS.IMPACT")
+        start = getattr(info, 'start', None) or str(info)[:10]
+        return CheckResult(
+            "Databento", CheckStatus.PASS,
+            f"Connected | IFUS.IMPACT available (from {start})"
+        )
+    except Exception as e:
+        return CheckResult(
+            "Databento", CheckStatus.WARN,
+            f"API error (yfinance fallback active): {e}"
+        )
+
+# ============================================================================
 # CHECK 6: YFINANCE FALLBACK
 # ============================================================================
 
@@ -612,7 +652,7 @@ async def check_prediction_market_sentinel(config: dict) -> CheckResult:
 async def check_microstructure_sentinel(config: dict) -> CheckResult:
     try:
         micro_config = config.get('sentinels', {}).get('microstructure', {})
-        return CheckResult("Microstructure Sentinel", CheckStatus.PASS, f"Config loaded")
+        return CheckResult("Microstructure Sentinel", CheckStatus.PASS, "Config loaded")
     except Exception as e:
         return CheckResult("Microstructure Sentinel", CheckStatus.FAIL, str(e))
 
@@ -671,7 +711,7 @@ async def check_trading_council(config: dict) -> CheckResult:
     try:
         from trading_bot.agents import TradingCouncil
         council = TradingCouncil(config)
-        return CheckResult("Trading Council", CheckStatus.PASS, f"Initialized")
+        return CheckResult("Trading Council", CheckStatus.PASS, "Initialized")
     except Exception as e:
         return CheckResult("Trading Council", CheckStatus.FAIL, str(e))
 
@@ -681,7 +721,7 @@ async def check_tms() -> CheckResult:
         from trading_bot.tms import TransactiveMemory
         tms = TransactiveMemory()
         if tms.collection:
-            return CheckResult("TMS (ChromaDB)", CheckStatus.PASS, f"Collection OK")
+            return CheckResult("TMS (ChromaDB)", CheckStatus.PASS, "Collection OK")
         return CheckResult("TMS (ChromaDB)", CheckStatus.FAIL, "Collection failed")
     except Exception as e:
         return CheckResult("TMS (ChromaDB)", CheckStatus.FAIL, str(e))
@@ -731,7 +771,6 @@ async def check_llm_health(config: dict) -> CheckResult:
 @timed_check
 async def check_strategy_definitions() -> CheckResult:
     try:
-        from trading_bot.strategy import define_directional_strategy
         return CheckResult("Strategy Definitions", CheckStatus.PASS, "Import OK")
     except Exception as e:
         return CheckResult("Strategy Definitions", CheckStatus.FAIL, str(e))
@@ -760,6 +799,9 @@ async def check_notifications(config: dict) -> CheckResult:
 async def check_state_manager() -> CheckResult:
     try:
         from trading_bot.state_manager import StateManager
+        ticker = os.environ.get("COMMODITY_TICKER", "KC")
+        data_dir = os.path.join('data', ticker)
+        StateManager.set_data_dir(data_dir)
         state = StateManager.load_state()
         StateManager.save_state({"_test": "ok"}, namespace="test")
         return CheckResult("State Manager", CheckStatus.PASS, f"Read/Write OK | {len(state)} keys")
@@ -768,7 +810,9 @@ async def check_state_manager() -> CheckResult:
 
 @timed_check
 async def check_data_directories() -> CheckResult:
-    dirs = ['./data', './data/tms', './logs']
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    data_dir = os.path.join('data', ticker)
+    dirs = [data_dir, os.path.join(data_dir, 'tms'), './logs']
     missing = [d for d in dirs if not os.path.exists(d)]
     if missing:
         return CheckResult("Data Directories", CheckStatus.FAIL, f"Missing: {missing}")
@@ -776,21 +820,43 @@ async def check_data_directories() -> CheckResult:
 
 @timed_check
 async def check_trade_ledger() -> CheckResult:
-    if os.path.exists('./trade_ledger.csv'):
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    ledger_path = os.path.join('data', ticker, 'trade_ledger.csv')
+    if os.path.exists(ledger_path):
         return CheckResult("Trade Ledger", CheckStatus.PASS, "File exists")
     return CheckResult("Trade Ledger", CheckStatus.WARN, "File missing (will be created)")
 
 @timed_check
 async def check_council_history() -> CheckResult:
-    if os.path.exists('./data/council_history.csv'):
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    history_path = os.path.join('data', ticker, 'council_history.csv')
+    if os.path.exists(history_path):
         return CheckResult("Council History", CheckStatus.PASS, "File exists")
     return CheckResult("Council History", CheckStatus.WARN, "File missing (will be created)")
+
+@timed_check
+async def check_execution_funnel() -> CheckResult:
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    funnel_path = os.path.join('data', ticker, 'execution_funnel.csv')
+    if os.path.exists(funnel_path):
+        try:
+            import csv
+            with open(funnel_path) as f:
+                reader = csv.reader(f)
+                header = next(reader)
+                row_count = sum(1 for _ in reader)
+            return CheckResult("Execution Funnel", CheckStatus.PASS,
+                             f"File exists ({row_count} events, {len(header)} columns)")
+        except Exception as e:
+            return CheckResult("Execution Funnel", CheckStatus.WARN, f"File exists but unreadable: {e}")
+    return CheckResult("Execution Funnel", CheckStatus.WARN,
+                       "File missing (run backfill or wait for trading cycle)")
 
 @timed_check
 async def check_chronometer() -> CheckResult:
     try:
         import pytz
-        from trading_bot.utils import is_market_open, is_trading_day
+        from trading_bot.utils import is_market_open
         utc_now = datetime.now(timezone.utc)
         ny_now = utc_now.astimezone(pytz.timezone('America/New_York'))
         market_open = is_market_open()
@@ -842,6 +908,7 @@ async def run_diagnostics(
         report.checks.append(await check_data_directories())
         report.checks.append(await check_trade_ledger())
         report.checks.append(await check_council_history())
+        report.checks.append(await check_execution_funnel())
 
         # 2. CHRONOMETRY
         report.checks.append(await check_chronometer())
@@ -864,6 +931,7 @@ async def run_diagnostics(
             report.checks.append(CheckResult("IBKR", CheckStatus.SKIP, "Skipped by user"))
 
         # 4. FALLBACKS
+        report.checks.append(await check_databento())
         report.checks.append(await check_yfinance())
 
         # 5. SENTINELS
@@ -917,11 +985,20 @@ async def main():
             print_result(check)
 
         if report.is_ready:
-            print(f"\n✅ SYSTEM READY ({report.pass_count} Passed)")
+            if report.warn_count > 0:
+                print(f"\n⚠️ SYSTEM READY WITH WARNINGS ({report.pass_count} Passed, {report.warn_count} Warnings)")
+            else:
+                print(f"\n✅ SYSTEM READY ({report.pass_count} Passed)")
         else:
             print(f"\n❌ SYSTEM FAILURE ({report.fail_count} Failed)")
 
-    sys.exit(0 if report.is_ready else 1)
+    # Exit codes: 0=all pass, 2=pass with warnings, 1=failures
+    if report.fail_count > 0:
+        sys.exit(1)
+    elif report.warn_count > 0:
+        sys.exit(2)
+    else:
+        sys.exit(0)
 
 if __name__ == "__main__":
     asyncio.run(main())

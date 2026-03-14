@@ -21,6 +21,16 @@ from trading_bot.agent_names import DEPRECATED_AGENTS
 
 logger = logging.getLogger(__name__)
 
+# Mutable data directory — set by orchestrator via set_data_dir()
+_data_dir: Optional[str] = None
+
+
+def set_data_dir(data_dir: str):
+    """Configure data directory for weight evolution CSV."""
+    global _data_dir
+    _data_dir = data_dir
+    logger.info(f"WeightedVoting data_dir set to: {data_dir}")
+
 
 class TriggerType(Enum):
     """Classification of decision trigger."""
@@ -52,6 +62,7 @@ class AgentVote:
     age_hours: float = 0.0  # Populated from StateManager metadata
     is_stale: bool = False
     data_freshness_hours: float = 0.0
+    has_direction_mismatch: bool = False
 
 
 def calculate_staleness_weight(age_hours: float, max_useful_age: float = 24.0) -> float:
@@ -312,6 +323,73 @@ class RegimeDetector:
             return 'UNKNOWN'
 
 
+def detect_regime_transition(market_data: dict) -> str:
+    """
+    Detect regime transitions from market data signals.
+
+    Looks for divergence between short-term momentum and longer-term trend,
+    which can indicate a regime change in progress.
+
+    Returns:
+        Empty string if no transition detected, or an alert string for injection.
+    """
+    try:
+        price_24h_pct = market_data.get('24h_change_pct', 0.0)
+        price_5d_pct = market_data.get('5d_change_pct', 0.0)
+        sma_50 = market_data.get('sma_50')
+        sma_200 = market_data.get('sma_200')
+        current_price = market_data.get('last_price') or market_data.get('price')
+
+        signals = []
+
+        # Signal 1: Short/long momentum divergence
+        # 24h moving one way while 5d trend is the other
+        if price_24h_pct and price_5d_pct:
+            if (price_24h_pct > 0.015 and price_5d_pct < -0.02):
+                signals.append("Short-term bounce (+{:.1%} 24h) against 5-day downtrend ({:.1%})".format(
+                    price_24h_pct, price_5d_pct))
+            elif (price_24h_pct < -0.015 and price_5d_pct > 0.02):
+                signals.append("Short-term selloff ({:.1%} 24h) against 5-day uptrend (+{:.1%})".format(
+                    price_24h_pct, price_5d_pct))
+
+        # Signal 2: Price crossing SMA (golden/death cross proximity)
+        if current_price and sma_50 and sma_200:
+            try:
+                price_f = float(current_price)
+                sma50_f = float(sma_50)
+                sma200_f = float(sma_200)
+                # Price recently crossed SMA-50
+                if abs(price_f - sma50_f) / sma50_f < 0.01:
+                    direction = "above" if price_f > sma50_f else "below"
+                    signals.append(f"Price near SMA-50 crossing ({direction})")
+                # SMA-50 near SMA-200 (golden/death cross zone)
+                if abs(sma50_f - sma200_f) / sma200_f < 0.02:
+                    direction = "golden cross" if sma50_f > sma200_f else "death cross"
+                    signals.append(f"SMA-50/200 convergence ({direction} zone)")
+            except (ValueError, TypeError, ZeroDivisionError):
+                pass
+
+        if not signals:
+            return ""
+
+        alert = (
+            "\n\n--- REGIME TRANSITION ALERT ---\n"
+            "Detected signals suggesting a potential regime change:\n"
+        )
+        for s in signals:
+            alert += f"  - {s}\n"
+        alert += (
+            "NOTE: This is informational. Momentum is the default state — "
+            "reversal requires independent fundamental confirmation.\n"
+            "--- END REGIME TRANSITION ALERT ---\n"
+        )
+        return alert
+
+    except Exception as e:
+        logger.debug(f"Regime transition detection failed (non-fatal): {e}")
+        return ""
+
+
 def detect_market_regime_simple(volatility_report: str, price_change_pct: float) -> str:
     """Detect current market regime for weight adjustment (Simple Fallback)."""
 
@@ -324,6 +402,22 @@ def detect_market_regime_simple(volatility_report: str, price_change_pct: float)
         return "HIGH_VOLATILITY"
 
     return "RANGE_BOUND"
+
+
+VOLATILITY_REGIMES = {'HIGH_VOLATILITY', 'TRENDING', 'RANGE_BOUND', 'UNKNOWN'}
+
+def harmonize_regime(raw_regime: str) -> str:
+    """Normalize regime labels to canonical vocabulary."""
+    if not raw_regime:
+        return 'UNKNOWN'
+    normalized = raw_regime.upper().strip().replace(' ', '_')
+    ALIAS_MAP = {
+        'HIGH_VOL': 'HIGH_VOLATILITY',
+        'LOW_VOL': 'RANGE_BOUND',
+        'VOLATILE': 'HIGH_VOLATILITY',
+        'MEAN_REVERTING': 'RANGE_BOUND',
+    }
+    return ALIAS_MAP.get(normalized, normalized if normalized in VOLATILITY_REGIMES else 'UNKNOWN')
 
 
 def get_regime_adjusted_weights(trigger_type: TriggerType, regime: str) -> dict:
@@ -357,7 +451,8 @@ async def calculate_weighted_decision(
     ib: Optional[Any] = None,
     contract: Optional[Any] = None,
     regime: str = "UNKNOWN",
-    min_quorum: int = 3
+    min_quorum: int = 3,
+    config: Optional[dict] = None
 ) -> dict:
     """
     Calculate weighted decision from all agent reports.
@@ -447,6 +542,15 @@ async def calculate_weighted_decision(
             logger.warning(f"Agent {agent_name}: Research failed - {report[:100]}")
             continue  # Skip failed agents entirely
 
+        # === Check for dict-wrapped error messages (Issue #1167) ===
+        # research_topic() wraps exceptions as {'data': 'Error conducting research: ...', 'confidence': 0.0, 'sentiment': 'NEUTRAL'}
+        if isinstance(report, dict) and isinstance(report.get('data'), str):
+            data_str = report['data']
+            if 'Error conducting research' in data_str or 'All providers exhausted' in data_str:
+                is_failure = True
+                logger.warning(f"Agent {agent_name}: Research failed (dict-wrapped) - {data_str[:100]}")
+                continue  # Skip failed agents entirely
+
         # === PRIORITY 1: Use structured dict fields if available ===
         sentiment_tag = None
         confidence = 0.5
@@ -493,6 +597,8 @@ async def calculate_weighted_decision(
                           f"Report type: {type(report).__name__}, is_stale: {is_stale}, "
                           f"Report preview: {str(report)[:100]}...")
 
+        has_mismatch = report.get('has_direction_mismatch', False) if isinstance(report, dict) else False
+
         votes.append(AgentVote(
             agent_name=agent_name,
             direction=direction,
@@ -500,7 +606,8 @@ async def calculate_weighted_decision(
             sentiment_tag=sentiment_tag,
             age_hours=age_hours,
             is_stale=is_data_stale,
-            data_freshness_hours=data_freshness
+            data_freshness_hours=data_freshness,
+            has_direction_mismatch=has_mismatch,
         ))
 
     # Quorum Check
@@ -559,7 +666,13 @@ async def calculate_weighted_decision(
             freshness_penalty = decay_factor
             logger.debug(f"Agent {vote.agent_name}: Freshness penalty applied: {freshness:.1f}h -> factor {decay_factor:.2f}")
 
-        final_weight = base_domain_weight * reliability_multiplier * staleness_weight * freshness_penalty
+        # Apply direction-evidence mismatch discount (Issue #1170)
+        mismatch_discount = 1.0
+        if vote.has_direction_mismatch:
+            mismatch_discount = 0.5
+            logger.info(f"Agent {vote.agent_name}: Direction-evidence mismatch detected, applying 0.5x weight discount")
+
+        final_weight = base_domain_weight * reliability_multiplier * staleness_weight * freshness_penalty * mismatch_discount
 
         contribution = vote.direction.value * vote.confidence * final_weight
         total_weighted_score += contribution
@@ -573,6 +686,7 @@ async def calculate_weighted_decision(
             'reliability_mult': round(reliability_multiplier, 2),
             'staleness_weight': round(staleness_weight, 2),
             'age_hours': round(vote.age_hours, 1),
+            'mismatch_discount': round(mismatch_discount, 2),
             'final_weight': round(final_weight, 2),
             'contribution': round(contribution, 3),
         })
@@ -604,7 +718,32 @@ async def calculate_weighted_decision(
     avg_dir = sum(direction_values) / len(direction_values)
     unanimity = 1.0 - (sum(abs(d - avg_dir) for d in direction_values) / len(direction_values))
     avg_conf = sum(v.confidence for v in votes) / len(votes)
-    final_confidence = (unanimity * 0.4) + (avg_conf * 0.6)
+    # v8.0: Reduce unanimity weight (0.4→0.25) to prevent agent-count inflation
+    final_confidence = (unanimity * 0.25) + (avg_conf * 0.75)
+
+    # VaR-aware confidence dampener
+    var_dampener = 1.0
+    var_utilization = 0.0
+    raw_confidence = None
+    try:
+        if config:
+            from trading_bot.var_calculator import get_var_calculator
+            var_calc = get_var_calculator(config)
+            cached_var = var_calc.get_cached_var() if var_calc else None
+            if cached_var:
+                var_limit_pct = config.get('compliance', {}).get('var_limit_pct', 0.03)
+                var_utilization = cached_var.var_95_pct / var_limit_pct if var_limit_pct > 0 else 0
+                if var_utilization > 0.8:
+                    # Smooth dampening: 80% util -> 1.0, 100% util -> 0.5
+                    var_dampener = max(0.5, 1.0 - (var_utilization - 0.8) * 2.5)
+                    raw_confidence = final_confidence
+                    final_confidence *= var_dampener
+                    logger.info(
+                        f"VaR dampener: {var_dampener:.2f} (util: {var_utilization:.0%}), "
+                        f"confidence: {raw_confidence:.2f} -> {final_confidence:.2f}"
+                    )
+    except Exception:
+        pass  # Non-fatal
 
     weight_summary = {
         v['agent']: (
@@ -624,12 +763,16 @@ async def calculate_weighted_decision(
         import asyncio
         import os
 
-        def _write_weight_csv(vote_breakdown_snapshot, trigger_str, regime_str):
-            """Sync CSV writer — runs in thread pool."""
+        def _write_weight_csv(vote_breakdown_snapshot, trigger_str, regime_str, data_dir):
+            """Sync CSV writer — runs in thread pool.
+
+            IMPORTANT: data_dir must be captured in the calling coroutine and passed
+            explicitly. ContextVars are NOT copied to run_in_executor threads.
+            """
             import csv
             from datetime import datetime, timezone
 
-            weight_csv = os.path.join('data', 'weight_evolution.csv')
+            weight_csv = os.path.join(data_dir, 'weight_evolution.csv')
             file_exists = os.path.exists(weight_csv)
 
             # Ensure directory exists
@@ -663,6 +806,13 @@ async def calculate_weighted_decision(
         # Snapshot vote_breakdown (list of dicts is safe to pass to thread)
         trigger_str = trigger_type.value if hasattr(trigger_type, 'value') else str(trigger_type)
 
+        # Capture data_dir from ContextVar NOW (in the coroutine), not in the thread
+        try:
+            from trading_bot.data_dir_context import get_engine_data_dir
+            _eff_dir = get_engine_data_dir()
+        except LookupError:
+            _eff_dir = _data_dir or os.path.join('data', os.environ.get('COMMODITY_TICKER', 'KC'))
+
         # Fire-and-forget: don't await — CSV write must never block voting
         loop = asyncio.get_event_loop()
         loop.run_in_executor(
@@ -670,7 +820,8 @@ async def calculate_weighted_decision(
             _write_weight_csv,
             list(vote_breakdown),  # Defensive copy
             trigger_str,
-            regime
+            regime,
+            _eff_dir,
         )
     except Exception as e:
         logger.warning(f"Weight evolution tracking failed (non-fatal): {e}")
@@ -684,7 +835,10 @@ async def calculate_weighted_decision(
         'weighted_score': round(normalized_score, 4),
         'vote_breakdown': vote_breakdown,
         'dominant_agent': dominant_agent,
-        'trigger_type': trigger_type.value
+        'trigger_type': trigger_type.value,
+        'var_dampener': round(var_dampener, 3),
+        'var_utilization': round(var_utilization, 3),
+        'raw_confidence': round(raw_confidence, 3) if raw_confidence is not None else None,
     }
 
 

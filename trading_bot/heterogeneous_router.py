@@ -66,6 +66,9 @@ class AgentRole(Enum):
     MASTER_STRATEGIST = "master"
     COMPLIANCE_OFFICER = "compliance"
 
+    # Utilities
+    TRADE_ANALYST = "trade_analyst"
+
 
 @dataclass
 class ModelConfig:
@@ -95,6 +98,7 @@ class ResponseCache:
         AgentRole.PERMABULL.value: 300,
         AgentRole.MASTER_STRATEGIST.value: 300,
         AgentRole.COMPLIANCE_OFFICER.value: 300,
+        AgentRole.TRADE_ANALYST.value: 3600,  # Post-mortems are stable, cache 1h
     }
 
     DEFAULT_TTL = 300  # 5 minutes fallback
@@ -157,6 +161,17 @@ class ResponseCache:
         }
         logger.debug(f"Cache SET for {role} (TTL: {self._get_ttl(role)}s)")
 
+    def invalidate_by_role(self, role: str):
+        """Invalidate all cached entries for a specific role (e.g., on hallucination detection)."""
+        to_delete = [
+            key for key, entry in self.cache.items()
+            if entry.get('role') == role
+        ]
+        for key in to_delete:
+            del self.cache[key]
+        if to_delete:
+            logger.info(f"Cache INVALIDATED {len(to_delete)} entries for {role}")
+
     def get_stats(self) -> dict:
         """Return cache statistics for monitoring."""
         now = datetime.now()
@@ -199,6 +214,10 @@ def with_retry(max_retries=3, backoff_factor=2):
                 except Exception as e:
                     last_exception = e
                     error_str = str(e)
+
+                    # Don't retry hard quota errors — they won't resolve
+                    if _is_quota_error(e):
+                        break
 
                     if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                         retry_match = re.search(r'retry in (\d+\.?\d*)s', error_str, re.IGNORECASE)
@@ -426,9 +445,98 @@ def _classify_error(e: Exception) -> str:
         return "timeout"
     if "429" in error_str or "rate" in error_str or "resource_exhausted" in error_str:
         return "rate_limit"
+    if "503" in error_str or "unavailable" in error_str:
+        return "service_unavailable"
     if "json" in error_str or "parse" in error_str or "decode" in error_str:
         return "parse_error"
+    if _is_quota_error(e):
+        return "quota_exhausted"
     return "api_error"
+
+
+# --- Provider Circuit Breaker ---
+# Maps provider name → epoch when it can be retried.
+# Prevents hammering a provider that has returned a hard quota/billing error.
+_PROVIDER_COOLDOWNS: dict[str, float] = {}
+
+
+def _is_quota_error(e: Exception) -> bool:
+    """Detect hard quota/billing errors that won't resolve with retries."""
+    error_str = str(e).lower()
+    return (
+        "usage limits" in error_str
+        or "billing" in error_str
+        or ("quota" in error_str and "exceeded" in error_str)
+    )
+
+
+def _trip_provider(provider_name: str, error: Exception):
+    """Mark a provider as unavailable until its quota resets."""
+    import re
+    error_str = str(error)
+    # Try to parse reset time: "regain access on 2026-03-01 at 00:00 UTC"
+    match = re.search(r'regain access on (\d{4}-\d{2}-\d{2})', error_str)
+    if match:
+        from datetime import datetime as _dt, timezone as _tz
+        try:
+            reset_date = _dt.strptime(match.group(1), "%Y-%m-%d").replace(tzinfo=_tz.utc)
+            resume_epoch = reset_date.timestamp()
+        except ValueError:
+            resume_epoch = time.time() + 3600  # 1h fallback
+    else:
+        resume_epoch = time.time() + 3600  # 1h default cooldown
+
+    _PROVIDER_COOLDOWNS[provider_name] = resume_epoch
+    remaining_h = (resume_epoch - time.time()) / 3600
+    logger.error(
+        f"CIRCUIT BREAKER: {provider_name} tripped for {remaining_h:.1f}h — {error_str[:200]}"
+    )
+
+
+def _is_provider_tripped(provider_name: str) -> bool:
+    """Check if a provider is in cooldown."""
+    resume_epoch = _PROVIDER_COOLDOWNS.get(provider_name)
+    if resume_epoch is None:
+        return False
+    if time.time() >= resume_epoch:
+        del _PROVIDER_COOLDOWNS[provider_name]
+        logger.info(f"CIRCUIT BREAKER: {provider_name} cooldown expired, re-enabling")
+        return False
+    return True
+
+
+# --- Transient Failure Tracker (timeouts, 503s) ---
+# Tracks consecutive transient failures per provider.
+# After TRANSIENT_TRIP_THRESHOLD consecutive failures, imposes a short cooldown.
+_TRANSIENT_FAILURES: dict[str, list[float]] = {}  # provider → list of failure timestamps
+TRANSIENT_TRIP_THRESHOLD = 5  # consecutive failures to trigger
+TRANSIENT_COOLDOWN_SECONDS = 300  # 5 min cooldown
+TRANSIENT_WINDOW_SECONDS = 600  # failures within this window count
+
+
+def _record_transient_failure(provider_name: str, error: Exception):
+    """Record a timeout or 503 failure. Trip provider after N consecutive failures."""
+    now = time.time()
+    failures = _TRANSIENT_FAILURES.setdefault(provider_name, [])
+    # Prune old failures outside the window
+    cutoff = now - TRANSIENT_WINDOW_SECONDS
+    failures[:] = [t for t in failures if t > cutoff]
+    failures.append(now)
+
+    if len(failures) >= TRANSIENT_TRIP_THRESHOLD:
+        if not _is_provider_tripped(provider_name):
+            _PROVIDER_COOLDOWNS[provider_name] = now + TRANSIENT_COOLDOWN_SECONDS
+            logger.warning(
+                f"CIRCUIT BREAKER (transient): {provider_name} tripped for "
+                f"{TRANSIENT_COOLDOWN_SECONDS}s after {len(failures)} failures "
+                f"in {TRANSIENT_WINDOW_SECONDS}s — {str(error)[:100]}"
+            )
+        failures.clear()
+
+
+def _clear_transient_failures(provider_name: str):
+    """Clear transient failure history on success."""
+    _TRANSIENT_FAILURES.pop(provider_name, None)
 
 
 class HeterogeneousRouter:
@@ -438,6 +546,7 @@ class HeterogeneousRouter:
         self.config = config
         self.clients: dict[str, LLMClient] = {}
         self.registry = config.get('model_registry', {})
+        self.llm_semaphore = None  # Optional: set by MasterOrchestrator for backpressure
 
         # Extract API keys
         self.api_keys = {
@@ -457,11 +566,11 @@ class HeterogeneousRouter:
         self.cache = ResponseCache(config)  # Now uses role-based TTL internally
         # 1. LOAD MODEL KEYS (With Defaults)
         gem_flash = self.registry.get('gemini', {}).get('flash', 'gemini-3-flash-preview')
-        gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3-pro-preview')
+        gem_pro = self.registry.get('gemini', {}).get('pro', 'gemini-3.1-pro-preview')
 
-        anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-opus-4-5-20251101')
+        anth_pro = self.registry.get('anthropic', {}).get('pro', 'claude-sonnet-4-6')
 
-        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-4o')
+        oai_pro = self.registry.get('openai', {}).get('pro', 'gpt-5.2')
         oai_reasoning = self.registry.get('openai', {}).get('reasoning', 'o3-2025-04-16')
 
         xai_pro = self.registry.get('xai', {}).get('pro', 'grok-4-1-fast-reasoning')
@@ -477,16 +586,20 @@ class HeterogeneousRouter:
             AgentRole.MICROSTRUCTURE_SENTINEL: (ModelProvider.GEMINI, gem_flash),
 
             # --- TIER 2: ANALYSTS (Depth & Data are Priority) ---
+            # Grounded data (Google Search) runs on Gemini Flash in Phase 1,
+            # so analyst model only does reasoning over pre-gathered context.
+            # Gemini Pro reserved for Agronomist (deep domain reasoning);
+            # others spread across providers for diversity + quota headroom.
             AgentRole.AGRONOMIST: (ModelProvider.GEMINI, gem_pro),
-            AgentRole.INVENTORY_ANALYST: (ModelProvider.GEMINI, gem_pro),
-            AgentRole.VOLATILITY_ANALYST: (ModelProvider.GEMINI, gem_pro),
-            AgentRole.SUPPLY_CHAIN_ANALYST: (ModelProvider.GEMINI, gem_pro), # NEW ROLE
+            AgentRole.INVENTORY_ANALYST: (ModelProvider.ANTHROPIC, anth_pro),
+            AgentRole.VOLATILITY_ANALYST: (ModelProvider.XAI, xai_pro),
+            AgentRole.SUPPLY_CHAIN_ANALYST: (ModelProvider.XAI, xai_pro),
 
             AgentRole.MACRO_ANALYST: (ModelProvider.OPENAI, oai_pro),
-            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.OPENAI, oai_pro),
+            AgentRole.GEOPOLITICAL_ANALYST: (ModelProvider.GEMINI, gem_pro),  # Google Search grounding for live geopolitical news
 
             AgentRole.TECHNICAL_ANALYST: (ModelProvider.OPENAI, oai_reasoning), # Math/Logic
-            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, xai_flash),
+            AgentRole.SENTIMENT_ANALYST: (ModelProvider.XAI, xai_pro),  # COT/crowd analysis needs reasoning
 
             # --- TIER 3: DECISION MAKERS (Safety & Debate) ---
             AgentRole.PERMABULL: (ModelProvider.XAI, xai_pro),             # Contrarian
@@ -494,6 +607,9 @@ class HeterogeneousRouter:
             AgentRole.COMPLIANCE_OFFICER: (ModelProvider.ANTHROPIC, anth_pro), # Veto (Sonnet)
 
             AgentRole.MASTER_STRATEGIST: (ModelProvider.OPENAI, oai_pro),  # Synthesis
+
+            # --- UTILITIES ---
+            AgentRole.TRADE_ANALYST: (ModelProvider.XAI, xai_pro),  # Post-mortem batch utility, not safety-critical
         }
 
         logger.info(f"HeterogeneousRouter initialized. Available: {[p.value for p in self.available_providers]}")
@@ -537,43 +653,63 @@ class HeterogeneousRouter:
             fallbacks = []
 
             # Note: We hardcode the Pro models here to ensure quality
-            anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
+            anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
-            gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
+            gem_pro = get_model('gemini', 'pro', 'gemini-3.1-pro-preview')
 
             # CRITICAL: NEVER fallback to Flash models for Tier 3
+            xai_pro = get_model('xai', 'pro', 'grok-4-1-fast-reasoning')
+
             if primary_provider == ModelProvider.OPENAI:
                 fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
                 fallbacks.append((ModelProvider.GEMINI, gem_pro))
+                fallbacks.append((ModelProvider.XAI, xai_pro))
             elif primary_provider == ModelProvider.ANTHROPIC:
                 fallbacks.append((ModelProvider.OPENAI, oai_pro))
                 fallbacks.append((ModelProvider.GEMINI, gem_pro))
+                fallbacks.append((ModelProvider.XAI, xai_pro))
             elif primary_provider == ModelProvider.XAI:
                 fallbacks.append((ModelProvider.OPENAI, oai_pro))
                 fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
+                fallbacks.append((ModelProvider.GEMINI, gem_pro))
             else:
                  fallbacks.append((ModelProvider.ANTHROPIC, anth_pro))
                  fallbacks.append((ModelProvider.OPENAI, oai_pro))
+                 fallbacks.append((ModelProvider.XAI, xai_pro))
 
             return fallbacks
 
-        # TIER 2: DEEP ANALYSTS
-        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST]:
-            gem_pro = get_model('gemini', 'pro', 'gemini-3-pro-preview')
+        # TIER 2: DEEP ANALYSTS + UTILITIES
+        elif role in [AgentRole.AGRONOMIST, AgentRole.MACRO_ANALYST, AgentRole.SUPPLY_CHAIN_ANALYST, AgentRole.GEOPOLITICAL_ANALYST, AgentRole.INVENTORY_ANALYST, AgentRole.VOLATILITY_ANALYST, AgentRole.TRADE_ANALYST, AgentRole.TECHNICAL_ANALYST, AgentRole.SENTIMENT_ANALYST]:
+            gem_pro = get_model('gemini', 'pro', 'gemini-3.1-pro-preview')
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
             oai_pro = get_model('openai', 'pro', 'gpt-5.2')
-            anth_pro = get_model('anthropic', 'pro', 'claude-opus-4-6')
+            anth_pro = get_model('anthropic', 'pro', 'claude-sonnet-4-6')
+            xai_pro = get_model('xai', 'pro', 'grok-4-1-fast-reasoning')
 
             if primary_provider == ModelProvider.GEMINI:
-                # Gemini Pro exhausted → try Flash (same provider, free tier) → then OpenAI
                 return [
-                    (ModelProvider.GEMINI, gem_flash),
                     (ModelProvider.OPENAI, oai_pro),
-                    (ModelProvider.ANTHROPIC, anth_pro)
+                    (ModelProvider.ANTHROPIC, anth_pro),
+                    (ModelProvider.XAI, xai_pro)
                 ]
-            else:
+            elif primary_provider == ModelProvider.OPENAI:
                 return [
                     (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.XAI, xai_pro),
+                    (ModelProvider.ANTHROPIC, anth_pro)
+                ]
+            elif primary_provider == ModelProvider.ANTHROPIC:
+                return [
+                    (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.OPENAI, oai_pro),
+                    (ModelProvider.XAI, xai_pro)
+                ]
+            else:
+                # xAI primary
+                return [
+                    (ModelProvider.GEMINI, gem_pro),
+                    (ModelProvider.OPENAI, oai_pro),
                     (ModelProvider.ANTHROPIC, anth_pro)
                 ]
 
@@ -585,12 +721,12 @@ class HeterogeneousRouter:
             gem_flash = get_model('gemini', 'flash', 'gemini-3-flash-preview')
 
             fallbacks = []
-            if primary_provider != ModelProvider.OPENAI:
-                 fallbacks.append((ModelProvider.OPENAI, oai_flash))
             if primary_provider != ModelProvider.XAI:
                  fallbacks.append((ModelProvider.XAI, xai_flash))
             if primary_provider != ModelProvider.GEMINI:
                  fallbacks.append((ModelProvider.GEMINI, gem_flash))
+            if primary_provider != ModelProvider.OPENAI:
+                 fallbacks.append((ModelProvider.OPENAI, oai_flash))
 
             return fallbacks
 
@@ -599,7 +735,8 @@ class HeterogeneousRouter:
         role: AgentRole,
         prompt: str,
         system_prompt: Optional[str] = None,
-        response_json: bool = False
+        response_json: bool = False,
+        route_info: Optional[dict] = None
     ) -> str:
         """
         Route request to appropriate model with robust fallback.
@@ -625,6 +762,8 @@ class HeterogeneousRouter:
             cached_response = self.cache.get(full_key_prompt, role.value)
             if cached_response:
                 logger.debug(f"Cache hit for {role.value}")
+                if route_info is not None:
+                    route_info.update({'provider': 'cache', 'model': 'cache', 'input_tokens': 0, 'output_tokens': 0, 'latency_ms': 0})
                 return cached_response
 
         # 1. Get Primary Assignment
@@ -649,14 +788,24 @@ class HeterogeneousRouter:
         if primary_provider is not None:
             provider_name = primary_provider.value.lower()
 
-            # Acquire rate limit slot (blocks if at limit)
-            slot_acquired = await acquire_api_slot(provider_name, timeout=30.0)
+            # Circuit breaker: skip provider if tripped (quota exhausted)
+            if _is_provider_tripped(provider_name):
+                logger.debug(
+                    f"Skipping tripped provider {provider_name} for {role.value}"
+                )
+                last_exception = RuntimeError(f"{provider_name} quota exhausted (circuit breaker)")
 
-            if slot_acquired:
+            elif (slot_acquired := await acquire_api_slot(provider_name, timeout=30.0)):
                 start_time = time.time()
                 try:
                     client = self._get_client(primary_provider, primary_model)
-                    text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                    if self.llm_semaphore:
+                        await self.llm_semaphore.acquire()
+                    try:
+                        text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                    finally:
+                        if self.llm_semaphore:
+                            self.llm_semaphore.release()
 
                     # Defense-in-depth: catch empty responses that slipped past client validation
                     if not text or not text.strip():
@@ -672,6 +821,7 @@ class HeterogeneousRouter:
                         budget.record_cost(cost, source=f"router/{role.value}")
 
                     # Success - cache and return
+                    _clear_transient_failures(provider_name)
                     if use_cache:
                         self.cache.set(full_key_prompt, role.value, text)
 
@@ -683,6 +833,14 @@ class HeterogeneousRouter:
                         latency_ms=latency_ms,
                         was_fallback=False
                     )
+                    if route_info is not None:
+                        route_info.update({
+                            'provider': primary_provider.value,
+                            'model': primary_model,
+                            'input_tokens': in_tok,
+                            'output_tokens': out_tok,
+                            'latency_ms': latency_ms,
+                        })
                     return text
 
                 except RuntimeError as e:
@@ -702,6 +860,13 @@ class HeterogeneousRouter:
                 except Exception as e:
                     latency_ms = (time.time() - start_time) * 1000
                     last_exception = e
+                    # Trip circuit breaker on quota exhaustion
+                    if _is_quota_error(e):
+                        _trip_provider(provider_name, e)
+                    # Track transient failures (timeouts, 503s)
+                    err_type = _classify_error(e)
+                    if err_type in ("timeout", "rate_limit", "service_unavailable"):
+                        _record_transient_failure(provider_name, e)
                     logger.warning(
                         f"{primary_provider.value}/{primary_model} failed for {role.value}: {e}"
                     )
@@ -712,7 +877,7 @@ class HeterogeneousRouter:
                         success=False,
                         latency_ms=latency_ms,
                         was_fallback=False,
-                        error_type=_classify_error(e)
+                        error_type=err_type
                     )
             else:
                 # Rate limit timeout - treat as failure, move to fallback
@@ -732,6 +897,11 @@ class HeterogeneousRouter:
 
             fallback_name = fallback_provider.value.lower()
 
+            # Circuit breaker: skip tripped providers in fallback chain too
+            if _is_provider_tripped(fallback_name):
+                logger.debug(f"Skipping tripped fallback {fallback_name} for {role.value}")
+                continue
+
             # Acquire rate limit slot for fallback provider
             slot_acquired = await acquire_api_slot(fallback_name, timeout=30.0)
 
@@ -742,7 +912,13 @@ class HeterogeneousRouter:
             start_time = time.time()
             try:
                 client = self._get_client(fallback_provider, fallback_model)
-                text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                if self.llm_semaphore:
+                    await self.llm_semaphore.acquire()
+                try:
+                    text, in_tok, out_tok = await client.generate(prompt, system_prompt, response_json)
+                finally:
+                    if self.llm_semaphore:
+                        self.llm_semaphore.release()
 
                 # Defense-in-depth: catch empty responses from fallback providers
                 if not text or not text.strip():
@@ -757,7 +933,8 @@ class HeterogeneousRouter:
                     cost = calculate_api_cost(fallback_model, in_tok, out_tok)
                     budget.record_cost(cost, source=f"router/{role.value}(fallback)")
 
-                # Fallback succeeded
+                # Fallback succeeded — clear transient failures
+                _clear_transient_failures(fallback_name)
                 logger.warning(
                     f"FALLBACK SUCCESS: Used {fallback_provider.value}/{fallback_model} "
                     f"for {role.value} after primary failure."
@@ -785,6 +962,14 @@ class HeterogeneousRouter:
                 if use_cache:
                     self.cache.set(full_key_prompt, role.value, text)
 
+                if route_info is not None:
+                    route_info.update({
+                        'provider': fallback_provider.value,
+                        'model': fallback_model,
+                        'input_tokens': in_tok,
+                        'output_tokens': out_tok,
+                        'latency_ms': latency_ms,
+                    })
                 return text
 
             except RuntimeError as e:
@@ -803,6 +988,11 @@ class HeterogeneousRouter:
             except Exception as e:
                 latency_ms = (time.time() - start_time) * 1000
                 last_exception = e
+                if _is_quota_error(e):
+                    _trip_provider(fallback_name, e)
+                fb_err_type = _classify_error(e)
+                if fb_err_type in ("timeout", "rate_limit", "service_unavailable"):
+                    _record_transient_failure(fallback_name, e)
                 logger.warning(
                     f"Fallback {fallback_provider.value}/{fallback_model} "
                     f"also failed for {role.value}: {e}"
@@ -815,7 +1005,7 @@ class HeterogeneousRouter:
                     latency_ms=latency_ms,
                     was_fallback=True,
                     primary_provider=primary_provider.value if primary_provider else None,
-                    error_type=_classify_error(e)
+                    error_type=fb_err_type
                 )
                 continue
 

@@ -43,6 +43,9 @@ fi
 ENV_NAME="${LOG_ENV_NAME:-dev}"
 REPO_DIR="${COFFEE_BOT_PATH:-$(pwd)}"
 BRANCH="${LOG_BRANCH:-logs}"
+TICKER="${COMMODITY_TICKER:-KC}"
+TICKER_LOWER=$(echo "$TICKER" | tr '[:upper:]' '[:lower:]')
+DATA_DIR="$REPO_DIR/data/$TICKER"
 WORKTREE_DIR="/tmp/coffee-bot-logs-worktree"
 
 echo "Coffee Bot Log Collection"
@@ -138,7 +141,7 @@ if [ -d "$REPO_DIR/logs" ]; then
     echo "Copying specific log files..."
     mkdir -p "$DEST_DIR/logs"
 
-    for logfile in "orchestrator.log" "dashboard.log" "manual_test.log" "performance_analyzer.log" "equity_logger.log"; do
+    for logfile in "orchestrator_${TICKER_LOWER}.log" "dashboard_${TICKER_LOWER}.log" "manual_test.log" "performance_analyzer.log" "equity_logger.log"; do
         if [ -f "$REPO_DIR/logs/$logfile" ]; then
             cp "$REPO_DIR/logs/$logfile" "$DEST_DIR/logs/"
         fi
@@ -150,6 +153,13 @@ if [ -d "$REPO_DIR/data" ]; then
     echo "Copying specific data files..."
     mkdir -p "$DEST_DIR/data"
 
+    # Copy from per-commodity data directory
+    if [ -d "$DATA_DIR" ]; then
+        mkdir -p "$DEST_DIR/data/$TICKER"
+        cp "$DATA_DIR/"*.csv "$DEST_DIR/data/$TICKER/" 2>/dev/null || true
+        cp "$DATA_DIR/"*.json "$DEST_DIR/data/$TICKER/" 2>/dev/null || true
+    fi
+    # Also copy any legacy flat data/ files
     cp "$REPO_DIR/data/"*.csv "$DEST_DIR/data/" 2>/dev/null || true
     cp "$REPO_DIR/data/"*.json "$DEST_DIR/data/" 2>/dev/null || true
 
@@ -166,18 +176,28 @@ if [ -d "$REPO_DIR/data" ]; then
 fi
 
 # === TRADE FILES ===
-if [ -f "$REPO_DIR/trade_ledger.csv" ]; then
-    echo "Copying trade_ledger.csv..."
+# Check per-commodity directory first, then legacy project root
+if [ -f "$DATA_DIR/trade_ledger.csv" ]; then
+    echo "Copying trade_ledger.csv from $DATA_DIR..."
+    cp "$DATA_DIR/trade_ledger.csv" "$DEST_DIR/"
+elif [ -f "$REPO_DIR/trade_ledger.csv" ]; then
+    echo "Copying trade_ledger.csv from project root (legacy)..."
     cp "$REPO_DIR/trade_ledger.csv" "$DEST_DIR/"
 fi
 
-if [ -f "$REPO_DIR/decision_signals.csv" ]; then
-    echo "Copying decision_signals.csv..."
+if [ -f "$DATA_DIR/decision_signals.csv" ]; then
+    echo "Copying decision_signals.csv from $DATA_DIR..."
+    cp "$DATA_DIR/decision_signals.csv" "$DEST_DIR/"
+elif [ -f "$REPO_DIR/decision_signals.csv" ]; then
+    echo "Copying decision_signals.csv from project root (legacy)..."
     cp "$REPO_DIR/decision_signals.csv" "$DEST_DIR/"
 fi
 
-if [ -d "$REPO_DIR/archive_ledger" ]; then
-    echo "Copying archive_ledger directory..."
+if [ -d "$DATA_DIR/archive_ledger" ]; then
+    echo "Copying archive_ledger directory from $DATA_DIR..."
+    cp -r "$DATA_DIR/archive_ledger" "$DEST_DIR/"
+elif [ -d "$REPO_DIR/archive_ledger" ]; then
+    echo "Copying archive_ledger directory from project root (legacy)..."
     cp -r "$REPO_DIR/archive_ledger" "$DEST_DIR/"
 fi
 
@@ -237,9 +257,9 @@ if [ "$ENV_NAME" = "prod" ]; then
         echo ""
 
         echo "=== RECENT ERRORS (if any) ==="
-        if [ -f "$REPO_DIR/logs/orchestrator.log" ]; then
+        if [ -f "$REPO_DIR/logs/orchestrator_${TICKER_LOWER}.log" ]; then
             echo "Recent orchestrator errors:"
-            grep -i "error\|critical\|exception" "$REPO_DIR/logs/orchestrator.log" | tail -10 || true
+            grep -i "error\|critical\|exception" "$REPO_DIR/logs/orchestrator_${TICKER_LOWER}.log" | tail -10 || true
         fi
 
     } > "$DEST_DIR/production_health_report.txt"
@@ -250,21 +270,21 @@ if [ "$ENV_NAME" = "prod" ]; then
         echo "Generated: $(date)"
         echo ""
 
-        if [ -f "$REPO_DIR/data/council_history.csv" ]; then
+        if [ -f "$DATA_DIR/council_history.csv" ]; then
             echo "=== RECENT COUNCIL DECISIONS (Last 10) ==="
-            tail -10 "$REPO_DIR/data/council_history.csv"
+            tail -10 "$DATA_DIR/council_history.csv"
             echo ""
         fi
 
-        if [ -f "$REPO_DIR/data/daily_equity.csv" ]; then
+        if [ -f "$DATA_DIR/daily_equity.csv" ]; then
             echo "=== RECENT EQUITY DATA (Last 10 days) ==="
-            tail -10 "$REPO_DIR/data/daily_equity.csv"
+            tail -10 "$DATA_DIR/daily_equity.csv"
             echo ""
         fi
 
-        if [ -f "$REPO_DIR/trade_ledger.csv" ]; then
+        if [ -f "$DATA_DIR/trade_ledger.csv" ]; then
             echo "=== RECENT TRADES (Last 10) ==="
-            tail -10 "$REPO_DIR/trade_ledger.csv"
+            tail -10 "$DATA_DIR/trade_ledger.csv"
             echo ""
         fi
 
@@ -337,6 +357,7 @@ fi
 
 REPO_DIR="${COFFEE_BOT_PATH:-$(pwd)}"
 BRANCH="${LOG_BRANCH:-logs}"
+TICKER="${COMMODITY_TICKER:-KC}"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -468,15 +489,21 @@ analyze_environment() {
         grep -A 10 "=== PROCESS STATUS ===" "$health_file" | grep -v "==="
     fi
 
-    # Trading Performance
-    if [ -f "$env/data/council_history.csv" ]; then
+    # Trading Performance — check per-commodity dir first, then legacy
+    local council_file=""
+    if [ -f "$env/data/$TICKER/council_history.csv" ]; then
+        council_file="$env/data/$TICKER/council_history.csv"
+    elif [ -f "$env/data/council_history.csv" ]; then
+        council_file="$env/data/council_history.csv"
+    fi
+    if [ -n "$council_file" ]; then
         echo ""
         echo -e "${YELLOW}📈 Trading Activity:${NC}"
-        local decisions=$(tail -n +2 "$env/data/council_history.csv" | wc -l)
+        local decisions=$(tail -n +2 "$council_file" | wc -l)
         echo "  Total decisions: $decisions"
 
         if [ $decisions -gt 0 ]; then
-            local recent_decisions=$(tail -5 "$env/data/council_history.csv" | wc -l)
+            local recent_decisions=$(tail -5 "$council_file" | wc -l)
             echo "  Recent decisions: $recent_decisions"
         fi
     fi
@@ -537,31 +564,43 @@ show_performance() {
     echo -e "${BLUE}📈 Trading Performance Summary ($env)${NC}"
     echo "===================================="
     
-    # Council History Analysis
-    if [ -f "$env/data/council_history.csv" ]; then
+    # Council History Analysis — check per-commodity dir first, then legacy
+    local council_file=""
+    if [ -f "$env/data/$TICKER/council_history.csv" ]; then
+        council_file="$env/data/$TICKER/council_history.csv"
+    elif [ -f "$env/data/council_history.csv" ]; then
+        council_file="$env/data/council_history.csv"
+    fi
+    if [ -n "$council_file" ]; then
         echo ""
         echo -e "${YELLOW}🧠 Council Decisions:${NC}"
 
         # Basic stats
-        local total_decisions=$(tail -n +2 "$env/data/council_history.csv" | wc -l)
+        local total_decisions=$(tail -n +2 "$council_file" | wc -l)
         echo "  Total decisions: $total_decisions"
 
         if [ $total_decisions -gt 0 ]; then
             # Recent decisions
             echo ""
             echo -e "${YELLOW}📊 Recent Decisions (Last 5):${NC}"
-            head -1 "$env/data/council_history.csv"
-            tail -5 "$env/data/council_history.csv"
+            head -1 "$council_file"
+            tail -5 "$council_file"
         fi
     fi
 
-    # Equity Data
-    if [ -f "$env/data/daily_equity.csv" ]; then
+    # Equity Data — check per-commodity dir first, then legacy
+    local equity_file=""
+    if [ -f "$env/data/$TICKER/daily_equity.csv" ]; then
+        equity_file="$env/data/$TICKER/daily_equity.csv"
+    elif [ -f "$env/data/daily_equity.csv" ]; then
+        equity_file="$env/data/daily_equity.csv"
+    fi
+    if [ -n "$equity_file" ]; then
         echo ""
         echo -e "${YELLOW}💰 Equity Curve:${NC}"
         echo "  Recent equity data (Last 5 days):"
-        head -1 "$env/data/daily_equity.csv"
-        tail -5 "$env/data/daily_equity.csv"
+        head -1 "$equity_file"
+        tail -5 "$equity_file"
     fi
 
     # Trade Ledger

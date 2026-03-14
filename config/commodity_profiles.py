@@ -109,6 +109,24 @@ class ContractSpec:
 
 
 @dataclass
+class MarketStatesConfig:
+    """Three-tier market state configuration per commodity.
+
+    Defines Active/Passive/Sleeping windows and emergency trigger parameters.
+    Source: CME Globex — NG trades Sun–Fri 18:00–17:00 ET, daily maint. halt 17:00–18:00 ET.
+    """
+    active: str                           # e.g., "09:00-14:30"
+    passive: List[str]                    # e.g., ["18:00-09:00", "14:30-17:00"]
+    maintenance_breaks: List[str]         # e.g., ["17:00-18:00"]
+    emergency_trigger_pct: float          # e.g., 7.0 (0 = disabled)
+    emergency_cooldown_seconds: int       # e.g., 1800
+    emergency_council_timeout_seconds: int  # e.g., 300
+    passive_new_positions_only: bool      # True = no adds to existing theses
+    emergency_dry_run: bool = True        # True = log only, False = live execution
+    blackout_windows: List[Dict] = field(default_factory=list)
+
+
+@dataclass
 class CommodityProfile:
     """
     Complete commodity configuration for the trading system.
@@ -147,6 +165,13 @@ class CommodityProfile:
     price_move_alert_pct: float = 2.0
     straddle_risk_threshold: float = 10000.0  # Max straddle risk per contract (v3.1)
 
+    # Liquidity filter: hybrid tick/percentage model
+    # Spread must be ≤ max(tick_allowance, pct_allowance)
+    # Tick floor protects cheap OTM options from ratio inflation
+    # Percentage ceiling caps slippage on expensive ITM options
+    max_liquidity_spread_pct: float = 0.75       # 75% of abs(theoretical price)
+    max_liquidity_spread_ticks: int = 60          # Absolute floor in tick units
+
     # M1, M3, M7, E4 FIXES:
     fallback_iv: float = 0.35  # Default 35% (commodity-specific)
     risk_free_rate: float = 0.04  # M3 fix
@@ -165,8 +190,24 @@ class CommodityProfile:
     concentration_proxies: List[str] = field(default_factory=list)  # e.g., ['KC', 'SB', 'EWZ', 'BRL']
     concentration_label: str = ""  # e.g., "Brazil", "West Africa"
 
+    # yfinance ticker for VaR historical data (e.g., "KC=F", "CC=F")
+    yfinance_ticker: str = ""
+
     # Cross-commodity correlation basket for MacroContagionSentinel
     cross_commodity_basket: Dict[str, str] = field(default_factory=dict)  # e.g., {'gold': 'GC=F', ...}
+
+    # Close execution: market order fallback timeout after adaptive walking exhaustion
+    market_order_fallback_timeout_seconds: int = 60  # Default 60s (was hardcoded 15s)
+
+    # Catastrophe stop: NLV gate — only place naked futures stops when account can afford margin
+    catastrophe_stop_nlv_minimum: float = 100000.0  # Default: disabled until NLV supports it
+
+    # Scoring: minimum price move to resolve as directional (below = NEUTRAL)
+    # Calibrated from annualized IV: threshold ≈ 0.3 × (IV / sqrt(252))
+    neutral_move_threshold_pct: float = 0.008  # Default 0.8%
+
+    # Three-tier market state configuration (Active/Passive/Sleeping)
+    market_states: Optional[MarketStatesConfig] = None
 
     # TMS Temporal Decay Rates (lambda values for exponential decay)
     # Higher lambda = faster decay = shorter useful life
@@ -210,448 +251,19 @@ class CommodityProfile:
 
 
 # =============================================================================
-# PREDEFINED PROFILES
+# PROFILE FACTORY — All profiles loaded from JSON (config/profiles/*.json)
 # =============================================================================
 
-COFFEE_ARABICA_PROFILE = CommodityProfile(
-    name="Coffee (Arabica)",
-    ticker="KC",
-    commodity_type=CommodityType.SOFT,
-
-    contract=ContractSpec(
-        symbol="KC",
-        exchange="ICE",
-        contract_months=["H", "K", "N", "U", "Z"],  # Mar, May, Jul, Sep, Dec
-        tick_size=0.05,
-        tick_value=18.75,
-        contract_size=37500,  # lbs
-        unit="cents/lb",
-        trading_hours_et="04:15-13:30",
-        spot_month_limit=500,
-        all_months_limit=5000
-    ),
-
-    primary_regions=[
-        GrowingRegion(
-            name="Minas Gerais",
-            country="Brazil",
-            latitude_range=(-22.0, -14.0),
-            longitude_range=(-51.0, -39.0),
-            production_share=0.30,
-            historical_weekly_precip_mm=60.0,  # ~240mm/month during growing season
-            drought_threshold_mm=30.0,  # <30mm/week = drought
-            flood_threshold_mm=150.0,  # >150mm/week = flood
-            flowering_months=[9, 10, 11],  # Sep-Nov (Southern Hemisphere spring)
-            harvest_months=[5, 6, 7, 8],  # May-Aug (dry season)
-            bean_filling_months=[12, 1, 2, 3],  # Dec-Mar (rainy season)
-            planting_months=[10, 11, 12],
-            frost_threshold_celsius=2.0,
-            drought_soil_moisture_pct=10.0
-        ),
-        GrowingRegion(
-            name="Espirito Santo",
-            country="Brazil",
-            latitude_range=(-21.0, -17.5),
-            longitude_range=(-41.5, -39.5),
-            production_share=0.15,
-            historical_weekly_precip_mm=55.0,
-            drought_threshold_mm=25.0,
-            flood_threshold_mm=140.0,
-            flowering_months=[9, 10, 11],
-            harvest_months=[5, 6, 7, 8],
-            bean_filling_months=[12, 1, 2, 3],
-            planting_months=[10, 11],
-            frost_threshold_celsius=2.0,
-            drought_soil_moisture_pct=10.0
-        ),
-        GrowingRegion(
-            name="Central Highlands",
-            country="Vietnam",
-            latitude_range=(11.0, 14.0),
-            longitude_range=(107.0, 109.0),
-            production_share=0.18,
-            historical_weekly_precip_mm=70.0,  # Higher rainfall in Vietnam
-            drought_threshold_mm=35.0,
-            flood_threshold_mm=180.0,
-            flowering_months=[1, 2, 3],  # Jan-Mar (tropical dry season)
-            harvest_months=[10, 11, 12],  # Oct-Dec
-            bean_filling_months=[4, 5, 6, 7, 8, 9],  # Apr-Sep (monsoon)
-            planting_months=[5, 6],
-            drought_soil_moisture_pct=15.0
-        ),
-        GrowingRegion(
-            name="Copan",
-            country="Honduras",
-            latitude_range=(14.5, 15.5),
-            longitude_range=(-89.0, -88.0),
-            production_share=0.05,
-            historical_weekly_precip_mm=50.0,
-            drought_threshold_mm=20.0,
-            flood_threshold_mm=130.0,
-            flowering_months=[3, 4, 5],  # Mar-May
-            harvest_months=[11, 12, 1, 2],  # Nov-Feb
-            bean_filling_months=[6, 7, 8, 9, 10],
-            planting_months=[5, 6],
-            drought_soil_moisture_pct=12.0
-        ),
-        # Legacy/Extra regions mapped to new structure
-        GrowingRegion(
-            name="São Paulo",
-            country="Brazil",
-            latitude_range=(-24.0, -23.0),
-            longitude_range=(-47.0, -46.0),
-            production_share=0.15,
-            harvest_months=[5, 6, 7, 8],
-            planting_months=[10, 11],
-            frost_threshold_celsius=2.0,
-            drought_soil_moisture_pct=10.0
-        ),
-        GrowingRegion(
-            name="Colombia Huila",
-            country="Colombia",
-            latitude_range=(2.0, 3.0),
-            longitude_range=(-76.0, -75.0),
-            production_share=0.10,
-            harvest_months=[4, 5, 6, 10, 11, 12],
-            planting_months=[3, 9],
-            flood_precip_mm_24h=100.0
-        ),
-        GrowingRegion(
-            name="Sumatra",
-            country="Indonesia",
-            latitude_range=(3.0, 4.0),
-            longitude_range=(98.0, 99.0),
-            production_share=0.05,
-            harvest_months=[3, 4, 5, 6, 9, 10, 11, 12],
-            planting_months=[1, 2],
-            flood_precip_mm_24h=120.0
-        ),
-        GrowingRegion(
-            name="Sidamo/Yirgacheffe",
-            country="Ethiopia",
-            latitude_range=(5.5, 6.5),
-            longitude_range=(38.0, 39.0),
-            production_share=0.0,
-            harvest_months=[10, 11, 12],
-            planting_months=[4, 5],
-            drought_soil_moisture_pct=12.0
-        ),
-    ],
-
-    logistics_hubs=[
-        LogisticsHub(
-            name="Port of Santos",
-            hub_type="port",
-            country="Brazil",
-            latitude=-23.95,
-            longitude=-46.30,
-            congestion_vessel_threshold=20,
-            dwell_time_alert_days=5
-        ),
-        LogisticsHub(
-            name="Port of Ho Chi Minh",
-            hub_type="port",
-            country="Vietnam",
-            latitude=10.8,
-            longitude=106.7,
-            congestion_vessel_threshold=15,
-            dwell_time_alert_days=4
-        ),
-        LogisticsHub(
-            name="Suez Canal",
-            hub_type="transit",
-            country="Egypt",
-            latitude=30.0,
-            longitude=32.5,
-            congestion_vessel_threshold=50,
-            dwell_time_alert_days=2
-        ),
-    ],
-
-    agronomy_context="""
-    Critical weather risks for Coffee Arabica:
-    - FROST (Brazil, Jun-Aug): Temperatures below 2°C damage leaves and cherries.
-      Severe frost (<-2°C) destroys trees, affecting NEXT YEAR's crop.
-    - DROUGHT (Brazil, Oct-Nov): Soil moisture <10% during flowering reduces yield.
-    - EXCESS RAIN (Colombia): >100mm/24h causes cherry rot and landslides.
-    - Coffee Leaf Rust (Hemileia vastatrix): Fungal disease favored by humid conditions.
-
-    Seasonality: Brazil harvest May-Sep (70% of crop). Vietnam Oct-Jan (Robusta focus).
-    Flowering in Brazil: Sep-Oct, critical for next year's production.
-    """,
-
-    macro_context="""
-    Key macro drivers for Coffee:
-    - USD/BRL exchange rate: Weaker Real = cheaper Brazilian exports = bearish.
-    - EUDR (EU Deforestation Regulation): Compliance costs, supply chain disruption.
-    - Interest rates: Higher rates strengthen USD, bearish for coffee priced in USD.
-    - Vietnam Dong: Secondary currency exposure for Robusta.
-    """,
-
-    supply_chain_context="""
-    Key supply chain factors:
-    - Port of Santos: Brazil's primary coffee export hub. Congestion = bullish.
-    - Suez/Panama canals: Transit disruptions extend delivery times to EU.
-    - ICE Certified Stocks: Visible inventory. Drawing = bullish, Building = bearish.
-    - GCA (Green Coffee Association): US warehouse stocks (monthly, delayed).
-    - Backwardation: Nearby > deferred = tight supply, bullish.
-    """,
-
-    inventory_sources=[
-        "ICE Arabica Certified Stocks",
-        "GCA Green Coffee Stocks",
-        "USDA World Markets and Trade",
-        "CONAB Brazil Crop Estimates"
-    ],
-
-    weather_apis=[
-        "open-meteo",
-        "meteomatics"
-    ],
-
-    news_keywords=[
-        "coffee", "arabica", "robusta", "café",
-        "frost brazil", "coffee rust", "santos port",
-        "ICE coffee", "KC futures", "EUDR coffee"
-    ],
-
-    social_accounts=[
-        "SpillingTheBean",    # Coffee-specific commodity analyst
-        "optima_t",           # Coffee market intelligence
-        "Reuters",            # Major wire service
-        "ICOcoffeeorg",       # International Coffee Organization
-        "zerohedge",          # Macro/markets commentary
-        "Barchart",           # Commodity data & charts
-        "WSJ"                 # Wall Street Journal markets
-    ],
-
-    sentiment_search_queries=[
-        "coffee futures",
-        "arabica prices",
-        "KC futures",
-        "robusta market",
-        "coffee supply",
-        "Brazil coffee harvest",
-        "coffee supply chain",
-        "US coffee tariffs",
-    ],
-
-    legitimate_data_sources=[
-        'USDA', 'ICE', 'ICE Exchange', 'CONAB', 'CECAFE',
-        'ICO', 'Green Coffee Association', 'NOAA',
-        # v7.1: Sources discovered via agent grounded search (false positive fixes)
-        'Banco Central do Brasil', 'DatamarNews', 'Seatrade Maritime',
-        'StoneX', 'Saxo Bank', 'CocoaIntel', 'Drewry',
-        'FX Leaders', 'MarketScreener', 'Somar',
-    ],
-
-    volatility_high_iv_rank=0.70,
-    volatility_low_iv_rank=0.30,
-    price_move_alert_pct=2.0,
-    straddle_risk_threshold=10000.0,
-    fallback_iv=0.35,
-    risk_free_rate=0.04,
-    default_starting_capital=50000.0,
-    min_dte=45,
-    max_dte=365,
-
-    # Price validation — MUST match config.json → commodity_profile.KC
-    stop_parse_range=[80.0, 800.0],       # Valid stop-loss price range (cents/lb)
-    typical_price_range=[100.0, 600.0],   # Sanity check range for predictions
-
-    research_prompts={
-        "agronomist": "Search for 'current 10-day weather forecast Minas Gerais coffee zone' and 'NOAA Brazil precipitation anomaly'. Analyze if recent rains are beneficial for flowering or excessive.",
-        "macro": "Search for 'USD BRL exchange rate forecast' and 'Brazil Central Bank Selic rate outlook'. Determine if the BRL is trending to encourage farmer selling.",
-        "geopolitical": "Search for 'Red Sea shipping coffee delays', 'Brazil port of Santos wait times', and 'EUDR regulation delay latest news'. Determine if there are logistical bottlenecks.",
-        "supply_chain": "Search for 'Cecafé Brazil coffee export report latest', 'Global container freight index rates', and 'Green coffee shipping manifest trends'. Analyze flow volume vs port capacity.",
-        "inventory": (
-            "Search for 'ICE coffee certified stocks level news 2026' and 'ICO monthly coffee market report global supply'. "
-            "Look for recent specific numbers in bags (e.g., 'ICE stocks rose to X bags'). "
-            "Search for 'coffee forward curve structure' to detect 'Backwardation' or 'Contango'."
-        ),
-        "sentiment": "Search for 'Coffee COT report non-commercial net length'. Determine if market is overbought.",
-        "technical": "Search for 'Coffee futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find and explicitly state the current value of the '200-day Simple Moving Average (SMA)'.",
-        "volatility": "Search for 'Coffee Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if option premiums are cheap or expensive relative to historical volatility.",
-    },
-    concentration_proxies=['KC', 'SB', 'EWZ', 'BRL'],
-    concentration_label="Brazil",
-    cross_commodity_basket={
-        'gold': 'GC=F',
-        'silver': 'SI=F',
-        'wheat': 'ZW=F',
-        'soybeans': 'ZS=F',
-    },
-)
-
-
-COCOA_PROFILE = CommodityProfile(
-    name="Cocoa",
-    ticker="CC",
-    commodity_type=CommodityType.SOFT,
-
-    contract=ContractSpec(
-        symbol="CC",
-        exchange="ICE",
-        contract_months=["H", "K", "N", "U", "Z"],
-        tick_size=1.0,
-        tick_value=10.0,
-        contract_size=10,  # metric tons
-        unit="$/metric ton",
-        trading_hours_et="04:45-13:30",
-        spot_month_limit=1000,
-        all_months_limit=10000
-    ),
-
-    primary_regions=[
-        GrowingRegion(
-            name="Côte d'Ivoire",
-            country="Ivory Coast",
-            latitude_range=(6.0, 7.6), # Approx center 6.8
-            longitude_range=(-6.0, -4.6), # Approx center -5.3
-            production_share=0.40,
-            drought_soil_moisture_pct=15.0,
-            harvest_months=[10, 11, 12, 1, 2],  # Main crop Oct-Feb
-            planting_months=[5, 6]
-        ),
-        GrowingRegion(
-            name="Ghana",
-            country="Ghana",
-            latitude_range=(6.0, 7.5), # Approx center 6.7
-            longitude_range=(-2.5, -0.5), # Approx center -1.6
-            production_share=0.20,
-            drought_soil_moisture_pct=15.0,
-            harvest_months=[10, 11, 12, 1],
-            planting_months=[5, 6]
-        ),
-        GrowingRegion(
-            name="Ecuador",
-            country="Ecuador",
-            latitude_range=(-2.5, -1.0), # Approx center -1.8
-            longitude_range=(-80.0, -79.0), # Approx center -79.5
-            production_share=0.08,
-            flood_precip_mm_24h=80.0,
-            harvest_months=[3, 4, 5, 6],
-            planting_months=[11, 12]
-        ),
-    ],
-
-    logistics_hubs=[
-        LogisticsHub(
-            name="Port of Abidjan",
-            hub_type="port",
-            country="Ivory Coast",
-            latitude=5.3,
-            longitude=-4.0,
-            congestion_vessel_threshold=15,
-            dwell_time_alert_days=4
-        ),
-        LogisticsHub(
-            name="Port of Tema",
-            hub_type="port",
-            country="Ghana",
-            latitude=5.6,
-            longitude=0.0,
-            congestion_vessel_threshold=10,
-            dwell_time_alert_days=5
-        ),
-    ],
-
-    agronomy_context="""
-    Critical weather risks for Cocoa:
-    - HARMATTAN (Dec-Feb): Dry, dusty winds from Sahara stress trees.
-    - DROUGHT: Soil moisture <15% reduces pod development.
-    - BLACK POD DISEASE (Phytophthora): Fungal disease favored by excess humidity.
-    - SWOLLEN SHOOT VIRUS: Spread by mealybugs, requires tree removal.
-
-    Seasonality: Main crop Oct-Feb (65%), Mid-crop May-Aug (35%).
-    """,
-
-    macro_context="""
-    Key macro drivers for Cocoa:
-    - EUDR (EU Deforestation Regulation): Major compliance challenge.
-    - Côte d'Ivoire/Ghana minimum price: Government price floors.
-    - Chocolate demand (Europe/US): Consumer spending sensitivity.
-    - GBP/USD: UK pricing exposure.
-    """,
-
-    supply_chain_context="""
-    Key supply chain factors:
-    - ICCO (International Cocoa Organization) stocks
-    - ICE Certified Cocoa Stocks
-    - Port of Abidjan: Primary West African export hub
-    - Grinding statistics: Proxy for demand (Europe, Asia, Americas)
-    """,
-
-    inventory_sources=[
-        "ICE Cocoa Certified Stocks",
-        "ICCO Quarterly Bulletin",
-        "European Cocoa Association Grindings"
-    ],
-
-    weather_apis=["open-meteo"],
-
-    news_keywords=[
-        "cocoa", "cacao", "chocolate",
-        "ivory coast cocoa", "ghana cocoa",
-        "black pod", "harmattan", "ICCO"
-    ],
-
-    social_accounts=[
-        "@CocoaBarometer", "@ICCOorg"
-    ],
-
-    volatility_high_iv_rank=0.65,
-    volatility_low_iv_rank=0.25,
-    price_move_alert_pct=3.0,
-    straddle_risk_threshold=8000.0,
-
-    research_prompts={
-        "agronomist": "Search for 'Côte d Ivoire cocoa harvest forecast' and 'Ghana cocoa rainfall anomaly'. Analyze if conditions favor or threaten the main crop.",
-        "macro": "Search for 'EUR USD exchange rate forecast' and 'West Africa CFA franc outlook'. Determine currency impact on cocoa pricing.",
-        "geopolitical": "Search for 'Côte d Ivoire cocoa regulation' and 'Ghana COCOBOD policy'. Analyze supply-side policy risks.",
-        "supply_chain": "Search for 'Abidjan port cocoa shipments' and 'cocoa grinding data Europe'. Analyze processing demand vs origin supply.",
-        "inventory": "Search for 'ICE Cocoa Certified Stocks' and 'European cocoa warehouse stocks'. Look for inventory trends.",
-        "sentiment": "Search for 'Cocoa COT report non-commercial net length'. Determine if market is overbought.",
-        "technical": "Search for 'Cocoa futures technical analysis {contract}' and '{contract} support resistance levels'. Look for 'RSI divergence' or 'Moving Average crossover'. IMPORTANT: You MUST find the current '200-day SMA'.",
-        "volatility": "Search for 'Cocoa Futures Implied Volatility Rank current' and '{contract} option volatility skew'. Determine if premiums are cheap or expensive.",
-    },
-    concentration_proxies=['CC', 'SB', 'EWZ', 'NGN=X'],
-    concentration_label="West Africa",
-    cross_commodity_basket={
-        'gold': 'GC=F',
-        'sugar': 'SB=F',
-        'wheat': 'ZW=F',
-        'coffee': 'KC=F',
-    },
-)
-
-
-# =============================================================================
-# PROFILE FACTORY
-# =============================================================================
-
-_PROFILES = {
-    "KC": COFFEE_ARABICA_PROFILE,
-    "CC": COCOA_PROFILE,
-    # Add more profiles as needed:
-    # "CL": CRUDE_OIL_PROFILE,
-    # "GC": GOLD_PROFILE,
-}
 
 
 def get_commodity_profile(ticker: str) -> CommodityProfile:
     """
-    Load a commodity profile by ticker symbol.
+    Load a commodity profile by ticker symbol from JSON.
 
-    FIX (MECE 8.1): Supports both hardcoded and JSON-file profiles.
-    This enables adding custom commodities without modifying Python code.
-
-    Lookup order:
-    1. Hardcoded profiles (fast path, most common)
-    2. JSON file at config/profiles/{ticker}.json (extensibility)
+    All profiles are loaded from config/profiles/{ticker}.json.
 
     Args:
-        ticker: Exchange ticker symbol (e.g., "KC", "CC")
+        ticker: Exchange ticker symbol (e.g., "KC", "CC", "NG")
 
     Returns:
         CommodityProfile instance
@@ -661,24 +273,34 @@ def get_commodity_profile(ticker: str) -> CommodityProfile:
     """
     ticker = ticker.upper()
 
-    # Fast path: check hardcoded profiles first
-    if ticker in _PROFILES:
-        return _PROFILES[ticker]
-
-    # Extensibility: check for custom JSON profile
-    custom_path = f"config/profiles/{ticker.lower()}.json"
-    if os.path.exists(custom_path):
+    profile_path = f"config/profiles/{ticker.lower()}.json"
+    if os.path.exists(profile_path):
         try:
-            return _load_profile_from_json(custom_path)
+            return _load_profile_from_json(profile_path)
         except Exception as e:
-            logger.error(f"Failed to load custom profile {custom_path}: {e}")
-            raise ValueError(f"Invalid custom profile for '{ticker}': {e}")
+            logger.error(f"Failed to load profile {profile_path}: {e}")
+            raise ValueError(f"Invalid profile for '{ticker}': {e}")
 
-    available = ", ".join(_PROFILES.keys())
     raise ValueError(
         f"No commodity profile for '{ticker}'. "
-        f"Available: {available}. "
-        f"Or create custom profile at: {custom_path}"
+        f"Create a profile at: {profile_path}"
+    )
+
+
+def _parse_market_states(raw: Optional[dict]) -> Optional[MarketStatesConfig]:
+    """Parse market_states dict from JSON into MarketStatesConfig, or None."""
+    if not raw:
+        return None
+    return MarketStatesConfig(
+        active=raw['active'],
+        passive=raw.get('passive', []),
+        maintenance_breaks=raw.get('maintenance_breaks', []),
+        emergency_trigger_pct=raw.get('emergency_trigger_pct', 0),
+        emergency_cooldown_seconds=raw.get('emergency_cooldown_seconds', 1800),
+        emergency_council_timeout_seconds=raw.get('emergency_council_timeout_seconds', 300),
+        passive_new_positions_only=raw.get('passive_new_positions_only', True),
+        emergency_dry_run=raw.get('emergency_dry_run', True),
+        blackout_windows=raw.get('blackout_windows', []),
     )
 
 
@@ -707,9 +329,9 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
             historical_weekly_precip_mm=r.get('historical_weekly_precip_mm', 60.0),
             drought_threshold_mm=r.get('drought_threshold_mm', 30.0),
             flood_threshold_mm=r.get('flood_threshold_mm', 150.0),
-            flowering_months=r.get('flowering_months', [9, 10, 11]),
-            harvest_months=r.get('harvest_months', [5, 6, 7, 8]),
-            bean_filling_months=r.get('bean_filling_months', [12, 1, 2, 3]),
+            flowering_months=r.get('flowering_months', []),
+            harvest_months=r.get('harvest_months', []),
+            bean_filling_months=r.get('bean_filling_months', []),
 
             # Legacy/Optional
             planting_months=r.get('planting_months', []),
@@ -778,30 +400,39 @@ def _load_profile_from_json(path: str) -> CommodityProfile:
             'supply_chain': 0.05, 'research': 0.005, 'trade_journal': 0.01,
             'default': 0.05
         }),
+        # Risk/pricing fields (must match dataclass — JSON profiles need these)
+        straddle_risk_threshold=data.get('straddle_risk_threshold', 10000.0),
+        max_liquidity_spread_pct=data.get('max_liquidity_spread_pct', 0.75),
+        max_liquidity_spread_ticks=data.get('max_liquidity_spread_ticks', 60),
+        fallback_iv=data.get('fallback_iv', 0.35),
+        risk_free_rate=data.get('risk_free_rate', 0.04),
+        default_starting_capital=data.get('default_starting_capital', 50000.0),
+        min_dte=data.get('min_dte', 45),
+        max_dte=data.get('max_dte', 365),
+        stop_parse_range=data.get('stop_parse_range', [0.0, 9999.0]),
+        typical_price_range=data.get('typical_price_range', [0.0, 9999.0]),
         # Commodity-agnostic fields
+        yfinance_ticker=data.get('yfinance_ticker', ''),
         research_prompts=data.get('research_prompts', {}),
         concentration_proxies=data.get('concentration_proxies', []),
         concentration_label=data.get('concentration_label', ''),
         cross_commodity_basket=data.get('cross_commodity_basket', {}),
+        neutral_move_threshold_pct=data.get('neutral_move_threshold_pct', 0.008),
+        market_states=_parse_market_states(data.get('market_states')),
     )
 
 
 def list_available_profiles() -> List[str]:
-    """
-    Return list of available commodity tickers.
+    """Return list of available commodity tickers from JSON profiles."""
+    import glob
 
-    Includes both hardcoded and custom JSON profiles.
-    """
-    import glob  # Only glob needs local import (not used elsewhere)
-
-    available = set(_PROFILES.keys())
-
-    # Add custom profiles
+    available = set()
     custom_dir = "config/profiles"
     if os.path.exists(custom_dir):
         for json_file in glob.glob(f"{custom_dir}/*.json"):
-            ticker = os.path.basename(json_file).replace('.json', '').upper()
-            available.add(ticker)
+            basename = os.path.basename(json_file).replace('.json', '').upper()
+            if basename != 'TEMPLATE':
+                available.add(basename)
 
     return sorted(available)
 

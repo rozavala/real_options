@@ -13,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 import os
 import json
+import re
 from typing import List, Optional
 import math
 
@@ -42,6 +43,74 @@ CROSS_CUE_RULES = {
 }
 
 
+# Default TMS path — overridden by set_data_dir() for multi-commodity
+_default_tms_path = os.path.join("./data", os.environ.get("COMMODITY_TICKER", "KC"), "tms")
+
+
+def set_data_dir(data_dir: str):
+    """Configure default TMS persist path for a commodity-specific data directory."""
+    global _default_tms_path
+    _default_tms_path = os.path.join(data_dir, "tms")
+    logger.info(f"TMS default path set to: {_default_tms_path}")
+
+
+def _get_default_tms_path() -> str:
+    """Resolve TMS path via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), "tms")
+    except LookupError:
+        return _default_tms_path
+
+
+def _resolve_year(year: int) -> int:
+    """Convert 1-2 digit year to 4-digit using rolling window."""
+    if year >= 100:
+        return year
+    candidate = year + 2000
+    if candidate < datetime.now().year - 5:
+        candidate += 100
+    return candidate
+
+
+def normalize_contract_month(raw: str) -> str:
+    """Normalize contract month to YYYYMM format.
+
+    Handles: YYYYMM, YYYYMMDD, ticker-prefixed (KCN26), bare letters (N26),
+    and suffixed formats ("KCH6 (202603)").
+    """
+    if not raw:
+        return ''
+    raw = str(raw).strip().split()[0]  # Strip suffix noise
+
+    # Already YYYYMM or YYYYMMDD
+    if raw.isdigit() and len(raw) >= 6:
+        return raw[:6]
+
+    # Ticker-prefixed: KCN26, KCU25, CCZ25, KCH6 (1 or 2 digit year)
+    from config.databento_mappings import LETTER_TO_MONTH_NUM
+    ticker_re = re.match(r'^([A-Z]{2,4})([FGHJKMNQUVXZ])(\d{1,2})$', raw.upper())
+    if ticker_re:
+        letter, year_str = ticker_re.group(2), ticker_re.group(3)
+        month_num = LETTER_TO_MONTH_NUM.get(letter)
+        if month_num:
+            year = _resolve_year(int(year_str))
+            return f"{year}{month_num:02d}"
+
+    # Bare month letter + year: N26, U5, H6
+    bare = re.match(r'^([FGHJKMNQUVXZ])(\d{1,2})$', raw.upper())
+    if bare:
+        letter, year_str = bare.group(1), bare.group(2)
+        month_num = LETTER_TO_MONTH_NUM.get(letter)
+        if month_num:
+            year = _resolve_year(int(year_str))
+            return f"{year}{month_num:02d}"
+
+    # Fallback: extract digits
+    digits = ''.join(c for c in raw if c.isdigit())
+    return digits[:6] if len(digits) >= 6 else digits
+
+
 class TransactiveMemory:
     """
     Shared memory system for cross-agent knowledge retrieval using Vector DB.
@@ -49,7 +118,8 @@ class TransactiveMemory:
     ENHANCED: Now supports temporal filtering for backtest integrity.
     """
 
-    def __init__(self, persist_path: str = "./data/tms"):
+    def __init__(self, persist_path: str = None):
+        persist_path = persist_path or _get_default_tms_path()
         """Initialize TMS with ChromaDB backend."""
         os.makedirs(os.path.dirname(persist_path) if os.path.dirname(persist_path) else '.', exist_ok=True)
 
@@ -512,7 +582,11 @@ class TransactiveMemory:
                     "strategy_type": thesis_data.get('strategy_type', 'UNKNOWN'),
                     "guardian_agent": thesis_data.get('guardian_agent', 'UNKNOWN'),
                     "entry_timestamp": thesis_data.get('entry_timestamp', datetime.now(timezone.utc).isoformat()),
-                    "active": "true"
+                    "active": "true",
+                    "symbol": thesis_data.get('supporting_data', {}).get('underlying_symbol', ''),
+                    "contract_month": normalize_contract_month(
+                        thesis_data.get('supporting_data', {}).get('contract_month', '')),
+                    "direction": thesis_data.get('direction', ''),
                 }],
                 ids=[doc_id]
             )
@@ -523,7 +597,11 @@ class TransactiveMemory:
             return None
 
     def retrieve_thesis(self, trade_id: str) -> dict | None:
-        """Retrieves the entry thesis for a specific trade."""
+        """Retrieves the entry thesis for a specific trade.
+
+        Returns the document JSON merged with ChromaDB metadata so callers
+        can check fields like ``active`` that live in metadata only.
+        """
         if not self.collection:
             return None
 
@@ -534,7 +612,17 @@ class TransactiveMemory:
             )
             if results and results['documents']:
                 data = json.loads(results['documents'][0])
-                return data if isinstance(data, dict) else None
+                if not isinstance(data, dict):
+                    return None
+                # Merge metadata (contains 'active', 'trade_id', etc.)
+                meta = (results.get('metadatas') or [None])[0]
+                if meta:
+                    for k, v in meta.items():
+                        if k == 'active':
+                            data['active'] = (v == 'true')
+                        elif k not in data:
+                            data[k] = v
+                return data
             return None
         except Exception as e:
             logger.error(f"TMS retrieve_thesis failed: {e}")
@@ -561,6 +649,53 @@ class TransactiveMemory:
             logger.error(f"TMS get_active_theses failed: {e}")
             return []
 
+    def get_active_theses_by_contract(self, symbol: str, contract_month: str) -> list:
+        """Returns all active theses for a given commodity + contract month."""
+        if not self.collection:
+            return []
+        contract_month = normalize_contract_month(contract_month)
+        try:
+            results = self.collection.get(
+                where={"$and": [
+                    {"active": "true"},
+                    {"symbol": symbol},
+                    {"contract_month": contract_month}
+                ]},
+                include=['documents', 'metadatas']
+            )
+            theses = self._parse_thesis_results(results)
+
+            # Fallback: scan legacy theses without new metadata keys
+            if not theses:
+                all_active = self.collection.get(
+                    where={"$and": [{"active": "true"}, {"type": "entry_thesis"}]},
+                    include=['documents', 'metadatas']
+                )
+                for i, doc in enumerate(all_active.get('documents', [])):
+                    data = json.loads(doc) if doc else {}
+                    if not isinstance(data, dict):
+                        continue
+                    sd = data.get('supporting_data', {})
+                    doc_sym = sd.get('underlying_symbol', '')
+                    doc_month = normalize_contract_month(sd.get('contract_month', ''))
+                    if doc_sym == symbol and doc_month == contract_month:
+                        data['_metadata'] = all_active['metadatas'][i]
+                        theses.append(data)
+            return theses
+        except Exception as e:
+            logger.error(f"TMS get_active_theses_by_contract failed: {e}")
+            return []
+
+    def _parse_thesis_results(self, results) -> list:
+        """Parse ChromaDB results into thesis dicts with _metadata attached."""
+        theses = []
+        for i, doc in enumerate(results.get('documents', [])):
+            data = json.loads(doc) if doc else {}
+            if isinstance(data, dict):
+                data['_metadata'] = results['metadatas'][i]
+                theses.append(data)
+        return theses
+
     def invalidate_thesis(self, trade_id: str, reason: str):
         """Marks a thesis as invalidated (position closed)."""
         if not self.collection:
@@ -580,6 +715,87 @@ class TransactiveMemory:
                 logger.info(f"TMS: Invalidated thesis for {trade_id}: {reason}")
         except Exception as e:
             logger.error(f"TMS invalidate_thesis failed: {e}")
+
+    def mark_pending_close(self, trade_id: str, reason: str, direction: str = ""):
+        """Mark thesis for deferred close. Survives process restarts.
+
+        Called when a CONTRADICT is detected but the close cannot execute
+        immediately (e.g., no IB connection yet). The pending_close flag is
+        the durable record of close intent, picked up by place_queued_orders
+        and the position audit safety net.
+        """
+        if not self.collection:
+            return
+
+        try:
+            doc_id = f"thesis_{trade_id}"
+            results = self.collection.get(ids=[doc_id], include=['metadatas'])
+            if results and results['metadatas']:
+                meta = results['metadatas'][0]
+                meta['pending_close'] = reason
+                meta['pending_close_timestamp'] = datetime.now(timezone.utc).isoformat()
+                if direction:
+                    meta['pending_close_direction'] = direction
+                self.collection.update(ids=[doc_id], metadatas=[meta])
+                logger.info(
+                    f"TMS: Marked thesis {trade_id} pending_close={reason}"
+                    + (f" (new direction: {direction})" if direction else "")
+                )
+        except Exception as e:
+            logger.error(f"TMS mark_pending_close failed for {trade_id}: {e}")
+
+    def clear_pending_close(self, trade_id: str):
+        """Remove pending_close flag after successful close."""
+        if not self.collection:
+            return
+
+        try:
+            doc_id = f"thesis_{trade_id}"
+            results = self.collection.get(ids=[doc_id], include=['metadatas'])
+            if results and results['metadatas']:
+                meta = results['metadatas'][0]
+                changed = False
+                for key in ('pending_close', 'pending_close_timestamp',
+                            'pending_close_direction'):
+                    if key in meta:
+                        del meta[key]
+                        changed = True
+                if changed:
+                    self.collection.update(ids=[doc_id], metadatas=[meta])
+                    logger.info(f"TMS: Cleared pending_close for {trade_id}")
+        except Exception as e:
+            logger.debug(f"TMS clear_pending_close failed for {trade_id}: {e}")
+
+    def get_pending_close_theses(self) -> list:
+        """Return all active theses with a pending_close flag.
+
+        ChromaDB doesn't support $exists queries, so we scan all active
+        theses and filter in Python. This is fine at our scale (< 50
+        active theses at any time).
+        """
+        if not self.collection:
+            return []
+
+        try:
+            all_active = self.collection.get(
+                where={"active": "true"},
+                include=['metadatas', 'documents']
+            )
+            results = []
+            for i, meta in enumerate(all_active.get('metadatas', [])):
+                if meta.get('pending_close'):
+                    trade_id = meta.get('trade_id', '')
+                    results.append({
+                        'trade_id': trade_id,
+                        'pending_close': meta['pending_close'],
+                        'pending_close_timestamp': meta.get('pending_close_timestamp', ''),
+                        'pending_close_direction': meta.get('pending_close_direction', ''),
+                        'metadata': meta,
+                    })
+            return results
+        except Exception as e:
+            logger.error(f"TMS get_pending_close_theses failed: {e}")
+            return []
 
     def get_all_theses(self) -> list:
         """Returns all theses (active + invalidated) from the TMS."""
@@ -671,4 +887,4 @@ class TransactiveMemory:
 # =============================================================================
 
 # Ensure existing code that imports TransactiveMemory continues to work
-__all__ = ['TransactiveMemory', 'CROSS_CUE_RULES']
+__all__ = ['TransactiveMemory', 'CROSS_CUE_RULES', 'normalize_contract_month']

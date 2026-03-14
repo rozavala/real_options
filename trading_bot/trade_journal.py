@@ -18,26 +18,26 @@ logger = logging.getLogger(__name__)
 class TradeJournal:
     """Generate and store post-mortem narratives for closed trades."""
 
-    JOURNAL_FILE = "data/trade_journal.json"
-
     def __init__(self, config: dict, tms=None, router=None):
         self.config = config
         self.tms = tms
         self.router = router
+        data_dir = config.get('data_dir', 'data')
+        self.journal_file = os.path.join(data_dir, "trade_journal.json")
         self._entries = self._load_entries()
 
     def _load_entries(self) -> list:
-        if os.path.exists(self.JOURNAL_FILE):
+        if os.path.exists(self.journal_file):
             try:
-                with open(self.JOURNAL_FILE, 'r') as f:
+                with open(self.journal_file, 'r') as f:
                     return json.load(f)
             except Exception:
                 return []
         return []
 
     def _save_entries(self):
-        os.makedirs(os.path.dirname(self.JOURNAL_FILE) or '.', exist_ok=True)
-        with open(self.JOURNAL_FILE, 'w') as f:
+        os.makedirs(os.path.dirname(self.journal_file) or '.', exist_ok=True)
+        with open(self.journal_file, 'w') as f:
             json.dump(self._entries, f, indent=2, default=str)
 
     async def generate_post_mortem(
@@ -61,6 +61,10 @@ class TradeJournal:
                 "entry_confidence": entry_decision.get('confidence', 0.0),
                 "entry_strategy": entry_decision.get('strategy_type', 'Unknown'),
                 "trigger_type": entry_decision.get('trigger_type', 'Unknown'),
+                "schedule_id": entry_decision.get('schedule_id', ''),
+                "thesis_strength": entry_decision.get('thesis_strength', ''),
+                "primary_catalyst": entry_decision.get('primary_catalyst', ''),
+                "dissent_acknowledged": entry_decision.get('dissent_acknowledged', ''),
             }
 
             # Generate narrative (LLM if available, template if not)
@@ -118,6 +122,10 @@ class TradeJournal:
         """Use LLM to generate structured narrative."""
         from trading_bot.heterogeneous_router import AgentRole
 
+        trigger_display = entry['trigger_type']
+        if entry.get('schedule_id'):
+            trigger_display += f" ({entry['schedule_id']})"
+
         prompt = f"""Analyze this closed trade and generate a structured post-mortem.
 
 TRADE DETAILS:
@@ -125,9 +133,12 @@ TRADE DETAILS:
 - Direction: {entry['entry_direction']}
 - Strategy: {entry['entry_strategy']}
 - Entry Confidence: {entry['entry_confidence']}
-- Trigger: {entry['trigger_type']}
+- Thesis Strength: {entry.get('thesis_strength') or 'Unknown'}
+- Primary Catalyst: {entry.get('primary_catalyst') or 'Unknown'}
+- Trigger: {trigger_display}
+- Dissent Acknowledged: {entry.get('dissent_acknowledged') or 'N/A'}
 - P&L: ${entry['pnl']:.2f} ({'WIN' if entry['pnl'] > 0 else 'LOSS'})
-- Original Thesis: {entry['entry_thesis'][:500]}
+- Original Thesis: {entry['entry_thesis'][:2000]}
 
 Generate a JSON object with:
 1. "summary": One-sentence summary of what happened
@@ -139,7 +150,7 @@ Generate a JSON object with:
 """
 
         response = await self.router.route(
-            AgentRole.PERMABEAR, prompt, response_json=True
+            AgentRole.TRADE_ANALYST, prompt, response_json=True
         )
 
         # Parse JSON response (using robust regex extraction)
@@ -160,7 +171,7 @@ Generate a JSON object with:
             f"({entry['entry_strategy']}) with confidence {entry['entry_confidence']:.2f}. "
             f"Triggered by {entry['trigger_type']}. "
             f"Trade {outcome} with P&L ${entry['pnl']:.2f}. "
-            f"Original thesis: {entry['entry_thesis'][:200]}"
+            f"Original thesis: {entry['entry_thesis'][:500]}"
         )
 
     def get_recent_entries(self, n: int = 10) -> list:

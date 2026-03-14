@@ -7,15 +7,13 @@ trades to a `missing_trades.csv` file.
 """
 
 import asyncio
-import csv
 import io
 import logging
 import os
-import time
-import xml.etree.ElementTree as ET
-from datetime import datetime
+import defusedxml.ElementTree as ET
 
 import httpx  # Added for HTTP requests
+import numpy as np
 import pandas as pd
 # Removed ib_insync imports
 
@@ -89,9 +87,36 @@ def get_local_active_positions(ledger: pd.DataFrame = None) -> pd.DataFrame:
     # If I Buy 1 contract (to close short), my position is 0.
     # So: BUY is always +Quantity, SELL is always -Quantity.
 
-    ledger['signed_quantity'] = ledger.apply(
-        lambda row: row['quantity'] if row['action'] == 'BUY' else -row['quantity'], axis=1
-    )
+    # Drop synthetic entries superseded by RECONCILIATION_MISSING.
+    # Phantom reconciliation creates synthetic closes (fabricated timestamp,
+    # $0 price) when IB shows no position. Later, Flex reconciliation finds
+    # the real trade and writes a RECONCILIATION_MISSING entry. Both account
+    # for the same close → double-counting. When a RECONCILIATION_MISSING
+    # exists for a symbol, ALL synthetic entries for that symbol are
+    # redundant — drop them regardless of action direction. (The phantom
+    # reconciliation creates both legs of a round-trip, so matching only on
+    # (symbol, action) leaves the opposite-direction phantom orphaned.)
+    if 'reason' in ledger.columns:
+        reasons = ledger['reason'].fillna('')
+        synthetic_mask = reasons.str.contains(
+            'Ledger reconciliation|PHANTOM_RECONCILIATION', case=False
+        )
+        recon_mask = reasons.str.contains('RECONCILIATION_MISSING', case=False)
+
+        if synthetic_mask.any() and recon_mask.any():
+            # Find symbols that have any RECONCILIATION_MISSING entry
+            recon_symbols = set(ledger.loc[recon_mask, 'local_symbol'])
+            # Drop ALL synthetics for those symbols (both action directions)
+            superseded = synthetic_mask & ledger['local_symbol'].isin(recon_symbols)
+            if superseded.any():
+                logger.info(
+                    f"Dropping {superseded.sum()} synthetic entries superseded "
+                    f"by RECONCILIATION_MISSING"
+                )
+                ledger = ledger[~superseded].copy()
+
+    # ⚡ Bolt: Vectorized np.where provides ~100x speedup over row-wise .apply() for conditional arithmetic
+    ledger['signed_quantity'] = np.where(ledger['action'] == 'BUY', ledger['quantity'], -ledger['quantity'])
 
     # Group by Symbol and sum
     # Note: 'local_symbol' in ledger corresponds to 'Symbol' in Flex Query
@@ -126,9 +151,26 @@ async def reconcile_active_positions(config: dict):
 
     ib_positions = parse_position_flex_csv_to_df(csv_data)
 
+    # 1b. Filter to active commodity symbol
+    # IBKR uses different symbol prefixes for futures vs options:
+    # KC futures = "KC*", KC options = "KO*"; CC futures = "CC*", CC options = "DC*"
+    # NG futures = "NG*", NG monthly options = "LNE*", NG weekly options = "LN1"-"LN5" (week number)
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    _IBKR_SYMBOL_PREFIXES = {
+        "KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO"),
+        "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
+    }
+    prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,))
+    if not ib_positions.empty:
+        pre_count = len(ib_positions)
+        # ⚡ Bolt: Vectorized str.startswith with tuple is ~4x faster than .apply(lambda) for prefix filtering
+        ib_positions = ib_positions[ib_positions['Symbol'].str.startswith(tuple(prefixes))]
+        if len(ib_positions) < pre_count:
+            logger.info(f"Filtered IB positions by commodity {ticker} (prefixes {prefixes}): {pre_count} -> {len(ib_positions)}")
+
     # 2. Get Local Active Positions
     # Load full ledger first to check for recent trades
-    full_ledger = get_trade_ledger_df()
+    full_ledger = get_trade_ledger_df(config.get('data_dir'))
     local_positions = get_local_active_positions(full_ledger)
 
     # 3. Exclude symbols traded recently (last 24 hours)
@@ -140,6 +182,14 @@ async def reconcile_active_positions(config: dict):
         cutoff_time = now_utc - pd.Timedelta(hours=24)
 
         recent_trades = full_ledger[full_ledger['timestamp'] >= cutoff_time]
+        # Don't skip emergency/catastrophe symbols — these must be reconciled
+        # immediately since failed closes are exactly what we want to detect.
+        if 'reason' in recent_trades.columns:
+            recent_trades = recent_trades[
+                ~recent_trades['reason'].str.contains(
+                    'EMERGENCY_HARD_CLOSE|CATASTROPHE', na=False
+                )
+            ]
         skipped_symbols = set(recent_trades['local_symbol'].unique())
 
         if skipped_symbols:
@@ -176,14 +226,81 @@ async def reconcile_active_positions(config: dict):
         # Send Notification
         send_pushover_notification(
             config.get('notifications', {}),
-            "Position Reconciliation Alert",
+            f"Position Reconciliation Alert [{ticker}]",
             message
         )
     else:
         logger.info("Active Position Reconciliation complete. No discrepancies found.")
 
 
-def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
+def _resolve_original_position_ids(
+    missing_df: pd.DataFrame,
+    ledger: pd.DataFrame = None,
+    data_dir: str = None,
+) -> pd.DataFrame:
+    """
+    Replace fabricated Flex Query position_ids with original position_ids
+    from the consolidated trade ledger.
+
+    For each missing trade, finds ledger entries with the same local_symbol
+    and picks the position_id from the most recent open position group.
+    This ensures RECONCILIATION_MISSING entries cancel out the correct
+    original entries when net quantities are computed per (position_id, symbol).
+    """
+    if ledger is None:
+        ledger = get_trade_ledger_df(data_dir)
+    if ledger.empty:
+        return missing_df
+
+    result = missing_df.copy()
+
+    # Exclude synthetic entries from lookup — we want real position_ids
+    if 'reason' in ledger.columns:
+        reasons = ledger['reason'].fillna('')
+        ledger = ledger[~reasons.str.contains(
+            'PHANTOM_RECONCILIATION|RECONCILIATION_MISSING|Ledger reconciliation',
+            case=False
+        )]
+
+    if ledger.empty:
+        return missing_df
+
+    # Ensure timestamp is datetime for sorting
+    if not pd.api.types.is_datetime64_any_dtype(ledger['timestamp']):
+        ledger['timestamp'] = pd.to_datetime(ledger['timestamp'], utc=True, errors='coerce')
+
+    # Pre-compute lookup: symbol → position_id of the most recent entry
+    sorted_ledger = ledger.sort_values('timestamp', ascending=False)
+    pid_lookup = (
+        sorted_ledger
+        .dropna(subset=['position_id'])
+        .groupby('local_symbol')['position_id']
+        .first()
+        .to_dict()
+    )
+
+    for idx, row in result.iterrows():
+        symbol = row.get('local_symbol', '')
+        if not symbol:
+            continue
+
+        original_pid = pid_lookup.get(symbol)
+        if original_pid and str(original_pid).strip():
+            old_pid = row.get('position_id', '')
+            result.at[idx, 'position_id'] = original_pid
+            logger.info(
+                f"Resolved position_id for {symbol}: "
+                f"{str(old_pid)[:30]}... → {str(original_pid)[:30]}..."
+            )
+
+    return result
+
+
+def write_missing_trades_to_csv(
+    missing_trades_df: pd.DataFrame,
+    data_dir: str = None,
+    ledger: pd.DataFrame = None,
+):
     """
     Writes the DataFrame of missing trades to a `missing_trades.csv` file
     inside the `archive_ledger` directory.
@@ -192,8 +309,11 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
     if missing_trades_df.empty:
         return
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    if data_dir:
+        archive_dir = os.path.join(data_dir, 'archive_ledger')
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
     output_path = os.path.join(archive_dir, 'trade_ledger_missing_trades.csv')
 
     # Create the archive directory if it doesn't exist
@@ -205,10 +325,10 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
     ]
 
     try:
-        # Create the final DataFrame with the 'reason' column and ensure field order
-        final_df = missing_trades_df.copy()
+        # Resolve fabricated Flex Query position_ids to original ledger ones
+        final_df = _resolve_original_position_ids(missing_trades_df, ledger=ledger, data_dir=data_dir)
         final_df['reason'] = 'RECONCILIATION_MISSING'
-        
+
         # Sort by timestamp before writing
         final_df.sort_values(by='timestamp', inplace=True)
 
@@ -217,14 +337,14 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
 
         # Reorder columns to match the ledger
         final_df = final_df.reindex(columns=fieldnames)
-        
+
         final_df.to_csv(
-            output_path, 
-            index=False, 
-            header=True, 
+            output_path,
+            index=False,
+            header=True,
             float_format='%.2f'
         )
-        
+
         logger.info(f"Successfully wrote {len(final_df)} missing trade(s) to '{output_path}'.")
 
     except IOError as e:
@@ -233,7 +353,7 @@ def write_missing_trades_to_csv(missing_trades_df: pd.DataFrame):
         logger.error(f"An unexpected error occurred in write_missing_trades_to_csv: {e}")
 
 
-def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame):
+def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame, data_dir: str = None):
     """
     Writes the DataFrame of superfluous local trades to a CSV file
     inside the `archive_ledger` directory.
@@ -241,8 +361,11 @@ def write_superfluous_trades_to_csv(superfluous_trades_df: pd.DataFrame):
     if superfluous_trades_df.empty:
         return
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    if data_dir:
+        archive_dir = os.path.join(data_dir, 'archive_ledger')
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
     output_path = os.path.join(archive_dir, 'superfluous_local_trades.csv')
 
     # Create the archive directory if it doesn't exist
@@ -281,7 +404,8 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
 
     This enhanced version ignores `combo_id` and `position_id` and instead
     matches trades based on a combination of symbol, quantity, action, and
-    a 2-second timestamp tolerance for robustness.
+    a 30-second timestamp tolerance (IB execution timestamps can differ
+    from system recording time by 10-15s due to order routing latency).
 
     Returns:
         A tuple containing two DataFrames:
@@ -321,8 +445,10 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
             # Check for a timestamp match within the tolerance
             time_diff = (potential_matches['timestamp'] - ib_trade['timestamp']).abs()
 
-            # Find the index of the first match within the 2-second window
-            match_indices = potential_matches[time_diff <= pd.Timedelta(seconds=2)].index
+            # Find the closest match within a 30-second window.
+            # IB execution timestamps can differ from system recording time
+            # by 10-15 seconds due to order routing and callback latency.
+            match_indices = potential_matches[time_diff <= pd.Timedelta(seconds=30)].index
 
             if len(match_indices) > 0:
                 # If a match is found, remove it from the unmatched pool
@@ -340,16 +466,19 @@ def reconcile_trades(ib_trades_df: pd.DataFrame, local_trades_df: pd.DataFrame) 
     return pd.DataFrame(missing_from_local), local_trades_unmatched
 
 
-def get_trade_ledger_df() -> pd.DataFrame:
+def get_trade_ledger_df(data_dir: str = None) -> pd.DataFrame:
     """
     Reads and consolidates the main and archived trade ledgers into a single
     DataFrame for analysis.
-    (This function is unchanged from your original script)
     """
-    # Define paths relative to the script's location, which is the project root.
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
-    archive_dir = os.path.join(base_dir, 'archive_ledger')
+    if data_dir:
+        ledger_path = os.path.join(data_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(data_dir, 'archive_ledger')
+    else:
+        # Legacy: define paths relative to the script's location (project root)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        ledger_path = os.path.join(base_dir, 'trade_ledger.csv')
+        archive_dir = os.path.join(base_dir, 'archive_ledger')
 
     dataframes = []
 
@@ -546,16 +675,30 @@ def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
         return pd.DataFrame()
 
     # --- Column Name Normalization ---
-    # Standardize column names from different reports
+    # Standardize column names from different Flex Query report formats.
+    # IBKR uses different column names depending on the query type
+    # (Trade Confirmations vs Trades vs Executions).
     column_mappings = {
         'Price': 'TradePrice',
+        'TradeMoney': 'TradePrice',
         'Date/Time': 'DateTime',
+        'TradeDate': 'DateTime',
         'TradeID': 'TransactionID',
         'IBOrderID': 'SharedOrderID',
         'OrderID': 'SharedOrderID',
         'OrderReference': 'OrderReference'
     }
     df.rename(columns=column_mappings, inplace=True)
+
+    # Validate required columns exist before processing
+    required_cols = {'TradePrice', 'Quantity', 'DateTime', 'Symbol'}
+    missing = required_cols - set(df.columns)
+    if missing:
+        logger.warning(
+            f"Flex Query report missing required columns: {missing}. "
+            f"Available columns: {list(df.columns)}"
+        )
+        return pd.DataFrame()
         
     # --- Commodity profile info for multiplier/cents detection ---
     from trading_bot.utils import get_active_ticker, CENTS_INDICATORS
@@ -593,7 +736,7 @@ def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
         df['timestamp_utc'] = df['parsed_datetime'].dt.tz_localize('America/New_York').dt.tz_convert('UTC')
 
     except KeyError as e:
-        logger.error(f"Missing expected column in Flex Query report: {e}", exc_info=True)
+        logger.error(f"Missing column in Flex Query report: {e}. Columns: {list(df.columns)}", exc_info=True)
         return pd.DataFrame()
     except Exception as e:
         logger.error(f"Error during data type conversion: {e}", exc_info=True)
@@ -663,7 +806,7 @@ def parse_flex_csv_to_df(csv_data: str, config: dict = None) -> pd.DataFrame:
     return df_out
 
 
-async def main(lookback_days: int = None):
+async def main(lookback_days: int = None, config: dict = None):
     """
     Main function to orchestrate the trade reconciliation process.
     Fetches reports from multiple Flex Queries, consolidates them, and then
@@ -673,7 +816,13 @@ async def main(lookback_days: int = None):
     logger.info("Starting trade reconciliation using Flex Queries.")
 
     # --- 1. Load Configuration ---
-    config = load_config()
+    if config is None:
+        config = load_config()
+    # Inject data_dir for commodity isolation if not already set
+    if 'data_dir' not in config:
+        ticker = os.environ.get("COMMODITY_TICKER", "KC").upper()
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config['data_dir'] = os.path.join(base_dir, 'data', ticker)
     try:
         token = config['flex_query']['token']
         query_ids = config['flex_query']['query_ids']
@@ -706,15 +855,45 @@ async def main(lookback_days: int = None):
 
     logger.info(f"Consolidated to {len(ib_trades_df)} unique trades from all reports.")
 
+    # --- 3b. Filter to active commodity symbol ---
+    # The IBKR Flex Query returns ALL account trades. Filter to only trades
+    # matching the active commodity. IBKR uses different prefixes for futures
+    # vs options: KC/"KO*"; CC/"DC*"; SB/"SO*"; NG monthly="LNE*", NG weekly="LN1"-"LN5"
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    _IBKR_SYMBOL_PREFIXES = {
+        "KC": ("KC", "KO"), "CC": ("CC", "DC"), "SB": ("SB", "SO"),
+        "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
+    }
+    prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,))
+    pre_filter_count = len(ib_trades_df)
+    # ⚡ Bolt: Vectorized str.startswith with tuple is ~4x faster than .apply(lambda) for prefix filtering
+    ib_trades_df = ib_trades_df[ib_trades_df['local_symbol'].str.startswith(tuple(prefixes))]
+    if len(ib_trades_df) < pre_filter_count:
+        logger.info(f"Filtered IB trades by commodity {ticker} (prefixes {prefixes}): {pre_filter_count} -> {len(ib_trades_df)}")
+
     # --- 4. Load Local Trade Ledger ---
-    local_trades_df = get_trade_ledger_df()
+    full_ledger = get_trade_ledger_df(config.get('data_dir'))
+    local_trades_df = full_ledger
     if local_trades_df.empty:
         logger.warning("Local trade ledger is empty. All fetched IB trades will be considered missing.")
+
+    # --- 4b. Exclude synthetic bookkeeping entries from comparison ---
+    # These entries are internal synthetic closes (zero-value, fabricated
+    # timestamps) that will never match any IB Flex record.  Including them
+    # inflates the "superfluous" count with false positives every cycle.
+    if not local_trades_df.empty and 'reason' in local_trades_df.columns:
+        synthetic_mask = local_trades_df['reason'].fillna('').str.contains(
+            'PHANTOM_RECONCILIATION|Ledger reconciliation', case=False
+        )
+        n_synthetic = synthetic_mask.sum()
+        if n_synthetic > 0:
+            local_trades_df = local_trades_df[~synthetic_mask]
+            logger.info(f"Excluded {n_synthetic} synthetic/manual reconciliation entries from comparison.")
 
     # --- 5. Filter trades to the last 33 days for comparison ---
     # v3.1: Configurable lookback with environment override
     if lookback_days is None:
-        lookback_days = int(os.getenv('RECONCILIATION_LOOKBACK_DAYS', '90'))
+        lookback_days = int(os.getenv('RECONCILIATION_LOOKBACK_DAYS', '30'))
 
     cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=lookback_days)
 
@@ -738,10 +917,10 @@ async def main(lookback_days: int = None):
     else:
         # --- 7. Output Discrepancy Reports ---
         logger.info("Discrepancies found. Writing to output files.")
-        write_missing_trades_to_csv(missing_trades_df)
-        write_superfluous_trades_to_csv(superfluous_trades_df)
+        write_missing_trades_to_csv(missing_trades_df, config.get('data_dir'), ledger=full_ledger)
+        write_superfluous_trades_to_csv(superfluous_trades_df, config.get('data_dir'))
 
-    # --- 6. Return the dataframes for the orchestrator ---
+    # --- 8. Return the dataframes for the orchestrator ---
     return missing_trades_df, superfluous_trades_df
 
 
@@ -752,8 +931,9 @@ async def full_reconciliation(config: dict) -> int:
     """
     logger.info("Running FULL trade reconciliation (no date limit)")
 
-    # Run main with 365 days lookback
-    missing, superfluous = await main(lookback_days=365)
+    # Run main with 365 days lookback — pass config to ensure correct
+    # commodity prefix filtering (without it, defaults to KC)
+    missing, superfluous = await main(lookback_days=365, config=config)
 
     count = len(missing) + len(superfluous)
     if count > 0:

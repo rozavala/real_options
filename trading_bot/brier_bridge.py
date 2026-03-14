@@ -1,12 +1,9 @@
 """
-Brier Bridge: Unified prediction recording across legacy and enhanced systems.
+Brier Bridge: Unified prediction recording via the enhanced Brier system.
 
-This module provides a single entry point for recording and resolving predictions,
-ensuring both the legacy CSV-based system and the enhanced probabilistic system
-stay in sync.
-
-ARCHITECTURE PRINCIPLE: Dual-write pattern ensures backward compatibility.
-The enhanced system can fail without impacting legacy behavior.
+This module provides a single entry point for recording and resolving predictions
+using enhanced_brier.json as the sole data store. The legacy CSV dual-write path
+was removed after its deprecation date (2026-03-01).
 """
 
 import logging
@@ -15,10 +12,6 @@ from datetime import datetime, timezone
 from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
-
-# B1 FIX: Track legacy usage for migration
-_LEGACY_USAGE_COUNT = 0
-_LEGACY_DEPRECATION_DATE = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
 
 def record_agent_prediction(
@@ -46,16 +39,24 @@ def record_agent_prediction(
         timestamp: When prediction was made (default: now UTC)
     """
     ts = timestamp or datetime.now(timezone.utc)
-    global _LEGACY_USAGE_COUNT
 
-    # === ENHANCED SYSTEM (JSON) — fail-safe ===
+    # Guard: only record predictions inside a live orchestrator session.
+    # Prevents DSPy evaluations, manual tests, and scripts from polluting
+    # the production Brier data.
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        if get_engine_runtime() is None:
+            logger.debug(f"Skipping Brier recording for {agent}: no EngineRuntime (non-orchestrator context)")
+            return
+    except Exception:
+        pass  # If ContextVar lookup fails, allow recording (legacy single-engine mode)
+
+    # === ENHANCED SYSTEM (JSON) — sole write path ===
     try:
         from trading_bot.enhanced_brier import EnhancedBrierTracker, MarketRegime, normalize_regime
 
         tracker = _get_enhanced_tracker()
-        if tracker is None:
-            pass # Fall through to legacy if enabled
-        else:
+        if tracker is not None:
             # Convert confidence to probability distribution
             prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(
                 predicted_direction, predicted_confidence
@@ -78,29 +79,6 @@ def record_agent_prediction(
     except Exception as e:
         # Enhanced system failure MUST NOT block trading
         logger.warning(f"Enhanced Brier recording failed for {agent}: {e}")
-
-    # === LEGACY SYSTEM (CSV) — Deprecated ===
-    if datetime.now(timezone.utc) < _LEGACY_DEPRECATION_DATE:
-        try:
-            from trading_bot.brier_scoring import get_brier_tracker
-            legacy_tracker = get_brier_tracker()
-            legacy_tracker.record_prediction_structured(
-                agent=agent,
-                predicted_direction=predicted_direction,
-                predicted_confidence=predicted_confidence,
-                actual='PENDING',
-                timestamp=ts,
-                cycle_id=cycle_id,
-            )
-            _LEGACY_USAGE_COUNT += 1
-
-            if _LEGACY_USAGE_COUNT % 100 == 0:
-                logger.warning(
-                    f"DEPRECATION: Legacy Brier system used {_LEGACY_USAGE_COUNT} times. "
-                    f"Will be removed after {_LEGACY_DEPRECATION_DATE}"
-                )
-        except Exception as e:
-            logger.error(f"Legacy Brier recording failed for {agent}: {e}")
 
 
 def resolve_agent_prediction(
@@ -185,16 +163,19 @@ def auto_orphan_enhanced_brier(max_age_hours: float = 168.0) -> int:
 
 def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int = 20) -> float:
     """
-    Rolling reliability multiplier from Enhanced Brier scores.
+    Rolling reliability multiplier.
 
-    Delegates to EnhancedBrierTracker.get_agent_reliability() which
-    implements the Brier-to-multiplier conversion internally.
+    Routes to Contribution-based or Enhanced Brier scoring based on
+    scoring mode flag (set during orchestrator init).
 
-    Returns multiplier in [0.1, 2.0]:
-    - Brier ~0.0  → 2.0x (excellent calibration)
-    - Brier ~0.25 → 1.0x (average / insufficient data)
-    - Brier ~0.5  → 0.1x (poor calibration)
+    Returns multiplier in [0.1, 2.0].
     """
+    # Route to contribution scoring if enabled
+    from trading_bot.contribution_bridge import is_contribution_scoring_enabled
+    if is_contribution_scoring_enabled():
+        from trading_bot.contribution_bridge import get_contribution_reliability
+        return get_contribution_reliability(agent_name, regime)
+
     try:
         from trading_bot.agent_names import normalize_agent_name
         agent_name = normalize_agent_name(agent_name)
@@ -204,23 +185,11 @@ def get_agent_reliability(agent_name: str, regime: str = "NORMAL", window: int =
             return 1.0
 
         # FIX (P1-B, 2026-02-04): Call the correct method on the tracker.
+        # v8.0: Tracker now handles cross-regime fallback internally (4-path).
+        # Bridge NORMAL fallback removed — would cause double-fallback confusion.
         from trading_bot.enhanced_brier import normalize_regime
         canonical_regime = normalize_regime(regime).value  # .value → string for dict lookup
         multiplier = tracker.get_agent_reliability(agent_name, canonical_regime)
-
-        # FIX (P0-REGIME, 2026-02-07): Regime fallback to NORMAL.
-        # Although we now normalize regime strings (harmonization complete),
-        # historical data may still be stored under "NORMAL" due to previous mismatches.
-        # This fallback ensures we don't return 1.0 (inert) when specific regime data
-        # is missing but general "NORMAL" data exists.
-        if multiplier == 1.0 and regime != "NORMAL":
-            fallback_mult = tracker.get_agent_reliability(agent_name, "NORMAL")
-            if fallback_mult != 1.0:
-                logger.info(
-                    f"Agent {agent_name}: No Brier data for regime={regime}, "
-                    f"using NORMAL fallback (multiplier={fallback_mult:.2f})"
-                )
-                multiplier = fallback_mult
 
         logger.debug(
             f"Agent {agent_name} reliability (regime={regime}): "
@@ -252,26 +221,49 @@ def get_calibration_data(agent: str = None) -> Dict:
 
 # === PRIVATE HELPERS ===
 
-_enhanced_tracker = None
+# Per-engine tracker registry (keyed by data_dir to prevent cross-contamination)
+_enhanced_trackers: dict = {}  # data_dir → EnhancedBrierTracker
+_enhanced_tracker_data_dir = None
 
 
-def _get_enhanced_tracker():
-    """Lazy singleton for EnhancedBrierTracker."""
-    global _enhanced_tracker
-    if _enhanced_tracker is None:
+def set_data_dir(data_dir: str):
+    """Set data directory and force tracker recreation on next access."""
+    global _enhanced_tracker_data_dir
+    _enhanced_tracker_data_dir = data_dir
+    _enhanced_trackers.pop(data_dir, None)  # Force recreation for this data_dir
+    logger.info(f"BrierBridge data_dir set to: {data_dir}")
+
+
+def _get_enhanced_tracker(data_dir: str = None):
+    """Per-engine EnhancedBrierTracker. Uses data_dir-keyed registry for isolation."""
+    global _enhanced_tracker_data_dir
+    # ContextVar > explicit arg > module global
+    if data_dir is None:
         try:
-            from trading_bot.enhanced_brier import EnhancedBrierTracker
-            _enhanced_tracker = EnhancedBrierTracker()
-        except Exception as e:
-            logger.error(f"Failed to initialize EnhancedBrierTracker: {e}")
-            return None
-    return _enhanced_tracker
+            from trading_bot.data_dir_context import get_engine_data_dir
+            data_dir = get_engine_data_dir()
+        except LookupError:
+            pass
+    effective_dir = data_dir or _enhanced_tracker_data_dir or ""
+    if effective_dir in _enhanced_trackers:
+        return _enhanced_trackers[effective_dir]
+    try:
+        from trading_bot.enhanced_brier import EnhancedBrierTracker
+        if effective_dir:
+            import os
+            data_path = os.path.join(effective_dir, "enhanced_brier.json")
+            _enhanced_trackers[effective_dir] = EnhancedBrierTracker(data_path=data_path)
+        else:
+            _enhanced_trackers[effective_dir] = EnhancedBrierTracker()
+    except Exception as e:
+        logger.error(f"Failed to initialize EnhancedBrierTracker: {e}")
+        return None
+    return _enhanced_trackers[effective_dir]
 
 
 def reset_enhanced_tracker():
-    """Reset singleton (call after resolving predictions)."""
-    global _enhanced_tracker
-    _enhanced_tracker = None
+    """Reset all tracker instances (call after resolving predictions)."""
+    _enhanced_trackers.clear()
 
 
 def _confidence_to_probs(

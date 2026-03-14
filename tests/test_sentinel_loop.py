@@ -14,13 +14,18 @@ class TestSentinelLoop(unittest.IsolatedAsyncioTestCase):
     @patch('orchestrator.PredictionMarketSentinel')
     @patch('orchestrator.MacroContagionSentinel')
     @patch('orchestrator.MicrostructureSentinel')
+    @patch('orchestrator.get_market_state')
     @patch('orchestrator.is_market_open')
     @patch('orchestrator.is_trading_day')
     @patch('orchestrator.configure_market_data_type')
     @patch('orchestrator.GLOBAL_DEDUPLICATOR')
     @patch('orchestrator.get_active_futures', new_callable=AsyncMock)
+    @patch('orchestrator.process_deferred_triggers', new_callable=AsyncMock)
+    @patch('orchestrator._record_sentinel_health')
+    @patch('orchestrator.SENTINEL_STATS')
     async def test_run_sentinels_lazy_init_and_market_hours(
-        self, mock_get_futures, mock_dedup, mock_configure, mock_is_trading, mock_is_market_open,
+        self, mock_stats, mock_record_health, mock_process_deferred, mock_get_futures, mock_dedup, mock_configure, mock_is_trading,
+        mock_is_market_open, mock_get_market_state,
         mock_micro_class, mock_macro_class, mock_prediction_class, mock_x_class, mock_news_class, mock_logistics_class,
         mock_weather_class, mock_price_class, mock_ib_pool
     ):
@@ -41,14 +46,15 @@ class TestSentinelLoop(unittest.IsolatedAsyncioTestCase):
 
         mock_get_futures.return_value = [MagicMock(localSymbol="KC_FUT")]
 
-        # Scenario:
-        # 1. Market Closed (Should NOT connect)
-        # 2. Market Open (Should connect)
-        # 3. Market Open (Should stay connected)
-        # 4. Market Closed (Should disconnect)
+        # Scenario using get_market_state (replaces is_market_open for gate logic):
+        # 1. SLEEPING (Should NOT connect)
+        # 2. ACTIVE (Should connect)
+        # 3. ACTIVE (Should stay connected)
+        # 4. SLEEPING (Should disconnect)
         # 5. CancelledError (Stop loop)
 
-        mock_is_market_open.side_effect = [False, True, True, False, asyncio.CancelledError]
+        mock_get_market_state.side_effect = ['SLEEPING', 'ACTIVE', 'ACTIVE', 'SLEEPING', asyncio.CancelledError]
+        mock_is_market_open.return_value = False  # Backward compat (not primary gate anymore)
         mock_is_trading.return_value = True
 
         # Need to mock sleep to run fast

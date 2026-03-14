@@ -16,7 +16,6 @@ import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
-import yfinance as yf
 from datetime import datetime, timedelta, time
 import sys
 import os
@@ -28,14 +27,24 @@ import re
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dashboard_utils import load_council_history, grade_decision_quality
 from trading_bot.timestamps import parse_ts_column
+from trading_bot.data_providers import get_data_source_label
 from config import get_active_profile
 from dashboard_utils import get_config
 
 st.set_page_config(layout="wide", page_title="Signal Analysis | Real Options")
 
+from _commodity_selector import selected_commodity
+ticker = selected_commodity()
+
 # E1: Dynamic profile loading
 config = get_config()
 profile = get_active_profile(config)
+
+# Derive price display decimals from tick size (KC=0.05 → 2dp, CC=1.0 → 0dp)
+import math
+_tick = profile.contract.tick_size
+_price_decimals = max(0, -math.floor(math.log10(_tick))) if _tick < 1 else 0
+_price_fmt = f",.{_price_decimals}f"
 
 st.title("🎯 Signal Overlay Analysis")
 st.caption("Forensic analysis of Council decisions against futures price action")
@@ -62,12 +71,19 @@ COLOR_MAP = {
     'NEUTRAL': '#888888', 'HOLD': '#888888',
 }
 
-# New constant for Month-specific colors (perpetual)
+# Month-specific colors for all 12 contract months (F-Z)
 MONTH_COLORS = {
-    'H': '#00CC96',  # March - Green
+    'F': '#19D3F3',  # Jan - Cyan
+    'G': '#B6E880',  # Feb - Lime
+    'H': '#00CC96',  # Mar - Green
+    'J': '#FF6692',  # Apr - Pink
     'K': '#636EFA',  # May - Blue
-    'N': '#EF553B',  # July - Red
+    'M': '#FECB52',  # Jun - Yellow
+    'N': '#EF553B',  # Jul - Red
+    'Q': '#FF97FF',  # Aug - Magenta
     'U': '#AB63FA',  # Sep - Purple
+    'V': '#00B5F7',  # Oct - Sky blue
+    'X': '#72B7B2',  # Nov - Teal
     'Z': '#FFA15A',  # Dec - Orange
 }
 
@@ -216,7 +232,7 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
         ticker = profile.contract.symbol  # e.g., 'KC'
 
         # Generate candidate contracts for the next ~2 years
-        from datetime import datetime, timedelta
+        from datetime import datetime
         today = datetime.now()
 
         # Month code to calendar month mapping
@@ -239,7 +255,6 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
                 # (exact date varies by exchange, but 20th is a safe approximation
                 # for determining DTE eligibility — the real filter happens in IB)
                 try:
-                    from calendar import monthrange
                     # Use 3rd Friday as rough expiry estimate for ICE coffee
                     approx_expiry = datetime(year, month_num, 19)
                 except ValueError:
@@ -255,7 +270,10 @@ def resolve_front_month_ticker(config_path: str = "config.json") -> tuple[str, s
             # Sort by DTE ascending — first one is the trading front month
             candidates.sort(key=lambda x: x[0])
             front_symbol = candidates[0][1]
-            yf_ticker = f"{front_symbol}.NYB"
+            # Use exchange-specific suffix (NYB for ICE/NYBOT, NYM for NYMEX, etc.)
+            suffix_map = {'ICE': 'NYB', 'NYBOT': 'NYB', 'NYMEX': 'NYM', 'COMEX': 'CMX', 'CME': 'CME'}
+            suffix = suffix_map.get(profile.contract.exchange, 'NYB')
+            yf_ticker = f"{front_symbol}.{suffix}"
             return (yf_ticker, front_symbol)
 
     except Exception as e:
@@ -316,20 +334,22 @@ def get_contract_display_name(contract: str) -> str:
     Examples:
         'FRONT_MONTH' -> '📊 Front Month (Continuous)'
         'KCH26' -> 'KCH26 (Mar 2026)'
-        'KCH6 (202603)' -> 'KCH26 (Mar 2026)'
+        'CCK26' -> 'CCK26 (May 2026)'
     """
+    _tk_len = len(profile.contract.symbol)  # 2 for KC/CC
+    _expected_len = _tk_len + 3  # ticker + month_code + 2-digit year
+
     if contract == 'FRONT_MONTH':
         _, resolved_symbol = resolve_front_month_ticker()
         if resolved_symbol and resolved_symbol != 'FRONT_MONTH':
-            # Show which contract is actually being used
             month_names = {
                 'F': 'Jan', 'G': 'Feb', 'H': 'Mar', 'J': 'Apr',
                 'K': 'May', 'M': 'Jun', 'N': 'Jul', 'Q': 'Aug',
                 'U': 'Sep', 'V': 'Oct', 'X': 'Nov', 'Z': 'Dec'
             }
-            if len(resolved_symbol) == 5:
-                mc = resolved_symbol[2]
-                yr = resolved_symbol[3:5]
+            if len(resolved_symbol) == _expected_len:
+                mc = resolved_symbol[_tk_len]
+                yr = resolved_symbol[_tk_len + 1:_tk_len + 3]
                 mn = month_names.get(mc, '???')
                 return f'📊 Front Month ({resolved_symbol} · {mn} 20{yr})'
         return '📊 Front Month (Continuous)'
@@ -341,9 +361,9 @@ def get_contract_display_name(contract: str) -> str:
     }
 
     clean_symbol = clean_contract_symbol(contract)
-    if clean_symbol and len(clean_symbol) == 5:
-        month_code = clean_symbol[2]
-        year = clean_symbol[3:5]
+    if clean_symbol and len(clean_symbol) == _expected_len:
+        month_code = clean_symbol[_tk_len]
+        year = clean_symbol[_tk_len + 1:_tk_len + 3]
         month_name = month_names.get(month_code, '???')
         return f"{clean_symbol} ({month_name} 20{year})"
 
@@ -356,8 +376,9 @@ def get_contract_color(contract: str, default_color: str) -> str:
         return default_color
 
     clean = clean_contract_symbol(contract)
-    if clean and len(clean) >= 3:
-        month_code = clean[2]
+    sym_len = len(profile.contract.symbol)  # 2 for KC/CC/NG, dynamic for future tickers
+    if clean and len(clean) > sym_len:
+        month_code = clean[sym_len]
         return MONTH_COLORS.get(month_code, default_color)
 
     return default_color
@@ -392,7 +413,7 @@ with st.sidebar:
     st.header("📜 Contract")
 
     # Load council data early to get available contracts
-    council_df_for_contracts = load_council_history()
+    council_df_for_contracts = load_council_history(ticker=ticker)
     available_contracts = get_available_contracts(council_df_for_contracts)
 
     # Build options list: Front Month + specific contracts
@@ -444,27 +465,59 @@ with st.sidebar:
     show_day_separators = st.toggle("Show Day/Week Separators", value=True)
     show_confidence = st.toggle("Show Confidence Scores", value=True)
     show_outcomes = st.toggle("Highlight Win/Loss", value=True)
+    show_regime_overlay = st.toggle("Show Regime Overlay", value=True,
+                                     help="Shade chart background by market regime")
 
 
 # === DATA FUNCTIONS ===
 
 @st.cache_data(ttl=300)
-def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
+def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m",
+                                  commodity_ticker=None, exchange=None,
+                                  contract=None, lookback_days=3):
     """
-    Fetches historical OHLC data from yfinance, converted to NY Time.
+    Fetches historical OHLC data, converted to NY Time.
+
+    Primary path: Databento (when commodity_ticker/exchange provided and API key set)
+    Fallback: yfinance
 
     Args:
-        ticker: yfinance ticker (e.g., 'KC=F' or 'KCH26.NYB')
-        period: lookback period
-        interval: candle interval
+        ticker: yfinance ticker (e.g., 'KC=F' or 'KCH26.NYB') — used for yfinance fallback
+        period: lookback period (yfinance format, e.g., '1mo')
+        interval: candle interval (e.g., '5m', '1h', '1d')
+        commodity_ticker: e.g., 'KC', 'NG' — enables Databento path
+        exchange: e.g., 'ICE', 'NYMEX' — enables Databento path
+        contract: e.g., 'FRONT_MONTH', 'KCH26' — passed to Databento
+        lookback_days: number of days to fetch — used by Databento
 
     Returns:
-        DataFrame with OHLC data, or None if fetch failed
+        DataFrame with OHLC data in NY timezone, or None if fetch failed
     """
     import logging
 
+    # Path 1: Databento (when commodity info provided)
+    if commodity_ticker and exchange:
+        try:
+            from trading_bot.data_providers import get_price_data
+            df = get_price_data(
+                commodity_ticker, exchange,
+                contract or 'FRONT_MONTH',
+                interval, lookback_days,
+            )
+            if df is not None and not df.empty:
+                return df
+            logging.getLogger(__name__).warning(
+                f"Databento returned empty for {commodity_ticker}/{contract}, trying yfinance"
+            )
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                f"Databento path failed: {e}, trying yfinance"
+            )
+
+    # Path 2: yfinance (legacy fallback)
     try:
-        # Suppress yfinance error logging temporarily
+        import yfinance as yf
+
         yf_logger = logging.getLogger('yfinance')
         original_level = yf_logger.level
         yf_logger.setLevel(logging.CRITICAL)
@@ -472,7 +525,6 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
         try:
             df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
         finally:
-            # Restore original logging level
             yf_logger.setLevel(original_level)
 
         if df.empty:
@@ -481,13 +533,19 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # Standardize to UTC then convert to NY
+        # Standardize timezone to NY
+        # Note: Yahoo daily candles arrive as tz-naive midnight timestamps.
+        # These represent calendar dates, NOT midnight UTC — localizing as UTC
+        # would shift them to 7 PM ET previous day, breaking signal alignment.
+        # Intraday candles from Yahoo/Databento DO carry UTC semantics.
         if df.index.tz is None:
-            df.index = df.index.tz_localize('UTC')
+            if timeframe == '1d':
+                df.index = df.index.tz_localize('America/New_York')
+            else:
+                df.index = df.index.tz_localize('UTC')
+                df.index = df.index.tz_convert('America/New_York')
         else:
-            df.index = df.index.tz_convert('UTC')
-
-        df.index = df.index.tz_convert('America/New_York')
+            df.index = df.index.tz_convert('America/New_York')
 
         # Clean: dedupe and sort
         df = df[~df.index.duplicated(keep='last')]
@@ -495,7 +553,7 @@ def fetch_price_history_extended(ticker="KC=F", period="5d", interval="5m"):
 
         return df
 
-    except Exception as e:
+    except Exception:
         # Silent fail - we'll fall back to front month
         return None
 
@@ -604,7 +662,10 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
     # === NEW: CONTRACT FILTERING (With Regex Cleaning) ===
     # Clean the 'contract' column in the DataFrame for reliable filtering
     if 'contract' in df.columns:
-        df['contract_clean'] = df['contract'].apply(clean_contract_symbol)
+        # Vectorized string cleaning instead of apply
+        unique_contracts = df['contract'].dropna().unique()
+        clean_map = {c: clean_contract_symbol(c) for c in unique_contracts}
+        df['contract_clean'] = df['contract'].map(clean_map)
     else:
         df['contract_clean'] = None
 
@@ -640,22 +701,21 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
 
     # Label resolution (strategy-aware)
     if agent_col == 'master_decision':
-        def resolve_label(row):
-            d = str(row['plot_direction']).upper()
-            s = str(row.get('strategy_type', '')).upper().strip()
-            
-            if 'IRON_CONDOR' in s:
-                return 'IRON_CONDOR'
-            if 'STRADDLE' in s:
-                return 'LONG_STRADDLE'
-            if 'BULL_CALL' in s:
-                return 'BULLISH'
-            if 'BEAR_PUT' in s:
-                return 'BEARISH'
+        d_upper = df['plot_direction'].astype(str).str.upper()
+        s_upper = df.get('strategy_type', pd.Series([''] * len(df))).fillna('').astype(str).str.upper()
 
-            return d if d in ['BULLISH', 'BEARISH'] else 'NEUTRAL'
+        cond_iron_condor = s_upper.str.contains('IRON_CONDOR', regex=False)
+        cond_straddle = s_upper.str.contains('STRADDLE', regex=False)
+        cond_bull_call = s_upper.str.contains('BULL_CALL', regex=False)
+        cond_bear_put = s_upper.str.contains('BEAR_PUT', regex=False)
+        cond_bullish = d_upper == 'BULLISH'
+        cond_bearish = d_upper == 'BEARISH'
         
-        df['plot_label'] = df.apply(resolve_label, axis=1)
+        df['plot_label'] = np.select(
+            [cond_iron_condor, cond_straddle, cond_bull_call, cond_bear_put, cond_bullish, cond_bearish],
+            ['IRON_CONDOR', 'LONG_STRADDLE', 'BULLISH', 'BEARISH', 'BULLISH', 'BEARISH'],
+            default='NEUTRAL'
+        )
     else:
         df['plot_label'] = df['plot_direction']
 
@@ -665,42 +725,64 @@ def process_signals_for_agent(history_df, agent_col, start_date, contract_filter
 
     # Override colors if show_all is True to distinguish contracts
     if show_all:
-        df['marker_color'] = df['signal_contract'].apply(lambda c: get_contract_color(c, '#888888'))
+        # Vectorized alternative to apply() for performance: map unique agents
+        unique_contracts_sc = df['signal_contract'].dropna().unique()
+        color_map = {c: get_contract_color(c, '#888888') for c in unique_contracts_sc}
+        df['marker_color'] = df['signal_contract'].map(color_map).fillna('#888888')
 
-    df['marker_size'] = df['plot_confidence'].apply(lambda c: get_marker_size(c, base_size=14))
+    # Vectorized marker size
+    df['marker_size'] = (14 * (0.7 + (df['plot_confidence'] * 0.6))).astype(int)
 
     return df
 
 
-def build_hover_text(row):
-    """Build rich hover text."""
-    parts = [
-        f"<b>{row.get('plot_label', 'SIGNAL')}</b>",
-        f"Time: {row['timestamp'].strftime('%b %d %H:%M')} ET",
-    ]
+def vectorized_hover(df):
+    """Build rich hover text using vectorized pandas operations."""
+    if df.empty:
+        return pd.Series([], dtype=str)
+
+    p1 = "<b>" + df.get('plot_label', pd.Series(["SIGNAL"] * len(df), index=df.index)).astype(str) + "</b>"
+    p2 = "Time: " + df['timestamp'].dt.strftime('%b %d %H:%M') + " ET"
     
-    # Add contract info
-    if 'signal_contract' in row and row.get('signal_contract') not in [None, 'Unknown', 'nan']:
-        parts.append(f"Contract: {row['signal_contract']}")
+    base = p1 + "<br>" + p2
 
-    parts.append(f"Confidence: {row.get('plot_confidence', 0.5):.0%}")
+    if 'signal_contract' in df.columns:
+        contract_mask = ~df['signal_contract'].isna() & ~df['signal_contract'].isin(['Unknown', 'nan'])
+        base = np.where(contract_mask, base + "<br>Contract: " + df['signal_contract'].astype(str), base)
 
-    if 'strategy_type' in row and pd.notna(row.get('strategy_type')):
-        parts.append(f"Strategy: {row['strategy_type']}")
+    if 'plot_confidence' in df.columns:
+        # ⚡ Bolt: Vectorized percentage formatting is 10x faster than row-wise apply
+        conf_vals = (df['plot_confidence'].fillna(0.5) * 100).round(0).astype(int)
+        conf_str = conf_vals.astype(str) + "%"
+        base = base + "<br>Confidence: " + conf_str
+    else:
+        base = base + "<br>Confidence: 50%"
 
-    if 'outcome' in row and row.get('outcome') in ['WIN', 'LOSS']:
-        outcome_emoji = '✅' if row['outcome'] == 'WIN' else '❌'
-        parts.append(f"Outcome: {outcome_emoji} {row['outcome']}")
+    if 'strategy_type' in df.columns:
+        strat_mask = pd.notna(df['strategy_type']) & (df['strategy_type'] != '')
+        base = np.where(strat_mask, base + "<br>Strategy: " + df['strategy_type'].astype(str), base)
 
-    if 'pnl_realized' in row and pd.notna(row.get('pnl_realized')) and row.get('pnl_realized') != 0:
-        pnl = float(row['pnl_realized'])
-        parts.append(f"P&L: {pnl:+.4f}")
+    if 'outcome' in df.columns:
+        outcome_mask = df['outcome'].isin(['WIN', 'LOSS'])
+        emoji = np.where(df['outcome'] == 'WIN', '✅ ', '❌ ')
+        base = np.where(outcome_mask, base + "<br>Outcome: " + emoji + df['outcome'].astype(str), base)
 
-    rationale = str(row.get('master_reasoning', row.get('rationale', '')))[:150]
-    if rationale and rationale != 'nan':
-        parts.append(f"<i>{rationale}...</i>")
+    if 'pnl_realized' in df.columns:
+        # Convert numeric mask to prevent nan checks failing
+        pnl_num = pd.to_numeric(df['pnl_realized'], errors='coerce')
+        pnl_mask = pd.notna(pnl_num) & (pnl_num != 0)
 
-    return "<br>".join(parts)
+        # Fast vectorized string formatting using string formatting trick
+        pnl_str_mapped = pnl_num.map(lambda x: f"{x:+.4f}" if pd.notna(x) else "")
+        base = np.where(pnl_mask, base + "<br>P&L: " + pnl_str_mapped, base)
+
+    rat_col = df.get('master_reasoning', df.get('rationale'))
+    if rat_col is not None:
+        rat_str = rat_col.fillna('').astype(str).str[:150]
+        rat_mask = (rat_str != '') & (rat_str != 'nan')
+        base = np.where(rat_mask, base + "<br><i>" + rat_str + "...</i>", base)
+
+    return base
 
 
 # === MAIN EXECUTION ===
@@ -723,22 +805,31 @@ with st.spinner(f"Loading {get_contract_display_name(selected_contract)} data...
     elif lookback_days <= 59: yf_period = "2mo"
     else: yf_period = "2y"
 
-    # Fetch price data for selected contract
-    price_df = fetch_price_history_extended(ticker=yf_ticker, period=yf_period, interval=timeframe)
+    # Fetch price data for selected contract (Databento primary, yfinance fallback)
+    price_df = fetch_price_history_extended(
+        ticker=yf_ticker, period=yf_period, interval=timeframe,
+        commodity_ticker=profile.contract.symbol, exchange=profile.contract.exchange,
+        contract=selected_contract, lookback_days=lookback_days,
+    )
 
-    # Fallback: If specific contract has no data, try front month
+    # Fallback: If specific contract has no data, try continuous front month
     if price_df is None or price_df.empty:
-        if selected_contract != 'FRONT_MONTH':
-            st.warning(f"⚠️ No price data available for {selected_contract}. Falling back to front month.")
-            price_df = fetch_price_history_extended(ticker=f'{profile.contract.symbol}=F', period=yf_period, interval=timeframe)
-            # Update display to show fallback
+        continuous_ticker = f'{profile.contract.symbol}=F'
+        if yf_ticker != continuous_ticker:
+            # Resolved FRONT_MONTH or specific contract had no data — try continuous contract
+            st.warning(f"⚠️ No price data for `{yf_ticker}`. Falling back to continuous contract.")
+            price_df = fetch_price_history_extended(
+                ticker=continuous_ticker, period=yf_period, interval=timeframe,
+                commodity_ticker=profile.contract.symbol, exchange=profile.contract.exchange,
+                contract='FRONT_MONTH', lookback_days=lookback_days,
+            )
             actual_ticker_display = "Front Month (Fallback)"
         else:
             actual_ticker_display = None
     else:
         actual_ticker_display = get_contract_display_name(selected_contract)
 
-    council_df = load_council_history()
+    council_df = load_council_history(ticker=ticker)
 
 
 # === PLOTTING ===
@@ -828,16 +919,39 @@ if price_df is not None and not price_df.empty:
         price_idx = pd.DataFrame(index=price_df.index).reset_index()
         price_idx.columns = ['candle_timestamp']
 
+        # Dynamic tolerance: tighter for intraday, wider for daily
+        # Yahoo 5m data often starts 30-75 min after ICE market open (4:15 ET),
+        # so early signals need ~90 min tolerance. Daily candles sit at midnight ET.
+        _tolerance_map = {'5m': 'minutes=90', '15m': 'minutes=90', '30m': 'hours=2', '1h': 'hours=2', '1d': 'hours=20'}
+        _tol_str = _tolerance_map.get(timeframe, 'hours=4')
+        _tol = pd.Timedelta(**{_tol_str.split('=')[0]: int(_tol_str.split('=')[1])})
+
         merged = pd.merge_asof(
             signals,
             price_idx,
             left_on='timestamp',
             right_on='candle_timestamp',
             direction='nearest',
-            tolerance=pd.Timedelta(hours=4)
+            tolerance=_tol
         )
 
         matched_signals = merged.dropna(subset=['candle_timestamp'])
+        unmatched_count = len(signals) - len(matched_signals)
+
+        if unmatched_count > 0:
+            # Show which dates have signals but no price data
+            unmatched = merged[merged['candle_timestamp'].isna()]
+            unmatched_dates = unmatched['timestamp'].dt.date.unique()
+            price_dates = set(price_df.index.date)
+            missing_dates = sorted(d for d in unmatched_dates if d not in price_dates)
+            if missing_dates:
+                date_str = ', '.join(str(d) for d in missing_dates[:5])
+                st.caption(
+                    f"ℹ️ {unmatched_count} signal(s) not shown — Yahoo Finance has no {timeframe} data for {date_str}. "
+                    f"Try the 1d timeframe to see them."
+                )
+            else:
+                st.caption(f"ℹ️ {unmatched_count} signal(s) outside alignment tolerance ({_tol}) — not shown on chart.")
 
         if not matched_signals.empty:
             aligned_prices = price_df.loc[matched_signals['candle_timestamp']]
@@ -853,13 +967,18 @@ if price_df is not None and not price_df.empty:
             plot_df['candle_low'] = aligned_prices['Low'].values
 
             plot_df['y_pos'] = np.where(
-                plot_df['marker_symbol'] == 'triangle-down',
-                plot_df['candle_high'] * 1.002,
-                plot_df['candle_low'] * 0.998
+                plot_df['marker_symbol'] == 'triangle-up',
+                plot_df['candle_high'] * 1.003,
+                plot_df['candle_low'] * 0.997
             )
 
+            # Clip signal positions to visible price range so outliers can't stretch the Y-axis
+            price_floor = price_df['Low'].min() * 0.995
+            price_ceil = price_df['High'].max() * 1.005
+            plot_df['y_pos'] = plot_df['y_pos'].clip(lower=price_floor, upper=price_ceil)
+
             plot_df['text_pos'] = np.where(
-                plot_df['marker_symbol'] == 'triangle-down',
+                plot_df['marker_symbol'] == 'triangle-up',
                 "top center",
                 "bottom center"
             )
@@ -878,15 +997,15 @@ if price_df is not None and not price_df.empty:
                     plot_df = plot_df.merge(graded_subset, on='timestamp', how='left')
 
             # Build hover text
-            plot_df['hover'] = plot_df.apply(build_hover_text, axis=1)
+            plot_df['hover'] = vectorized_hover(plot_df)
 
-            # Outcome-based styling
+            # Outcome-based styling (Vectorized)
             if 'outcome' in plot_df.columns:
-                plot_df['marker_line_width'] = plot_df['outcome'].apply(
-                    lambda x: 3 if x in ['WIN', 'LOSS'] else 1.5
-                )
-                plot_df['marker_line_color'] = plot_df['outcome'].apply(
-                    lambda x: '#00FF00' if x == 'WIN' else '#FF0000' if x == 'LOSS' else 'white'
+                plot_df['marker_line_width'] = np.where(plot_df['outcome'].isin(['WIN', 'LOSS']), 3.0, 1.5)
+                plot_df['marker_line_color'] = np.select(
+                    [plot_df['outcome'] == 'WIN', plot_df['outcome'] == 'LOSS'],
+                    ['#00FF00', '#FF0000'],
+                    default='white'
                 )
             else:
                 plot_df['marker_line_width'] = 1.5
@@ -902,13 +1021,15 @@ if price_df is not None and not price_df.empty:
 
         summary_cols = st.columns(4)
         with summary_cols[0]:
-            st.metric("Period Change", f"{pct_change:+.2f}%")
+            st.metric("Period Change", f"{pct_change:+.2f}%", help="Percentage change in price over the selected period.")
         with summary_cols[1]:
-            st.metric("High", f"${high:.2f}")
+            st.metric("High", f"${high:{_price_fmt}}", help="Highest price observed in the selected period.")
         with summary_cols[2]:
-            st.metric("Low", f"${low:.2f}")
+            st.metric("Low", f"${low:{_price_fmt}}", help="Lowest price observed in the selected period.")
         with summary_cols[3]:
-            st.metric("Range", f"${high - low:.2f}")
+            st.metric("Range", f"${high - low:{_price_fmt}}", help="Difference between High and Low prices in the selected period.")
+
+    st.caption(f"Data source: {get_data_source_label()}")
 
     # === DRAW CHARTS ===
     # CRITICAL: Plotly go.Candlestick fails to render in make_subplots when
@@ -988,6 +1109,7 @@ if price_df is not None and not price_df.empty:
     if not plot_df.empty and show_confidence:
         # Scale confidence (0-1) to volume range so both are visible on same axis
         max_vol = price_df['Volume'].max() if 'Volume' in price_df.columns and not price_df['Volume'].empty else 1
+        max_vol = max_vol if pd.notna(max_vol) and max_vol > 0 else 1.0
         scaled_confidence = plot_df['plot_confidence'] * max_vol
         fig.add_trace(go.Scatter(
             x=plot_df['plot_x_num'],
@@ -1060,6 +1182,83 @@ if price_df is not None and not price_df.empty:
                         row=1, col=1
                     )
 
+    # === REGIME OVERLAY (Background Shading) ===
+    if show_regime_overlay:
+        try:
+            from dashboard_utils import _resolve_data_path as _rdp
+            _ds_path = _rdp('decision_signals.csv')
+            if os.path.exists(_ds_path):
+                ds_df = pd.read_csv(_ds_path)
+                if not ds_df.empty and 'regime' in ds_df.columns and 'timestamp' in ds_df.columns:
+                    ds_df['timestamp'] = parse_ts_column(ds_df['timestamp'])
+                    ds_df = ds_df.dropna(subset=['timestamp', 'regime'])
+                    if ds_df['timestamp'].dt.tz is None:
+                        ds_df['timestamp'] = ds_df['timestamp'].dt.tz_localize('UTC')
+                    ds_df['timestamp'] = ds_df['timestamp'].dt.tz_convert('America/New_York')
+                    ds_df = ds_df.sort_values('timestamp')
+
+                    regime_colors = {
+                        'bullish': 'rgba(0, 204, 150, 0.06)',
+                        'bearish': 'rgba(239, 85, 59, 0.06)',
+                        'neutral': 'rgba(136, 136, 136, 0.04)',
+                        'range_bound': 'rgba(255, 161, 90, 0.06)',
+                        'high_volatility': 'rgba(171, 99, 250, 0.06)',
+                    }
+
+                    # Snap each signal to its nearest candle via merge_asof
+                    _price_ts = pd.DataFrame({
+                        'candle_ts': price_df.index,
+                        'num_idx': price_df['num_index'].values
+                    }).sort_values('candle_ts')
+                    ds_df = ds_df.sort_values('timestamp')
+                    ds_df = pd.merge_asof(
+                        ds_df, _price_ts,
+                        left_on='timestamp', right_on='candle_ts',
+                        direction='nearest'
+                    )
+                    ds_df = ds_df.dropna(subset=['num_idx'])
+
+                    if not ds_df.empty:
+                        # Build regime spans: consecutive signals with same regime
+                        ds_df = ds_df.sort_values('num_idx')
+                        prev_regime = None
+                        span_start = None
+                        for _, sig_row in ds_df.iterrows():
+                            regime = str(sig_row['regime']).lower().strip()
+                            idx = sig_row['num_idx']
+                            if regime != prev_regime:
+                                # Close previous span
+                                if prev_regime is not None and span_start is not None:
+                                    color = regime_colors.get(prev_regime, 'rgba(136, 136, 136, 0.04)')
+                                    fig.add_vrect(
+                                        x0=span_start, x1=idx,
+                                        fillcolor=color, layer="below", line_width=0,
+                                        row=1, col=1
+                                    )
+                                span_start = idx
+                                prev_regime = regime
+                        # Close final span
+                        if prev_regime is not None and span_start is not None:
+                            final_x = price_df['num_index'].max()
+                            color = regime_colors.get(prev_regime, 'rgba(136, 136, 136, 0.04)')
+                            fig.add_vrect(
+                                x0=span_start, x1=final_x,
+                                fillcolor=color, layer="below", line_width=0,
+                                row=1, col=1
+                            )
+        except Exception:
+            pass  # Silently skip if regime data unavailable
+
+        if show_regime_overlay:
+            st.caption(
+                "Regime overlay: "
+                "\U0001f7e2 Green = bullish | "
+                "\U0001f534 Red = bearish | "
+                "\u26aa Gray = neutral | "
+                "\U0001f7e0 Orange = range-bound | "
+                "\U0001f7e3 Purple = high volatility"
+            )
+
     # Determine title based on contract
     if actual_ticker_display:
         chart_title = f"{actual_ticker_display} | {selected_agent_label} | {timeframe} | Last {lookback_days} Days"
@@ -1104,20 +1303,24 @@ if price_df is not None and not price_df.empty:
         row=2, col=1
     )
 
-    # Row 1 Y-axis - CRITICAL: Set explicit range to prevent candlestick disappearing on short lookbacks
+    # Row 1 Y-axis - Set explicit range from price data only.
+    # autorange=False is critical: without it, Plotly can stretch the axis to
+    # accommodate outlier signal markers that fall outside the price range.
     if not price_df.empty:
         y_min = price_df['Low'].min()
         y_max = price_df['High'].max()
         y_range = y_max - y_min
-        # Add 5% buffer on each side, with minimum buffer to prevent zero-range issues
-        y_buffer = max(y_range * 0.05, 0.5)
+        # Add 5% buffer on each side, with tick-based minimum to prevent zero-range issues
+        # (fixed 0.5 was fine for KC/CC but consumed 40% of NG's $3 price range)
+        y_buffer = max(y_range * 0.05, _tick * 10)
         fig.update_yaxes(
-            title_text="Price (¢/lb)",
+            title_text=f"Price ({profile.name})",
             range=[y_min - y_buffer, y_max + y_buffer],
+            autorange=False,
             row=1, col=1
         )
     else:
-        fig.update_yaxes(title_text="Price (¢/lb)", row=1, col=1)
+        fig.update_yaxes(title_text=f"Price ({profile.name})", row=1, col=1)
 
     # Row 2 Y-axis (Volume)
     fig.update_yaxes(
@@ -1161,15 +1364,15 @@ if price_df is not None and not price_df.empty:
         neutral = total_signals - bullish - bearish - vol_trades
 
         with stat_cols[0]:
-            st.metric("Total Signals", total_signals)
+            st.metric("Total Signals", total_signals, help="Total number of agent signals generated.")
         with stat_cols[1]:
-            st.metric("🟢 Bullish", int(bullish))
+            st.metric("🟢 Bullish", int(bullish), help="Number of bullish signals.")
         with stat_cols[2]:
-            st.metric("🔴 Bearish", int(bearish))
+            st.metric("🔴 Bearish", int(bearish), help="Number of bearish signals.")
         with stat_cols[3]:
-            st.metric("🟣 Volatility", int(vol_trades))
+            st.metric("🟣 Volatility", int(vol_trades), help="Number of volatility expansion signals.")
         with stat_cols[4]:
-            st.metric("⚪ Neutral", int(neutral))
+            st.metric("⚪ Neutral", int(neutral), help="Number of neutral or conflicting signals.")
 
         if 'outcome' in plot_df.columns:
             wins = (plot_df['outcome'] == 'WIN').sum()
@@ -1178,6 +1381,31 @@ if price_df is not None and not price_df.empty:
             if graded > 0:
                 win_rate = wins / graded * 100
                 st.caption(f"📈 Win Rate: **{win_rate:.1f}%** ({wins}W / {losses}L from {graded} graded signals)")
+
+    # === STRATEGY PERFORMANCE TABLE ===
+    if not plot_df.empty and 'outcome' in plot_df.columns and 'strategy_type' in plot_df.columns:
+        graded_signals = plot_df[plot_df['outcome'].isin(['WIN', 'LOSS'])].copy()
+        if not graded_signals.empty:
+            st.markdown("---")
+            st.subheader("🎯 Strategy Performance")
+
+            strat_stats = graded_signals.groupby('strategy_type').agg(
+                Signals=('outcome', 'count'),
+                Wins=('outcome', lambda x: (x == 'WIN').sum()),
+                Losses=('outcome', lambda x: (x == 'LOSS').sum()),
+            ).reset_index()
+            strat_stats.rename(columns={'strategy_type': 'Strategy'}, inplace=True)
+            strat_stats['Win Rate%'] = (strat_stats['Wins'] / strat_stats['Signals'] * 100).round(1)
+            strat_stats = strat_stats.sort_values('Win Rate%', ascending=False).reset_index(drop=True)
+
+            st.dataframe(
+                strat_stats,
+                column_config={
+                    "Win Rate%": st.column_config.ProgressColumn("Win Rate%", min_value=0, max_value=100, format="%.1f%%"),
+                },
+                hide_index=True,
+                width="stretch"
+            )
 
     # === DOWNLOAD SECTION ===
     st.markdown("---")

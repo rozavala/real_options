@@ -31,6 +31,17 @@ TRACKER_FILE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), 'data', 'task_completions.json'
 )
 
+# Mutable global — overridden by set_data_dir() for multi-commodity isolation
+_tracker_file = None
+
+
+def set_data_dir(data_dir: str):
+    """Configure task tracker path for a commodity-specific data directory."""
+    global _tracker_file, TRACKER_FILE
+    _tracker_file = os.path.join(data_dir, 'task_completions.json')
+    TRACKER_FILE = _tracker_file
+    logger.info(f"TaskTracker data_dir set to: {data_dir}")
+
 
 def _get_trading_date() -> str:
     """Current trading date in NY timezone as YYYY-MM-DD string."""
@@ -38,12 +49,22 @@ def _get_trading_date() -> str:
     return datetime.now(timezone.utc).astimezone(ny_tz).strftime('%Y-%m-%d')
 
 
+def _get_tracker_file() -> str:
+    """Resolve tracker file path via ContextVar (multi-engine) or module global (legacy)."""
+    try:
+        from trading_bot.data_dir_context import get_engine_data_dir
+        return os.path.join(get_engine_data_dir(), 'task_completions.json')
+    except LookupError:
+        return TRACKER_FILE
+
+
 def _load_tracker() -> dict:
     """Load tracker state from disk. Returns empty dict on any failure."""
-    if not os.path.exists(TRACKER_FILE):
+    tracker_file = _get_tracker_file()
+    if not os.path.exists(tracker_file):
         return {}
     try:
-        with open(TRACKER_FILE, 'r') as f:
+        with open(tracker_file, 'r') as f:
             if HAS_FCNTL:
                 fcntl.flock(f, fcntl.LOCK_SH)
             try:
@@ -58,9 +79,10 @@ def _load_tracker() -> dict:
 
 def _save_tracker(data: dict):
     """Save tracker state to disk with atomic write."""
-    temp_file = TRACKER_FILE + ".tmp"
+    tracker_file = _get_tracker_file()
+    temp_file = tracker_file + ".tmp"
     try:
-        os.makedirs(os.path.dirname(TRACKER_FILE), exist_ok=True)
+        os.makedirs(os.path.dirname(tracker_file) or '.', exist_ok=True)
         with open(temp_file, 'w') as f:
             if HAS_FCNTL:
                 fcntl.flock(f, fcntl.LOCK_EX)
@@ -71,7 +93,7 @@ def _save_tracker(data: dict):
             finally:
                 if HAS_FCNTL:
                     fcntl.flock(f, fcntl.LOCK_UN)
-        os.replace(temp_file, TRACKER_FILE)
+        os.replace(temp_file, tracker_file)
     except Exception as e:
         logger.warning(f"TaskTracker save failed (non-fatal): {e}")
 

@@ -51,9 +51,9 @@ def test_load_council_history_legacy_integration(tmp_path):
 """
     legacy2_csv.write_text(legacy2_content)
 
-    # Patch COUNCIL_HISTORY_PATH to point to our temp main file
-    # Note: We need to ensure os.path.dirname(COUNCIL_HISTORY_PATH) resolves to data_dir
-    with patch('dashboard_utils.COUNCIL_HISTORY_PATH', str(main_csv)):
+    # Patch _resolve_data_path_for to point to our temp main file
+    # os.path.dirname(council_path) resolves to data_dir for legacy file discovery
+    with patch('dashboard_utils._resolve_data_path_for', return_value=str(main_csv)):
 
         # 1. Test _load_legacy_council_history directly first
         legacy_df = _load_legacy_council_history(str(data_dir))

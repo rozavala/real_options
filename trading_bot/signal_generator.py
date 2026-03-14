@@ -18,7 +18,7 @@ from trading_bot.decision_signals import log_decision_signal
 from notifications import send_pushover_notification
 from trading_bot.state_manager import StateManager # Import StateManager
 from trading_bot.compliance import ComplianceGuardian
-from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple
+from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type, TriggerType, detect_market_regime_simple, harmonize_regime
 from trading_bot.heterogeneous_router import CriticalRPCError
 from trading_bot.confidence_utils import parse_confidence
 from trading_bot.cycle_id import generate_cycle_id
@@ -29,10 +29,12 @@ from trading_bot.strategy_router import (
     calculate_agent_conflict,
     detect_imminent_catalyst,
 )
+from trading_bot.prompt_trace import PromptTraceCollector, PromptTraceRecord, hash_persona
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 logger = logging.getLogger(__name__)
 
-async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_type=None) -> list:
+async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_type=None, schedule_id: str = None) -> list:
     """
     Generates trading signals via the Council's multi-agent analysis.
 
@@ -89,6 +91,42 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         logger.error("No active futures found. Cannot generate signals.")
         return []
 
+    # 2b. Pre-filter: remove far-dated illiquid contracts before signal generation (#1173)
+    # This avoids wasting LLM spend on contracts that will always fail the liquidity filter.
+    try:
+        from config import get_active_profile
+        profile = get_active_profile(config)
+        max_days = profile.max_dte
+        pre_filter_count = len(sorted_contracts)
+        filtered = []
+        for c in sorted_contracts:
+            try:
+                d_str = c.lastTradeDateOrContractMonth
+                fmt = '%Y%m' if len(d_str) == 6 else '%Y%m%d'
+                exp_date = datetime.strptime(d_str, fmt)
+                days_out = (exp_date - datetime.now()).days
+                if days_out <= max_days:
+                    filtered.append(c)
+                else:
+                    logger.info(
+                        f"Pre-signal skip: {c.localSymbol} too deferred "
+                        f"({days_out}d > {max_days}d max). Saving LLM spend."
+                    )
+            except Exception:
+                filtered.append(c)  # Fail-safe: keep on parse error
+        sorted_contracts = filtered
+        if pre_filter_count > len(sorted_contracts):
+            logger.info(
+                f"Pre-signal filter: {len(sorted_contracts)}/{pre_filter_count} "
+                f"contracts within {max_days}d DTE"
+            )
+    except Exception as e:
+        logger.debug(f"Pre-signal DTE filter skipped: {e}")
+
+    if not sorted_contracts:
+        logger.warning("No contracts remaining after pre-signal DTE filter.")
+        return []
+
     # 3. Build Market Context for All Contracts (replaces ML inference)
     market_contexts = await build_all_market_contexts(ib, sorted_contracts, config)
 
@@ -104,7 +142,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
     sem = asyncio.Semaphore(3)
 
     # 4. Define the async processor for a single contract
-    async def process_contract(contract, market_ctx, trigger_type=trigger_type):
+    async def process_contract(contract, market_ctx, trigger_type=trigger_type, schedule_id=schedule_id):
         contract_name = f"{contract.localSymbol} ({contract.lastTradeDateOrContractMonth[:6]})"
 
         # Skip contracts with no live price — avoids wasting LLM spend on NaN data
@@ -132,6 +170,13 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         # === Generate Cycle ID for this contract's decision ===
         cycle_id = generate_cycle_id(get_active_ticker(config))
 
+        # === Prompt Trace Collector ===
+        trace_collector = PromptTraceCollector(
+            cycle_id=cycle_id,
+            commodity=get_active_ticker(config),
+            contract=contract_name,
+        )
+
         agent_data = {} # Initialize outside try/except to avoid UnboundLocalError
         regime_for_voting = 'UNKNOWN' # Initialize here to avoid scope issues
         reports = {} # Initialize here to ensure scope for return
@@ -154,9 +199,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                                   'inventory', 'sentiment', 'technical', 'volatility']:
                     prompt_text = prompts.get(agent_key, f"Analyze {agent_key} conditions.").replace("{contract}", contract_sym)
                     if agent_key in _reflexion_agents:
-                        tasks[agent_key] = council.research_topic_with_reflexion(agent_key, prompt_text)
+                        tasks[agent_key] = council.research_topic_with_reflexion(agent_key, prompt_text, trace_collector=trace_collector)
                     else:
-                        tasks[agent_key] = council.research_topic(agent_key, prompt_text)
+                        tasks[agent_key] = council.research_topic(agent_key, prompt_text, trace_collector=trace_collector)
 
                 # B. Execute Research (Parallel) with Rate Limit Protection
                 # Add slight stagger to avoid instantaneous burst
@@ -296,7 +341,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     ib=ib,
                     contract=contract,
                     regime=regime_for_voting,
-                    min_quorum=min_quorum
+                    min_quorum=min_quorum,
+                    config=config
                 )
 
                 if weighted_result.get('quorum_failure'):
@@ -328,6 +374,12 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     f"Your job is to evaluate the QUALITY of arguments, not count votes.\n"
                     f"A strong thesis with weak consensus is still a valid trade.\n"
                 )
+                if weighted_result.get('var_dampener', 1.0) < 1.0:
+                    weighted_context += (
+                        f"VaR Dampener Active: Raw consensus {weighted_result['raw_confidence']:.2f} "
+                        f"-> dampened to {weighted_result['confidence']:.2f} "
+                        f"(portfolio at {weighted_result['var_utilization']:.0%} VaR capacity)\n"
+                    )
 
                 # D. Master Decision
                 # --- NEW: GET MARKET CONTEXT (The "Reality Check") ---
@@ -399,6 +451,47 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 # Append weighted voting result to context
                 market_context_str += weighted_context
 
+                # === INJECT PORTFOLIO VaR BRIEFING ===
+                risk_briefing_injected = False
+                var_utilization = 0.0
+                try:
+                    from trading_bot.var_calculator import get_var_calculator
+                    cached_var = get_var_calculator(config).get_cached_var()
+                    var_limit = config.get('compliance', {}).get('var_limit_pct', 0.03)
+                    var_warning = config.get('compliance', {}).get('var_warning_pct', 0.02)
+
+                    if cached_var:
+                        util = cached_var.var_95_pct / var_limit if var_limit else 0
+                        var_utilization = util
+
+                        # Tier 1: Always-on portfolio awareness
+                        market_context_str += (
+                            f"\n--- PORTFOLIO STATE ---\n"
+                            f"Positions: {cached_var.position_count} across "
+                            f"{', '.join(cached_var.commodities)}\n"
+                            f"VaR utilization: {util:.0%} of limit\n"
+                            f"--- END PORTFOLIO STATE ---\n"
+                        )
+
+                        # Tier 2: Risk directive only when elevated
+                        if cached_var.var_95_pct > var_warning:
+                            risk_briefing_injected = True
+                            directive = (
+                                f"\n--- PORTFOLIO RISK ALERT ---\n"
+                                f"VaR: {cached_var.var_95_pct:.1%} (limit: {var_limit:.0%})\n"
+                            )
+                            if cached_var.narrative:
+                                directive += f"Risk: {cached_var.narrative.get('dominant_risk', 'N/A')}\n"
+                                directive += f"Correlation: {cached_var.narrative.get('correlation_warning', 'N/A')}\n"
+                            directive += (
+                                f"INSTRUCTION: PREFER strategies that REDUCE correlation "
+                                f"with existing positions. AVOID adding to dominant risk.\n"
+                                f"--- END RISK ALERT ---\n"
+                            )
+                            market_context_str += directive
+                except Exception:
+                    pass  # Non-fatal
+
                 # === INJECT SENSOR STATUS ===
                 # Check X Sentiment status from StateManager
                 try:
@@ -411,8 +504,35 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 except Exception as e:
                     logger.warning(f"Failed to check sensor status: {e}")
 
+                # v8.0 P3: Inject regime transition alert if detected
+                from trading_bot.weighted_voting import detect_regime_transition
+                regime_alert = detect_regime_transition(market_ctx)
+                if regime_alert:
+                    market_context_str += regime_alert
+                    logger.info("Regime transition alert injected into scheduled cycle context")
+
+                # === Shared Macro Context (Phase 3: SharedContext) ===
+                # Inject cross-commodity macro research from MasterOrchestrator's
+                # daily macro service, eliminating duplicate LLM calls per engine.
+                try:
+                    from trading_bot.data_dir_context import get_engine_runtime
+                    _rt = get_engine_runtime()
+                    if _rt and _rt.shared and not _rt.shared.macro_cache.is_stale():
+                        _macro = await _rt.shared.macro_cache.get()
+                        _thesis = _macro.get('macro_thesis') if _macro else None
+                        if _thesis and isinstance(_thesis, dict):
+                            _summary = _thesis.get('summary', '')
+                            if _summary:
+                                market_context_str += (
+                                    f"\n=== SHARED MACRO INTELLIGENCE ===\n"
+                                    f"{_summary}\n"
+                                    f"=== END MACRO ===\n"
+                                )
+                except Exception:
+                    pass  # Non-fatal — engines operate independently without macro cache
+
                 # Call decided (which now includes the Hegelian Loop)
-                decision = await council.decide(contract_name, market_ctx, reports, market_context_str)
+                decision = await council.decide(contract_name, market_ctx, reports, market_context_str, trace_collector=trace_collector)
 
                 # Ensure decision confidence is valid
                 try:
@@ -432,8 +552,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     conviction_multiplier = 1.0
                     consensus_note = f"Consensus ALIGNED (Vote={vote_dir})"
                 elif vote_dir != master_dir and master_dir != 'NEUTRAL':
-                    conviction_multiplier = 0.5
-                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → half size"
+                    # v8.0: 0.5→0.70 to unblock PLAUSIBLE+DIVERGENT (0.80*0.70=0.56 > 0.50 threshold)
+                    conviction_multiplier = 0.70
+                    consensus_note = f"Consensus DIVERGENT (Master={master_dir}, Vote={vote_dir}) → reduced size"
                 else:
                     conviction_multiplier = 0.75
                     consensus_note = f"Consensus PARTIAL (Master={master_dir}, Vote={vote_dir})"
@@ -446,6 +567,22 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 logger.info(
                     f"Consensus Sensor: Master={master_dir}, Vote={vote_dir} → "
                     f"multiplier={conviction_multiplier}, adj_confidence={decision['confidence']}"
+                )
+
+                # --- Funnel: COUNCIL_DECISION ---
+                log_funnel_event(
+                    cycle_id=cycle_id,
+                    contract=contract_name,
+                    stage=FunnelStage.COUNCIL_DECISION,
+                    outcome="PASS" if master_dir != "NEUTRAL" else "INFO",
+                    detail=(
+                        f"direction={master_dir}, confidence={decision['confidence']:.2f}, "
+                        f"conviction_mult={conviction_multiplier}, vote={vote_dir}, "
+                        f"thesis={decision.get('thesis_strength', 'N/A')}, "
+                        f"weighted_score={weighted_result.get('weighted_score', 0):.4f}"
+                    ),
+                    price_snapshot=market_ctx.get('price'),
+                    regime=regime_for_voting or 'UNKNOWN',
                 )
 
                 # === Devil's Advocate Check (Emergency Only — v7.0) ===
@@ -461,7 +598,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
                 if is_emergency and decision.get('direction') != 'NEUTRAL' and decision.get('confidence', 0) > 0.5:
                     da_review = await council.run_devils_advocate(
-                        decision, str(reports), market_context_str
+                        decision, str(reports), market_context_str,
+                        trace_collector=trace_collector
                     )
                     if not da_review.get('proceed', True):
                         logger.warning(f"DA VETOED emergency trade: {da_review.get('recommendation')}")
@@ -470,6 +608,17 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         decision['reasoning'] += f" [DA VETO: {da_review.get('risks', ['Unknown'])[0]}]"
                     else:
                         logger.info("DA CHECK PASSED for emergency cycle.")
+
+                    # --- Funnel: DA_REVIEW ---
+                    log_funnel_event(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        stage=FunnelStage.DA_REVIEW,
+                        outcome="BLOCK" if not da_review.get('proceed', True) else "PASS",
+                        detail=da_review.get('recommendation', '')[:200],
+                        price_snapshot=market_ctx.get('price'),
+                        regime=regime_for_voting or 'UNKNOWN',
+                    )
 
                     # --- R3: Propagate Bypass Flag ---
                     if da_review.get('da_bypassed'):
@@ -482,12 +631,42 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 compliance_reason = "N/A"
 
                 if decision.get('direction') != 'NEUTRAL' and compliance:
+                    # v8.1: Build compliance context with IBKR market data
+                    from trading_bot.market_data_provider import format_market_context_for_prompt
+                    compliance_context = market_context_str
+                    ibkr_data_str = format_market_context_for_prompt(market_ctx)
+                    if ibkr_data_str:
+                        compliance_context += f"\n--- IBKR MARKET DATA ---\n{ibkr_data_str}\n"
+                    debate_summary = decision.get('debate_summary', '')
+
+                    _compliance_route_info = {}
                     audit = await compliance.audit_decision(
                         reports,
-                        market_context_str,
+                        compliance_context,
                         decision,
-                        council.personas.get('master', '')
+                        council.personas.get('master', ''),
+                        debate_summary=debate_summary,
+                        route_info=_compliance_route_info
                     )
+                    if trace_collector:
+                        try:
+                            from trading_bot.heterogeneous_router import AgentRole as _AR
+                            _assigned = compliance.router.assignments.get(_AR.COMPLIANCE_OFFICER, (None, None)) if hasattr(compliance, 'router') and compliance.router else (None, None)
+                            trace_collector.record(PromptTraceRecord(
+                                phase='compliance',
+                                agent='compliance',
+                                prompt_source='legacy',
+                                model_provider=_compliance_route_info.get('provider', ''),
+                                model_name=_compliance_route_info.get('model', ''),
+                                assigned_provider=_assigned[0].value if _assigned[0] else '',
+                                assigned_model=_assigned[1] or '',
+                                persona_hash=hash_persona(council.personas.get('master', '')),
+                                prompt_tokens=_compliance_route_info.get('input_tokens', 0),
+                                completion_tokens=_compliance_route_info.get('output_tokens', 0),
+                                latency_ms=_compliance_route_info.get('latency_ms', 0),
+                            ))
+                        except Exception:
+                            pass
 
                     if not audit.get('approved', True):
                         logger.warning(f"COMPLIANCE BLOCKED {contract_name}: {audit.get('flagged_reason')}")
@@ -505,6 +684,17 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                             "Compliance Veto Triggered",
                             f"Trade for {contract_name} blocked.\nReason: {compliance_reason}"
                         )
+
+                    # --- Funnel: COMPLIANCE_AUDIT ---
+                    log_funnel_event(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        stage=FunnelStage.COMPLIANCE_AUDIT,
+                        outcome="BLOCK" if not audit.get('approved', True) else "PASS",
+                        detail=compliance_reason if not audit.get('approved', True) else "Approved",
+                        price_snapshot=market_ctx.get('price'),
+                        regime=regime_for_voting or 'UNKNOWN',
+                    )
 
                 # --- E.2: PRICE SANITY CHECK (The "Fat Finger" Guardrail) ---
                 # Robust extraction of price
@@ -585,7 +775,7 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     final_direction_log = final_data["action"]
                     # v7.0 SAFETY: Match execution path default
                     vol_sentiment_log = agent_data.get('volatility_sentiment', 'BEARISH')
-                    regime_log = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
+                    regime_log = harmonize_regime(regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN'))
 
                     if final_direction_log == 'NEUTRAL':
                         agent_conflict_score_log = calculate_agent_conflict(agent_data, mode="scheduled")
@@ -661,7 +851,16 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                         "vote_breakdown": json.dumps(weighted_result.get('vote_breakdown', [])),
                         "dominant_agent": weighted_result.get('dominant_agent', 'Unknown'),
                         "weighted_score": weighted_result.get('weighted_score', 0.0),
-                        "trigger_type": weighted_result.get('trigger_type', 'scheduled'),
+                        "trigger_type": str(weighted_result.get('trigger_type', 'SCHEDULED')).upper(),
+                        "schedule_id": schedule_id or '',
+
+                        # [E.1] VaR observability
+                        "var_utilization": round(var_utilization, 3) if var_utilization else None,
+                        "var_dampener": weighted_result.get('var_dampener', 1.0),
+                        "risk_briefing_injected": risk_briefing_injected,
+
+                        # v5: Regime tracking
+                        "entry_regime": regime_log,
                     }
                     log_council_decision(council_log_entry)
 
@@ -733,6 +932,13 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     except Exception as brier_e:
                         logger.error(f"Failed to record Brier predictions for {contract_name}: {brier_e}")
 
+                    # Flush prompt traces (non-fatal)
+                    if trace_collector:
+                        try:
+                            await asyncio.to_thread(trace_collector.flush)
+                        except Exception as flush_e:
+                            logger.error(f"Failed to flush prompt traces: {flush_e}")
+
                 except Exception as log_e:
                     logger.error(f"Failed to log council decision for {contract_name}: {log_e}")
 
@@ -771,6 +977,42 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
         # + conservative vol defaults (Addendum PATCH 2).
 
         final_direction = final_data["action"]
+
+        # === H6-A: CONVICTION GATE ===
+        # Suppress low-conviction directional signals that lack multi-agent consensus.
+        # Weighted score near zero means agents are split or dominated by a single voice.
+        _min_score = config.get('strategy', {}).get('min_weighted_score_magnitude', 0.20)
+        _ws = weighted_result.get('weighted_score', 0.0)
+        if final_direction in ('BULLISH', 'BEARISH') and abs(_ws) < _min_score:
+            # --- Funnel: CONVICTION_GATE (BLOCK) ---
+            log_funnel_event(
+                cycle_id=cycle_id,
+                contract=contract_name,
+                stage=FunnelStage.CONVICTION_GATE,
+                outcome="BLOCK",
+                detail=f"weighted_score={abs(_ws):.4f}, threshold={_min_score}, direction={final_direction}",
+                price_snapshot=market_ctx.get('price'),
+                regime=regime_for_voting or 'UNKNOWN',
+            )
+            logger.warning(
+                f"CONVICTION GATE: Suppressing {final_direction} signal for {contract_name}. "
+                f"|weighted_score|={abs(_ws):.4f} < threshold={_min_score}. "
+                f"Overriding to NEUTRAL (no trade)."
+            )
+            final_direction = 'NEUTRAL'
+            final_data["action"] = 'NEUTRAL'
+            final_data["reason"] += f" [CONVICTION GATE: |score|={abs(_ws):.4f} < {_min_score}]"
+        elif final_direction in ('BULLISH', 'BEARISH'):
+            # --- Funnel: CONVICTION_GATE (PASS) ---
+            log_funnel_event(
+                cycle_id=cycle_id,
+                contract=contract_name,
+                stage=FunnelStage.CONVICTION_GATE,
+                outcome="PASS",
+                detail=f"weighted_score={abs(_ws):.4f}, threshold={_min_score}, direction={final_direction}",
+                price_snapshot=market_ctx.get('price'),
+                regime=regime_for_voting or 'UNKNOWN',
+            )
 
         # v7.0 SAFETY: Default to BEARISH (expensive) when vol data is missing.
         # Rationale: On a $50K account, assume worst-case (expensive options)
@@ -829,6 +1071,9 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
 
         from trading_bot.strategy_router import route_strategy
 
+        # Resolve trigger_type to string for router
+        _trigger_str = trigger_type.value if hasattr(trigger_type, 'value') else str(trigger_type)
+
         routed = route_strategy(
             direction=final_direction,
             confidence=final_data["confidence"],
@@ -839,13 +1084,42 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
             reasoning=final_data["reason"],
             agent_data=agent_data,
             mode="scheduled",
+            trigger_type=_trigger_str,
         )
 
         prediction_type = routed['prediction_type']
         vol_level = routed['vol_level']
         reason = routed['reason']
 
+        # Align council_history log with actual execution outcome.
+        # The log vars (prediction_type_log, strategy_type_log) were set from the
+        # Master's original direction BEFORE the conviction gate and route_strategy().
+        # Update them so the audit trail reflects what actually executed.
+        prediction_type_log = prediction_type
+        vol_level_log = vol_level
+        if prediction_type == 'VOLATILITY' and vol_level == 'LOW':
+            strategy_type_log = 'IRON_CONDOR'
+        elif prediction_type == 'VOLATILITY' and vol_level == 'HIGH':
+            strategy_type_log = 'LONG_STRADDLE'
+        elif routed['direction'] in ('BULLISH',):
+            strategy_type_log = 'BULL_CALL_SPREAD'
+        elif routed['direction'] in ('BEARISH',):
+            strategy_type_log = 'BEAR_PUT_SPREAD'
+        else:
+            strategy_type_log = 'NONE'
+
         logger.info(f"Router decision: {prediction_type}/{vol_level} for {contract.localSymbol}")
+
+        # --- Funnel: STRATEGY_SELECTION ---
+        log_funnel_event(
+            cycle_id=cycle_id,
+            contract=contract_name,
+            stage=FunnelStage.STRATEGY_SELECTION,
+            outcome="PASS" if strategy_type_log != 'NONE' else "INFO",
+            detail=f"prediction_type={prediction_type_log}, strategy={strategy_type_log}, vol_level={vol_level_log}",
+            price_snapshot=market_ctx.get('price'),
+            regime=regime_log if 'regime_log' in dir() else regime,
+        )
 
         # Construct final signal object
         if prediction_type == "VOLATILITY":
@@ -865,7 +1139,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 # v7.0: Carry forward for Phase 5 position sizing
                 "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE',
                 "conviction_multiplier": decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
-                "_agent_reports": reports
+                "_agent_reports": reports,
+                "_cycle_id": cycle_id,
             }
         else:
             return {
@@ -883,7 +1158,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 # v7.0: Carry forward for Phase 5 position sizing
                 "thesis_strength": decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE',
                 "conviction_multiplier": decision.get('conviction_multiplier', 1.0) if 'decision' in dir() else 1.0,
-                "_agent_reports": reports
+                "_agent_reports": reports,
+                "_cycle_id": cycle_id,
             }
 
     # 5. Execute for all contracts

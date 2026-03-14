@@ -8,7 +8,57 @@ produce uniform and readable log messages.
 import logging
 import sys
 import os
+import re
 from logging.handlers import RotatingFileHandler
+
+# Patterns for sensitive keys to redact
+# Covers OpenAI (sk-...), Anthropic (sk-ant-...), Google (AIza...), xAI (xai-...)
+# Pre-compiled for performance
+REDACTION_PATTERNS = [
+    re.compile(r'\b(sk-[a-zA-Z0-9\-\_]{20,})\b'),       # OpenAI / generic secret keys
+    re.compile(r'\b(xai-[a-zA-Z0-9\-\_]{20,})\b'),      # xAI keys
+    re.compile(r'\b(AIza[0-9A-Za-z\-\_]{35})\b'),       # Google API keys
+    re.compile(r'\b(sk-ant-[a-zA-Z0-9\-\_]{20,})\b'),   # Anthropic keys
+]
+
+
+def redact_secrets(message: str) -> str:
+    """Redacts sensitive API keys from the log message."""
+    if not isinstance(message, str):
+        return message
+
+    for pattern in REDACTION_PATTERNS:
+        message = pattern.sub('[REDACTED]', message)
+    return message
+
+
+def sanitize_log_message(record_msg: str) -> str:
+    """Escapes newlines and redacts secrets in log messages."""
+    if isinstance(record_msg, str):
+        # 1. Redact secrets first (before escaping potentially breaks regex)
+        record_msg = redact_secrets(record_msg)
+        # 2. Escape newlines (Log Injection mitigation)
+        return record_msg.replace('\n', '\\n').replace('\r', '\\r')
+    return record_msg
+
+
+class SanitizedFormatter(logging.Formatter):
+    """Formatter that sanitizes log messages to prevent injection."""
+
+    def formatMessage(self, record):
+        # Save original message to avoid side effects
+        original_message = record.message
+
+        # Sanitize the message content
+        record.message = sanitize_log_message(record.message)
+
+        # Call parent to format the final string (e.g. "%(asctime)s ...")
+        s = super().formatMessage(record)
+
+        # Restore original message
+        record.message = original_message
+
+        return s
 
 
 def setup_logging(log_file: str = None):
@@ -27,6 +77,9 @@ def setup_logging(log_file: str = None):
 
     handlers = []
 
+    # Use SanitizedFormatter for security
+    formatter = SanitizedFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
     # Add file handler if requested
     if log_file:
         try:
@@ -43,7 +96,6 @@ def setup_logging(log_file: str = None):
                 encoding='utf-8',
             )
 
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             file_handler.setFormatter(formatter)
             handlers.append(file_handler)
 
@@ -51,7 +103,9 @@ def setup_logging(log_file: str = None):
             # Fallback to stdout only if we can't write to the log file
             sys.stderr.write(f"WARNING: Could not create log file handler at {log_file}: {e}\n")
             sys.stderr.write("Logging will continue to stdout only.\n")
-            handlers.append(logging.StreamHandler(sys.stdout))
+            fallback_handler = logging.StreamHandler(sys.stdout)
+            fallback_handler.setFormatter(formatter)
+            handlers.append(fallback_handler)
 
     # Determine whether to add StreamHandler (Stdout)
     # 1. Always add if no log_file is provided (default behavior)
@@ -60,12 +114,13 @@ def setup_logging(log_file: str = None):
     should_add_stream = (log_file is None) or sys.stdout.isatty()
 
     if should_add_stream:
-        handlers.append(logging.StreamHandler(sys.stdout))
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        handlers.append(stream_handler)
 
     # Basic Config with handlers
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=handlers,
         force=True  # Override any existing configuration
     )

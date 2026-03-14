@@ -4,16 +4,33 @@ An event-driven, multi-agent AI trading system for commodity futures options. Us
 
 ## Architecture: The Federated Cognitive Lattice
 
+The system operates on a tiered, event-driven architecture designed for modularity, fail-safety, and heterogeneous intelligence. The default execution mode is **Multi-Commodity**, where a `MasterOrchestrator` manages isolated `CommodityEngine` instances for each active ticker (e.g., Coffee (KC), Cocoa (CC), Natural Gas (NG)).
+
 ```mermaid
 graph TD
     subgraph "Tier 1: Always-On Sentinels"
         XS[🐦 X Sentiment]
         WS[🌤️ Weather]
         NS[📰 News/RSS]
-        PS[📊 Microstructure]
+        PM[🔮 Prediction Market]
+        TD[🔍 Topic Discovery]
+        MC[🌍 Macro Contagion]
+        FR[🏗️ Fundamental Regime]
+        LS[🚢 Logistics]
+        PS[📊 Price/Microstructure]
     end
 
-    subgraph "Tier 2: Specialist Analysts"
+    subgraph "Infrastructure Layer"
+        MO[👑 Master Orchestrator] --> CE[⚙️ Commodity Engine]
+        MO --> SS[🔄 Shared Services (Equity, Macro, VaR)]
+        CE --> Sentinels
+        CE --> Council
+        HR[🔀 Heterogeneous Router]
+        SC[🧠 Semantic Cache]
+        TMS[💾 Transactive Memory (ChromaDB)]
+    end
+
+    subgraph "Tier 2: Specialist Analysts (The Council)"
         AG[🌱 Agronomist]
         MA[💹 Macro Economist]
         FU[📈 Fundamentalist]
@@ -21,79 +38,165 @@ graph TD
         VO[📊 Volatility]
         GE[🌍 Geopolitical]
         SE[🐦 Sentiment]
+        IN[📦 Inventory]
+        SC_A[🔗 Supply Chain]
     end
 
-    subgraph "Tier 3: Decision Council"
+    subgraph "Tier 3: Decision & Risk"
         PB[🐻 Permabear]
         PL[🐂 Permabull]
-        DA[😈 Devil's Advocate]
         MS[👑 Master Strategist]
+        DA[😈 Devil's Advocate]
+        RA[🛡️ AI Risk Agent]
     end
 
-    XS & WS & NS & PS -->|Emergency Trigger| AG & MA & FU & TE & VO & GE & SE
-    AG & MA & FU & TE & VO & GE & SE -->|Reports| PB & PL
+    subgraph "Execution & Risk"
+        CG[🛡️ Compliance Guardian]
+        VAR[📉 Portfolio Risk Guard]
+        DCB[🔌 Drawdown Circuit Breaker]
+        DPS[⚖️ Dynamic Sizer]
+        OM[⚡ Order Manager]
+        IB[Interactive Brokers Gateway]
+    end
+
+    XS & WS & NS & PM & MC & FR & LS & PS -->|Trigger| HR
+    TD -->|Discover Topics| PM
+    HR -->|Route Request| AG & MA & FU & TE & VO & GE & SE & IN & SC_A
+    AG & MA & FU & TE & VO & GE & SE & IN & SC_A -->|Reports| PB & PL
     PB & PL -->|Debate| MS
     MS -->|Decision| DA
-    DA -->|Approved| EX[⚡ Order Execution]
-    DA -->|Vetoed| BLOCK[🛑 Trade Blocked]
-    EX --> IB[Interactive Brokers Gateway]
+    DA -->|Approved| CG
+    VAR -->|Risk Limits| CG
+    DCB -->|Drawdown Limits| CG
+    CG -->|Validated| DPS
+    DPS -->|Sized Order| OM
+    OM -->|Execute| IB
+
+    %% Cache interactions
+    Sentinels -.->|Check| SC
+    SC -.->|Hit| MS
 ```
 
-### How It Works
+### Core Components
 
-1. **Sentinels** monitor the world 24/7 (weather, news, social sentiment, market microstructure)
-2. When a sentinel detects a significant event, it triggers an **Emergency Council Session**
-3. **Specialist Agents** research using grounded data (Google Search, RSS, API data)
-4. **Permabear attacks** the thesis; **Permabull defends** — Hegelian dialectic debate
-5. **Master Strategist** weighs evidence using weighted voting and renders a verdict
-6. **Devil's Advocate** runs pre-mortem analysis to catch blind spots
-7. **Compliance Guardian** validates position sizing, VaR limits, and margin requirements
-8. Approved trades execute via **Interactive Brokers** as options spreads
+1.  **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor. Spawns and monitors `CommodityEngine` processes for each active ticker. Manages **Shared Services** (Equity Polling, Macro Research, Post-Close Reconciliation, System Health Digest) to prevent API redundancy.
+2.  **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity. Manages its own Sentinels, Council, and Schedule. Ensures strict data isolation.
+3.  **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM requests to the best-fit provider based on the agent's role (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
+4.  **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches Council decisions based on market state vectors. Prevents redundant LLM calls.
+5.  **Transactive Memory System (`trading_bot/tms.py`):** ChromaDB-based vector store for "institutional memory" across cycles.
+6.  **Brier Bridge (`trading_bot/brier_bridge.py`):** Tracks agent accuracy using an Enhanced Probabilistic Brier Score system to weight agent opinions dynamically.
+7.  **DSPy Optimizer (`trading_bot/dspy_optimizer.py`):** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot).
+8.  **Automated Trade Journal (`trading_bot/trade_journal.py`):** Generates structured post-mortem narratives for every closed trade, stored in TMS for future learning.
+9.  **System Health Digest (`trading_bot/system_digest.py`):** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry.
+10. **Error Reporter & Telemetry:** A standalone telemetry script (`scripts/error_reporter.py`, decoupled from the orchestrator) scans system logs, uses fingerprinting to deduplicate errors, intelligently filters out transient operational noise (e.g., 429 rate limits, 503 unavailable, lock timeouts), and auto-generates structured GitHub issues to track true system anomalies. Real-time operator alerts (via Pushover) are explicitly severity-gated (e.g., `PriceSentinel` >= 8, `WeatherSentinel` >= 7) to eliminate routine noise.
+11. **Three-Tier Market State Resolver (`trading_bot/utils.py`):** Dynamically dictates the state of each commodity (`Active`, `Passive`, `Sleeping`), allowing continuous 24/7 surveillance of extended sessions (e.g., CME Globex overnight) without the risk of generating unnecessary active cycle trades.
+12. **System Readiness Verifier (`verify_system_readiness.py`):** A comprehensive pre-flight diagnostic script that runs checks across 27 distinct system components, verifying infrastructure, connections, data fallbacks, agent health, and execution pipelines.
 
-### Key Design Principles
+### Tier 1: Sentinels (`trading_bot/sentinels.py`)
+Lightweight monitors that scan 24/7 for specific triggers.
+*   **PriceSentinel:** Monitors for rapid price shocks or liquidity gaps.
+*   **WeatherSentinel:** Tracks precipitation/temp in key growing regions (via Open-Meteo) using energy-aware stages for non-agricultural commodities.
+*   **LogisticsSentinel:** Monitors supply chain disruptions via RSS & Gemini Flash.
+*   **NewsSentinel:** Scans global news for fundamental shifts.
+*   **XSentimentSentinel:** Analyzes real-time social sentiment on X (via xAI) with automated multi-level circuit breakers for API cost control.
+*   **PredictionMarketSentinel:** Monitors Polymarket odds for geopolitical/macro events via Gamma API.
+*   **TopicDiscoveryAgent (`trading_bot/topic_discovery.py`):** Dynamically scans Polymarket for new, relevant topics using Claude Haiku (with bulk fetch, commodity filtering, and state pruning) and auto-configures the PredictionMarketSentinel.
+*   **MacroContagionSentinel:** Detects cross-asset contagion (DXY shocks, Fed policy shifts, gold/silver correlation).
+*   **FundamentalRegimeSentinel:** Determines long-term surplus/deficit regimes.
+*   **MicrostructureSentinel:** Monitors order book depth and flow toxicity.
 
-- **Heterogeneous LLM Routing** — Different AI providers (Gemini, OpenAI, Anthropic, xAI) for different roles, preventing algorithmic monoculture
-- **Constitutional AI Compliance** — Compliance has veto power over all trades
-- **Commodity-Agnostic** — Profile-driven configuration supports any ICE/CME futures contract
-- **Event-Driven** — Sentinels trigger analysis on-demand vs. fixed schedules
-- **Fail-Safe** — All components fail closed (block trades on error)
+### Tier 2: The Council (`trading_bot/agents.py`)
+Specialized LLM personas that analyze grounded data.
+*   **Agronomist:** Crop health, weather impact.
+*   **Macro Economist:** FX, interest rates, global demand.
+*   **Fundamentalist:** Supply/demand balance, COT reports.
+*   **Technical Analyst:** Chart patterns, momentum.
+*   **Volatility Analyst:** IV rank, term structure, skew.
+*   **Geopolitical Analyst:** Trade wars, sanctions, conflict.
+*   **Sentiment Analyst:** Crowd psychology, fear/greed.
+*   **Inventory Analyst:** Stockpile levels (ICE certified stocks).
+*   **Supply Chain Analyst:** Shipping routes, freight rates.
 
-## Trading Strategies
+### Tier 3: Decision & Risk
+*   **Permabear & Permabull:** Engage in dialectical debate.
+*   **Master Strategist:** Synthesizes reports and debate to render a verdict.
+*   **Devil's Advocate:** Runs a pre-mortem check.
+*   **Compliance Guardian (`trading_bot/compliance.py`):** Deterministic veto power based on risk limits.
+*   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide **Full Revaluation Historical Simulation VaR** (95%/99%) using Black-Scholes repricing. Captures gamma risk and non-linearities.
+*   **Drawdown Circuit Breaker (`trading_bot/drawdown_circuit_breaker.py`):** Monitors intraday P&L drops from the previous day's close and enforces multi-commodity-aware halt/panic thresholds (e.g., 3% warning, 6% halt, 9% panic) to protect the portfolio from bid-ask widening noise.
+*   **AI Risk Agent:** Embedded in the Risk Guard. **L1 Interpreter** provides narrative risk analysis, and **L2 Scenario Architect** generates stress scenarios (e.g., "Commodity Crash", "IV Spike").
+*   **Dynamic Position Sizer (`trading_bot/position_sizer.py`):** Calculates trade size based on conviction (Kelly Criterion adjusted by Volatility).
 
-| Market Condition | Strategy | Signal Type |
-|-----------------|----------|-------------|
-| Bullish directional | Bull Call Spread | DIRECTIONAL |
-| Bearish directional | Bear Put Spread | DIRECTIONAL |
-| High volatility expected | Long Straddle | VOLATILITY |
-| Low volatility / range-bound | Iron Condor | VOLATILITY |
+## Information Flow
 
-## Data Files
+1.  **Ingestion:** Sentinels detect a signal (e.g., "Frost in Brazil" or "Polymarket Odds Shift").
+2.  **Trigger:** An **Emergency Cycle** is initiated. The `TriggerDeduplicator` prevents storming.
+3.  **Routing/Caching:** Checks `SemanticCache` for recent similar decisions.
+4.  **Analysis:** `HeterogeneousRouter` dispatches prompts to Agents.
+5.  **Synthesis:** Agents submit reports to TMS. Permabear/Permabull debate. Master Strategist decides.
+6.  **Validation:** Devil's Advocate challenges.
+7.  **Compliance & Risk:**
+    *   **Portfolio Risk Guard** calculates new VaR impact.
+    *   **Compliance Guardian** checks VaR limits, margin, and concentration. Also enforces a **Conviction Gate** (suppressing low-conviction signals) and **Sentinel IC Suppression** (blocking short premium positions during sentinel-triggered high-volatility events).
+8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions. Multi-leg positions (e.g., spreads) are closed atomically via single BAG (combo) orders to prevent orphaned legs, falling back to sequential closures only if necessary. All exits use limit orders with adaptive price walking, dropping to a profile-driven timeout for market order fallbacks (e.g., KC=90s, CC=120s, NG=60s). New orders are constructed and submitted to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Catastrophe stops are placed dynamically, gated by account Net Liquidation Value (NLV) thresholds to fail-closed without stop protection if margin is insufficient. Emergency closures execute as concurrent market orders.
+9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching and securely parses IBKR Flex Queries via `defusedxml` to prevent XXE attacks. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
+10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
-| File | Purpose |
-|------|---------|
-| `decision_signals.csv` | Lightweight decision log (10 columns, one row per contract per cycle) |
-| `data/council_history.csv` | Full forensic record (30+ columns, agent reports, debate text) |
-| `trade_ledger.csv` | Executed trades with fill prices and P&L |
-| `data/agent_accuracy_structured.csv` | Brier scoring for agent prediction accuracy |
+## Running
 
-## Dashboard
+### Prerequisites
+- Python 3.11+
+- Interactive Brokers Gateway (IB Gateway or TWS) running on configured port
+- API keys in `.env` (see `.env.example`)
 
-Streamlit-based Real Options with pages:
+### Quick Start
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-1. **🦅 Cockpit** — Live operations, system health, emergency controls
-2. **⚖️ Scorecard** — Decision quality analysis, win rates
-3. **🧠 Council** — Agent explainability, consensus visualization
-4. **📈 Financials** — ROI, equity curve, strategy performance
-5. **🔧 Utilities** — Log collection, manual overrides
-6. **🎯 Signal Overlay** — Decision forensics against price action
+# Run Pre-flight Checks
+python verify_system_readiness.py
+
+# Default: Multi-Commodity Mode (MasterOrchestrator)
+# Spawns isolated CommodityEngine processes for all active tickers defined in config
+python orchestrator.py
+
+# Single commodity (Debug/Legacy mode)
+python orchestrator.py --commodity KC
+
+# Dashboard
+streamlit run dashboard.py
+```
+
+### Configuration
+-   **`config.json`**: Primary configuration (model registry, thresholds, sentinel intervals).
+-   **`commodity_overrides`**: Per-commodity runtime config overrides in `config.json` (schedule, strategy, risk).
+-   **`config/profiles/<ticker>.json`**: Commodity-specific profiles (market states, contract specs, growing regions).
+-   **`ACTIVE_COMMODITIES`**: Comma-separated list of tickers in `.env` or config (default: `KC,CC,NG`).
+
+### Deployment
+```bash
+# DEV: Push to main → auto-deploys via GitHub Actions
+git push origin main
+
+# PROD: Push to production branch
+git push origin production
+```
 
 ## Tech Stack
 
-- **Execution:** Interactive Brokers Gateway (ib_insync)
-- **AI:** Google Gemini (research), OpenAI/Anthropic/xAI (analysis), heterogeneous routing
-- **Memory:** ChromaDB (Transactive Memory System for cross-agent knowledge)
-- **Dashboard:** Streamlit
-- **Hosting:** Digital Ocean Droplets
+-   **Runtime:** Python 3.11+, `asyncio`
+-   **Execution:** Interactive Brokers Gateway (`ib_insync`)
+-   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1)
+-   **Memory:** ChromaDB (Vector Store)
+-   **Data Sources:**
+    -   **Market Data:** IBKR, yfinance (History/VaR)
+    -   **Weather:** Open-Meteo
+    -   **Prediction Markets:** Polymarket (via Gamma API)
+    -   **News:** Google News RSS
+-   **Dashboard:** Streamlit
+-   **Orchestration:** MasterOrchestrator → CommodityEngine
+-   **Observability:** Custom logging + Pushover notifications
 
 ## License
 

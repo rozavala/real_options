@@ -20,6 +20,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Status-aware trimming: cap on resolved predictions kept on disk/memory.
+# Pending predictions are NEVER trimmed (orphaning handles their lifecycle).
+MAX_RESOLVED_PREDICTIONS = 2000
+
+# After this date, legacy CSV is frozen — Pass 2 backfill only re-creates
+# historical duplicates and should be skipped to prevent restart inflation.
+_BACKFILL_PASS2_CUTOFF = datetime(2026, 3, 1, tzinfo=timezone.utc)
+
 
 class MarketRegime(Enum):
     """Market regime classification for performance tracking."""
@@ -80,6 +88,73 @@ def normalize_regime(regime_str: str) -> MarketRegime:
         )
 
     return result
+
+
+def resolve_outcome_for_cycle(
+    actual_trend_direction: str,
+    prediction_type: str = "",
+    volatility_outcome: str = "",
+) -> str:
+    """
+    Determine the correct Brier resolution outcome for a prediction.
+
+    For DIRECTIONAL cycles: use actual_trend_direction as-is.
+    For VOLATILITY cycles where market STAYED_FLAT: resolve as NEUTRAL
+      (rewards agents who correctly predicted range-bound conditions).
+    For VOLATILITY cycles with BIG_MOVE: use actual directional movement
+      (rewards agents who predicted the breakout direction).
+
+    This is the SINGLE SOURCE OF TRUTH for outcome resolution.
+    All resolution paths (enhanced_brier backfill, brier_reconciliation,
+    re-scoring scripts) must use this function.
+
+    Args:
+        actual_trend_direction: BULLISH, BEARISH, or NEUTRAL from reconciliation
+        prediction_type: DIRECTIONAL or VOLATILITY from council_history
+        volatility_outcome: BIG_MOVE or STAYED_FLAT from council_history
+
+    Returns:
+        Resolution outcome: BULLISH, BEARISH, or NEUTRAL.
+        Empty string if unresolvable.
+    """
+    # NaN-safe string conversion: pandas NaN → "NAN", None → "NONE"
+    atd = str(actual_trend_direction).strip().upper() if actual_trend_direction is not None else ""
+    ptype = str(prediction_type).strip().upper() if prediction_type is not None else ""
+    vol_out = str(volatility_outcome).strip().upper() if volatility_outcome is not None else ""
+
+    # Guard against pandas NaN stringification
+    if atd in ("NAN", "NONE", ""):
+        atd = ""
+    if ptype in ("NAN", "NONE", ""):
+        ptype = ""
+    if vol_out in ("NAN", "NONE", ""):
+        vol_out = ""
+
+    if ptype == "VOLATILITY":
+        if vol_out == "STAYED_FLAT":
+            return "NEUTRAL"
+        if vol_out == "BIG_MOVE":
+            # Use directional movement — intentional.
+            # Agents who predicted the breakout direction get rewarded.
+            pass
+        elif vol_out:
+            # Unexpected value — log but fall through to directional
+            logger.warning(
+                f"Unexpected volatility_outcome '{volatility_outcome}' "
+                f"for VOLATILITY cycle. Falling back to directional resolution."
+            )
+
+    # Default path: use directional movement
+    if atd in ("BULLISH", "BEARISH", "NEUTRAL"):
+        return atd
+
+    # Truly unresolvable
+    if atd or ptype or vol_out:
+        logger.warning(
+            f"Unresolvable outcome: atd='{actual_trend_direction}', "
+            f"ptype='{prediction_type}', vol='{volatility_outcome}'"
+        )
+    return ""
 
 
 @dataclass
@@ -196,7 +271,10 @@ class EnhancedBrierTracker:
     - Dynamic weight multipliers
     """
 
-    def __init__(self, data_path: str = "./data/enhanced_brier.json"):
+    def __init__(self, data_path: str = None):
+        if data_path is None:
+            ticker = os.environ.get("COMMODITY_TICKER", "KC")
+            data_path = f"./data/{ticker}/enhanced_brier.json"
         self.data_path = data_path
         self.predictions: List[ProbabilisticPrediction] = []
 
@@ -206,18 +284,29 @@ class EnhancedBrierTracker:
         # Per-agent, per-regime Brier scores
         self.agent_scores: Dict[str, Dict[str, List[float]]] = {}
 
-        # Load existing data and sync with CSV
+        # Load existing data
         self._load()
-        # Auto-backfill only for the default production data path
-        if os.path.abspath(data_path) == os.path.abspath("./data/enhanced_brier.json"):
-            try:
-                self.backfill_from_resolved_csv()
-            except Exception as e:
-                logger.warning(f"Auto-backfill on init failed (non-fatal): {e}")
-            try:
-                self.auto_orphan_stale_predictions()
-            except Exception as e:
-                logger.warning(f"Auto-orphan on init failed (non-fatal): {e}")
+        try:
+            self.auto_orphan_stale_predictions()
+        except Exception as e:
+            logger.warning(f"Auto-orphan on init failed (non-fatal): {e}")
+
+        # v8.0: Legacy accuracy cache for accuracy-floor fallback path
+        # Maps agent_name -> weighted_accuracy (0.0-1.0) from brier_scoring.py
+        self._legacy_accuracy_cache: Dict[str, float] = {}
+        try:
+            from trading_bot.brier_scoring import get_brier_tracker
+            tracker = get_brier_tracker()
+            if tracker and hasattr(tracker, 'scores') and tracker.scores:
+                self._legacy_accuracy_cache = {
+                    agent: data.get('weighted_accuracy', 0.5)
+                    for agent, data in tracker.scores.items()
+                    if isinstance(data, dict) and 'weighted_accuracy' in data
+                }
+                if self._legacy_accuracy_cache:
+                    logger.info(f"Loaded legacy accuracy cache for {len(self._legacy_accuracy_cache)} agents")
+        except Exception as e:
+            logger.debug(f"Legacy accuracy cache unavailable (non-fatal): {e}")
 
     def record_prediction(
         self,
@@ -262,12 +351,19 @@ class EnhancedBrierTracker:
 
         self.predictions.append(pred)
 
-        # FIX (MECE 1.4): Trim to prevent unbounded memory growth
-        # Keep 50% buffer over save limit to reduce trim frequency
-        MAX_IN_MEMORY = 1500
+        # Status-aware trim: prevent unbounded growth while protecting pending predictions.
+        # Pending predictions must survive until resolved or orphaned (7-day lifecycle).
+        MAX_IN_MEMORY = 3000
         if len(self.predictions) > MAX_IN_MEMORY:
-            self.predictions = self.predictions[-1000:]
-            logger.debug(f"Brier tracker trimmed to {len(self.predictions)} predictions")
+            pending = [p for p in self.predictions if p.actual_outcome is None]
+            resolved = [p for p in self.predictions if p.actual_outcome is not None]
+            if len(resolved) > MAX_RESOLVED_PREDICTIONS:
+                resolved = resolved[-MAX_RESOLVED_PREDICTIONS:]
+            self.predictions = sorted(pending + resolved, key=lambda p: p.timestamp)
+            logger.debug(
+                f"Brier tracker trimmed to {len(self.predictions)} predictions "
+                f"({len(pending)} pending, {len(resolved)} resolved)"
+            )
 
         pred_id = f"{agent}_{pred.timestamp.isoformat()}"
 
@@ -340,7 +436,7 @@ class EnhancedBrierTracker:
         logger.warning(f"No matching prediction found for {agent} (cycle={cycle_id})")
         return None
 
-    def backfill_from_resolved_csv(self, structured_csv_path: str = "data/agent_accuracy_structured.csv") -> int:
+    def backfill_from_resolved_csv(self, structured_csv_path: str = None) -> int:
         """
         Catch-up mechanism: resolve Enhanced Brier predictions that were
         resolved in the legacy CSV but missed in the JSON.
@@ -354,117 +450,137 @@ class EnhancedBrierTracker:
         import pandas as pd
         from trading_bot.cycle_id import is_valid_cycle_id
 
-        if not os.path.exists(structured_csv_path):
-            return 0
+        if structured_csv_path is None:
+            structured_csv_path = os.path.join(os.path.dirname(self.data_path), "agent_accuracy_structured.csv")
 
-        try:
-            csv_df = pd.read_csv(structured_csv_path)
-        except Exception as e:
-            logger.error(f"Backfill: Failed to read CSV: {e}")
-            return 0
+        csv_exists = os.path.exists(structured_csv_path)
 
-        # Build lookup of resolved CSV predictions: cycle_id+agent → actual_direction
-        csv_resolved = {}
-        for _, row in csv_df.iterrows():
-            actual = str(row.get('actual', 'PENDING'))
-            if actual in ('PENDING', 'ORPHANED', ''):
-                continue
-            cycle_id = str(row.get('cycle_id', '')).strip()
-            agent = str(row.get('agent', '')).strip()
-            if cycle_id and agent:
-                csv_resolved[(cycle_id, agent)] = actual
-
-        # Find unresolved Enhanced Brier predictions that have CSV resolutions
+        # Pass 1: Resolve JSON predictions from legacy CSV resolutions
         backfilled = 0
-        for pred in self.predictions:
-            if pred.actual_outcome is not None:
-                continue  # Already resolved
+        if csv_exists:
+            try:
+                csv_df = pd.read_csv(structured_csv_path)
+            except Exception as e:
+                logger.error(f"Backfill: Failed to read CSV: {e}")
+                csv_exists = False
 
-            key = (pred.cycle_id, pred.agent)
-            if key in csv_resolved:
-                actual = csv_resolved[key]
-                pred.actual_outcome = actual
-                pred.resolved_at = datetime.now(timezone.utc)
+        if csv_exists:
+            # Build lookup of resolved CSV predictions: cycle_id+agent → actual_direction
+            csv_resolved = {}
+            for row in csv_df.to_dict('records'):
+                actual = str(row.get('actual', 'PENDING'))
+                if actual in ('PENDING', 'ORPHANED', ''):
+                    continue
+                cycle_id = str(row.get('cycle_id', '')).strip()
+                agent = str(row.get('agent', '')).strip()
+                if cycle_id and agent:
+                    csv_resolved[(cycle_id, agent)] = actual
 
-                brier = pred.calc_brier_score()
-                if brier is not None:
-                    self._update_agent_score(pred.agent, pred.regime.value, brier)
-                    self._update_calibration(pred)
+            # Find unresolved Enhanced Brier predictions that have CSV resolutions
+            for pred in self.predictions:
+                if pred.actual_outcome is not None:
+                    continue  # Already resolved
 
-                backfilled += 1
-                brier_str = f"{brier:.4f}" if brier is not None else "N/A"
-                logger.info(
-                    f"Backfilled {pred.agent} (cycle={pred.cycle_id}): "
-                    f"{pred.predicted_direction} vs {actual}, "
-                    f"Brier={brier_str}"
-                )
+                key = (pred.cycle_id, pred.agent)
+                if key in csv_resolved:
+                    actual = csv_resolved[key]
+                    pred.actual_outcome = actual
+                    pred.resolved_at = datetime.now(timezone.utc)
 
-        # Pass 2: Create predictions that exist in CSV but not in JSON
-        json_keys = {(p.cycle_id, p.agent) for p in self.predictions}
-        created = 0
+                    brier = pred.calc_brier_score()
+                    if brier is not None:
+                        self._update_agent_score(pred.agent, pred.regime.value, brier)
+                        self._update_calibration(pred)
 
-        for _, row in csv_df.iterrows():
-            cycle_id = str(row.get('cycle_id', '')).strip()
-            agent = str(row.get('agent', '')).strip()
-            if not cycle_id or not agent or cycle_id in ("nan", "None", "null"):
-                continue
-            if (cycle_id, agent) in json_keys:
-                continue
+                    backfilled += 1
+                    brier_str = f"{brier:.4f}" if brier is not None else "N/A"
+                    logger.info(
+                        f"Backfilled {pred.agent} (cycle={pred.cycle_id}): "
+                        f"{pred.predicted_direction} vs {actual}, "
+                        f"Brier={brier_str}"
+                    )
 
-            # Reconstruct probability distribution from CSV direction + confidence
-            direction = str(row.get('direction', 'NEUTRAL')).strip().upper()
-            confidence = float(row.get('confidence', 0.5)) if pd.notna(row.get('confidence')) else 0.5
-            confidence = max(0.0, min(1.0, confidence))
-
-            from trading_bot.brier_bridge import _confidence_to_probs
-            prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(direction, confidence)
-
-            # Parse timestamp
-            ts = datetime.now(timezone.utc)
-            if pd.notna(row.get('timestamp')):
-                try:
-                    ts = pd.to_datetime(row['timestamp'], utc=True).to_pydatetime()
-                except Exception:
-                    pass
-
-            pred = ProbabilisticPrediction(
-                timestamp=ts,
-                agent=agent,
-                prob_bullish=prob_bullish,
-                prob_neutral=prob_neutral,
-                prob_bearish=prob_bearish,
-                regime=MarketRegime.NORMAL,
-                contract=str(row.get('contract', '')) if pd.notna(row.get('contract')) else '',
-                cycle_id=cycle_id,
+        # Pass 2: Create predictions from CSV that are missing in JSON.
+        # After legacy deprecation, CSV is frozen — no new rows are written.
+        # Re-creating historical CSV entries on every restart inflates the list
+        # and causes trimming to drop recent JSON-only predictions (the KC bug).
+        skip_pass2 = not csv_exists or datetime.now(timezone.utc) >= _BACKFILL_PASS2_CUTOFF
+        if skip_pass2:
+            logger.info(
+                "Backfill Pass 2 skipped (legacy CSV deprecated %s, no new rows to import)",
+                _BACKFILL_PASS2_CUTOFF.date()
             )
 
-            # Resolve immediately if CSV has an outcome
-            actual = str(row.get('actual', 'PENDING')).strip()
-            if actual not in ('PENDING', 'ORPHANED', ''):
-                pred.actual_outcome = actual
-                pred.resolved_at = datetime.now(timezone.utc)
-                brier = pred.calc_brier_score()
-                if brier is not None:
-                    self._update_agent_score(pred.agent, pred.regime.value, brier)
-                    self._update_calibration(pred)
+        created = 0
+        if not skip_pass2:
+            json_keys = {(p.cycle_id, p.agent) for p in self.predictions}
 
-            self.predictions.append(pred)
-            json_keys.add((cycle_id, agent))
-            created += 1
+            for row in csv_df.to_dict('records'):
+                cycle_id = str(row.get('cycle_id', '')).strip()
+                agent = str(row.get('agent', '')).strip()
+                if not cycle_id or not agent or cycle_id in ("nan", "None", "null"):
+                    continue
+                if (cycle_id, agent) in json_keys:
+                    continue
+
+                # Reconstruct probability distribution from CSV direction + confidence
+                direction = str(row.get('direction', 'NEUTRAL')).strip().upper()
+                confidence = float(row.get('confidence', 0.5)) if pd.notna(row.get('confidence')) else 0.5
+                confidence = max(0.0, min(1.0, confidence))
+
+                from trading_bot.brier_bridge import _confidence_to_probs
+                prob_bullish, prob_neutral, prob_bearish = _confidence_to_probs(direction, confidence)
+
+                # Parse timestamp
+                ts = datetime.now(timezone.utc)
+                if pd.notna(row.get('timestamp')):
+                    try:
+                        ts = pd.to_datetime(row['timestamp'], utc=True).to_pydatetime()
+                    except Exception:
+                        pass
+
+                pred = ProbabilisticPrediction(
+                    timestamp=ts,
+                    agent=agent,
+                    prob_bullish=prob_bullish,
+                    prob_neutral=prob_neutral,
+                    prob_bearish=prob_bearish,
+                    regime=MarketRegime.NORMAL,
+                    contract=str(row.get('contract', '')) if pd.notna(row.get('contract')) else '',
+                    cycle_id=cycle_id,
+                )
+
+                # Resolve immediately if CSV has an outcome
+                actual = str(row.get('actual', 'PENDING')).strip()
+                if actual not in ('PENDING', 'ORPHANED', ''):
+                    pred.actual_outcome = actual
+                    pred.resolved_at = datetime.now(timezone.utc)
+                    brier = pred.calc_brier_score()
+                    if brier is not None:
+                        self._update_agent_score(pred.agent, pred.regime.value, brier)
+                        self._update_calibration(pred)
+
+                self.predictions.append(pred)
+                json_keys.add((cycle_id, agent))
+                created += 1
 
         # Pass 3: Resolve still-pending predictions from council_history outcomes
         council_path = os.path.join(os.path.dirname(structured_csv_path), "council_history.csv")
         resolved_from_ch = 0
         if os.path.exists(council_path):
             try:
-                ch_df = pd.read_csv(council_path)
-                # Build cycle_id → actual_trend_direction lookup
+                ch_df = pd.read_csv(council_path, on_bad_lines='warn')
+                # Build cycle_id → outcome lookup (volatility-aware)
                 ch_outcomes = {}
-                for _, row in ch_df.iterrows():
+                for row in ch_df.to_dict('records'):
                     cid = str(row.get('cycle_id', '')).strip()
-                    atd = str(row.get('actual_trend_direction', '')).strip().upper()
-                    if cid and atd and atd in ('BULLISH', 'BEARISH', 'NEUTRAL'):
-                        ch_outcomes[cid] = atd
+                    atd = str(row.get('actual_trend_direction', '')).strip()
+                    prediction_type = str(row.get('prediction_type', '')).strip()
+                    vol_outcome = str(row.get('volatility_outcome', '')).strip()
+
+                    outcome = resolve_outcome_for_cycle(atd, prediction_type, vol_outcome)
+                    if cid and outcome:
+                        ch_outcomes[cid] = outcome
 
                 for pred in self.predictions:
                     if pred.actual_outcome is not None:
@@ -531,38 +647,59 @@ class EnhancedBrierTracker:
 
         return orphaned
 
+    def _brier_to_multiplier(self, scores: list) -> float:
+        """Convert a list of Brier scores to a reliability multiplier."""
+        recent_scores = scores[-30:]
+        avg_brier = np.mean(recent_scores)
+        # Brier 0.0 -> 2.0x, Brier 0.25 -> 1.0x, Brier 0.5 -> 0.1x
+        multiplier = 2.0 - (avg_brier * 4.0)
+        return max(0.1, min(2.0, multiplier))
+
     def get_agent_reliability(self, agent: str, regime: str = "NORMAL") -> float:
         """
         Get reliability multiplier for an agent in a specific regime.
 
+        4-path fallback:
+          1. Regime-specific (>=5 samples in requested regime)
+          2. Cross-regime blend (sample-weighted mean across all regimes with >=1 score)
+          3. Accuracy floor (legacy Brier accuracy <30% -> 0.5 half-weight penalty)
+          4. Baseline 1.0 (no data at all)
+
         Returns:
             Multiplier in range [0.1, 2.0]
-            - 0.1 = very unreliable (Brier close to 0.5)
-            - 1.0 = baseline reliability (Brier ~0.25)
-            - 2.0 = very reliable (Brier close to 0)
         """
-        # FIX (P1-C, 2026-02-06): Normalize agent name to prevent lookup misses.
         from trading_bot.agent_names import normalize_agent_name
         agent = normalize_agent_name(agent)
 
-        # Normalize regime (P0-REGIME)
         canonical = normalize_regime(regime).value
-        scores = self.agent_scores.get(agent, {}).get(canonical, [])
+        agent_regimes = self.agent_scores.get(agent, {})
+        scores = agent_regimes.get(canonical, [])
 
-        if len(scores) < 5:
-            # Not enough data, return baseline
-            return 1.0
+        # Path 1: Regime-specific (>=5 samples)
+        if len(scores) >= 5:
+            return self._brier_to_multiplier(scores)
 
-        # Use recent scores (last 30)
-        recent_scores = scores[-30:]
-        avg_brier = np.mean(recent_scores)
+        # Path 2: Cross-regime blend (sample-weighted mean across all regimes)
+        all_regime_scores = []
+        for r, r_scores in agent_regimes.items():
+            if len(r_scores) >= 1:
+                mult = self._brier_to_multiplier(r_scores)
+                all_regime_scores.append((mult, len(r_scores)))
 
-        # Convert Brier to multiplier
-        # Brier 0.0 -> 2.0x, Brier 0.25 -> 1.0x, Brier 0.5 -> 0.1x
-        multiplier = 2.0 - (avg_brier * 4.0)
-        multiplier = max(0.1, min(2.0, multiplier))
+        if all_regime_scores:
+            total_samples = sum(n for _, n in all_regime_scores)
+            if total_samples >= 5:
+                blended = sum(m * n for m, n in all_regime_scores) / total_samples
+                return max(0.1, min(2.0, blended))
 
-        return multiplier
+        # Path 3: Accuracy floor from legacy brier_scoring.py
+        legacy_acc = self._legacy_accuracy_cache.get(agent)
+        if legacy_acc is not None and legacy_acc < 0.30:
+            logger.info(f"Agent {agent}: legacy accuracy {legacy_acc:.2f} < 0.30 → half-weight penalty (0.5)")
+            return 0.5
+
+        # Path 4: No data — baseline
+        return 1.0
 
     def get_calibration_curve(self, agent: str) -> List[Tuple[float, float]]:
         """
@@ -642,6 +779,13 @@ class EnhancedBrierTracker:
 
     def _save(self) -> None:
         """Persist data to disk."""
+        # Status-aware retention: keep ALL pending, trim only resolved
+        pending = [p for p in self.predictions if p.actual_outcome is None]
+        resolved = [p for p in self.predictions if p.actual_outcome is not None]
+        if len(resolved) > MAX_RESOLVED_PREDICTIONS:
+            resolved = resolved[-MAX_RESOLVED_PREDICTIONS:]
+        retained = sorted(pending + resolved, key=lambda p: p.timestamp)
+
         data = {
             # FIX (MECE 3.3): Add schema version for forward compatibility
             'schema_version': self.SCHEMA_VERSION,
@@ -655,11 +799,11 @@ class EnhancedBrierTracker:
                     'prob_bearish': p.prob_bearish,
                     'regime': p.regime.value,
                     'contract': p.contract,
-                    'cycle_id': p.cycle_id,  # NEW
+                    'cycle_id': p.cycle_id,
                     'actual_outcome': p.actual_outcome,
                     'resolved_at': p.resolved_at.isoformat() if p.resolved_at else None
                 }
-                for p in self.predictions[-1000:]  # Keep last 1000
+                for p in retained
             ],
             'agent_scores': {
                 agent: {

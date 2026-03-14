@@ -7,7 +7,7 @@ import os
 def base_config():
     return {
         "strategy": {"quantity": 1},
-        "risk_management": {"min_confidence_threshold": 0.7},
+        "risk_management": {"min_confidence_threshold": 0.5},
         "connection": {"port": 7497, "clientId": 55},
         "notifications": {"enabled": False},
         "flex_query": {},
@@ -53,7 +53,7 @@ def test_risk_threshold_validation(base_config):
 
         # Valid
         config = config_loader.load_config()
-        assert config['risk_management']['min_confidence_threshold'] == 0.7
+        assert config['risk_management']['min_confidence_threshold'] == 0.5
 
         # Invalid
         base_config['risk_management']['min_confidence_threshold'] = 1.1

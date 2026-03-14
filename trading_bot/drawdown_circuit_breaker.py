@@ -5,11 +5,12 @@ Protects against aggregate portfolio losses that individual position stops miss.
 Halts trading for the day if intraday P&L drops below configurable thresholds.
 
 Thresholds (default):
-- WARNING: -1.5% intraday -> Pushover alert
-- HALT:    -2.5% intraday -> Block new trades
-- PANIC:   -4.0% intraday -> Close ALL positions
+- WARNING: -3.0% intraday -> Pushover alert
+- HALT:    -6.0% intraday -> Block new trades
+- PANIC:   -9.0% intraday -> Close ALL positions
 """
 
+import csv
 import logging
 import os
 import json
@@ -22,15 +23,49 @@ from notifications import send_pushover_notification
 
 logger = logging.getLogger(__name__)
 
+
+def load_prev_close(data_dir: str) -> Optional[float]:
+    """Load previous day's closing equity from daily_equity.csv.
+
+    Returns the most recent entry's total_value_usd, or None if the file
+    is missing, empty, or corrupt.  Used by DrawdownGuard and
+    PortfolioRiskGuard to set a consistent starting_equity baseline
+    independent of engine startup time.
+    """
+    equity_file = os.path.join(data_dir, 'daily_equity.csv')
+    if not os.path.exists(equity_file):
+        return None
+    try:
+        with open(equity_file, 'r') as f:
+            reader = csv.reader(f)
+            last_row = None
+            for row in reader:
+                if len(row) >= 2:
+                    last_row = row
+            if last_row is None:
+                return None
+            value = float(last_row[1])
+            return value if value > 0 else None
+    except Exception as e:
+        logger.warning(f"Failed to load prev close from {equity_file}: {e}")
+        return None
+
+
 class DrawdownGuard:
     def __init__(self, config: dict):
         self.config = config.get('drawdown_circuit_breaker', {})
         self.notification_config = config.get('notifications', {})
         self.enabled = self.config.get('enabled', False)
-        self.warning_pct = self.config.get('warning_pct', 1.5)
-        self.halt_pct = self.config.get('halt_pct', 2.5)
-        self.panic_pct = self.config.get('panic_pct', 4.0)
-        self.state_file = self.config.get('state_file', 'data/drawdown_state.json')
+        self.warning_pct = self.config.get('warning_pct', 3.0)
+        self.halt_pct = self.config.get('halt_pct', 6.0)
+        self.panic_pct = self.config.get('panic_pct', 9.0)
+        self.recovery_pct = self.config.get('recovery_pct', 3.5)
+        self.recovery_hold_minutes = self.config.get('recovery_hold_minutes', 30)
+        self._recovery_start = None
+        self._panic_is_live = False  # Only True after update_pnl() freshly evaluates PANIC
+        self._data_dir = config.get('data_dir', 'data')
+        # Always use per-commodity data_dir; ignore any legacy state_file in sub-config
+        self.state_file = os.path.join(self._data_dir, 'drawdown_state.json')
 
         self.state = {
             "status": "NORMAL", # NORMAL, WARNING, HALT, PANIC
@@ -53,7 +88,25 @@ class DrawdownGuard:
                     current_date = datetime.now(timezone.utc).date().isoformat()
                     if saved_date == current_date:
                         self.state = saved
-                        logger.info(f"Loaded drawdown state: {self.state['status']} ({self.state['current_drawdown_pct']:.2f}%)")
+                        # Force starting_equity to 0.0 so update_pnl() re-derives
+                        # from prev close (daily_equity.csv). Persisted value may
+                        # have been set from live NLV during an earlier startup.
+                        self.state['starting_equity'] = 0.0
+                        self._recovery_start = saved.get('recovery_start')
+                        # Discard stale recovery_start from previous day
+                        if self._recovery_start:
+                            try:
+                                rs_date = datetime.fromisoformat(self._recovery_start).date()
+                                if rs_date != datetime.now(timezone.utc).date():
+                                    logger.info("Discarded stale recovery_start from previous day")
+                                    self._recovery_start = None
+                            except (ValueError, TypeError):
+                                self._recovery_start = None
+                        logger.info(
+                            f"Loaded drawdown state: {self.state['status']} "
+                            f"({self.state['current_drawdown_pct']:.2f}%), "
+                            f"starting_equity=0 (will re-derive from prev close)"
+                        )
                     else:
                         logger.info("Saved drawdown state is old. Starting fresh.")
             except Exception as e:
@@ -63,6 +116,10 @@ class DrawdownGuard:
         try:
             # Create dir if needed
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+            if self._recovery_start is not None:
+                self.state['recovery_start'] = self._recovery_start
+            elif 'recovery_start' in self.state:
+                del self.state['recovery_start']
             self.state['last_updated'] = datetime.now(timezone.utc).isoformat()
             temp_path = self.state_file + ".tmp"
             with open(temp_path, 'w') as f:
@@ -76,6 +133,8 @@ class DrawdownGuard:
         current_date = datetime.now(timezone.utc).date().isoformat()
         if self.state['date'] != current_date:
             logger.info("Resetting DrawdownGuard for new day.")
+            self._recovery_start = None
+            self._panic_is_live = False
             self.state = {
                 "status": "NORMAL",
                 "current_drawdown_pct": 0.0,
@@ -109,26 +168,29 @@ class DrawdownGuard:
                 logger.warning("Could not fetch NetLiquidation for drawdown check.")
                 return self.state['status']
 
-            # 2. Set Starting Equity if first run
+            # 2. Set Starting Equity if first run — prefer previous close
             if self.state['starting_equity'] == 0.0:
-                self.state['starting_equity'] = net_liq
-                logger.info(f"DrawdownGuard initialized. Starting Equity: ${net_liq:,.2f}")
+                prev_close = load_prev_close(self._data_dir)
+                if prev_close is not None:
+                    self.state['starting_equity'] = prev_close
+                    logger.info(
+                        f"DrawdownGuard initialized from prev close: "
+                        f"${prev_close:,.2f} (live NLV: ${net_liq:,.2f})"
+                    )
+                else:
+                    self.state['starting_equity'] = net_liq
+                    logger.info(
+                        f"DrawdownGuard initialized from live NLV: "
+                        f"${net_liq:,.2f} (no daily_equity.csv available)"
+                    )
                 self._save_state()
-                return "NORMAL"
 
             # 3. Calculate Drawdown
             start_eq = self.state['starting_equity']
+            if start_eq <= 0:
+                return self.state['status']  # Can't calculate drawdown yet
             pnl = net_liq - start_eq
             drawdown_pct = (pnl / start_eq) * 100
-
-            # Only track negative drawdown (if we are up, drawdown is 0 for this purpose,
-            # though technically we could track peak-to-trough if we updated starting_equity on highs.
-            # For simplicity/safety, we stick to "Daily Loss Limit" logic (vs open).)
-            # Wait, "Daily Drawdown" usually means from previous close.
-            # If we restart mid-day, starting_equity might be mid-day equity.
-            # To be robust, we should load yesterday's close from daily_equity.csv if starting_equity is 0.
-            # But for this MVP, initializing on first run of day is acceptable,
-            # assuming orchestrator runs before market open.
 
             self.state['current_drawdown_pct'] = drawdown_pct
 
@@ -145,14 +207,50 @@ class DrawdownGuard:
             else:
                 new_status = "NORMAL"
 
-            # State Transition Logic (Escalation only, manual reset required for de-escalation usually,
-            # but let's allow auto-recovery from WARNING. HALT/PANIC should stick?)
-            # Prompt says "Reset daily at market open". So HALT persists for day.
-
-            if prev_status == "PANIC":
-                new_status = "PANIC" # Stick
-            elif prev_status == "HALT" and new_status != "PANIC":
-                new_status = "HALT" # Stick unless worsening
+            # Recovery-aware escalation logic
+            if prev_status in ("PANIC", "HALT"):
+                if new_status == "PANIC" and prev_status != "PANIC":
+                    # Allow HALT→PANIC escalation
+                    self._recovery_start = None
+                elif abs(drawdown_pct) <= self.recovery_pct:
+                    # Drawdown improved below recovery threshold
+                    if self._recovery_start is None:
+                        self._recovery_start = datetime.now(timezone.utc).isoformat()
+                        logger.info(f"Recovery timer started (drawdown {drawdown_pct:.2f}%, threshold {self.recovery_pct}%)")
+                        new_status = prev_status  # Hold current status during observation
+                    else:
+                        recovery_start_dt = datetime.fromisoformat(self._recovery_start)
+                        elapsed_minutes = (datetime.now(timezone.utc) - recovery_start_dt).total_seconds() / 60
+                        if elapsed_minutes >= self.recovery_hold_minutes:
+                            new_status = "WARNING"
+                            self._recovery_start = None
+                            logger.warning(
+                                f"Recovery complete: {prev_status} -> WARNING after "
+                                f"{elapsed_minutes:.0f}min (drawdown at completion: {drawdown_pct:.2f}%)"
+                            )
+                            send_pushover_notification(
+                                self.notification_config,
+                                f"📈 Recovery: {prev_status} → WARNING",
+                                f"Drawdown improved to {drawdown_pct:.2f}% (held {elapsed_minutes:.0f}min). Trading resumed with caution.",
+                                ticker="ALL"
+                            )
+                        else:
+                            logger.info(f"Recovery in progress: {elapsed_minutes:.0f}/{self.recovery_hold_minutes}min")
+                            new_status = prev_status  # Hold during observation
+                elif abs(drawdown_pct) <= self.halt_pct:
+                    # Between recovery_pct and halt_pct — hold status, keep timer intact.
+                    # Timer continues running (wall-clock) — elapsed time includes
+                    # danger-zone excursions. Recovery completion is only evaluated
+                    # when drawdown is actually below recovery_pct at the moment of
+                    # the check. Acceptable tradeoff vs. oscillation problem where
+                    # any noise restarted the 30-min countdown indefinitely.
+                    new_status = prev_status
+                else:
+                    # Back above halt_pct — genuine re-escalation, reset timer
+                    if self._recovery_start is not None:
+                        logger.info(f"Recovery timer reset (drawdown worsened past halt to {drawdown_pct:.2f}%)")
+                        self._recovery_start = None
+                    new_status = prev_status
 
             if new_status != prev_status:
                 logger.warning(f"Drawdown Status Changed: {prev_status} -> {new_status} (PNL: {drawdown_pct:.2f}%)")
@@ -163,20 +261,26 @@ class DrawdownGuard:
                     send_pushover_notification(
                         self.notification_config,
                         "⚠️ Drawdown Warning",
-                        f"Portfolio down {drawdown_pct:.2f}% today."
+                        f"Portfolio down {drawdown_pct:.2f}% today.",
+                        ticker="ALL"
                     )
                 elif new_status == "HALT":
                     send_pushover_notification(
                         self.notification_config,
                         "🛑 TRADING HALTED",
-                        f"Daily loss limit hit ({drawdown_pct:.2f}%). New trades blocked."
+                        f"Daily loss limit hit ({drawdown_pct:.2f}%). New trades blocked.",
+                        ticker="ALL"
                     )
                 elif new_status == "PANIC":
                     send_pushover_notification(
                         self.notification_config,
                         "🚨 PANIC CLOSE TRIGGERED",
-                        f"Critical loss ({drawdown_pct:.2f}%). Closing ALL positions."
+                        f"Critical loss ({drawdown_pct:.2f}%). Closing ALL positions.",
+                        ticker="ALL"
                     )
+
+            # Track whether PANIC was freshly evaluated (not loaded from disk)
+            self._panic_is_live = (new_status == "PANIC")
 
             self._save_state()
             return new_status
@@ -191,4 +295,4 @@ class DrawdownGuard:
 
     def should_panic_close(self) -> bool:
         """Check if we need to emergency close everything."""
-        return self.state['status'] == "PANIC"
+        return self.state['status'] == "PANIC" and self._panic_is_live

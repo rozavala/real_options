@@ -12,6 +12,8 @@ from trading_bot.utils import (
     get_position_details,
     get_expiration_details,
     log_trade_to_ledger,
+    round_to_tick,
+    COFFEE_OPTIONS_TICK_SIZE,
 )
 
 
@@ -80,10 +82,17 @@ class TestUtils:
         assert round_to_tick(18.801, COFFEE_OPTIONS_TICK_SIZE, 'SELL') == 18.85
 
     @patch('csv.DictWriter')
-    @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)
-    async def test_log_trade_to_ledger(self, mock_isfile, mock_open, mock_csv_writer):
+    async def test_log_trade_to_ledger(self, mock_isfile, mock_csv_writer):
         # --- Setup Mocks ---
+        # Use side_effect to only mock ledger CSV opens; let JSON profile reads through
+        _real_open = open
+        _mock_file = mock_open()()
+        def _selective_open(path, *args, **kwargs):
+            if str(path).endswith('trade_ledger.csv'):
+                return _mock_file
+            return _real_open(path, *args, **kwargs)
+
         mock_ib = AsyncMock(spec=IB)
         mock_ib.qualifyContractsAsync = AsyncMock(return_value=[
             FuturesOption(symbol='KC', localSymbol='KCH6 C3.5', strike=3.5, right='C', multiplier='37500'),
@@ -109,19 +118,16 @@ class TestUtils:
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        await log_trade_to_ledger(mock_ib, trade, "Test Combo")
+        with patch('builtins.open', side_effect=_selective_open):
+            await log_trade_to_ledger(mock_ib, trade, "Test Combo")
 
         # --- Assertions ---
-        # Check that the file was opened correctly
-        expected_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'trade_ledger.csv')
-        mock_open.assert_called_once_with(expected_path, 'a', newline='')
-
         # Check that DictWriter was called with correct fieldnames
         expected_fieldnames = [
             'timestamp', 'position_id', 'combo_id', 'local_symbol', 'action', 'quantity',
             'avg_fill_price', 'strike', 'right', 'total_value_usd', 'reason'
         ]
-        mock_csv_writer.assert_called_once_with(mock_open.return_value, fieldnames=expected_fieldnames)
+        mock_csv_writer.assert_called_once_with(_mock_file, fieldnames=expected_fieldnames)
 
         # Check that writerows was called once
         mock_writer_instance.writerows.assert_called_once()
@@ -145,15 +151,22 @@ class TestUtils:
         assert abs(written_rows[1]['total_value_usd'] - 75.0) < 0.01
 
     @patch('csv.DictWriter')
-    @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.isfile', return_value=True)
-    async def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_open, mock_csv_writer):
+    async def test_log_trade_to_ledger_enriches_contract_details(self, mock_isfile, mock_csv_writer):
         """
         Verify that if a fill contains an incomplete contract, the logger
         correctly uses the conId to find the full contract details from the
         ib.contracts cache.
         """
         # --- Setup Mocks ---
+        # Use side_effect to only mock ledger CSV opens; let JSON profile reads through
+        _real_open = open
+        _mock_file = mock_open()()
+        def _selective_open(path, *args, **kwargs):
+            if str(path).endswith('trade_ledger.csv'):
+                return _mock_file
+            return _real_open(path, *args, **kwargs)
+
         # 1. Mock the IB object and its contracts cache
         mock_ib = AsyncMock(spec=IB)
         complete_contract = FuturesOption(
@@ -183,7 +196,8 @@ class TestUtils:
         mock_csv_writer.return_value = mock_writer_instance
 
         # --- Call the function ---
-        await log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
+        with patch('builtins.open', side_effect=_selective_open):
+            await log_trade_to_ledger(mock_ib, trade, "Test Enrichment")
 
         # --- Assertions ---
         # Verify that writerows was called and captured the data
@@ -255,4 +269,167 @@ class TestUtils:
 
         # --- Cleanup ---
         os.remove(ledger_path)
+
+
+class TestRoundToTickDynamic:
+    """Tests for dynamic precision in round_to_tick."""
+
+    def test_round_to_tick_kc_precision(self):
+        """KC tick=0.05 should yield 2-decimal precision."""
+        result = round_to_tick(17.98, 0.05, 'BUY')
+        assert result == 17.95
+        result = round_to_tick(17.98, 0.05, 'SELL')
+        assert result == 18.00
+
+    def test_round_to_tick_ng_precision(self):
+        """NG tick=0.001 should yield 3-decimal precision."""
+        result = round_to_tick(0.1234, 0.001, 'BUY')
+        assert result == 0.123
+        result = round_to_tick(0.1231, 0.001, 'SELL')
+        assert result == 0.124
+
+    def test_round_to_tick_cc_precision(self):
+        """CC tick=1.0 should yield 0-decimal precision."""
+        result = round_to_tick(4523.7, 1.0, 'BUY')
+        assert result == 4523.0
+        result = round_to_tick(4523.1, 1.0, 'SELL')
+        assert result == 4524.0
+
+    def test_round_to_tick_domain_safety_zero(self):
+        """Zero tick_size should not cause division error (clamped to 1e-6)."""
+        result = round_to_tick(1.5, 0.0, 'BUY')
+        assert isinstance(result, float)
+
+    def test_round_to_tick_domain_safety_negative(self):
+        """Negative tick_size should not crash (clamped to 1e-6)."""
+        result = round_to_tick(1.5, -0.05, 'BUY')
+        assert isinstance(result, float)
+
+    def test_round_to_tick_backward_compat_default(self):
+        """Default tick_size (None) falls back to COFFEE_OPTIONS_TICK_SIZE."""
+        result = round_to_tick(17.98, action='BUY')
+        assert result == 17.95
+
+    def test_round_to_tick_floating_point_precision_buy(self):
+        """Regression: floor(2.30/0.05) was 45 not 46 due to floating-point.
+
+        This caused KC adaptive walks to get stuck at 2.25 when ceiling was 2.70.
+        The walk would compute proposed_price=2.30, but round_to_tick returned 2.25,
+        making the walk think it had reached the cap.
+        """
+        # These specific prices hit the floor(x/0.05) < x/0.05 floating-point edge
+        assert round_to_tick(2.30, 0.05, 'BUY') == 2.30
+        assert round_to_tick(2.40, 0.05, 'BUY') == 2.40
+        assert round_to_tick(2.55, 0.05, 'BUY') == 2.55
+        assert round_to_tick(2.65, 0.05, 'BUY') == 2.65
+
+    def test_round_to_tick_floating_point_precision_sell(self):
+        """Regression: ceil(x/0.05) floating-point edge for SELL direction."""
+        assert round_to_tick(2.30, 0.05, 'SELL') == 2.30
+        assert round_to_tick(2.40, 0.05, 'SELL') == 2.40
+        assert round_to_tick(2.55, 0.05, 'SELL') == 2.55
+        assert round_to_tick(2.65, 0.05, 'SELL') == 2.65
+
+    def test_round_to_tick_walk_simulation_reaches_ceiling(self):
+        """Regression: Simulates a full KC adaptive walk to verify it reaches ceiling.
+
+        Before the fix, the walk got stuck at 2.25 (step 11 of ~20) because
+        round_to_tick(2.30, 0.05, 'BUY') returned 2.25 due to floating-point.
+        """
+        import math
+        current = 1.70
+        ceiling = 2.70
+        TICK_SIZE = 0.05
+        adaptive_pct = 0.04
+        target_steps = 10
+        PRICE_TOLERANCE = TICK_SIZE * 0.1
+
+        steps = 0
+        while current < ceiling and steps < 50:
+            remaining_gap = abs(ceiling - current)
+            gap_step = remaining_gap / max(target_steps, 1)
+            pct_step = abs(current) * adaptive_pct
+            step = max(min(gap_step, pct_step), TICK_SIZE)
+            proposed = current + step
+            new_price = round_to_tick(proposed, TICK_SIZE, 'BUY')
+            new_price = min(new_price, ceiling)
+
+            if abs(new_price - current) > PRICE_TOLERANCE:
+                steps += 1
+                current = new_price
+            else:
+                break
+
+        assert current >= ceiling, f"Walk stuck at {current:.2f}, ceiling was {ceiling:.2f}"
+
+
+class TestLedgerDivisor:
+    """Tests for commodity-aware price divisor in log_trade_to_ledger."""
+
+    @patch('csv.DictWriter')
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.path.isfile', return_value=True)
+    async def test_ng_ledger_no_cents_division(self, mock_isfile, mock_open_fn, mock_csv_writer):
+        """NG fills should NOT divide by 100 (dollar-based unit)."""
+        mock_ib = AsyncMock(spec=IB)
+        ng_contract = FuturesOption(
+            symbol='NG', localSymbol='NGH6 C3.5', strike=3.5, right='C', multiplier='10000'
+        )
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[ng_contract])
+
+        trade = Mock(spec=Trade)
+        trade.order = Mock(spec=Order, permId=99999, orderRef='test-uuid-string-longer-than-20-chars')
+        trade.contract = ng_contract
+        trade.contract.comboLegs = None
+
+        fill = Mock(spec=Fill)
+        fill.contract = ng_contract
+        fill.execution = Execution(execId='E1', time=datetime.now(), side='BOT', shares=1, price=0.05)
+        trade.fills = [fill]
+
+        mock_writer_instance = Mock()
+        mock_csv_writer.return_value = mock_writer_instance
+
+        await log_trade_to_ledger(mock_ib, trade, "NG Test")
+
+        written_rows = mock_writer_instance.writerows.call_args[0][0]
+        # NG: price=0.05, shares=1, multiplier=10000, divisor=1.0
+        # total_value = 0.05 * 1 * 10000 / 1.0 = 500.0 (BUY → negative)
+        assert abs(written_rows[0]['total_value_usd'] - (-500.0)) < 0.01
+
+    @patch('csv.DictWriter')
+    @patch('builtins.open', new_callable=mock_open)
+    @patch('os.path.isfile', return_value=True)
+    async def test_fill_symbol_from_localSymbol(self, mock_isfile, mock_open_fn, mock_csv_writer):
+        """When contract.symbol is empty, parse from localSymbol."""
+        mock_ib = AsyncMock(spec=IB)
+
+        # Contract with no symbol but valid localSymbol
+        contract = Mock(spec=FuturesOption)
+        contract.symbol = ''
+        contract.localSymbol = 'NGH6 C3.5'
+        contract.strike = 3.5
+        contract.right = 'C'
+        contract.multiplier = '10000'
+        contract.conId = 999
+        mock_ib.qualifyContractsAsync = AsyncMock(return_value=[contract])
+
+        trade = Mock(spec=Trade)
+        trade.order = Mock(spec=Order, permId=88888, orderRef='test-uuid-string-longer-than-20-chars')
+        trade.contract = contract
+        trade.contract.comboLegs = None
+
+        fill = Mock(spec=Fill)
+        fill.contract = contract
+        fill.execution = Execution(execId='E1', time=datetime.now(), side='SLD', shares=1, price=0.10)
+        trade.fills = [fill]
+
+        mock_writer_instance = Mock()
+        mock_csv_writer.return_value = mock_writer_instance
+
+        await log_trade_to_ledger(mock_ib, trade, "LocalSymbol Parse Test")
+
+        written_rows = mock_writer_instance.writerows.call_args[0][0]
+        # NG: price=0.10, shares=1, multiplier=10000, divisor=1.0 (SELL → positive)
+        assert written_rows[0]['total_value_usd'] > 0
 

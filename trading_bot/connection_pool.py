@@ -8,32 +8,63 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Compressed client ID range for remote/dev Gateway connections (10-79).
+# Compressed client ID range for remote/dev Gateway connections.
 # Avoids collision with production IDs (100-279) when sharing a Gateway.
+# Each purpose gets base + random(0, DEV_CLIENT_ID_JITTER) + commodity_offset.
 DEV_CLIENT_ID_BASE = {
     "main": 10,
-    "sentinel": 15,
-    "emergency": 20,
-    "monitor": 25,
-    "orchestrator_orders": 30,
-    "dashboard_orders": 35,
-    "dashboard_close": 40,
-    "microstructure": 45,
-    "test_utilities": 50,
-    "audit": 55,
-    "equity_logger": 60,
-    "reconciliation": 65,
-    "cleanup": 70,
-    "drawdown_check": 75,
+    "sentinel": 16,
+    "emergency": 22,
+    "monitor": 28,
+    "orchestrator_orders": 34,
+    "dashboard_orders": 40,
+    "dashboard_close": 46,
+    "microstructure": 52,
+    "test_utilities": 58,
+    "audit": 64,
+    "equity_logger": 70,
+    "reconciliation": 76,
+    "cleanup": 82,
+    "drawdown_check": 88,
+    "deferred": 94,
 }
-DEV_CLIENT_ID_JITTER = 4   # random(0, 4) for dev; prod uses random(0, 9)
-DEV_CLIENT_ID_DEFAULT = 80  # Unknown purposes in dev: 80-84
+DEV_CLIENT_ID_JITTER = 5   # random(0, 5) — widened from 4 to reduce collision probability
+DEV_CLIENT_ID_DEFAULT = 100  # Unknown purposes in dev: 100-105
+
+
+# Multi-commodity client ID offsets.
+# KC uses base 100-279, position_monitor uses 300-399.
+# CC starts at 400 to give range 500-679.
+COMMODITY_ID_OFFSET = {"KC": 0, "CC": 400, "SB": 800, "NG": 1200}
 
 
 def _is_remote_gateway(config: dict) -> bool:
     """Check if the configured IB Gateway host is remote (not localhost)."""
     host = config.get('connection', {}).get('host', '127.0.0.1')
     return host not in ('127.0.0.1', 'localhost', '::1')
+
+
+def _resolve_purpose(purpose: str) -> str:
+    """Prefix purpose with engine ticker if running in multi-engine mode.
+
+    In single-engine mode (no EngineRuntime set), returns purpose as-is.
+    In multi-engine mode, returns 'KC_sentinel', 'CC_orders', etc.
+    Already-prefixed purposes (e.g., from CommodityEngine._get_ib()) pass through.
+    """
+    # If purpose already contains an underscore with a known ticker prefix, pass through
+    if '_' in purpose:
+        prefix = purpose.split('_')[0]
+        if prefix in COMMODITY_ID_OFFSET:
+            return purpose
+
+    try:
+        from trading_bot.data_dir_context import get_engine_runtime
+        rt = get_engine_runtime()
+        if rt and rt.ticker:
+            return f"{rt.ticker}_{purpose}"
+    except Exception:
+        pass
+    return purpose
 
 
 class IBConnectionPool:
@@ -62,6 +93,7 @@ class IBConnectionPool:
         "equity_logger": 250,     # Range: 250-259
         "reconciliation": 260,    # Range: 260-269
         "cleanup": 270,           # Range: 270-279
+        "deferred": 290,          # Range: 290-299 (deferred trigger processing)
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
         # DEFAULT for unknown purposes: 280-289 (avoid adding new purposes without explicit ID)
@@ -94,6 +126,10 @@ class IBConnectionPool:
 
     @classmethod
     async def get_connection(cls, purpose: str, config: dict) -> IB:
+        # Save unprefixed purpose for client ID lookup (DEV_CLIENT_ID_BASE keys
+        # are unprefixed: "drawdown_check", "sentinel", etc.)
+        purpose_base = purpose
+        purpose = _resolve_purpose(purpose)
         if purpose not in cls._locks:
             cls._locks[purpose] = asyncio.Lock()
             cls._reconnect_backoff[purpose] = 5.0
@@ -157,43 +193,70 @@ class IBConnectionPool:
                     logger.warning(f"Disconnect error for {purpose}: {e}")
 
             # === CONNECT WITH RANDOMIZED CLIENT ID ===
-            ib = IB()
-            if _is_remote_gateway(config):
-                base_id = DEV_CLIENT_ID_BASE.get(purpose, DEV_CLIENT_ID_DEFAULT)
-                client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER)
-            else:
-                base_id = cls.CLIENT_ID_BASE.get(purpose, 280)
-                client_id = base_id + random.randint(0, 9)
-
+            # Multi-commodity offset: each commodity gets its own client ID range
+            ticker = config.get('commodity', {}).get('ticker', 'KC')
+            commodity_offset = COMMODITY_ID_OFFSET.get(ticker, 0)
             is_paper = config.get('connection', {}).get('paper', False)
             remote_tag = (" [REMOTE/PAPER]" if is_paper else " [REMOTE]") if _is_remote_gateway(config) else ""
-            logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")
 
-            try:
-                await ib.connectAsync(
-                    host=host,
-                    port=port,
-                    clientId=client_id,
-                    timeout=15  # Increased from 10 to match verify_system_readiness
-                )
-                cls._instances[purpose] = ib
-                cls._reconnect_backoff[purpose] = 5.0
-                cls._consecutive_failures[purpose] = 0  # Reset on success
-                logger.info(f"IB ({purpose}) connected successfully with ID {client_id}")
+            # Retry with different client IDs on collision (Error 326)
+            max_id_retries = 3
+            last_connect_error = None
+            for id_attempt in range(max_id_retries):
+                ib = IB()
+                if _is_remote_gateway(config):
+                    base_id = DEV_CLIENT_ID_BASE.get(purpose_base, DEV_CLIENT_ID_DEFAULT)
+                    client_id = base_id + random.randint(0, DEV_CLIENT_ID_JITTER) + commodity_offset
+                else:
+                    base_id = cls.CLIENT_ID_BASE.get(purpose_base, 280)
+                    client_id = base_id + random.randint(0, 9) + commodity_offset
 
-                # Log to state
+                logger.info(f"Connecting IB ({purpose}) ID: {client_id}{remote_tag}...")
+
                 try:
-                    from trading_bot.state_manager import StateManager
-                    StateManager.save_state({
-                        f"{purpose}_ib_status": "CONNECTED",
-                        "last_ib_success": datetime.now(timezone.utc).isoformat()
-                    }, namespace="sensors")
-                except Exception:
-                    pass
+                    await ib.connectAsync(
+                        host=host,
+                        port=port,
+                        clientId=client_id,
+                        timeout=15  # Increased from 10 to match verify_system_readiness
+                    )
+                    cls._instances[purpose] = ib
+                    cls._reconnect_backoff[purpose] = 5.0
+                    cls._consecutive_failures[purpose] = 0  # Reset on success
+                    logger.info(f"IB ({purpose}) connected successfully with ID {client_id}")
 
-                return ib
+                    # Log to state
+                    try:
+                        from trading_bot.state_manager import StateManager
+                        StateManager.save_state({
+                            f"{purpose}_ib_status": "CONNECTED",
+                            "last_ib_success": datetime.now(timezone.utc).isoformat()
+                        }, namespace="sensors")
+                    except Exception:
+                        pass
 
-            except Exception as e:
+                    return ib
+
+                except Exception as e:
+                    last_connect_error = e
+                    error_str = str(e).lower()
+                    # Client ID collision — retry with a different ID
+                    if "already in use" in error_str or "client id" in error_str:
+                        logger.warning(
+                            f"IB ({purpose}) client ID {client_id} collision "
+                            f"(attempt {id_attempt + 1}/{max_id_retries})"
+                        )
+                        try:
+                            ib.disconnect()
+                            await asyncio.sleep(1.0)
+                        except Exception:
+                            pass
+                        continue
+                    # Non-collision error — don't retry IDs
+                    break
+
+            e = last_connect_error
+            if e is not None:
                 # === FIX: Clean up failed connection to prevent CLOSE-WAIT accumulation ===
                 # The IB() instance may have opened a TCP socket even if the API handshake
                 # failed (TimeoutError). Without explicit disconnect(), the socket enters
@@ -222,7 +285,8 @@ class IBConnectionPool:
                             "🚨 IB GATEWAY ZOMBIE DETECTED",
                             f"Gateway accepting TCP but failing API handshake "
                             f"{cls.FORCE_RESET_THRESHOLD} times in a row. "
-                            f"Manual restart may be required."
+                            f"Manual restart may be required.",
+                            ticker="ALL"
                         )
                     except Exception:
                         pass
@@ -243,11 +307,110 @@ class IBConnectionPool:
 
                 logger.error(f"IB ({purpose}) connection failed: {e}. "
                            f"Next retry backoff: {cls._reconnect_backoff[purpose]}s")
-                raise
+                raise e
+
+    # Connections that place/cancel orders — only these need the disconnect guard.
+    # Non-order connections (sentinel, microstructure, audit, etc.) skip the guard.
+    ORDER_BEARING_PURPOSES = {
+        'orchestrator_orders', 'dashboard_orders', 'dashboard_close',
+        'emergency', 'deferred', 'monitor',
+    }
+    DISCONNECT_GUARD_TIMEOUT = 120  # Hard ceiling: 2 minutes max wait
+    TERMINAL_ORDER_STATES = {'Filled', 'Cancelled', 'Inactive', 'ApiCancelled', 'Error'}
+
+    @classmethod
+    async def _drain_pending_orders(cls, ib: IB, purpose: str):
+        """Ensure no orders are in non-terminal state before disconnecting.
+
+        For order-bearing connections only. Sends cancel requests for any
+        pending orders and waits (up to DISCONNECT_GUARD_TIMEOUT) for them
+        to reach terminal state. This prevents the bug where IBKR fills an
+        order after the system has already disconnected, causing missed
+        fill callbacks and corrupted local state.
+        """
+        try:
+            my_client_id = ib.client.clientId
+            pending = []
+            for trade in ib.openTrades():
+                # Only drain orders placed by THIS connection's clientId.
+                # IB Gateway returns trades from ALL client connections on the
+                # same account; attempting to cancel another engine's orders
+                # causes Error 10147 and 120s blocking stalls.
+                if trade.order.clientId != my_client_id:
+                    continue
+                status = trade.orderStatus.status
+                if status not in cls.TERMINAL_ORDER_STATES:
+                    pending.append(trade)
+                    logger.warning(
+                        f"DISCONNECT GUARD [{purpose}]: Order {trade.order.orderId} "
+                        f"still in state '{status}'. Sending cancel before disconnect."
+                    )
+                    ib.cancelOrder(trade.order)
+
+            if not pending:
+                logger.info(f"DISCONNECT GUARD [{purpose}]: No pending orders. Safe to disconnect.")
+                return
+
+            logger.info(
+                f"DISCONNECT GUARD [{purpose}]: Waiting for {len(pending)} order(s) "
+                f"to reach terminal state (timeout={cls.DISCONNECT_GUARD_TIMEOUT}s)..."
+            )
+
+            # Pushover removed — routine when orders are active at disconnect.
+            # The CRITICAL log at the end of timeout still fires for real failures.
+
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + cls.DISCONNECT_GUARD_TIMEOUT
+            while pending and loop.time() < deadline:
+                await asyncio.sleep(0.5)
+                still_pending = []
+                for trade in pending:
+                    current_status = trade.orderStatus.status
+                    if current_status in cls.TERMINAL_ORDER_STATES:
+                        logger.info(
+                            f"DISCONNECT GUARD [{purpose}]: Order "
+                            f"{trade.order.orderId} -> '{current_status}'."
+                        )
+                    else:
+                        still_pending.append(trade)
+                pending = still_pending
+
+            if pending:
+                logger.critical(
+                    f"DISCONNECT GUARD [{purpose}]: {len(pending)} order(s) STILL "
+                    f"non-terminal after {cls.DISCONNECT_GUARD_TIMEOUT}s! "
+                    f"Disconnecting anyway. "
+                    f"Orders: {[t.order.orderId for t in pending]}. "
+                    f"RECONCILIATION WILL BE NEEDED."
+                )
+            else:
+                logger.info(f"DISCONNECT GUARD [{purpose}]: All orders terminal. Safe to disconnect.")
+
+        except Exception as e:
+            logger.error(
+                f"DISCONNECT GUARD [{purpose}]: Exception during guard check: {e}. "
+                f"Proceeding with disconnect."
+            )
+
+    @classmethod
+    def _is_order_bearing(cls, purpose: str) -> bool:
+        """Check if a connection purpose is order-bearing (needs disconnect guard)."""
+        # Strip commodity prefix (e.g., "KC_orchestrator_orders" -> "orchestrator_orders")
+        base = purpose
+        if '_' in purpose:
+            prefix = purpose.split('_')[0]
+            if prefix in COMMODITY_ID_OFFSET:
+                base = purpose[len(prefix) + 1:]
+        return base in cls.ORDER_BEARING_PURPOSES
 
     @classmethod
     async def release_connection(cls, purpose: str):
-        """Releases a specific connection from the pool."""
+        """Releases a specific connection from the pool.
+
+        For order-bearing connections, drains pending orders before disconnecting
+        to prevent missed fill callbacks.
+        """
+        purpose = _resolve_purpose(purpose)
         if purpose not in cls._locks:
             cls._locks[purpose] = asyncio.Lock()
 
@@ -255,22 +418,33 @@ class IBConnectionPool:
             ib = cls._instances.pop(purpose, None)
             if ib:
                 if ib.isConnected():
+                    # Disconnect guard for order-bearing connections
+                    if cls._is_order_bearing(purpose):
+                        await cls._drain_pending_orders(ib, purpose)
+                    else:
+                        logger.debug(
+                            f"DISCONNECT GUARD: Connection '{purpose}' is not "
+                            f"order-bearing. Direct disconnect."
+                        )
                     logger.info(f"Disconnecting IB ({purpose})...")
                     ib.disconnect()
-                    # === NEW: Give Gateway time to cleanup ===
                     await asyncio.sleep(3.0)
                 # Reset backoff when explicitly released
                 cls._reconnect_backoff[purpose] = 5.0
 
     @classmethod
     async def release_all(cls):
-        """Release all pooled connections with proper cleanup."""
+        """Release all pooled connections with proper cleanup.
+
+        Order-bearing connections get the disconnect guard; others disconnect directly.
+        """
         for name, ib in list(cls._instances.items()):
             try:
                 if ib and ib.isConnected():
-                    # Disconnect synchronously to avoid async cleanup issues
+                    if cls._is_order_bearing(name):
+                        await cls._drain_pending_orders(ib, name)
                     ib.disconnect()
-                    await asyncio.sleep(0.1)  # Small delay for transport cleanup
+                    await asyncio.sleep(0.1)
             except Exception as e:
                 logger.warning(f"Connection cleanup failed for {name}: {e}")
             finally:
@@ -279,6 +453,5 @@ class IBConnectionPool:
         cls._instances.clear()
         cls._reconnect_backoff.clear()
 
-        # Force garbage collection to clean up any orphaned references
         import gc
         gc.collect()

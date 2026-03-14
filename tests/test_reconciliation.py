@@ -158,8 +158,136 @@ async def test_reconcile_council_history_pnl_calc(reconciliation_patches):
          patch('pandas.DataFrame.to_csv') as mock_to_csv, \
          patch('os.path.exists', side_effect=exists_side_effect):
 
-        await reconcile_council_history({'symbol': 'KC'}, ib=mock_ib)
+        await reconcile_council_history({'symbol': 'KC', 'exchange': 'NYBOT'}, ib=mock_ib)
 
         assert mock_csv_data.iloc[0]['exit_price'] == 145.0
         assert mock_csv_data.iloc[0]['pnl_realized'] == 5.0  # (150 - 145) for Short
         assert mock_csv_data.iloc[0]['actual_trend_direction'] == 'BEARISH'
+
+
+# ---------------------------------------------------------------------------
+# get_local_active_positions: synthetic dedup tests
+# ---------------------------------------------------------------------------
+
+class TestSyntheticDedup:
+    """Tests for dropping superseded synthetics in get_local_active_positions."""
+
+    def _make_ledger_row(self, symbol, action, qty, reason, ts='2026-03-05 12:00:00'):
+        return {
+            'timestamp': ts, 'position_id': 'test', 'combo_id': '',
+            'local_symbol': symbol, 'action': action, 'quantity': qty,
+            'avg_fill_price': 0.0, 'strike': '', 'right': '',
+            'total_value_usd': 0.0, 'reason': reason,
+        }
+
+    def test_synthetic_dropped_when_recon_missing_exists(self):
+        """Synthetic BUY is dropped when RECONCILIATION_MISSING BUY exists
+        for the same symbol — net position should be flat."""
+        from reconcile_trades import get_local_active_positions
+
+        rows = [
+            self._make_ledger_row('KO N25 C2.85', 'SELL', 1,
+                                  'Strategy Execution',
+                                  ts='2026-03-04 10:00:00'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually',
+                                  ts='2026-03-05 12:00:00'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'RECONCILIATION_MISSING',
+                                  ts='2026-03-05 15:10:00'),
+        ]
+        df = pd.DataFrame(rows)
+        positions = get_local_active_positions(df)
+
+        # SELL 1 + BUY 1 (recon, kept) = 0; synthetic BUY dropped
+        c285 = positions[positions['Symbol'] == 'KO N25 C2.85']
+        assert c285.empty, f"Position should be flat, got: {c285}"
+
+    def test_no_drop_when_no_overlap(self):
+        """Synthetics for different symbols than RECONCILIATION_MISSING are kept."""
+        from reconcile_trades import get_local_active_positions
+
+        rows = [
+            self._make_ledger_row('KO N25 C2.85', 'SELL', 1,
+                                  'Strategy Execution'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually'),
+            # RECON_MISSING is for a DIFFERENT symbol
+            self._make_ledger_row('KO N25 P2.70', 'SELL', 1,
+                                  'RECONCILIATION_MISSING'),
+        ]
+        df = pd.DataFrame(rows)
+        positions = get_local_active_positions(df)
+
+        # C2.85: SELL 1 + BUY 1 (synthetic kept, no overlap) = 0
+        # P2.70: SELL 1 (RECON_MISSING) = -1
+        c285 = positions[positions['Symbol'] == 'KO N25 C2.85']
+        assert c285.empty, "C2.85 should be flat"
+        p270 = positions[positions['Symbol'] == 'KO N25 P2.70']
+        assert not p270.empty, "P2.70 should show position"
+
+    def test_multiple_symbols(self):
+        """Handles multiple symbols with mixed actions correctly."""
+        from reconcile_trades import get_local_active_positions
+
+        rows = [
+            # C2.85: open SELL + synthetic BUY + RECON_MISSING BUY
+            self._make_ledger_row('KO N25 C2.85', 'SELL', 1, 'Strategy Execution'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1,
+                                  'Ledger reconciliation - closed manually'),
+            self._make_ledger_row('KO N25 C2.85', 'BUY', 1, 'RECONCILIATION_MISSING'),
+            # C2.8: open BUY + synthetic SELL + RECON_MISSING SELL
+            self._make_ledger_row('KO N25 C2.8', 'BUY', 1, 'Strategy Execution'),
+            self._make_ledger_row('KO N25 C2.8', 'SELL', 1,
+                                  'PHANTOM_RECONCILIATION: synthetic close'),
+            self._make_ledger_row('KO N25 C2.8', 'SELL', 1, 'RECONCILIATION_MISSING'),
+        ]
+        df = pd.DataFrame(rows)
+        positions = get_local_active_positions(df)
+
+        assert positions.empty, f"All positions should be flat, got:\n{positions}"
+
+    def test_cross_direction_phantom_dropped(self):
+        """Phantom entries in BOTH directions are dropped when RECONCILIATION_MISSING
+        exists for that symbol — reproduces the NG bear put spread phantom bug."""
+        from reconcile_trades import get_local_active_positions
+
+        rows = [
+            # Original open: SELL P2800 (short leg of bear put spread)
+            self._make_ledger_row('LNEK6 P2800', 'SELL', 1,
+                                  'Strategy Execution', ts='2026-02-26 10:00:00'),
+            # Flex recon found the close: BUY P2800
+            self._make_ledger_row('LNEK6 P2800', 'BUY', 1,
+                                  'RECONCILIATION_MISSING', ts='2026-02-26 15:00:00'),
+            # Phantom recon also created a BUY close (same position_id)
+            self._make_ledger_row('LNEK6 P2800', 'BUY', 1,
+                                  'PHANTOM_RECONCILIATION', ts='2026-02-27 19:00:00'),
+            # Phantom recon ALSO created a SELL for the recon position_id
+            self._make_ledger_row('LNEK6 P2800', 'SELL', 1,
+                                  'PHANTOM_RECONCILIATION', ts='2026-02-27 19:00:00'),
+        ]
+        df = pd.DataFrame(rows)
+        positions = get_local_active_positions(df)
+
+        # All phantoms (both BUY and SELL) should be dropped.
+        # Net: SELL 1 (original) + BUY 1 (RECON_MISSING) = 0
+        p2800 = positions[positions['Symbol'] == 'LNEK6 P2800']
+        assert p2800.empty, (
+            f"LNEK6 P2800 should be flat after dropping both-direction phantoms, "
+            f"got: {p2800}"
+        )
+
+    def test_no_reason_column(self):
+        """Works without a reason column (legacy ledgers)."""
+        from reconcile_trades import get_local_active_positions
+
+        rows = [
+            {'timestamp': '2026-03-04', 'position_id': 'x', 'combo_id': '',
+             'local_symbol': 'KO N25 C2.85', 'action': 'BUY', 'quantity': 1,
+             'avg_fill_price': 0.5},
+        ]
+        df = pd.DataFrame(rows)
+        positions = get_local_active_positions(df)
+
+        assert len(positions) == 1
+        assert positions.iloc[0]['Quantity'] == 1

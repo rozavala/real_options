@@ -26,7 +26,7 @@ def _split_message(message: str, limit: int) -> list[str]:
     chunks.append(current_chunk) # Add the last part
     return chunks
 
-def send_pushover_notification(config: dict, title: str, message: str, attachment_path: str = None, monospace: bool = False, priority: int = 0):
+def send_pushover_notification(config: dict, title: str, message: str, attachment_path: str = None, monospace: bool = False, priority: int = 0, ticker: str = None):
     """
     Sends a notification via Pushover, splitting long messages into multiple parts.
     Only the first part will contain an attachment.
@@ -47,6 +47,21 @@ def send_pushover_notification(config: dict, title: str, message: str, attachmen
     # Prepend OFF indicator if trading is disabled
     if os.getenv("TRADING_MODE", "LIVE").upper().strip() == "OFF":
         env_prefix = f"OFF {env_prefix}".strip() if env_prefix else "OFF"
+
+    # Resolve commodity ticker: explicit param → ContextVar (multi-engine safe) → env var (legacy)
+    commodity_ticker = ticker or ""
+    if not commodity_ticker:
+        try:
+            from trading_bot.data_dir_context import get_engine_runtime
+            runtime = get_engine_runtime()
+            if runtime:
+                commodity_ticker = runtime.ticker
+        except Exception:
+            pass
+    if not commodity_ticker:
+        commodity_ticker = os.getenv("COMMODITY_TICKER", "")
+    if commodity_ticker:
+        env_prefix = f"[{commodity_ticker}] {env_prefix}".strip() if env_prefix else f"[{commodity_ticker}]"
 
     # Only add the prefix if it exists
     if env_prefix:

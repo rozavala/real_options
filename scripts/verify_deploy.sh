@@ -11,7 +11,9 @@ set -e
 #   2. Required files exist (new __init__.py, config files)
 #   3. Critical Python imports succeed
 #   4. Config files are valid JSON
-#   5. verify_system_readiness.py passes (quick mode, skip IBKR)
+#   5. Per-commodity data sanity (data dir writable, config loads, key paths resolve)
+#   6. verify_system_readiness.py passes (quick mode, skip IBKR)
+#   7. MasterOrchestrator mode (--multi) import check
 # =============================================================================
 
 # Determine Repo Root
@@ -33,16 +35,24 @@ fi
 
 ERRORS=0
 
-echo "  [1/5] Checking required directories..."
+echo "  [1/8] Checking required directories..."
 REQUIRED_DIRS=(
     "config"
     "config/profiles"
     "trading_bot/prompts"
     "backtesting"
     "data"
-    "data/surrogate_models"
-    # "logs" # logs might not exist in fresh clone? but good to check
+    "data/KC"              # Primary commodity data directory
+    "data/KC/surrogate_models"
 )
+# Auto-add directories for any commodity data dirs (e.g. data/CC, data/SB)
+for _data_dir in data/*/; do
+    [ -d "$_data_dir" ] || continue
+    _tk=$(basename "$_data_dir")
+    [[ "$_tk" =~ ^[A-Z]{2,4}$ ]] || continue
+    [ "$_tk" = "KC" ] && continue  # Already in list
+    REQUIRED_DIRS+=("data/$_tk")
+done
 for dir in "${REQUIRED_DIRS[@]}"; do
     if [ ! -d "$dir" ]; then
         echo "    ❌ Missing directory: $dir"
@@ -50,7 +60,7 @@ for dir in "${REQUIRED_DIRS[@]}"; do
     fi
 done
 
-echo "  [2/5] Checking required files..."
+echo "  [2/8] Checking required files..."
 REQUIRED_FILES=(
     # New packages (__init__.py)
     "config/__init__.py"
@@ -80,7 +90,7 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-echo "  [3/5] Checking Python imports..."
+echo "  [3/8] Checking Python imports..."
 # Each import block tests one phase of the HRO guide.
 # We test them individually so failures are pinpointed.
 
@@ -143,7 +153,7 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [4/5] Validating config files..."
+echo "  [4/8] Validating config files..."
 python -c "
 import json, sys
 configs = ['config.json']
@@ -174,7 +184,108 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [5/5] Running system readiness check..."
+echo "  [5/8] Per-commodity data sanity..."
+# Auto-detect all commodity tickers from data/ directories.
+# To add a new commodity: create data/{TICKER}/ and register a commodity profile.
+ALL_TICKERS=()
+for _data_dir in data/*/; do
+    [ -d "$_data_dir" ] || continue
+    _ticker=$(basename "$_data_dir")
+    # Only uppercase directory names (KC, CC, SB) — skip surrogate_models etc.
+    [[ "$_ticker" =~ ^[A-Z]{2,4}$ ]] || continue
+    ALL_TICKERS+=("$_ticker")
+done
+# Fallback: at least KC
+[ ${#ALL_TICKERS[@]} -eq 0 ] && ALL_TICKERS=("KC")
+
+COMMODITY_WARNINGS=0
+for _ticker in "${ALL_TICKERS[@]}"; do
+    _data_dir="data/$_ticker"
+
+    # 1. Data directory must exist (created by deploy.sh step 5)
+    if [ ! -d "$_data_dir" ]; then
+        echo "    ❌ [$_ticker] Missing data directory: $_data_dir"
+        ERRORS=$((ERRORS + 1))
+        continue  # Skip remaining checks for this ticker
+    fi
+
+    # 2. Data directory must be writable (orchestrator needs to create state files)
+    if [ ! -w "$_data_dir" ]; then
+        echo "    ❌ [$_ticker] Data directory not writable: $_data_dir"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # 3. Config loads correctly with this commodity's ticker
+    if ! COMMODITY_TICKER="$_ticker" python -c "
+from config_loader import load_config
+config = load_config()
+import os, sys
+expected_dir = os.path.join(os.path.dirname(os.path.abspath('config_loader.py')), 'data', '$_ticker')
+actual = config.get('data_dir', '')
+# Normalize for comparison
+if os.path.abspath(actual) != os.path.abspath(expected_dir):
+    print(f'    data_dir mismatch: expected {expected_dir}, got {actual}')
+    sys.exit(1)
+" 2>/dev/null; then
+        echo "    ❌ [$_ticker] Config fails to load or data_dir mismatch"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # 4. Commodity profile exists
+    if ! python -c "
+from config.commodity_profiles import get_commodity_profile
+p = get_commodity_profile('$_ticker')
+assert p is not None, 'No profile for $_ticker'
+" 2>/dev/null; then
+        echo "    ❌ [$_ticker] No commodity profile registered"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
+
+    # 5. Key runtime files (warnings only — may not exist for new commodities)
+    for _file in "state.json" "council_history.csv" "enhanced_brier.json"; do
+        if [ ! -f "$_data_dir/$_file" ]; then
+            echo "    ⚠️  [$_ticker] Missing $_file (expected after first trading session)"
+            COMMODITY_WARNINGS=$((COMMODITY_WARNINGS + 1))
+        fi
+    done
+
+    echo "    ✅ [$_ticker] Data sanity OK"
+done
+
+if [ $COMMODITY_WARNINGS -gt 0 ]; then
+    echo "    ($COMMODITY_WARNINGS warnings — normal for new commodities)"
+fi
+
+echo "  [6/8] Verifying migrations applied..."
+MARKER_FILE="data/.migrations_applied"
+MIGRATIONS_DIR="scripts/migrations"
+if [ -d "$MIGRATIONS_DIR" ] && [ -f "$MARKER_FILE" ]; then
+    MIGRATION_WARNINGS=0
+    for _mig in "$MIGRATIONS_DIR"/*.py; do
+        [ -f "$_mig" ] || continue
+        _name=$(basename "$_mig")
+        [ "$_name" = "__init__.py" ] && continue
+        if ! grep -qFx "$_name" "$MARKER_FILE" 2>/dev/null; then
+            echo "    ⚠️  Migration not applied: $_name"
+            MIGRATION_WARNINGS=$((MIGRATION_WARNINGS + 1))
+        fi
+    done
+    if [ $MIGRATION_WARNINGS -eq 0 ]; then
+        APPLIED_COUNT=$(wc -l < "$MARKER_FILE" | tr -d ' ')
+        echo "    ✅ All migrations applied ($APPLIED_COUNT total)"
+    else
+        echo "    ⚠️  $MIGRATION_WARNINGS migration(s) not in marker file (non-blocking)"
+    fi
+elif [ -d "$MIGRATIONS_DIR" ] && [ ! -f "$MARKER_FILE" ]; then
+    echo "    ⚠️  Marker file missing — migrations may not have run"
+else
+    echo "    ⏭️  No migrations directory, skipping"
+fi
+
+echo "  [7/8] Running system readiness check..."
 if [ -f "verify_system_readiness.py" ]; then
     # Quick mode, skip IBKR (Gateway may not be ready during deploy)
     # CRITICAL: Use `if !` pattern so set -e doesn't abort on non-zero exit.
@@ -187,6 +298,20 @@ if [ -f "verify_system_readiness.py" ]; then
     fi
 else
     echo "    ⏭️  verify_system_readiness.py not found, skipping"
+fi
+
+echo "  [8/8] Checking MasterOrchestrator mode..."
+LEGACY_MODE="${LEGACY_MODE:-false}"
+if [ "$LEGACY_MODE" = "true" ]; then
+    echo "    ℹ️  LEGACY_MODE=true — running per-commodity services"
+else
+    # Verify MasterOrchestrator imports work
+    if ! python -c "from trading_bot.master_orchestrator import main" 2>/dev/null; then
+        echo "    ❌ MasterOrchestrator import failed"
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "    ✅ MasterOrchestrator mode ready (${#ALL_TICKERS[@]} commodities: ${ALL_TICKERS[*]})"
+    fi
 fi
 
 # Final verdict
