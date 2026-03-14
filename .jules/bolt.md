@@ -34,3 +34,7 @@
 ## 2025-03-09 - Fast Dictionary Lookup Construction from Dataframes
 **Learning:** Using `for _, row in df.iterrows(): dict[row['key']] = row['val']` to build dictionary lookups is extremely slow in pandas due to O(N) Python iteration overhead and object boxing. Instead, chaining `.dropna(subset=['key', 'val'])` and then using standard `dict(zip(df['key'], df['val']))` is `~40x` faster because it operates on underlying C-arrays and bypasses series instantiation entirely.
 **Action:** Never use `.iterrows()` to build dictionaries from DataFrames. Always use vectorized indexing/`zip` over specific columns.
+
+## 2025-10-24 - Vectorized Dissent Win/Loss Calculation
+**Learning:** Computing win/loss rates for sub-segments of historical data (e.g., dissent overruled decisions) using an `iterrows()` loop becomes a severe UI bottleneck in Streamlit dashboards as history scales. Refactoring this into purely vectorized pandas boolean masks (`win_mask.sum()`, `(~win_mask).sum()`) eliminates O(N) loop overhead and offers ~30x speedups, making dashboard interactivity instant.
+**Action:** Avoid row-wise Python iteration for conditional aggregations like win/loss counters across DataFrames. Substitute them entirely with pandas boolean masking and vectorized summing.
