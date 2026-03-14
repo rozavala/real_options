@@ -35,7 +35,7 @@ fi
 
 ERRORS=0
 
-echo "  [1/7] Checking required directories..."
+echo "  [1/8] Checking required directories..."
 REQUIRED_DIRS=(
     "config"
     "config/profiles"
@@ -60,7 +60,7 @@ for dir in "${REQUIRED_DIRS[@]}"; do
     fi
 done
 
-echo "  [2/7] Checking required files..."
+echo "  [2/8] Checking required files..."
 REQUIRED_FILES=(
     # New packages (__init__.py)
     "config/__init__.py"
@@ -90,7 +90,7 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-echo "  [3/7] Checking Python imports..."
+echo "  [3/8] Checking Python imports..."
 # Each import block tests one phase of the HRO guide.
 # We test them individually so failures are pinpointed.
 
@@ -153,7 +153,7 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [4/7] Validating config files..."
+echo "  [4/8] Validating config files..."
 python -c "
 import json, sys
 configs = ['config.json']
@@ -184,7 +184,7 @@ if [ $? -ne 0 ]; then
     ERRORS=$((ERRORS + 1))
 fi
 
-echo "  [5/7] Per-commodity data sanity..."
+echo "  [5/8] Per-commodity data sanity..."
 # Auto-detect all commodity tickers from data/ directories.
 # To add a new commodity: create data/{TICKER}/ and register a commodity profile.
 ALL_TICKERS=()
@@ -259,7 +259,33 @@ if [ $COMMODITY_WARNINGS -gt 0 ]; then
     echo "    ($COMMODITY_WARNINGS warnings — normal for new commodities)"
 fi
 
-echo "  [6/7] Running system readiness check..."
+echo "  [6/8] Verifying migrations applied..."
+MARKER_FILE="data/.migrations_applied"
+MIGRATIONS_DIR="scripts/migrations"
+if [ -d "$MIGRATIONS_DIR" ] && [ -f "$MARKER_FILE" ]; then
+    MIGRATION_WARNINGS=0
+    for _mig in "$MIGRATIONS_DIR"/*.py; do
+        [ -f "$_mig" ] || continue
+        _name=$(basename "$_mig")
+        [ "$_name" = "__init__.py" ] && continue
+        if ! grep -qFx "$_name" "$MARKER_FILE" 2>/dev/null; then
+            echo "    ⚠️  Migration not applied: $_name"
+            MIGRATION_WARNINGS=$((MIGRATION_WARNINGS + 1))
+        fi
+    done
+    if [ $MIGRATION_WARNINGS -eq 0 ]; then
+        APPLIED_COUNT=$(wc -l < "$MARKER_FILE" | tr -d ' ')
+        echo "    ✅ All migrations applied ($APPLIED_COUNT total)"
+    else
+        echo "    ⚠️  $MIGRATION_WARNINGS migration(s) not in marker file (non-blocking)"
+    fi
+elif [ -d "$MIGRATIONS_DIR" ] && [ ! -f "$MARKER_FILE" ]; then
+    echo "    ⚠️  Marker file missing — migrations may not have run"
+else
+    echo "    ⏭️  No migrations directory, skipping"
+fi
+
+echo "  [7/8] Running system readiness check..."
 if [ -f "verify_system_readiness.py" ]; then
     # Quick mode, skip IBKR (Gateway may not be ready during deploy)
     # CRITICAL: Use `if !` pattern so set -e doesn't abort on non-zero exit.
@@ -274,7 +300,7 @@ else
     echo "    ⏭️  verify_system_readiness.py not found, skipping"
 fi
 
-echo "  [7/7] Checking MasterOrchestrator mode..."
+echo "  [8/8] Checking MasterOrchestrator mode..."
 LEGACY_MODE="${LEGACY_MODE:-false}"
 if [ "$LEGACY_MODE" = "true" ]; then
     echo "    ℹ️  LEGACY_MODE=true — running per-commodity services"
