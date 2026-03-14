@@ -206,6 +206,28 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_config, "Task Schedule dataframe is missing 'column_config' with 'Task Description'")
 
 
+class TestFunnelUX(unittest.TestCase):
+    def test_funnel_metric_tooltips(self):
+        """Verify that key metrics in pages/10_The_Funnel.py have help tooltips."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "10_The_Funnel.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "metric":
+                has_help = False
+                for kw in node.keywords:
+                    if kw.arg == "help":
+                        has_help = True
+                        break
+                self.assertTrue(has_help, f"Metric missing tooltip help in {file_path}")
+                found_config = True
+        self.assertTrue(found_config, "No metrics found to check in The Funnel")
+
+
 class TestDashboardUX(unittest.TestCase):
     def test_dashboard_metric_tooltips(self):
         """Verify that key metrics in dashboard.py have help tooltips."""
