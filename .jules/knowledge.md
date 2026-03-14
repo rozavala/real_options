@@ -52,6 +52,7 @@ A set of agents that synthesize the analysts' reports.
 - **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot). Evaluates based on directional accuracy and abstention rate directly from `enhanced_brier.json` (legacy CSV paths have been deprecated).
 - **Error Reporter Pipeline:** A standalone telemetry script (`scripts/error_reporter.py`) decoupled from the orchestrator. It ensures fail-safe operational awareness by parsing system logs, filtering out expected transient noise (e.g., `503 UNAVAILABLE`, `RESOURCE_EXHAUSTED`, rate limits, `CIRCUIT BREAKER`, emergency lock timeouts), and uses fingerprinting to deduplicate and auto-generate structured GitHub issues for true anomalies.
 - **System Readiness Verifier:** A comprehensive pre-flight diagnostic script (`verify_system_readiness.py`) that performs 27 comprehensive component checks (infrastructure, connections, data fallbacks, agent array, and execution pipeline) to diagnose system state before runtime.
+- **Migration Pipeline:** Wraps standalone data backfill operations (such as the Execution Funnel backfill via `scripts/migrations/backfill_execution_funnel.py` and the Contribution Scores migration via `scripts/migrations/migrate_contribution_scores.py`) into the idempotent `run_migrations.py` framework for automated deployment consistency.
 
 ## Knowledge Generation and Memory
 
@@ -65,7 +66,7 @@ The system uses a **Transactive Memory System (TMS)** powered by ChromaDB. This 
 1. **Emergency Cycle:** Triggered by a Sentinel. Fast-tracked through the council for immediate action. Emergency closures execute concurrently via true market orders.
 2. **Scheduled Cycle:** Runs 3 times per session (at 20%, 62%, and 80% of session duration) to generate daily orders.
 3. **Position Audit Cycle:** Regularly reviews open positions against their original entry thesis to decide on early exits.
-4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups. It utilizes secure XML parsing (`defusedxml`) and vectorized lookup dataframes for fast mapping. Drawdown circuit breaker thresholds are sized to be multi-commodity aware (e.g. 6% halt, 9% panic) to filter out bid-ask widening mark-to-market noise.
+4. **Reconciliation Cycle:** Syncs the local trade ledger with IBKR records at the end of the day using aggregate quantity matching to accurately group spread legs into thesis groups. It utilizes secure XML parsing (`defusedxml`) and vectorized lookup dataframes for fast mapping. To prevent persistent false alerts, it automatically invalidates superseded synthetic (phantom) entries that duplicate verified IBKR trades. Drawdown circuit breaker thresholds are sized to be multi-commodity aware (e.g. 6% halt, 9% panic) to filter out bid-ask widening mark-to-market noise.
 5. **System Health Digest Cycle:** Generates a daily post-close JSON summary of system health, agent calibration, and error telemetry without interacting with IBKR or live LLMs.
 
 ### Three-Tier Market State
