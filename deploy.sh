@@ -245,7 +245,8 @@ mkdir -p trading_bot/prompts      # Templatized agent prompts
 mkdir -p backtesting              # Backtesting framework
 mkdir -p data/surrogate_models    # Surrogate model cache (runtime)
 for _t in "${ALL_TICKERS[@]}"; do
-    mkdir -p "data/$_t"           # Per-commodity data directory
+    mkdir -p "data/$_t"                    # Per-commodity data directory
+    mkdir -p "data/$_t/surrogate_models"   # Per-commodity surrogate model cache
 done
 echo "  Directories OK"
 
