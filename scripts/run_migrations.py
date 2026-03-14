@@ -110,14 +110,44 @@ def run_migration(script_path: str, data_dirs: list, dry_run: bool) -> bool:
         return False
 
 
+def verify_migrations(migrations_dir: str, marker_path: str) -> bool:
+    """Check that all known migrations have been applied. Returns True if all OK."""
+    migrations = discover_migrations(migrations_dir)
+    if not migrations:
+        print("No migration scripts found.")
+        return True
+
+    applied = load_applied(marker_path)
+    pending = []
+    for script_path in migrations:
+        name = os.path.basename(script_path)
+        if name not in applied:
+            pending.append(name)
+
+    if pending:
+        print(f"PENDING migrations ({len(pending)}):")
+        for name in pending:
+            print(f"  - {name}")
+        return False
+    else:
+        print(f"All {len(migrations)} migrations applied.")
+        return True
+
+
 def main():
     parser = argparse.ArgumentParser(description='Run pending data migrations')
     parser.add_argument('--dry-run', action='store_true', help='Preview changes without applying')
+    parser.add_argument('--verify', action='store_true',
+                        help='Check migration status without running (exit 1 if pending)')
     args = parser.parse_args()
 
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     migrations_dir = os.path.join(repo_root, 'scripts', 'migrations')
     marker_path = os.path.join(repo_root, 'data', '.migrations_applied')
+
+    if args.verify:
+        ok = verify_migrations(migrations_dir, marker_path)
+        sys.exit(0 if ok else 1)
 
     data_dirs = discover_data_dirs(repo_root)
     migrations = discover_migrations(migrations_dir)
