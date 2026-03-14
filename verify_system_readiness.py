@@ -835,6 +835,24 @@ async def check_council_history() -> CheckResult:
     return CheckResult("Council History", CheckStatus.WARN, "File missing (will be created)")
 
 @timed_check
+async def check_execution_funnel() -> CheckResult:
+    ticker = os.environ.get("COMMODITY_TICKER", "KC")
+    funnel_path = os.path.join('data', ticker, 'execution_funnel.csv')
+    if os.path.exists(funnel_path):
+        try:
+            import csv
+            with open(funnel_path) as f:
+                reader = csv.reader(f)
+                header = next(reader)
+                row_count = sum(1 for _ in reader)
+            return CheckResult("Execution Funnel", CheckStatus.PASS,
+                             f"File exists ({row_count} events, {len(header)} columns)")
+        except Exception as e:
+            return CheckResult("Execution Funnel", CheckStatus.WARN, f"File exists but unreadable: {e}")
+    return CheckResult("Execution Funnel", CheckStatus.WARN,
+                       "File missing (run backfill or wait for trading cycle)")
+
+@timed_check
 async def check_chronometer() -> CheckResult:
     try:
         import pytz
@@ -890,6 +908,7 @@ async def run_diagnostics(
         report.checks.append(await check_data_directories())
         report.checks.append(await check_trade_ledger())
         report.checks.append(await check_council_history())
+        report.checks.append(await check_execution_funnel())
 
         # 2. CHRONOMETRY
         report.checks.append(await check_chronometer())

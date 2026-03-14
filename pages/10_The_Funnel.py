@@ -96,6 +96,15 @@ if not funnel_df.empty and 'regime' in funnel_df.columns:
         funnel_df = funnel_df[funnel_df['regime'] == selected_regime]
 
 
+# --- Shared stage order ---
+STAGE_ORDER = [
+    'COUNCIL_DECISION', 'CONVICTION_GATE', 'COMPLIANCE_AUDIT',
+    'CONFIDENCE_THRESHOLD', 'THESIS_COHERENCE', 'CAPITAL_CHECK',
+    'ORDER_QUEUED', 'DRAWDOWN_GATE', 'LIQUIDITY_GATE',
+    'ORDER_PLACED', 'ORDER_FILLED',
+]
+
+
 # ============================================================
 # ROW 1: KPI CARDS
 # ============================================================
@@ -113,21 +122,24 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
         cancelled = df[df['stage'] == 'ORDER_CANCELLED']
         placed = df[df['stage'] == 'ORDER_PLACED']
 
-        # Signal-to-Trade %
         n_actionable = len(actionable)
         n_filled = len(filled)
+        n_placed = len(placed)
+        n_cancelled = len(cancelled)
+
+        # Signal-to-Trade %
         kpis['signal_to_trade_pct'] = (n_filled / n_actionable * 100) if n_actionable > 0 else 0
 
         # Fill Rate (of placed orders)
-        n_placed = len(placed)
         kpis['fill_rate_pct'] = (n_filled / n_placed * 100) if n_placed > 0 else 0
 
-        # Avg Slippage %
+        # Avg Slippage (relative to credit/debit)
         filled_with_prices = filled.dropna(subset=['fill_price', 'initial_limit'])
         if not filled_with_prices.empty:
-            slippage = (filled_with_prices['fill_price'].astype(float) - filled_with_prices['initial_limit'].astype(float)).abs()
-            initial = filled_with_prices['initial_limit'].astype(float).abs()
-            slippage_pct = (slippage / initial.replace(0, np.nan) * 100).dropna()
+            fill_p = filled_with_prices['fill_price'].astype(float)
+            init_p = filled_with_prices['initial_limit'].astype(float)
+            slippage = (fill_p - init_p).abs()
+            slippage_pct = (slippage / init_p.abs().replace(0, np.nan) * 100).dropna()
             kpis['avg_slippage_pct'] = slippage_pct.mean() if not slippage_pct.empty else 0
         else:
             kpis['avg_slippage_pct'] = 0
@@ -141,14 +153,20 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
         walk_steps = df[df['stage'] == 'PRICE_WALK_STEP']
         kpis['avg_walk_steps'] = (len(walk_steps) * 3 / n_placed) if n_placed > 0 else 0  # *3 because we log every 3rd
 
+        # Alpha left on table: unfilled orders that passed all gates
+        kpis['alpha_left_count'] = n_cancelled
+        kpis['alpha_left_pct'] = (n_cancelled / n_placed * 100) if n_placed > 0 else 0
+
     else:
         kpis['signal_to_trade_pct'] = 0
         kpis['fill_rate_pct'] = 0
         kpis['avg_slippage_pct'] = 0
         kpis['conviction_block_pct'] = 0
         kpis['avg_walk_steps'] = 0
+        kpis['alpha_left_count'] = 0
+        kpis['alpha_left_pct'] = 0
 
-    # Signal win rate vs Trade win rate from council_history
+    # Signal win rate from council_history
     if not ch.empty and 'pnl_realized' in ch.columns:
         resolved = ch[ch['pnl_realized'].notna()]
         kpis['signal_win_rate'] = (resolved['pnl_realized'] > 0).mean() * 100 if not resolved.empty else 0
@@ -162,19 +180,23 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
 
 kpis = calc_funnel_kpis(funnel_df, council_df)
 
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
 k1.metric("Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
           help="% of actionable council signals that resulted in filled orders")
 k2.metric("Fill Rate", f"{kpis['fill_rate_pct']:.0f}%",
           help="% of placed orders that filled (vs timed out/cancelled)")
 k3.metric("Avg Slippage", f"{kpis['avg_slippage_pct']:.1f}%",
-          help="Average % difference between initial limit and fill price")
+          help="Average slippage as % of credit/debit (fill vs initial limit)")
 k4.metric("Conviction Blocks", f"{kpis['conviction_block_pct']:.0f}%",
           help="% of directional signals blocked by conviction gate")
 k5.metric("Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
           help="Average adaptive walk steps per placed order (est.)")
 k6.metric("Signal Win Rate", f"{kpis['signal_win_rate']:.0f}%",
           help=f"Directional accuracy of resolved signals (n={kpis['n_resolved']})")
+k7.metric("Alpha Left on Table", f"{kpis['alpha_left_count']}",
+          delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
+          delta_color="inverse",
+          help="Orders that passed all gates but failed to fill — potential alpha lost to adaptive walk timeout")
 
 
 # ============================================================
@@ -182,30 +204,26 @@ k6.metric("Signal Win Rate", f"{kpis['signal_win_rate']:.0f}%",
 # ============================================================
 st.subheader("Funnel Waterfall — Where Do Signals Die?")
 
-if not funnel_df.empty and 'stage' in funnel_df.columns:
-    # Define the funnel stages in order
-    STAGE_ORDER = [
-        'COUNCIL_DECISION', 'CONVICTION_GATE', 'COMPLIANCE_AUDIT',
-        'CONFIDENCE_THRESHOLD', 'THESIS_COHERENCE', 'CAPITAL_CHECK',
-        'ORDER_QUEUED', 'DRAWDOWN_GATE', 'LIQUIDITY_GATE',
-        'ORDER_PLACED', 'ORDER_FILLED',
-    ]
-
-    waterfall_data = []
+def _build_waterfall_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Build waterfall DataFrame from funnel events."""
+    rows = []
     for stage in STAGE_ORDER:
-        stage_df = funnel_df[funnel_df['stage'] == stage]
+        stage_df = df[df['stage'] == stage]
         passed = len(stage_df[stage_df['outcome'] == 'PASS'])
         blocked = len(stage_df[stage_df['outcome'] == 'BLOCK'])
         total = passed + blocked
-        waterfall_data.append({
+        rows.append({
             'Stage': stage.replace('_', ' ').title(),
+            'stage_raw': stage,
             'Passed': passed,
             'Blocked': blocked,
             'Total': total,
         })
+    wf = pd.DataFrame(rows)
+    return wf[wf['Total'] > 0]
 
-    wf_df = pd.DataFrame(waterfall_data)
-    wf_df = wf_df[wf_df['Total'] > 0]  # Only show stages with data
+if not funnel_df.empty and 'stage' in funnel_df.columns:
+    wf_df = _build_waterfall_data(funnel_df)
 
     if not wf_df.empty:
         fig_waterfall = go.Figure()
@@ -232,6 +250,62 @@ if not funnel_df.empty and 'stage' in funnel_df.columns:
         first_stage = wf_df.iloc[0]['Total'] if len(wf_df) > 0 else 1
         last_pass = wf_df.iloc[-1]['Passed'] if len(wf_df) > 0 else 0
         st.caption(f"End-to-end survival: {last_pass}/{first_stage} ({last_pass/max(first_stage,1)*100:.0f}%)")
+
+        # --- Regime Comparison ---
+        regime_col = 'regime'
+        if regime_col in funnel_df.columns:
+            regime_values = funnel_df[regime_col].dropna().unique()
+            regime_values = [r for r in regime_values if r and str(r).upper() != 'UNKNOWN']
+            if len(regime_values) >= 2:
+                with st.expander("Regime Comparison", expanded=False):
+                    # Build per-regime waterfall data
+                    regime_rows = []
+                    for regime in sorted(regime_values):
+                        rdf = funnel_df[funnel_df[regime_col] == regime]
+                        for stage in STAGE_ORDER:
+                            sdf = rdf[rdf['stage'] == stage]
+                            passed = len(sdf[sdf['outcome'] == 'PASS'])
+                            blocked = len(sdf[sdf['outcome'] == 'BLOCK'])
+                            total = passed + blocked
+                            if total > 0:
+                                regime_rows.append({
+                                    'Regime': str(regime).title(),
+                                    'Stage': stage.replace('_', ' ').title(),
+                                    'Passed': passed,
+                                    'Blocked': blocked,
+                                    'Total': total,
+                                    'Block Rate': f"{blocked / total * 100:.0f}%" if total > 0 else "0%",
+                                })
+                    if regime_rows:
+                        rg_df = pd.DataFrame(regime_rows)
+                        fig_regime = px.bar(
+                            rg_df, x='Stage', y='Blocked', color='Regime',
+                            barmode='group', text='Blocked',
+                            labels={'Blocked': 'Blocked Count'},
+                            title='Block Counts by Regime',
+                            color_discrete_sequence=px.colors.qualitative.Set2,
+                        )
+                        fig_regime.update_layout(
+                            xaxis_tickangle=-45,
+                            height=350,
+                            margin=dict(t=40, b=80),
+                        )
+                        st.plotly_chart(fig_regime, use_container_width=True)
+
+                        # Regime survival table
+                        regime_survival = []
+                        for regime in sorted(regime_values):
+                            rdf = funnel_df[funnel_df[regime_col] == regime]
+                            decisions = rdf[(rdf['stage'] == 'COUNCIL_DECISION')]
+                            n_dec = len(decisions[decisions['outcome'].isin(['PASS', 'BLOCK'])])
+                            n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
+                            regime_survival.append({
+                                'Regime': str(regime).title(),
+                                'Decisions': n_dec,
+                                'Filled': n_filled,
+                                'Survival %': f"{n_filled / max(n_dec, 1) * 100:.1f}%",
+                            })
+                        st.dataframe(pd.DataFrame(regime_survival), hide_index=True, use_container_width=True)
     else:
         st.info("No stage data available for waterfall chart.")
 else:
@@ -308,19 +382,44 @@ tab_exec, tab_lifecycle = st.tabs(["Execution Efficiency", "Position Lifecycle"]
 
 with tab_exec:
     if not funnel_df.empty and 'stage' in funnel_df.columns:
-        # Slippage distribution
+        # Slippage analysis
         filled = funnel_df[funnel_df['stage'] == 'ORDER_FILLED'].copy()
         if not filled.empty and 'fill_price' in filled.columns and 'initial_limit' in filled.columns:
             filled_clean = filled.dropna(subset=['fill_price', 'initial_limit'])
             if not filled_clean.empty:
-                filled_clean['slippage'] = (filled_clean['fill_price'].astype(float) - filled_clean['initial_limit'].astype(float))
-                filled_clean['slippage_pct'] = (filled_clean['slippage'].abs() / filled_clean['initial_limit'].astype(float).abs().replace(0, np.nan) * 100)
+                fill_p = filled_clean['fill_price'].astype(float)
+                init_p = filled_clean['initial_limit'].astype(float)
+                filled_clean['slippage_abs'] = (fill_p - init_p)
+                filled_clean['slippage_pct'] = (filled_clean['slippage_abs'].abs() / init_p.abs().replace(0, np.nan) * 100)
 
-                st.markdown("**Slippage Distribution (fill vs initial limit)**")
+                # Summary stats
+                slip_col1, slip_col2 = st.columns(2)
+                with slip_col1:
+                    st.markdown("**Slippage Summary (% of credit/debit)**")
+                    slip_stats = filled_clean['slippage_pct'].dropna()
+                    if not slip_stats.empty:
+                        ss1, ss2, ss3, ss4 = st.columns(4)
+                        ss1.metric("Mean", f"{slip_stats.mean():.1f}%")
+                        ss2.metric("Median", f"{slip_stats.median():.1f}%")
+                        ss3.metric("P75", f"{slip_stats.quantile(0.75):.1f}%")
+                        ss4.metric("Max", f"{slip_stats.max():.1f}%")
+
+                with slip_col2:
+                    st.markdown("**Absolute Slippage (cents/ticks)**")
+                    abs_stats = filled_clean['slippage_abs'].dropna()
+                    if not abs_stats.empty:
+                        sa1, sa2, sa3, sa4 = st.columns(4)
+                        sa1.metric("Mean", f"{abs_stats.mean():.2f}")
+                        sa2.metric("Median", f"{abs_stats.median():.2f}")
+                        sa3.metric("Favorable", f"{(abs_stats < 0).sum()}", help="Fills better than initial limit")
+                        sa4.metric("Adverse", f"{(abs_stats > 0).sum()}", help="Fills worse than initial limit")
+
+                # Histogram
+                st.markdown("**Slippage Distribution (% of credit/debit)**")
                 fig_slip = px.histogram(
                     filled_clean, x='slippage_pct',
                     nbins=20, color_discrete_sequence=['#3498db'],
-                    labels={'slippage_pct': 'Slippage %'},
+                    labels={'slippage_pct': 'Slippage % (relative to credit/debit)'},
                 )
                 fig_slip.update_layout(height=300, margin=dict(t=20))
                 st.plotly_chart(fig_slip, use_container_width=True)
@@ -329,7 +428,7 @@ with tab_exec:
         cancelled = funnel_df[funnel_df['stage'] == 'ORDER_CANCELLED'].copy()
         if not cancelled.empty:
             st.markdown("**Recent Unfilled Orders**")
-            display_cols = ['timestamp', 'contract', 'detail', 'walk_away_price', 'initial_limit']
+            display_cols = ['timestamp', 'cycle_id', 'contract', 'detail', 'walk_away_price', 'initial_limit']
             avail_cols = [c for c in display_cols if c in cancelled.columns]
             st.dataframe(
                 cancelled[avail_cols].tail(10).sort_values('timestamp', ascending=False),
@@ -459,19 +558,41 @@ else:
 
 
 # ============================================================
-# RAW DATA EXPLORER
+# RAW DATA EXPLORER + CYCLE DRILL-DOWN
 # ============================================================
 with st.expander("Raw Funnel Data", expanded=False):
     if not funnel_df.empty:
-        # Stage filter
-        stages = ['ALL'] + sorted(funnel_df['stage'].dropna().unique().tolist())
-        sel_stage = st.selectbox("Filter by Stage", stages)
-        display_df = funnel_df if sel_stage == 'ALL' else funnel_df[funnel_df['stage'] == sel_stage]
+        # Filters row
+        filter_col1, filter_col2 = st.columns(2)
+        with filter_col1:
+            stages = ['ALL'] + sorted(funnel_df['stage'].dropna().unique().tolist())
+            sel_stage = st.selectbox("Filter by Stage", stages)
+        with filter_col2:
+            cycle_ids = funnel_df['cycle_id'].dropna().unique().tolist() if 'cycle_id' in funnel_df.columns else []
+            cycle_options = ['ALL'] + sorted(set(cycle_ids), reverse=True)[:50]
+            sel_cycle = st.selectbox("Drill into Cycle ID", cycle_options,
+                                     help="Select a cycle to see all its events end-to-end")
 
+        display_df = funnel_df.copy()
+        if sel_stage != 'ALL':
+            display_df = display_df[display_df['stage'] == sel_stage]
+        if sel_cycle != 'ALL':
+            display_df = display_df[display_df['cycle_id'] == sel_cycle]
+
+        # When drilling into a cycle, show events in chronological order
+        sort_asc = (sel_cycle != 'ALL')
         st.dataframe(
-            display_df.sort_values('timestamp', ascending=False).head(200),
+            display_df.sort_values('timestamp', ascending=sort_asc).head(200),
             hide_index=True, use_container_width=True,
         )
+
+        # Cycle journey summary when a specific cycle is selected
+        if sel_cycle != 'ALL' and not display_df.empty:
+            journey = display_df.sort_values('timestamp')[['timestamp', 'stage', 'outcome', 'detail']].copy()
+            journey['timestamp'] = journey['timestamp'].dt.strftime('%H:%M:%S')
+            st.markdown(f"**Cycle Journey: `{sel_cycle}`** ({len(journey)} events)")
+            st.dataframe(journey, hide_index=True, use_container_width=True)
+
         st.download_button(
             "Download Funnel CSV",
             display_df.to_csv(index=False).encode('utf-8'),
