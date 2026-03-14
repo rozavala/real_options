@@ -252,11 +252,18 @@ echo "  Directories OK"
 # =========================================================================
 # STEP 6: Data migration (idempotent — moves legacy flat paths to data/KC/)
 # =========================================================================
-echo "--- 6. Running data migration... ---"
+echo "--- 6. Running data migrations... ---"
 if [ -f "scripts/migrate_data_dirs.py" ]; then
-    python scripts/migrate_data_dirs.py --force || echo "  Migration encountered an issue (non-blocking)"
+    python scripts/migrate_data_dirs.py --force || echo "  Data dir migration encountered an issue (non-blocking)"
 else
-    echo "  No migration script found, skipping"
+    echo "  No data dir migration script found, skipping"
+fi
+
+# Run numbered migrations (tracks applied state in data/.migrations_applied)
+if [ -f "scripts/run_migrations.py" ]; then
+    python scripts/run_migrations.py || echo "  Migrations encountered an issue (non-blocking)"
+else
+    echo "  No migration runner found, skipping"
 fi
 
 # =========================================================================
