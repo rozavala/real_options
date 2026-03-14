@@ -137,7 +137,8 @@ def backfill_commodity(ticker: str, data_root: str) -> int:
     if os.path.exists(oe_path):
         print(f"  [{ticker}] Reading order_events.csv...")
         oe = pd.read_csv(oe_path, on_bad_lines='warn')
-        _seen_placed = set()  # Dedup: only first Submitted per order_id → ORDER_PLACED
+        _seen_placed = set()     # Dedup: only first Submitted per order_id → ORDER_PLACED
+        _seen_cancelled = set()  # Dedup: only first Cancelled per order_id → ORDER_CANCELLED
         for _, r in oe.iterrows():
             ts = r.get('timestamp', '')
             status = str(r.get('status', '')).lower()
@@ -174,6 +175,9 @@ def backfill_commodity(ticker: str, data_root: str) -> int:
                     'source': 'BACKFILL',
                 })
             elif 'cancelled' in status or 'timedout' in status:
+                if order_id in _seen_cancelled:
+                    continue  # IB re-emits Cancelled repeatedly near timeout — skip dupes
+                _seen_cancelled.add(order_id)
                 rows.append({
                     'timestamp': ts,
                     'cycle_id': f"ORDER-{order_id}",
