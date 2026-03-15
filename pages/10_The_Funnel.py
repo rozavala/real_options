@@ -399,18 +399,18 @@ with tab_exec:
                     slip_stats = filled_clean['slippage_pct'].dropna()
                     if not slip_stats.empty:
                         ss1, ss2, ss3, ss4 = st.columns(4)
-                        ss1.metric("Mean", f"{slip_stats.mean():.1f}%")
-                        ss2.metric("Median", f"{slip_stats.median():.1f}%")
-                        ss3.metric("P75", f"{slip_stats.quantile(0.75):.1f}%")
-                        ss4.metric("Max", f"{slip_stats.max():.1f}%")
+                        ss1.metric("Mean", f"{slip_stats.mean():.1f}%", help="Mean slippage as % of credit/debit")
+                        ss2.metric("Median", f"{slip_stats.median():.1f}%", help="Median slippage as % of credit/debit")
+                        ss3.metric("P75", f"{slip_stats.quantile(0.75):.1f}%", help="75th percentile of slippage as % of credit/debit")
+                        ss4.metric("Max", f"{slip_stats.max():.1f}%", help="Maximum slippage as % of credit/debit")
 
                 with slip_col2:
                     st.markdown("**Absolute Slippage (cents/ticks)**")
                     abs_stats = filled_clean['slippage_abs'].dropna()
                     if not abs_stats.empty:
                         sa1, sa2, sa3, sa4 = st.columns(4)
-                        sa1.metric("Mean", f"{abs_stats.mean():.2f}")
-                        sa2.metric("Median", f"{abs_stats.median():.2f}")
+                        sa1.metric("Mean", f"{abs_stats.mean():.2f}", help="Mean absolute slippage in cents/ticks")
+                        sa2.metric("Median", f"{abs_stats.median():.2f}", help="Median absolute slippage in cents/ticks")
                         sa3.metric("Favorable", f"{(abs_stats < 0).sum()}", help="Fills better than initial limit")
                         sa4.metric("Adverse", f"{(abs_stats > 0).sum()}", help="Fills worse than initial limit")
 
