@@ -603,16 +603,28 @@ class TestScorecardUX(unittest.TestCase):
         with open(file_path, "r") as f:
             tree = ast.parse(f.read())
 
-        target_metrics = [
-            "Precision",
-            "Recall",
-            "Accuracy",
-            "Total Graded",
-            "Avg Winning Duration",
-            "Avg Losing Duration",
-            "Win Rate",
-        ]
-        found_metrics = {m: False for m in target_metrics}
+        # Metric labels with their corresponding semantic emojis
+        target_metrics = {
+            "Precision": "🎯",
+            "Recall": "🔍",
+            "Accuracy": "✅",
+            "Total Graded": "🔢",
+            "Avg Winning Duration": "⏱️",
+            "Avg Losing Duration": "⏱️",
+            "Win Rate": "🎯",
+            "Resolved Cycles": "📋",
+            "Override Rate": "🔄",
+            "Override Delta": "⚖️",
+            "Confidence": "🎯",
+            "Aligned Win Rate": "🤝",
+            "Override Win Rate": "🚀",
+            "Thesis Calibration": "💡",
+            "NEUTRAL Rate": "➖",
+            "NEUTRAL Calls": "➖",
+            "NEUTRAL Accuracy": "🎯",
+            "Directional Win Rate": "📈",
+        }
+        found_metrics = {m: False for m in target_metrics.keys()}
 
         for node in ast.walk(tree):
             if (
@@ -627,10 +639,13 @@ class TestScorecardUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                # Use substring matching to handle emojis/icons
-                for target in target_metrics:
-                    if label and target in label:
+                # Use matching to handle emojis/icons
+                for target, emoji in target_metrics.items():
+                    # Exact match to avoid "Win Rate" matching "Aligned Win Rate"
+                    if label == f"{emoji} {target}":
                         found_metrics[target] = True
+
+                        # Verify help tooltip exists
                         has_help = any(kw.arg == "help" for kw in node.keywords)
                         self.assertTrue(
                             has_help,
