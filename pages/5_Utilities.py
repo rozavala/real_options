@@ -766,7 +766,8 @@ if run_validation:
                     with metric_cols[2]:
                         st.metric("Warnings", summary.get('warnings', 0), delta=None, delta_color="off", help="Number of validation checks that returned a warning.")
                     with metric_cols[3]:
-                        st.metric("Failures", summary.get('failed', 0), delta=None, delta_color="inverse", help="Number of validation checks that failed.")
+                        fails = summary.get('failed', 0)
+                        st.metric("Failures", fails, delta=fails if fails > 0 else None, delta_color="inverse", help="Number of validation checks that failed.")
 
                     # Results table
                     if data.get('checks'):
