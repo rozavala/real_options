@@ -1247,9 +1247,11 @@ try:
             )
 
         with router_cols[2]:
+            fallback_count = metrics.get('fallback_count', 0)
             st.metric(
                 "Fallback Count",
-                metrics.get('fallback_count', 0),
+                fallback_count,
+                delta=fallback_count if fallback_count > 0 else None,
                 delta_color="inverse",  # Lower is better
                 help="Number of times the router switched to backup providers"
             )
