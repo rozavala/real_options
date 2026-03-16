@@ -91,6 +91,7 @@ graph TD
 10. **Error Reporter & Telemetry:** A standalone telemetry script (`scripts/error_reporter.py`, decoupled from the orchestrator) scans system logs, uses fingerprinting to deduplicate errors, intelligently filters out transient operational noise (e.g., 429 rate limits, 503 unavailable, lock timeouts), and auto-generates structured GitHub issues to track true system anomalies. Real-time operator alerts (via Pushover) are explicitly severity-gated (e.g., `PriceSentinel` >= 8, `WeatherSentinel` >= 7) to eliminate routine noise.
 11. **Three-Tier Market State Resolver (`trading_bot/utils.py`):** Dynamically dictates the state of each commodity (`Active`, `Passive`, `Sleeping`), allowing continuous 24/7 surveillance of extended sessions (e.g., CME Globex overnight) without the risk of generating unnecessary active cycle trades.
 12. **System Readiness Verifier (`verify_system_readiness.py`):** A comprehensive pre-flight diagnostic script that runs checks across 27 distinct system components, verifying infrastructure, connections, data fallbacks, agent health, and execution pipelines.
+13. **Market Data Diagnostic (`scripts/check_market_data.py`):** A lightweight utility to verify Interactive Brokers data feed status, ensuring `FORCE_DELAYED_DATA` overrides function correctly across DEV and PROD environments by resolving front-month contracts and reporting LIVE/DELAYED quote status.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.

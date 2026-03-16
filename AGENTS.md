@@ -52,3 +52,4 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **Backtesting:** Use `backtesting/` directory.
 -   **Dashboard:** Streamlit dashboard (`dashboard.py`) is the primary interface.
 -   **Observability/Telemetry:** Error telemetry and log parsing are handled out-of-band by the `scripts/error_reporter.py` script. Do not add logic for agents to parse their own system-level execution exceptions. The system filters transient noise (like 429 rate limits, lock timeouts, and 503 unavailability errors) and auto-generates structured GitHub issues.
+-   **Market Data Diagnostic:** Use `scripts/check_market_data.py` to quickly verify if the Interactive Brokers data feed is LIVE or DELAYED.
