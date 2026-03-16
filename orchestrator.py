@@ -92,6 +92,8 @@ _brier_zero_resolution_streak = 0
 _last_passive_emergency: dict = {}
 # Deferred trigger rate limiting: (ticker, sentinel_type) → datetime
 _deferred_trigger_times: dict = {}
+# Track primary stale close result per ticker so fallback can skip if unnecessary
+_stale_close_primary_result: dict = {}
 
 # IB startup grace — suppress ERROR logging for IB failures during first 2 minutes
 _IB_BOOT_TIME = None
@@ -5113,15 +5115,38 @@ async def emergency_hard_close(config: dict):
             except Exception:
                 pass
 
+async def close_stale_positions_primary(config: dict):
+    """Primary stale position close. Records result so fallback can skip if unnecessary."""
+    global _stale_close_primary_result
+    result = await close_stale_positions(config)
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    _stale_close_primary_result[ticker] = result or {}
+    logger.info(f"Primary stale close [{ticker}] result: {result}")
+
+
 async def close_stale_positions_fallback(config: dict):
-    """Fallback close attempt at 12:45 ET. Only acts if 11:00 primary close missed anything."""
+    """Fallback close attempt. Only runs if primary had failed closes or errors."""
+    global _stale_close_primary_result
     from trading_bot.utils import is_trading_off
     if is_trading_off():
         logger.info("[OFF] close_stale_positions_fallback skipped — no positions exist in OFF mode")
         return
 
-    logger.info("--- Fallback Close Attempt (12:45 ET) ---")
-    logger.info("This is a retry for any positions the 11:00 primary close failed to handle.")
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    primary = _stale_close_primary_result.get(ticker, {})
+    failed = primary.get('failed_closes', -1)
+
+    if failed == 0:
+        logger.info(
+            f"Fallback close [{ticker}] skipped — primary completed with 0 failures"
+        )
+        return
+
+    if failed > 0:
+        logger.info(f"--- Fallback Close Attempt [{ticker}] --- (primary had {failed} failed closes)")
+    else:
+        logger.info(f"--- Fallback Close Attempt [{ticker}] --- (primary result unknown, running as safety net)")
+
     await close_stale_positions(config)
 
 async def run_brier_reconciliation(config: dict):
@@ -5339,6 +5364,7 @@ FUNCTION_REGISTRY = {
     'guarded_generate_orders': guarded_generate_orders,
     'run_position_audit_cycle': run_position_audit_cycle,
     'close_stale_positions': close_stale_positions,
+    'close_stale_positions_primary': close_stale_positions_primary,
     'close_stale_positions_fallback': close_stale_positions_fallback,
     'emergency_hard_close': emergency_hard_close,
     'cancel_and_stop_monitoring': cancel_and_stop_monitoring,
@@ -5362,7 +5388,7 @@ def _build_default_schedule() -> list:
         ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (15:00 ET)"),
         ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (17:00 ET)"),
         ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Midday (13:30 ET)"),
-        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale: Primary (15:30 ET)"),
+        ("close_stale_primary",       time(15, 30), close_stale_positions_primary,  "Close Stale: Primary (15:30 ET)"),
         ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (15:45 ET)"),
         ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale: Fallback (16:30 ET)"),
         ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Shutdown (17:15 ET)"),
@@ -5612,6 +5638,7 @@ RECOVERY_POLICY = {
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
     'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # 5 daily cycles (09:00-17:00 UTC)
     'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'close_stale_positions_primary':  {'policy': 'MARKET_OPEN',   'idempotent': True},
     'close_stale_positions_fallback': {'policy': 'MARKET_OPEN',   'idempotent': True},
     'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
     'cancel_and_stop_monitoring':     {'policy': 'NEVER',         'idempotent': False},
