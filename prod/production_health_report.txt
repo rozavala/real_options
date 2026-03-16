@@ -1,33 +1,34 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Sat Mar 14 15:39:58 UTC 2026
+Timestamp: Mon Mar 16 13:00:04 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  15:39:58 up 61 days, 22:03,  2 users,  load average: 0.75, 0.17, 0.05
+Uptime:  13:00:04 up 63 days, 19:23,  2 users,  load average: 0.17, 0.05, 0.01
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
 tmpfs           392M  1.2M  391M   1% /run
-/dev/vda1        48G   25G   23G  52% /
+/dev/vda1        48G   25G   24G  52% /
 tmpfs           2.0G  2.1M  2.0G   1% /dev/shm
 tmpfs           5.0M     0  5.0M   0% /run/lock
 /dev/vda16      881M  117M  703M  15% /boot
 /dev/vda15      105M  6.2M   99M   6% /boot/efi
-tmpfs           392M   52K  392M   1% /run/user/1000
+tmpfs           392M   48K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.7Gi       162Mi        34Mi       1.1Gi       1.1Gi
-Swap:          4.0Gi       828Mi       3.2Gi
+Mem:           3.8Gi       2.4Gi       141Mi        18Mi       1.6Gi       1.4Gi
+Swap:          4.0Gi       218Mi       3.8Gi
 
 === LOAD AVERAGE ===
-0.75 0.17 0.05 3/812 1977202
+0.17 0.05 0.01 1/658 2033896
 
 === PROCESS STATUS ===
 Trading processes:
-console  1965863  0.0 11.3 1917324 456152 ?      Ssl  06:05   0:30 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2019203  0.3 12.5 1949396 501564 ?      Ssl  01:46   2:09 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2027404  0.0  7.6 1371160 307888 ?      Sl   08:15   0:11 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  1965882  0.3 10.4 2886628 419408 ?      Sl   06:05   2:14 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2019264  0.3  1.9 606508 79972 ?        Sl   01:46   2:22 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,8 +36,42 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
+2026-03-16 04:18:11,434 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:18:11,434 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:18:27,260 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:18:27,261 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:19:08,163 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-16 04:19:15,988 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:19:15,989 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:19:35,344 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:19:35,345 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:14,919 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:14,920 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:38,213 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-16 04:20:50,248 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:50,250 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:21:31,435 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-16 04:21:31,436 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-16 10:06:56,665 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-16 10:07:51,465 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-16 10:09:19,965 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}
+2026-03-16 12:04:45,499 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
 
 Recent orchestrator errors [KC]:
+2026-03-16 10:06:56,665 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-16 10:07:51,465 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-16 10:09:19,965 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}
+2026-03-16 12:04:45,499 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
 
 Recent orchestrator errors [NG]:
+2026-03-16 04:19:15,989 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:19:35,344 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:19:35,345 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:14,919 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:14,920 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:38,213 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-16 04:20:50,248 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:20:50,250 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-16 04:21:31,435 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-16 04:21:31,436 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
 

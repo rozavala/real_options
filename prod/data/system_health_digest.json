@@ -1,0 +1,732 @@
+{
+  "schema_version": "1.1",
+  "generated_at": "2026-03-16T01:46:57.746410+00:00",
+  "active_tickers": [
+    "KC",
+    "CC",
+    "NG"
+  ],
+  "commodities": {
+    "KC": {
+      "feedback_loop": {
+        "status": "healthy",
+        "resolution_rate": 1.0,
+        "total_predictions": 1000,
+        "resolved": 1000,
+        "pending": 0,
+        "thresholds": {
+          "healthy": 0.75,
+          "critical": 0.5
+        }
+      },
+      "agent_calibration": {
+        "agents": {
+          "agronomist": {
+            "brier_score": 0.475,
+            "weight_multiplier": 1.212
+          },
+          "geopolitical": {
+            "brier_score": 0.1986,
+            "weight_multiplier": 0.798
+          },
+          "inventory": {
+            "brier_score": 0.4593,
+            "weight_multiplier": 1.189
+          },
+          "macro": {
+            "brier_score": 0.0162,
+            "weight_multiplier": 0.524
+          },
+          "master_decision": {
+            "brier_score": 0.3289,
+            "weight_multiplier": 0.993
+          },
+          "sentiment": {
+            "brier_score": 0.4076,
+            "weight_multiplier": 1.111
+          },
+          "strategy_iron_condor": {
+            "brier_score": 0.0,
+            "weight_multiplier": 1.0
+          },
+          "strategy_long_straddle": {
+            "brier_score": 0.0,
+            "weight_multiplier": 1.0
+          },
+          "supply_chain": {
+            "brier_score": 0.5084,
+            "weight_multiplier": 1.263
+          },
+          "technical": {
+            "brier_score": 0.4168,
+            "weight_multiplier": 1.125
+          },
+          "volatility": {
+            "brier_score": 0.2409,
+            "weight_multiplier": 0.861
+          }
+        },
+        "avg_brier": 0.2774,
+        "tracked_count": 11
+      },
+      "cognitive_layer": {
+        "decisions_today": 0,
+        "bull_pct": null,
+        "bear_pct": null,
+        "neutral_pct": null,
+        "avg_confidence": null,
+        "avg_weighted_score": null,
+        "strategies_used": []
+      },
+      "sentinel_efficiency": {
+        "sentinels": {
+          "MicrostructureSentinel": {
+            "total_alerts": 3,
+            "trades_triggered": 0,
+            "signal_to_noise": 0.0
+          },
+          "WeatherSentinel": {
+            "total_alerts": 31,
+            "trades_triggered": 14,
+            "signal_to_noise": 0.4516
+          },
+          "MacroContagionSentinel": {
+            "total_alerts": 14,
+            "trades_triggered": 2,
+            "signal_to_noise": 0.1429
+          },
+          "XSentimentSentinel": {
+            "total_alerts": 47,
+            "trades_triggered": 4,
+            "signal_to_noise": 0.0851
+          },
+          "PriceSentinel": {
+            "total_alerts": 5,
+            "trades_triggered": 0,
+            "signal_to_noise": 0.0
+          },
+          "PredictionMarketSentinel": {
+            "total_alerts": 5,
+            "trades_triggered": 1,
+            "signal_to_noise": 0.2
+          },
+          "LogisticsSentinel": {
+            "total_alerts": 1,
+            "trades_triggered": 0,
+            "signal_to_noise": 0.0
+          }
+        },
+        "total_alerts": 106,
+        "total_trades_triggered": 21
+      },
+      "efficiency": {
+        "daily_spend_usd": 0.010412200000000002,
+        "request_count": 30,
+        "router_metrics": {
+          "total_requests": 7970,
+          "total_errors": 0,
+          "total_fallbacks": 0
+        },
+        "semantic_cache": null
+      },
+      "risk_rails": {
+        "drawdown": {
+          "status": "NORMAL",
+          "current_pct": 0.0,
+          "thresholds": {
+            "warning_pct": 3.0,
+            "halt_pct": 6.0,
+            "panic_pct": 9.0
+          }
+        },
+        "var": {
+          "utilization": null,
+          "var_95": null,
+          "var_99": null,
+          "enforcement_mode": "log_only"
+        }
+      },
+      "decision_traces": [
+        {
+          "timestamp": "2026-03-13 15:07:04.995669+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.0,
+          "strategy": "IRON_CONDOR",
+          "top_contributors": [
+            {
+              "agent": "supply_chain",
+              "weight": 1.23,
+              "key_argument": ""
+            },
+            {
+              "agent": "geopolitical",
+              "weight": 1.06,
+              "key_argument": "STALE (239min old) - {'data': '[EVIDENCE]: \u2022 (2026-03-09, Produce Report) Maersk and MSC suspended Red Sea/Suez navigatio..."
+            }
+          ],
+          "contrarian_view": "The strongest bull counter is the claimed physical tightness/basis blowout (spot premiums, farmers withholding, export delays and higher freight indices) potentially forcing roaster short-covering. I ",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-13 14:51:38.993581+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.0,
+          "strategy": "IRON_CONDOR",
+          "top_contributors": [
+            {
+              "agent": "technical",
+              "weight": -1.819,
+              "key_argument": "[EVIDENCE]: 1) 2026-03-13 PriceSentinel: KCK6 \u22121.67 % last hour. 2) 2026-03-12 daily drop \u22121.87 %. 3) 2026-03-13 KCK6 at 289.27 \u00a2/lb, \u22120.90 % d/d, \u22122."
+            },
+            {
+              "agent": "sentiment",
+              "weight": 1.12,
+              "key_argument": "STALE (168min old) - {'data': \"[EVIDENCE]: - XSentimentSentinel alert: Extremely bullish sentiment score of 6.68/10 with ..."
+            }
+          ],
+          "contrarian_view": "The strongest counter-argument is that shipping disruptions and Santos delays have already reduced exports materially, which could tighten nearby physical availability and spark a reversal (especially",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-13 12:05:28.412539+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.0,
+          "strategy": "IRON_CONDOR",
+          "top_contributors": [
+            {
+              "agent": "supply_chain",
+              "weight": 1.75,
+              "key_argument": ""
+            },
+            {
+              "agent": "geopolitical",
+              "weight": 1.5,
+              "key_argument": "[EVIDENCE]: \u2022 (2026-03-09, Produce Report) Maersk and MSC suspended Red Sea/Suez navigation; reroutes around Africa add ~10\u201315 days transit.\n\u2022 (2026-0"
+            }
+          ],
+          "contrarian_view": "The strongest counter-argument is that near-term logistics/geopolitical frictions (export delays, higher freight indices, Red Sea/Hormuz disruptions) can create a genuine nearby physical squeeze and s",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-13 11:34:05.099686+00:00",
+          "direction": "NEUTRAL",
+          "confidence": 0.0,
+          "strategy": "IRON_CONDOR",
+          "top_contributors": [
+            {
+              "agent": "agronomist",
+              "weight": -1.771,
+              "key_argument": "[EVIDENCE]: [2026-03-13] Weather forecasts for key coffee districts in Vietnam's Central Highlands show a low 10-25% probability of precipitation, con"
+            },
+            {
+              "agent": "supply_chain",
+              "weight": 1.75,
+              "key_argument": ""
+            }
+          ],
+          "contrarian_view": "The strongest bull counter is that the Sentinel-confirmed 0.0mm Vietnam Central Highlands drought during flowering (critical for yield setting) could create a genuine Robusta supply shock that spills ",
+          "realized_pnl": null
+        },
+        {
+          "timestamp": "2026-03-13 11:07:36.937859+00:00",
+          "direction": "BEARISH",
+          "confidence": 0.7,
+          "strategy": "BEAR_PUT_SPREAD",
+          "top_contributors": [
+            {
+              "agent": "supply_chain",
+              "weight": 2.04,
+              "key_argument": ""
+            },
+            {
+              "agent": "volatility",
+              "weight": -1.693,
+              "key_argument": "[EVIDENCE]: [2026-03-11] Implied Volatility for Coffee May '26 (KCK26) was 36.54%, with option premiums appearing expensive relative to historical vol"
+            }
+          ],
+          "contrarian_view": "The strongest bull counter is that persistent Minas Gerais rainfall and disease risk, combined with shipping reroutes/export disruptions, could create a genuine near-term supply shock and trigger a me",
+          "realized_pnl": null
+        }
+      ],
+      "data_freshness": {
+        "sentinels": {
+          "WeatherSentinel": {
+            "last_check_minutes_ago": 16.9,
+            "check_interval_seconds": 14400,
+            "is_stale": false
+          },
+          "LogisticsSentinel": {
+            "last_check_minutes_ago": 16.9,
+            "check_interval_seconds": 21600,
+            "is_stale": false
+          },
+          "NewsSentinel": {
+            "last_check_minutes_ago": 16.9,
+            "check_interval_seconds": 7200,
+            "is_stale": false
+          },
+          "XSentimentSentinel": {
+            "last_check_minutes_ago": 16.9,
+            "check_interval_seconds": 5400,
+            "is_stale": false
+          },
+          "PredictionMarketSentinel": {
+            "last_check_minutes_ago": 1.8,
+            "check_interval_seconds": 300,
+            "is_stale": false
+          },
+          "MacroContagionSentinel": {
+            "last_check_minutes_ago": 16.8,
+            "check_interval_seconds": 14400,
+            "is_stale": false
+          },
+          "PriceSentinel": {
+            "last_check_minutes_ago": 16.9,
+            "check_interval_seconds": 60,
+            "is_stale": false
+          },
+          "MicrostructureSentinel": {
+            "last_check_minutes_ago": 16.9,
+            "check_interval_seconds": 60,
+            "is_stale": false
+          }
+        },
+        "stale_count": 0,
+        "status": "market_closed"
+      },
+      "regime_context": {
+        "regime": "UNKNOWN",
+        "confidence": null,
+        "updated_at": null
+      },
+      "agent_contribution": {
+        "agents": {
+          "macro": {
+            "agreement_rate_with_master": 0.375,
+            "samples": 397
+          },
+          "geopolitical": {
+            "agreement_rate_with_master": 0.349,
+            "samples": 392
+          },
+          "sentiment": {
+            "agreement_rate_with_master": 0.568,
+            "samples": 424
+          },
+          "technical": {
+            "agreement_rate_with_master": 0.574,
+            "samples": 390
+          },
+          "volatility": {
+            "agreement_rate_with_master": 0.335,
+            "samples": 394
+          },
+          "agronomist": {
+            "agreement_rate_with_master": 0.538,
+            "samples": 403
+          },
+          "inventory": {
+            "agreement_rate_with_master": 0.618,
+            "samples": 382
+          }
+        }
+      }
+    },
+    "CC": {
+      "feedback_loop": {
+        "status": "no_data",
+        "resolution_rate": null,
+        "total_predictions": 0,
+        "resolved": 0,
+        "pending": 0,
+        "thresholds": {
+          "healthy": 0.75,
+          "critical": 0.5
+        }
+      },
+      "agent_calibration": {
+        "agents": {},
+        "avg_brier": null,
+        "tracked_count": 0
+      },
+      "cognitive_layer": {
+        "decisions_today": 0,
+        "bull_pct": null,
+        "bear_pct": null,
+        "neutral_pct": null,
+        "avg_confidence": null,
+        "avg_weighted_score": null,
+        "strategies_used": []
+      },
+      "sentinel_efficiency": {
+        "sentinels": {},
+        "total_alerts": 0,
+        "total_trades_triggered": 0
+      },
+      "efficiency": {
+        "daily_spend_usd": 0.0,
+        "request_count": 0,
+        "router_metrics": {},
+        "semantic_cache": null
+      },
+      "risk_rails": {
+        "drawdown": {
+          "status": "unknown",
+          "current_pct": null,
+          "thresholds": {
+            "warning_pct": 3.0,
+            "halt_pct": 6.0,
+            "panic_pct": 9.0
+          }
+        },
+        "var": {
+          "utilization": null,
+          "var_95": null,
+          "var_99": null,
+          "enforcement_mode": "log_only"
+        }
+      },
+      "decision_traces": [],
+      "data_freshness": {
+        "sentinels": {},
+        "status": "no_data"
+      },
+      "regime_context": {
+        "regime": "UNKNOWN",
+        "confidence": null,
+        "updated_at": null
+      },
+      "agent_contribution": {
+        "agents": {}
+      }
+    },
+    "NG": {
+      "feedback_loop": {
+        "status": "no_data",
+        "resolution_rate": null,
+        "total_predictions": 0,
+        "resolved": 0,
+        "pending": 0,
+        "thresholds": {
+          "healthy": 0.75,
+          "critical": 0.5
+        }
+      },
+      "agent_calibration": {
+        "agents": {},
+        "avg_brier": null,
+        "tracked_count": 0
+      },
+      "cognitive_layer": {
+        "decisions_today": 0,
+        "bull_pct": null,
+        "bear_pct": null,
+        "neutral_pct": null,
+        "avg_confidence": null,
+        "avg_weighted_score": null,
+        "strategies_used": []
+      },
+      "sentinel_efficiency": {
+        "sentinels": {
+          "MicrostructureSentinel": {
+            "total_alerts": 1,
+            "trades_triggered": 0,
+            "signal_to_noise": 0.0
+          }
+        },
+        "total_alerts": 1,
+        "total_trades_triggered": 0
+      },
+      "efficiency": {
+        "daily_spend_usd": 0.0,
+        "request_count": 0,
+        "router_metrics": {
+          "total_requests": 7980,
+          "total_errors": 0,
+          "total_fallbacks": 0
+        },
+        "semantic_cache": null
+      },
+      "risk_rails": {
+        "drawdown": {
+          "status": "unknown",
+          "current_pct": null,
+          "thresholds": {
+            "warning_pct": 3.0,
+            "halt_pct": 6.0,
+            "panic_pct": 9.0
+          }
+        },
+        "var": {
+          "utilization": null,
+          "var_95": null,
+          "var_99": null,
+          "enforcement_mode": "log_only"
+        }
+      },
+      "decision_traces": [],
+      "data_freshness": {
+        "sentinels": {
+          "WeatherSentinel": {
+            "last_check_minutes_ago": 19.3,
+            "check_interval_seconds": 14400,
+            "is_stale": false
+          },
+          "LogisticsSentinel": {
+            "last_check_minutes_ago": 19.3,
+            "check_interval_seconds": 21600,
+            "is_stale": false
+          },
+          "NewsSentinel": {
+            "last_check_minutes_ago": 19.3,
+            "check_interval_seconds": 7200,
+            "is_stale": false
+          },
+          "XSentimentSentinel": {
+            "last_check_minutes_ago": 19.3,
+            "check_interval_seconds": 5400,
+            "is_stale": false
+          },
+          "PredictionMarketSentinel": {
+            "last_check_minutes_ago": 4.2,
+            "check_interval_seconds": 300,
+            "is_stale": false
+          },
+          "MacroContagionSentinel": {
+            "last_check_minutes_ago": 19.2,
+            "check_interval_seconds": 14400,
+            "is_stale": false
+          },
+          "PriceSentinel": {
+            "last_check_minutes_ago": 2.2,
+            "check_interval_seconds": 60,
+            "is_stale": false
+          },
+          "MicrostructureSentinel": {
+            "last_check_minutes_ago": 2.2,
+            "check_interval_seconds": 60,
+            "is_stale": false
+          }
+        },
+        "stale_count": 0,
+        "status": "market_closed"
+      },
+      "regime_context": {
+        "regime": "UNKNOWN",
+        "confidence": null,
+        "updated_at": null
+      },
+      "agent_contribution": {
+        "agents": {}
+      }
+    }
+  },
+  "portfolio": {
+    "status": "no_data"
+  },
+  "changes": {
+    "changes": [],
+    "note": "No previous digest for comparison"
+  },
+  "rolling_trends": {
+    "status": "no_data"
+  },
+  "improvement_opportunities": [
+    {
+      "priority": "LOW",
+      "component": "KC/agent/macro",
+      "observation": "Brier score 0.0162 \u2014 near-zero predictive signal",
+      "suggestion": "Review agent prompt or consider downweighting"
+    },
+    {
+      "priority": "LOW",
+      "component": "KC/agent/strategy_iron_condor",
+      "observation": "Brier score 0.0000 \u2014 near-zero predictive signal",
+      "suggestion": "Review agent prompt or consider downweighting"
+    },
+    {
+      "priority": "LOW",
+      "component": "KC/agent/strategy_long_straddle",
+      "observation": "Brier score 0.0000 \u2014 near-zero predictive signal",
+      "suggestion": "Review agent prompt or consider downweighting"
+    }
+  ],
+  "config_snapshot": {
+    "agent_base_weights_scheduled": {
+      "agronomist": 1.5,
+      "macro": 1.5,
+      "geopolitical": 1.5,
+      "supply_chain": 1.5,
+      "sentiment": 1.5,
+      "technical": 1.5,
+      "volatility": 1.5,
+      "inventory": 1.5
+    },
+    "risk": {
+      "max_holding_days": 2,
+      "min_holding_hours": 6.0,
+      "friday_min_holding_hours": 2.0,
+      "check_interval_seconds": 600,
+      "min_confidence_threshold": 0.5,
+      "monitoring_grace_period_seconds": 300,
+      "take_profit_capture_pct": 0.8,
+      "stop_loss_max_risk_pct": 0.5,
+      "hard_freshness_limit_hours": 24,
+      "soft_freshness_limit_hours": 4,
+      "max_total_positions": 30,
+      "max_commodity_concentration_pct": 0.5,
+      "max_correlated_exposure_pct": 0.7,
+      "max_open_positions": 3
+    },
+    "drawdown": {
+      "enabled": true,
+      "warning_pct": 3.0,
+      "halt_pct": 6.0,
+      "panic_pct": 9.0,
+      "recovery_pct": 3.5,
+      "recovery_hold_minutes": 30
+    },
+    "execution": {
+      "base": {
+        "spread_width_percentage": 0.01425,
+        "adaptive_step_interval_seconds": 15,
+        "adaptive_step_percentage": 0.04,
+        "ceiling_aggression_factor": 0.75,
+        "adaptive_target_steps": 10,
+        "cap_timeout_seconds": 900,
+        "iron_condor_short_strikes_from_atm": 2,
+        "iron_condor_wing_strikes_apart": 2,
+        "slippage_spread_percentage": 0.5,
+        "max_liquidity_spread_percentage": 0.75,
+        "max_liquidity_spread_ticks": 80,
+        "min_book_depth_multiplier": 3,
+        "max_single_leg_spread_pct": 0.5,
+        "fixed_slippage_cents": 0.5,
+        "close_timeout_seconds": 240,
+        "close_walk_steps": 8,
+        "close_walk_interval_seconds": 15,
+        "close_walk_increment_pct": 0.04,
+        "monitoring_duration_seconds": 1800
+      },
+      "KC": {
+        "max_liquidity_spread_percentage": 0.75,
+        "max_liquidity_spread_ticks": 80,
+        "cap_timeout_seconds": 1800,
+        "monitoring_duration_seconds": 2400,
+        "close_timeout_seconds": 450,
+        "close_walk_steps": 12
+      },
+      "CC": {
+        "max_liquidity_spread_percentage": 0.75,
+        "max_liquidity_spread_ticks": 55,
+        "cap_timeout_seconds": 900,
+        "monitoring_duration_seconds": 1800,
+        "close_timeout_seconds": 300,
+        "close_walk_steps": 10
+      },
+      "NG": {
+        "max_liquidity_spread_percentage": 0.75,
+        "max_liquidity_spread_ticks": 80,
+        "cap_timeout_seconds": 900,
+        "monitoring_duration_seconds": 1800,
+        "close_timeout_seconds": 240,
+        "close_walk_steps": 8
+      }
+    },
+    "iron_condor": {
+      "short_strikes_from_atm": 2,
+      "wing_strikes_apart": 2
+    },
+    "sentinel_thresholds": {
+      "weather_frost_temp_c": 4.0,
+      "price_pct_change_threshold": 2.5,
+      "microstructure_spread_std_threshold": 2.0
+    },
+    "semantic_cache": {
+      "enabled": true,
+      "similarity_threshold": 0.92,
+      "ttl_minutes": 60,
+      "max_entries": 100,
+      "severity_bypass_threshold": 8
+    },
+    "strategy": {
+      "quantity": 1,
+      "signal_threshold": 0.005,
+      "min_underlying_volume": 20,
+      "max_days_to_expiry": 180,
+      "min_voter_quorum": 3,
+      "min_weighted_score_magnitude": 0.2,
+      "reflexion_agents": [
+        "agronomist",
+        "macro",
+        "geopolitical",
+        "sentiment",
+        "technical",
+        "volatility",
+        "inventory",
+        "supply_chain"
+      ]
+    },
+    "brier": {
+      "enhanced_weight": 0.3,
+      "note": "decay HALF_LIFE_DAYS=14 is hardcoded in brier_scoring.py"
+    },
+    "llm_budget_daily_usd": 15.0
+  },
+  "error_telemetry": {
+    "totals": {
+      "liquidity_reject": 0,
+      "margin_reject": 0,
+      "order_timeout": 0,
+      "order_error": 0,
+      "trading_execution": 0
+    },
+    "per_commodity": {
+      "KC": {
+        "liquidity_reject": 0,
+        "margin_reject": 0,
+        "order_timeout": 0,
+        "order_error": 0,
+        "trading_execution": 0
+      },
+      "CC": {
+        "liquidity_reject": 0,
+        "margin_reject": 0,
+        "order_timeout": 0,
+        "order_error": 0,
+        "trading_execution": 0
+      },
+      "NG": {
+        "liquidity_reject": 0,
+        "margin_reject": 0,
+        "order_timeout": 0,
+        "order_error": 0,
+        "trading_execution": 0
+      }
+    },
+    "total_errors_today": 0,
+    "high_impact": false,
+    "error_reporter": {
+      "total_errors_reported": 0,
+      "last_report_time": null
+    }
+  },
+  "digest_id": "2026-03-16_8abccc19eb21",
+  "system_health_score": {
+    "overall": 0.7278,
+    "components": {
+      "feedback_health": 1.0,
+      "prediction_accuracy": 0.4452,
+      "execution_quality": 1.0,
+      "sentinel_efficiency": 0.11
+    },
+    "weights": {
+      "feedback_health": 0.35,
+      "prediction_accuracy": 0.25,
+      "execution_quality": 0.25,
+      "sentinel_efficiency": 0.15
+    },
+    "formula": "overall = 0.35*feedback + 0.25*(1-brier) + 0.25*exec_quality + 0.15*sentinel_snr"
+  },
+  "executive_summary": "KC: 0 decisions, regime=UNKNOWN | CC: 0 decisions, regime=UNKNOWN | NG: 0 decisions, regime=UNKNOWN | No high-priority issues | System health score: 0.73/1.00"
+}
