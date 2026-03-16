@@ -520,7 +520,7 @@ with hb_cols[0]:
         orch_delta = f"Pulse: {_relative_time(heartbeat['orchestrator_last_pulse'])}"
 
     st.metric(
-        "Orchestrator",
+        "🤖 Orchestrator",
         f"{orch_color} {orch_status}",
         delta=orch_delta,
         delta_color="off",
@@ -536,7 +536,7 @@ with hb_cols[1]:
         state_delta = f"Pulse: {_relative_time(heartbeat['state_last_pulse'])}"
 
     st.metric(
-        "State Manager",
+        "📂 State Manager",
         f"{state_color} {state_status}",
         delta=state_delta,
         delta_color="off",
@@ -573,7 +573,7 @@ with hb_cols[3]:
     ib_delta = f"Last: {_relative_time(last_conn)}" if last_conn else "No connection"
 
     st.metric(
-        "IB Gateway",
+        "🔌 IB Gateway",
         f"{ib_color} {ib_status}",
         delta=ib_delta,
         delta_color="off",
@@ -1003,6 +1003,10 @@ if config:
                 # Keep confidence as float for ProgressColumn (0-100)
                 _conf_val = float(_conf) * 100 if pd.notna(_conf) else None
 
+                # Format outcome with visual indicators
+                _outcome_raw = _r.get('outcome', 'PENDING')
+                _outcome_text = "✅ WIN" if _outcome_raw == "WIN" else "❌ LOSS" if _outcome_raw == "LOSS" else "⏳ PENDING"
+
                 _display_rows.append({
                     'Time': _relative_time(_ts),
                     'Trigger': _trigger,
@@ -1010,7 +1014,8 @@ if config:
                     'Confidence': _conf_val,
                     'Strategy': _strategy,
                     'Strength': _r.get('thesis_strength', 'N/A'),
-                    'Outcome': _outcome_val,
+                    'Outcome': _outcome_text,
+                    'P&L': _outcome_val,
                 })
             _display_df = pd.DataFrame(_display_rows)
             st.dataframe(
@@ -1018,21 +1023,22 @@ if config:
                 hide_index=True,
                 width="stretch",
                 column_config={
-                    'Time': st.column_config.TextColumn("Time", width='small', help="Time since the decision was made."),
-                    'Trigger': st.column_config.TextColumn("Trigger", width='small', help="The event or sentinel that triggered this decision cycle."),
-                    'Decision': st.column_config.TextColumn("Decision", width='small', help="The final decision rendered by the Master Strategist."),
+                    'Time': st.column_config.TextColumn("🕒 Time", width='small', help="Time since the decision was made."),
+                    'Trigger': st.column_config.TextColumn("📡 Trigger", width='small', help="The event or sentinel that triggered this decision cycle."),
+                    'Decision': st.column_config.TextColumn("⚖️ Decision", width='small', help="The final decision rendered by the Master Strategist."),
                     'Confidence': st.column_config.ProgressColumn(
-                        "Confidence",
+                        "🎯 Confidence",
                         width='small',
                         min_value=0,
                         max_value=100,
                         format="%.0f%%",
                         help="The confidence level of the Master Strategist's decision (0-100%)."
                     ),
-                    'Strategy': st.column_config.TextColumn("Strategy", width='medium', help="The trading strategy applied for this decision."),
-                    'Strength': st.column_config.TextColumn("Strength", width='small', help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
-                    'Outcome': st.column_config.NumberColumn(
-                        "Outcome",
+                    'Strategy': st.column_config.TextColumn("🛡️ Strategy", width='medium', help="The trading strategy applied for this decision."),
+                    'Strength': st.column_config.TextColumn("💡 Strength", width='small', help="The strength of the underlying trading thesis (Proven/Plausible/Speculative)."),
+                    'Outcome': st.column_config.TextColumn("🏁 Outcome", width='small', help="The reconciled market outcome of the decision."),
+                    'P&L': st.column_config.NumberColumn(
+                        "💰 P&L",
                         width='small',
                         format="$%.2f",
                         help="The realized Profit and Loss for this trade."

@@ -56,7 +56,7 @@ with metric_cols[0]:
         trade_count = council_df['pnl_realized'].notna().sum()
     else:
         trade_count = 0
-    st.metric("Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
+    st.metric("📦 Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
 
 with metric_cols[1]:
     # Calculate win rate from council history
@@ -75,12 +75,12 @@ with metric_cols[2]:
     if not council_df.empty and 'pnl_realized' in council_df.columns:
         realized_pnl = council_df['pnl_realized'].fillna(0).sum()
         st.metric(
-            "Realized P&L",
+            "💰 Realized P&L",
             f"${realized_pnl:+,.2f}",
             help="Sum of P&L from reconciled trades in council_history"
         )
     else:
-        st.metric("Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
+        st.metric("💰 Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
 
 # Pre-compute graded trades for sections that need it
 graded_fin = grade_decision_quality(council_df) if not council_df.empty else pd.DataFrame()
