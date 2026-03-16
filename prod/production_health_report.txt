@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Mon Mar 16 14:00:03 UTC 2026
+Timestamp: Mon Mar 16 14:30:04 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:00:03 up 63 days, 20:23,  2 users,  load average: 0.28, 0.14, 0.06
+Uptime:  14:30:04 up 63 days, 20:53,  2 users,  load average: 0.09, 0.04, 0.05
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   48K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.6Gi       230Mi        18Mi       1.3Gi       1.3Gi
+Mem:           3.8Gi       2.5Gi       340Mi        18Mi       1.3Gi       1.3Gi
 Swap:          4.0Gi       218Mi       3.8Gi
 
 === LOAD AVERAGE ===
-0.28 0.14 0.06 1/673 2035575
+0.09 0.04 0.05 1/670 2036986
 
 === PROCESS STATUS ===
 Trading processes:
-console  2019203  0.3 15.1 2058364 608224 ?      Ssl  01:46   2:43 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  2027404  0.0  7.6 1371160 308528 ?      Sl   08:15   0:12 /home/console/real_options/venv/bin/python position_monitor.py
+console  2019203  0.6 15.4 2059760 618200 ?      Ssl  01:46   4:35 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2027404  0.0  7.6 1371292 308528 ?      Sl   08:15   0:13 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  2019264  0.3  1.9 606508 79844 ?        Sl   01:46   2:36 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2019264  0.3  1.9 606508 79844 ?        Sl   01:46   2:42 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,7 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
-2026-03-16 04:18:11,434 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-16 04:18:11,434 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-16 04:18:27,260 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-16 04:18:27,261 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
@@ -56,12 +55,14 @@ Recent orchestrator errors [multi]:
 2026-03-16 10:07:51,465 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
 2026-03-16 10:09:19,965 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}
 2026-03-16 12:04:45,499 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-16 14:02:34,176 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'error': {'message': "We could not parse the JSON body of your request. (HINT: This likely means you aren't using your HTTP library correctly. The OpenAI API expects a JSON payload, but what was sent was not valid JSON. If you have trouble figuring out how to fix this, please contact us through our help center at help.openai.com.)", 'type': 'invalid_request_error', 'param': None, 'code': None}}
 
 Recent orchestrator errors [KC]:
 2026-03-16 10:06:56,665 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
 2026-03-16 10:07:51,465 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
 2026-03-16 10:09:19,965 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}
 2026-03-16 12:04:45,499 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-16 14:02:34,176 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'error': {'message': "We could not parse the JSON body of your request. (HINT: This likely means you aren't using your HTTP library correctly. The OpenAI API expects a JSON payload, but what was sent was not valid JSON. If you have trouble figuring out how to fix this, please contact us through our help center at help.openai.com.)", 'type': 'invalid_request_error', 'param': None, 'code': None}}
 
 Recent orchestrator errors [NG]:
 2026-03-16 04:19:15,989 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
