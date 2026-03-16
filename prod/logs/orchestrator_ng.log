@@ -1219,3 +1219,78 @@
 2026-03-16 16:30:03,456 - root - INFO - Theoretical price calculated for P @ 3.5: {'price': np.float64(0.4442), 'delta': np.float64(-0.4174), 'gamma': np.float64(0.33), 'vega': np.float64(0.9087), 'theta': np.float64(-0.0016)}
 2026-03-16 16:30:03,458 - root - INFO -   -> Leg Theoretical Price (BUY): LNEU6 P3500 @ 0.44
 2026-03-16 16:30:03,459 - root - INFO - Fetching market data for option: LNEU6 P3450
+2026-03-16 16:30:05,463 - root - INFO - Using IBKR Model Greeks IV: 50.81%
+2026-03-16 16:30:05,473 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-03-16 16:30:05,474 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-03-16 16:30:05,476 - root - INFO - Theoretical price calculated for P @ 3.45: {'price': np.float64(0.4175), 'delta': np.float64(-0.401), 'gamma': np.float64(0.3268), 'vega': np.float64(0.8999), 'theta': np.float64(-0.0016)}
+2026-03-16 16:30:05,477 - root - INFO -   -> Leg Theoretical Price (SELL): LNEU6 P3450 @ 0.42
+2026-03-16 16:30:05,478 - root - INFO - LIQUIDITY FILTER PASSED: Market spread (0.01) within allowed (0.08, binding=TICK_FLOOR). [liquidity_metric: contract=LNE, expiry=20260826, spread_pct=0.487, spread_ticks=13.0, abs_spread=0.013, theo=0.0267, allowed=0.08, binding=TICK_FLOOR, tick_allow=0.08, pct_allow=0.02, hour_utc=16]
+2026-03-16 16:30:05,479 - root - INFO - BUY Cap Calc: Theoretical=0.53, MarketAggressive=0.03 (aggression=0.75), Mid=0.03, Ask=0.03, Final Cap=0.04
+2026-03-16 16:30:05,479 - root - INFO - Net Theoretical: 0.03, Market Spread: 0.01
+2026-03-16 16:30:05,480 - root - INFO - Adaptive Strategy: Start @ 0.02, Cap/Floor @ 0.04
+2026-03-16 16:30:05,480 - root - INFO - Creating Limit Order for BUY 1 @ 0.02 (Adaptive Cap: 0.04).
+2026-03-16 16:30:05,480 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-03-16 16:30:05,481 - root - INFO - Assigned OrderRef: cf8ab276-c5bf-423e-8940-780c2832d7df
+2026-03-16 16:30:05,500 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $230.00 (premium paid)
+2026-03-16 16:30:05,504 - OrderManager - INFO - Capital tracking: Committed $7,590.00 | Remaining $24,741.59 | This order: $230.00
+2026-03-16 16:30:05,516 - OrderManager - INFO - Successfully queued order for NGU26.
+2026-03-16 16:30:05,517 - OrderManager - INFO - --- Order generation complete. 3 orders queued. ---
+2026-03-16 16:30:05,936 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 16:30:05,940 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-16 16:30:05,943 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-16 16:30:08,946 - OrderManager - INFO - --- Placing and monitoring 3 orders ---
+2026-03-16 16:30:08,947 - OrderManager - INFO - Processing 3 orders SEQUENTIALLY
+2026-03-16 16:30:08,948 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-03-16 16:30:08,948 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-16 16:30:08,948 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%), starting_equity=0 (will re-derive from prev close)
+2026-03-16 16:30:08,950 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1342...
+2026-03-16 16:30:09,163 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1342
+2026-03-16 16:30:09,173 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-16 16:30:09,185 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-16 16:30:09,187 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-03-16 16:30:09,187 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-03-16 16:30:09,288 - OrderManager - INFO - Current Available Funds: $32,324.61 | Equity: $32,331.59
+2026-03-16 16:30:09,291 - OrderManager - INFO - Pre-batch VaR refresh complete
+2026-03-16 16:30:09,292 - OrderManager - INFO - Processing order 1/3: 
+2026-03-16 16:30:11,545 - trading_bot.compliance - INFO - Resolved underlying future: NGN26 (conId: 269460091)
+2026-03-16 16:30:11,701 - trading_bot.compliance - INFO - Volume from IB (NGN26): 362.0
+2026-03-16 16:30:11,702 - trading_bot.compliance - INFO - Zero wing width detected (straddle?). Max risk = premium.
+2026-03-16 16:30:11,702 - trading_bot.compliance - INFO - Article V [LOG_ONLY]: VaR 0.0%
+2026-03-16 16:30:16,936 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-03-16 16:30:17,091 - OrderManager - INFO - Approved NG-C3.4+P3.4: Margin $800.09 | Remaining: $31,524.52
+2026-03-16 16:30:17,091 - OrderManager - INFO - Processing order 2/3: 
+2026-03-16 16:30:19,310 - trading_bot.compliance - INFO - Resolved underlying future: NGQ26 (conId: 269460110)
+2026-03-16 16:30:19,420 - trading_bot.compliance - INFO - Volume from IB (NGQ26): 66.0
+2026-03-16 16:30:19,421 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $220.00 (premium paid)
+2026-03-16 16:30:19,422 - trading_bot.compliance - INFO - Article V [LOG_ONLY]: VaR 0.0%
+2026-03-16 16:30:22,916 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-03-16 16:30:23,009 - OrderManager - INFO - Approved NG-P3.5+P3.45: Margin $162.39 | Remaining: $31,362.13
+2026-03-16 16:30:23,009 - OrderManager - INFO - Processing order 3/3: 
+2026-03-16 16:30:23,009 - OrderManager - INFO - Refreshing account summary for margin safety...
+2026-03-16 16:30:23,010 - OrderManager - INFO - Refreshed Available Funds: $32,324.61
+2026-03-16 16:30:25,227 - trading_bot.compliance - INFO - Resolved underlying future: NGU26 (conId: 269460131)
+2026-03-16 16:30:25,336 - trading_bot.compliance - INFO - Volume from IB (NGU26): 58.0
+2026-03-16 16:30:25,338 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $230.00 (premium paid)
+2026-03-16 16:30:25,339 - trading_bot.compliance - INFO - Article V [LOG_ONLY]: VaR 0.0%
+2026-03-16 16:30:29,561 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-03-16 16:30:29,659 - OrderManager - INFO - Approved NG-P3.5+P3.45: Margin $149.44 | Remaining: $32,175.17
+2026-03-16 16:30:29,659 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 NG-C3.4+P3.4 @ 0.714
+2026-03-16 16:30:29,897 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 16:30:29,900 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 NG-P3.5+P3.45 @ 0.022
+2026-03-16 16:30:30,099 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 16:30:30,102 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 NG-P3.5+P3.45 @ 0.023
+2026-03-16 16:30:30,301 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 16:30:30,304 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-03-16 16:30:30,306 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-16 16:30:30,306 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-16 16:30:33,308 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-03-16 16:30:33,308 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (NG): 1 entries removed
+2026-03-16 16:30:33,315 - Engine.NG - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-03-16 17:24:00 UTC. Waiting for 0.89 hours.
+2026-03-16 16:34:47,180 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=880, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-16 16:39:49,787 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=885, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-16 16:42:51,859 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 30% of average (Severity: 7.0)
+2026-03-16 16:42:51,867 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-16 16:44:52,015 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=890, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-16 16:49:53,866 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=895, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-16 16:53:11,366 - openai._base_client - INFO - Retrying request to /chat/completions in 0.393547 seconds
+2026-03-16 16:55:19,831 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=900, market_state=ACTIVE, market_open=True, trading_day=True
