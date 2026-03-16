@@ -65,3 +65,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-03-09 - Standardizing Dashboard Scannability and Sorting
 **Learning:** In multi-page dashboards, using inconsistent formatting for similar data types (e.g., LLM success rates vs Portfolio P&L) increases cognitive load. Prepending semantic emojis to subheaders and metrics creates a "visual anchor" that speeds up navigation. Furthermore, using formatted strings in `st.dataframe` breaks native sorting, which is critical for performance monitoring tables like LLM provider health.
 **Action:** Standardize visual anchors (emojis) across all primary metric views. Always prioritize raw numeric data in `st.dataframe` combined with `st.column_config` to ensure both visual polish and functional sorting capabilities.
+
+## 2026-03-10 - Visual Anchors in Data Tables
+**Learning:** Data tables often feel "heavy" and purely technical. Prepending semantic emojis to `st.column_config` headers (e.g., 🕒 Time, 📜 Decision) provides visual anchors that make the table more approachable and scan-friendly, especially when mixed with other metric cards that use icons.
+**Action:** Consistently use emojis in `column_config` titles for high-impact dashboards to maintain the visual language of the application.

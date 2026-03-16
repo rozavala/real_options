@@ -206,6 +206,28 @@ class TestCockpitUX(unittest.TestCase):
         self.assertTrue(found_config, "Task Schedule dataframe is missing 'column_config' with 'Task Description'")
 
 
+class TestFunnelUX(unittest.TestCase):
+    def test_funnel_metric_tooltips(self):
+        """Verify that key metrics in pages/10_The_Funnel.py have help tooltips."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "10_The_Funnel.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "metric":
+                has_help = False
+                for kw in node.keywords:
+                    if kw.arg == "help":
+                        has_help = True
+                        break
+                self.assertTrue(has_help, f"Metric missing tooltip help in {file_path}")
+                found_config = True
+        self.assertTrue(found_config, "No metrics found to check in The Funnel")
+
+
 class TestDashboardUX(unittest.TestCase):
     def test_dashboard_metric_tooltips(self):
         """Verify that key metrics in dashboard.py have help tooltips."""
@@ -581,16 +603,28 @@ class TestScorecardUX(unittest.TestCase):
         with open(file_path, "r") as f:
             tree = ast.parse(f.read())
 
-        target_metrics = [
-            "Precision",
-            "Recall",
-            "Accuracy",
-            "Total Graded",
-            "Avg Winning Duration",
-            "Avg Losing Duration",
-            "Win Rate",
-        ]
-        found_metrics = {m: False for m in target_metrics}
+        # Metric labels with their corresponding semantic emojis
+        target_metrics = {
+            "Precision": "🎯",
+            "Recall": "🔍",
+            "Accuracy": "✅",
+            "Total Graded": "🔢",
+            "Avg Winning Duration": "⏱️",
+            "Avg Losing Duration": "⏱️",
+            "Win Rate": "🎯",
+            "Resolved Cycles": "📋",
+            "Override Rate": "🔄",
+            "Override Delta": "⚖️",
+            "Confidence": "🎯",
+            "Aligned Win Rate": "🤝",
+            "Override Win Rate": "🚀",
+            "Thesis Calibration": "💡",
+            "NEUTRAL Rate": "➖",
+            "NEUTRAL Calls": "➖",
+            "NEUTRAL Accuracy": "🎯",
+            "Directional Win Rate": "📈",
+        }
+        found_metrics = {m: False for m in target_metrics.keys()}
 
         for node in ast.walk(tree):
             if (
@@ -605,10 +639,13 @@ class TestScorecardUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                # Use substring matching to handle emojis/icons
-                for target in target_metrics:
-                    if label and target in label:
+                # Use matching to handle emojis/icons
+                for target, emoji in target_metrics.items():
+                    # Exact match to avoid "Win Rate" matching "Aligned Win Rate"
+                    if label == f"{emoji} {target}":
                         found_metrics[target] = True
+
+                        # Verify help tooltip exists
                         has_help = any(kw.arg == "help" for kw in node.keywords)
                         self.assertTrue(
                             has_help,

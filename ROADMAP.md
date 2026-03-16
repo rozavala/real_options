@@ -38,6 +38,7 @@
 | G.7 Automated Incident Post-Mortems | Trade journal (A.5) + self-healing (G.4) cover 80% |
 | B.4 Cross-Agent Knowledge Graph | TMS handles knowledge sharing; active cross-cueing unproven need |
 | G.5 Multi-Commodity | **Done.** Cocoa (CC) launched Feb 17. Full path isolation across 34 modules, per-commodity systemd services, staggered boot, auto-detect deploy pipeline. PRs #879-#949. KC + CC running simultaneously on DEV. Key infra: `set_data_dir()` pattern across all stateful modules, `COMMODITY_ID_OFFSET` for IB client IDs, `_resolve_data_path()` for dashboard, `migrate_data_dirs.py` for migration, per-commodity deploy verification |
+| Data Pipeline Automation | **Done.** Standalone backfill scripts (e.g., Execution Funnel, Contribution Scores) wrapped into idempotent `run_migrations.py` framework for consistent deployment via GitHub Actions |
 | E.1 Portfolio-Level VaR | **Done.** PR #976 (merged Feb 20). `trading_bot/var_calculator.py` (1127 lines): Full Revaluation HS VaR at 95%/99% with B-S repricing, batched IV fetch, yfinance historical returns, AI Risk Agent (L1 Interpreter + L2 Scenario Architect). Compliance gate with 3-mode enforcement (`log_only`→`warn`→`enforce`), startup grace period, emergency bypass. VaR dampener in weighted voting (80-100% utilization → 1.0-0.5x confidence). Shared `data/var_state.json` (portfolio-wide, not per-commodity). 34 tests (25 VaR + 9 compliance). Ships as Phase A (`log_only`). |
 | F.5 Prediction Market Integration | **Done.** `PredictionMarketSentinel` overhauled with Gamma API. `TopicDiscoveryAgent` automates topic finding using Claude Haiku (dynamic interest areas, LLM relevance filtering). Integrated with TMS for zombie position protection. |
 | E.3 Liquidity-Aware Execution | **Done.** `order_manager.py:check_liquidity_conditions()` — pre-execution bid/ask depth analysis using a Hybrid Tick/Percentage Liquidity Filter (replacing the pure-ratio model), BAG combo leg liquidity aggregation, per-order spread logging. Remaining VWAP/TWAP only matters at much larger position sizes ($500K+). |
@@ -209,6 +210,7 @@ C.4 Surrogate ──→ C.2 Regime Switching
 | ~~Phase 4a~~ | ~~G.5 Multi-Commodity~~ | ~~2 weeks~~ | **Done** (CC launched Feb 17) |
 | ~~Phase 4b~~ | ~~E.1 VaR, F.5 Prediction Market~~ | ~~3-4 weeks~~ | **Done** (VaR Feb 20, PM Integration) |
 | ~~Phase 4c~~ | ~~G.6 3rd Commodity (NG)~~ | ~~1 week~~ | **Done** (NG launched Feb 27) |
+| ~~Phase 4d~~ | ~~Data Pipeline Migrations~~ | ~~1 week~~ | **Done** (Execution Funnel & Contribution Scores backfilled via framework) |
 | **Phase 5** | **#1 C.4/C.2 Surrogate+Regime** | **3-4 weeks** | **Cost reduction — LLM costs tripled with 3 commodities, surrogate saves 60-80%** |
 | Phase 6 | #2 E.4 Greeks | 2-3 weeks | Risk visibility |
 | Phase 7 | #3 A.2 TextGrad + #4 G.2 A/B Testing | 4-6 weeks | Decision quality + optimization safety |

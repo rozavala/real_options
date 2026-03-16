@@ -26,6 +26,7 @@ from dashboard_utils import (
     fetch_live_dashboard_data,
     get_config,
     _resolve_data_path_for,
+    _relative_time,
 )
 import numpy as np
 from _date_filter import date_range_filter
@@ -106,7 +107,7 @@ def create_process_outcome_matrix(df: pd.DataFrame):
     fig.add_hline(y=0, line_dash="dash", line_color="gray")
     fig.add_vline(x=process_threshold, line_dash="dash", line_color="gray")
 
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("How to read this chart"):
         st.markdown(
@@ -221,7 +222,7 @@ with matrix_cols[0]:
         annotations=annotations,
     )
 
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
 with matrix_cols[1]:
     # Metrics
@@ -229,28 +230,28 @@ with matrix_cols[1]:
 
     with metric_cols[0]:
         st.metric(
-            "Precision",
+            "🎯 Precision",
             f"{confusion['precision']:.1%}",
             help="Precision (Positive Predictive Value): TP / (TP + FP). Measures how many of the AI's bullish/bearish calls were actually correct.",
         )
 
     with metric_cols[1]:
         st.metric(
-            "Recall",
+            "🔍 Recall",
             f"{confusion['recall']:.1%}",
             help="Recall (Sensitivity): TP / (TP + FN). Measures the AI's ability to find all profitable opportunities in the market.",
         )
 
     with metric_cols[2]:
         st.metric(
-            "Accuracy",
+            "✅ Accuracy",
             f"{confusion['accuracy']:.1%}",
             help="Accuracy: (TP + TN) / Total. The overall percentage of correct market direction predictions.",
         )
 
     with metric_cols[3]:
         st.metric(
-            "Total Graded",
+            "🔢 Total Graded",
             confusion["total"],
             help="Total number of Master decisions that have been reconciled against actual market outcomes.",
         )
@@ -344,7 +345,7 @@ if learning["has_data"]:
     fig_lr.update_yaxes(title_text="Win Rate %", range=[0, 100], secondary_y=False)
     fig_lr.update_yaxes(title_text="Cumulative P&L ($)", secondary_y=True)
 
-    st.plotly_chart(fig_lr, width="stretch")
+    st.plotly_chart(fig_lr, use_container_width=True)
 
     # --- Chart 2: Process Quality Trend ---
     has_process = (
@@ -391,7 +392,7 @@ if learning["has_data"]:
             ),
             margin=dict(l=0, r=0, t=60, b=0),
         )
-        st.plotly_chart(fig_skill, width="stretch")
+        st.plotly_chart(fig_skill, use_container_width=True)
 
     # --- Trend summary indicator ---
     wr_col = "win_rate_20"
@@ -474,7 +475,7 @@ if learning["has_data"]:
                 ),
                 margin=dict(l=0, r=0, t=60, b=0),
             )
-            st.plotly_chart(fig_agents, width="stretch")
+            st.plotly_chart(fig_agents, use_container_width=True)
         else:
             st.info(
                 "Not enough resolved trades with actual outcomes for agent accuracy tracking."
@@ -520,7 +521,7 @@ if learning["has_data"]:
                 xaxis=dict(title="Confidence Bin"),
                 margin=dict(l=0, r=0, t=60, b=0),
             )
-            st.plotly_chart(fig_cal, width="stretch")
+            st.plotly_chart(fig_cal, use_container_width=True)
 
             # Calibration summary
             if len(calibration) >= 2:
@@ -638,7 +639,7 @@ if os.path.exists(_signals_path):
                         margin=dict(l=0, r=0, t=20, b=0),
                         showlegend=False,
                     )
-                    st.plotly_chart(fig_regime, width="stretch")
+                    st.plotly_chart(fig_regime, use_container_width=True)
 
                     # Trade counts per regime
                     counts = [
@@ -731,7 +732,7 @@ if "strategy_type" in graded_df.columns:
                 "Total P&L ($)": st.column_config.NumberColumn(format="$%.2f"),
             },
             hide_index=True,
-            width="stretch",
+            use_container_width=True,
         )
 
         # Best strategy insight
@@ -784,26 +785,26 @@ if "exit_timestamp" in graded_df.columns and "timestamp" in graded_df.columns:
             with dur_cols[0]:
                 if pd.notna(avg_win_dur):
                     st.metric(
-                        "Avg Winning Duration",
+                        "⏱️ Avg Winning Duration",
                         f"{avg_win_dur:.1f}h",
                         help="Average time elapsed from entry to exit for winning trades.",
                     )
                 else:
                     st.metric(
-                        "Avg Winning Duration",
+                        "⏱️ Avg Winning Duration",
                         "N/A",
                         help="Average time elapsed from entry to exit for winning trades.",
                     )
             with dur_cols[1]:
                 if pd.notna(avg_loss_dur):
                     st.metric(
-                        "Avg Losing Duration",
+                        "⏱️ Avg Losing Duration",
                         f"{avg_loss_dur:.1f}h",
                         help="Average time elapsed from entry to exit for losing trades.",
                     )
                 else:
                     st.metric(
-                        "Avg Losing Duration",
+                        "⏱️ Avg Losing Duration",
                         "N/A",
                         help="Average time elapsed from entry to exit for losing trades.",
                     )
@@ -843,7 +844,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins / total_vol * 100 if total_vol > 0 else 0
             st.metric(
-                "Win Rate",
+                "🎯 Win Rate",
                 f"{win_rate:.1f}%",
                 help="Percentage of Long Straddle trades that resulted in a win.",
             )
@@ -862,7 +863,7 @@ if not vol_df.empty:
             total_vol = wins + losses
             win_rate = wins / total_vol * 100 if total_vol > 0 else 0
             st.metric(
-                "Win Rate",
+                "🎯 Win Rate",
                 f"{win_rate:.1f}%",
                 help="Percentage of Iron Condor trades that resulted in a win.",
             )
@@ -918,7 +919,7 @@ if "master_confidence" in graded_df.columns and pnl_col is not None:
             height=400,
         )
 
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
         # Quadrant Analysis
         high_conf = plot_df[plot_df["master_confidence"] >= 0.75]
@@ -992,13 +993,13 @@ if sorted_agents:
         yaxis_title="Accuracy %", yaxis_range=[0, 100], height=400, showlegend=False
     )
 
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     # Detailed table
     with st.expander("📋 Detailed Scores"):
         st.dataframe(
             chart_data,
-            width="stretch",
+            use_container_width=True,
             hide_index=True,
             column_config={
                 "Accuracy": st.column_config.ProgressColumn(
@@ -1094,14 +1095,14 @@ try:
 
             with kpi_cols[0]:
                 st.metric(
-                    "Resolved Cycles",
+                    "📋 Resolved Cycles",
                     d1["total"],
                     help="Total scoreable decisions (non-NEUTRAL master on directional, or vol trades)",
                 )
 
             with kpi_cols[1]:
                 st.metric(
-                    "Override Rate",
+                    "🔄 Override Rate",
                     f"{d1['override_rate']:.0f}%",
                     help="How often the Master deviates from the council vote",
                 )
@@ -1111,20 +1112,20 @@ try:
                 if delta is not None:
                     delta_color = "normal" if abs(delta) < 5 else ("off" if delta < 0 else "normal")
                     st.metric(
-                        "Override Delta",
+                        "⚖️ Override Delta",
                         f"{delta:+.1f}pp",
                         help="Override win rate minus aligned win rate. Positive = overrides add value.",
                         delta=f"{'destructive' if delta < -10 else 'adds value' if delta > 10 else 'neutral'}",
                         delta_color=delta_color,
                     )
                 else:
-                    st.metric("Override Delta", "N/A", help="Override win rate minus aligned win rate. Positive = overrides add value.")
+                    st.metric("⚖️ Override Delta", "N/A", help="Override win rate minus aligned win rate. Positive = overrides add value.")
 
             with kpi_cols[3]:
                 cal_note = cc.get("_calibration_note", "") if cc else ""
                 cal_ok = "CALIBRATED" in cal_note and "MISCALIBRATED" not in cal_note
                 st.metric(
-                    "Confidence",
+                    "🎯 Confidence",
                     "Calibrated" if cal_ok else "Miscalibrated",
                     help="Whether higher confidence predicts better outcomes",
                 )
@@ -1133,13 +1134,13 @@ try:
             kpi2_cols = st.columns(4)
             with kpi2_cols[0]:
                 st.metric(
-                    "Aligned Win Rate",
+                    "🤝 Aligned Win Rate",
                     f"{d1['aligned_win_rate']:.0f}%",
                     help="Win rate when Master follows the council vote",
                 )
             with kpi2_cols[1]:
                 st.metric(
-                    "Override Win Rate",
+                    "🚀 Override Win Rate",
                     f"{d1['override_win_rate']:.0f}%",
                     help="Win rate when Master deviates from the council vote",
                 )
@@ -1147,14 +1148,14 @@ try:
                 thesis_note = d5.get("_calibration_note", "") if d5 else ""
                 thesis_ok = "CALIBRATED" in thesis_note and "MISCALIBRATED" not in thesis_note
                 st.metric(
-                    "Thesis Calibration",
+                    "💡 Thesis Calibration",
                     "Calibrated" if thesis_ok else "Miscalibrated",
                     help="Whether PROVEN > PLAUSIBLE > SPECULATIVE in win rate",
                 )
             with kpi2_cols[3]:
                 if na and na.get("total_directional", 0) > 0:
                     st.metric(
-                        "NEUTRAL Rate",
+                        "➖ NEUTRAL Rate",
                         f"{na['master_neutral_pct']:.0f}%",
                         help="How often Master says NEUTRAL on directional cycles",
                     )
@@ -1384,13 +1385,13 @@ try:
                 with st.expander("NEUTRAL Decision Analysis"):
                     neu_cols = st.columns(3)
                     with neu_cols[0]:
-                        st.metric("NEUTRAL Calls", na["master_neutral_count"],
+                        st.metric("➖ NEUTRAL Calls", na["master_neutral_count"],
                                   help=f"Out of {na['total_directional']} directional cycles")
                     with neu_cols[1]:
-                        st.metric("NEUTRAL Accuracy", f"{na['neutral_accuracy']:.0f}%",
+                        st.metric("🎯 NEUTRAL Accuracy", f"{na['neutral_accuracy']:.0f}%",
                                   help="How often NEUTRAL was correct (market was flat)")
                     with neu_cols[2]:
-                        st.metric("Directional Win Rate", f"{na['non_neutral_win_rate']:.0f}%",
+                        st.metric("📈 Directional Win Rate", f"{na['non_neutral_win_rate']:.0f}%",
                                   help="Win rate when Master commits to a direction")
                     st.caption(na.get("note", ""))
 
@@ -1408,36 +1409,55 @@ st.markdown("---")
 st.subheader("📜 Recent Decisions")
 
 if not graded_df.empty:
-    # Add strategy_type column to display if available
-    cols_to_show = [
-        "timestamp",
-        "contract",
-        "master_decision",
-        "master_confidence",
-        "outcome",
-    ]
-    if "strategy_type" in graded_df.columns:
-        cols_to_show.insert(2, "strategy_type")
+    # Build professional display dataframe
+    recent = graded_df.sort_values("timestamp", ascending=False).head(20).copy()
 
-    display_df = graded_df[cols_to_show].copy()
-    # Vectorized alternative to apply() for performance: map unique confidence values
-    unique_conf = display_df["master_confidence"].dropna().unique()
-    conf_map = {v: f"{v:.1%}" for v in unique_conf}
-    display_df["master_confidence"] = display_df["master_confidence"].map(conf_map)
+    # Map columns to pretty names
+    display_map = {
+        "timestamp": "Time",
+        "contract": "Contract",
+        "strategy_type": "Strategy",
+        "master_decision": "Decision",
+        "master_confidence": "Confidence",
+        "outcome": "Outcome",
+    }
 
-    # Color code outcomes
-    def style_outcome(val):
-        if val == "WIN":
-            return "background-color: #00CC96; color: white"
-        elif val == "LOSS":
-            return "background-color: #EF553B; color: white"
-        return "background-color: gray; color: white"
+    # Ensure columns exist before mapping
+    cols = [c for c in display_map.keys() if c in recent.columns]
+    display_df = recent[cols].copy()
+    display_df = display_df.rename(columns=display_map)
+
+    # Vectorized temporal and numeric formatting
+    if "Time" in display_df.columns:
+        unique_ts = display_df["Time"].dropna().unique()
+        ts_map = {ts: _relative_time(ts) for ts in unique_ts}
+        display_df["Time"] = display_df["Time"].map(ts_map)
+
+    if "Confidence" in display_df.columns:
+        display_df["Confidence"] = pd.to_numeric(display_df["Confidence"], errors='coerce') * 100
+
+    if "Outcome" in display_df.columns:
+        outcome_map = {"WIN": "✅ WIN", "LOSS": "❌ LOSS", "PENDING": "⏳ PENDING"}
+        display_df["Outcome"] = display_df["Outcome"].map(outcome_map).fillna("—")
 
     st.dataframe(
-        display_df.sort_values("timestamp", ascending=False)
-        .head(20)
-        .style.map(style_outcome, subset=["outcome"]),
-        width="stretch",
+        display_df,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Time": st.column_config.TextColumn("🕒 Time", help="Time since the decision was made."),
+            "Contract": st.column_config.TextColumn("📜 Contract", help="The specific futures contract analyzed."),
+            "Strategy": st.column_config.TextColumn("🛡️ Strategy", help="The trading strategy selected by the Master Strategist."),
+            "Decision": st.column_config.TextColumn("⚖️ Decision", help="The final directional or volatility decision."),
+            "Confidence": st.column_config.ProgressColumn(
+                "🎯 Confidence",
+                min_value=0,
+                max_value=100,
+                format="%.0f%%",
+                help="The Master Strategist's confidence level in the decision."
+            ),
+            "Outcome": st.column_config.TextColumn("🏁 Outcome", help="The reconciled market outcome of the decision."),
+        }
     )
 else:
     st.info("No decisions to display.")
