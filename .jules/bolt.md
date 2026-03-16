@@ -42,3 +42,6 @@
 ## 2025-03-15 - Grouped Iteration for Trade Reconciliation
 **Learning:** O(N^2) row-wise matching using `iterrows()` to find the closest match within a time window (e.g., in `reconcile_trades.py`) is exceptionally slow. Grouping by unique identifiers (e.g. `['local_symbol', 'action', 'quantity']`) and isolating iterations within those groups provides a massive speedup (~3x-50x) while retaining perfect 1-to-1 matching behavior. `pd.merge_asof` is even faster but introduces complex mapping anomalies for exact one-to-one state consumption.
 **Action:** Always use DataFrame grouping to shrink the problem space when executing algorithms that require iterative state mutation (like 1-to-1 reconciliations) rather than globally iterating..
+## 2026-03-16 - Vectorized String Formatting in Pandas
+**Learning:** Iterating over rows with `.iterrows()` to format strings and concatenate them is significantly slower than using vectorized pandas string operations like `.astype(str)`, `.str.ljust()`, and `.str.cat()`. Vectorized operations bypass python-level iteration overhead and can offer substantial speedups.
+**Action:** Use vectorized string operations (`.str`) and string concatenation on pandas Series instead of row-by-row iteration for string formatting tasks.
