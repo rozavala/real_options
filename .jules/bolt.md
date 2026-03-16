@@ -38,3 +38,7 @@
 ## 2025-10-24 - Vectorized Dissent Win/Loss Calculation
 **Learning:** Computing win/loss rates for sub-segments of historical data (e.g., dissent overruled decisions) using an `iterrows()` loop becomes a severe UI bottleneck in Streamlit dashboards as history scales. Refactoring this into purely vectorized pandas boolean masks (`win_mask.sum()`, `(~win_mask).sum()`) eliminates O(N) loop overhead and offers ~30x speedups, making dashboard interactivity instant.
 **Action:** Avoid row-wise Python iteration for conditional aggregations like win/loss counters across DataFrames. Substitute them entirely with pandas boolean masking and vectorized summing.
+
+## 2025-03-15 - Grouped Iteration for Trade Reconciliation
+**Learning:** O(N^2) row-wise matching using `iterrows()` to find the closest match within a time window (e.g., in `reconcile_trades.py`) is exceptionally slow. Grouping by unique identifiers (e.g. `['local_symbol', 'action', 'quantity']`) and isolating iterations within those groups provides a massive speedup (~3x-50x) while retaining perfect 1-to-1 matching behavior. `pd.merge_asof` is even faster but introduces complex mapping anomalies for exact one-to-one state consumption.
+**Action:** Always use DataFrame grouping to shrink the problem space when executing algorithms that require iterative state mutation (like 1-to-1 reconciliations) rather than globally iterating..
