@@ -8,21 +8,33 @@ Usage:
 """
 
 import asyncio
+import math
 import os
 import sys
 
 # Allow imports from project root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ib_insync import IB, Future
+from ib_insync import IB, Future, ContractDetails
 from config_loader import load_config
 
 
-# Contracts to check — front-month futures for each active commodity
-CONTRACTS = [
-    Future(symbol="KC", exchange="NYBOT", currency="USD"),
-    Future(symbol="NG", exchange="NYMEX", currency="USD"),
+# Symbols to check with their exchanges
+SYMBOLS = [
+    ("KC", "NYBOT", "USD"),
+    ("NG", "NYMEX", "USD"),
 ]
+
+
+async def resolve_front_month(ib: IB, symbol: str, exchange: str, currency: str):
+    """Find the front-month (nearest expiry) future contract."""
+    generic = Future(symbol=symbol, exchange=exchange, currency=currency)
+    details: list[ContractDetails] = await ib.reqContractDetailsAsync(generic)
+    if not details:
+        return None
+    # Sort by expiry and pick the nearest
+    details.sort(key=lambda d: d.contract.lastTradeDateOrContractMonth)
+    return details[0].contract
 
 
 async def main():
@@ -49,20 +61,27 @@ async def main():
     print(f"Connected  (server v{ib.client.serverVersion()})")
     print("-" * 60)
 
-    for contract in CONTRACTS:
-        # Qualify to get the front-month expiry
-        qualified = await ib.qualifyContractsAsync(contract)
-        if not qualified:
-            print(f"{contract.symbol:4s}  Could not qualify contract")
+    for symbol, exchange, currency in SYMBOLS:
+        c = await resolve_front_month(ib, symbol, exchange, currency)
+        if c is None:
+            print(f"{symbol:4s}  Could not resolve front-month contract")
             continue
 
-        c = qualified[0]
+        # Qualify so ib_insync tracks it properly
+        await ib.qualifyContractsAsync(c)
         ticker = ib.reqMktData(c, genericTickList="", snapshot=False)
 
-        # Wait up to 5 seconds for data to arrive
-        for _ in range(50):
+        # Wait up to 10 seconds for data to arrive
+        # ib_insync initializes fields to float('nan'), not None
+        def has_data(t):
+            for val in (t.last, t.bid, t.ask):
+                if val is not None and not math.isnan(val):
+                    return True
+            return False
+
+        for _ in range(100):
             await asyncio.sleep(0.1)
-            if ticker.last is not None or ticker.bid is not None:
+            if has_data(ticker):
                 break
 
         # Determine data type from marketDataType field
@@ -71,14 +90,14 @@ async def main():
         type_labels = {1: "LIVE", 2: "FROZEN", 3: "DELAYED", 4: "DELAYED_FROZEN"}
         type_str = type_labels.get(md_type, f"UNKNOWN({md_type})")
 
-        last = ticker.last if ticker.last is not None else "-"
-        bid = ticker.bid if ticker.bid is not None else "-"
-        ask = ticker.ask if ticker.ask is not None else "-"
-        volume = ticker.volume if ticker.volume is not None else "-"
+        def fmt(val):
+            if val is None or (isinstance(val, float) and math.isnan(val)):
+                return "-"
+            return str(val)
 
         print(f"{c.symbol:4s}  {c.localSymbol:12s}  "
-              f"last={last!s:>8s}  bid={bid!s:>8s}  ask={ask!s:>8s}  "
-              f"vol={volume!s:>10s}  dataType={type_str}")
+              f"last={fmt(ticker.last):>8s}  bid={fmt(ticker.bid):>8s}  ask={fmt(ticker.ask):>8s}  "
+              f"vol={fmt(ticker.volume):>10s}  dataType={type_str}")
 
         ib.cancelMktData(c)
 
