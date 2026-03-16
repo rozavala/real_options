@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Mon Mar 16 17:00:04 UTC 2026
+Timestamp: Mon Mar 16 17:30:05 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  17:00:04 up 63 days, 23:23,  2 users,  load average: 0.49, 0.52, 0.46
+Uptime:  17:30:05 up 63 days, 23:53,  2 users,  load average: 0.38, 0.40, 0.43
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -20,15 +20,15 @@ Mem:           3.8Gi       2.6Gi       271Mi        23Mi       1.2Gi       1.2Gi
 Swap:          4.0Gi       219Mi       3.8Gi
 
 === LOAD AVERAGE ===
-0.49 0.52 0.46 4/671 2041170
+0.38 0.40 0.43 1/672 2041935
 
 === PROCESS STATUS ===
 Trading processes:
-console  2019203  0.6 15.6 2068828 626744 ?      Ssl  01:46   6:13 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  2027404  0.0  7.7 1371424 308784 ?      Sl   08:15   0:16 /home/console/real_options/venv/bin/python position_monitor.py
+console  2019203  0.6 15.6 2068828 627000 ?      Ssl  01:46   6:18 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2027404  0.0  7.7 1371424 308912 ?      Sl   08:15   0:16 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  2019264  0.3  1.9 606508 79844 ?        Sl   01:46   3:14 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2019264  0.3  1.9 606508 79844 ?        Sl   01:46   3:20 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,7 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
-2026-03-16 04:20:50,248 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-16 04:20:50,250 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-16 04:21:31,435 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
 2026-03-16 04:21:31,436 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
@@ -56,6 +55,7 @@ Recent orchestrator errors [multi]:
 2026-03-16 16:28:01,108 - trading_bot.agents - WARNING - [geopolitical] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
 2026-03-16 16:28:09,382 - trading_bot.weighted_voting - WARNING - Agent geopolitical: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
 2026-03-16 16:28:31,181 - trading_bot.weighted_voting - WARNING - Agent geopolitical: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-16 17:06:24,963 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Liquidity Depletion: 10% of average
 
 Recent orchestrator errors [KC]:
 2026-03-16 10:06:56,665 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
@@ -68,7 +68,6 @@ Recent orchestrator errors [KC]:
 2026-03-16 15:39:15,701 - Orchestrator - ERROR - Drawdown guard check failed (fail-closed): 
 
 Recent orchestrator errors [NG]:
-2026-03-16 04:21:31,435 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
 2026-03-16 04:21:31,436 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
 2026-03-16 15:36:25,953 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade fails multiple pre-mortem stress tests simultaneously. The core analytical error is that a 0.8 confidence BEARISH call was constructed on a foundation where 3 of 8 agents were NEUTRAL or BULLISH, consensus confidence was only 0.61, and CVOL sits at an extreme 84.42 — a regime that structurally punishes directional shorts because the options market is pricing in violent move potential in BOTH directions. We succumbed to at least three distinct cognitive biases: (1) RECENCY BIAS — the -6.18% three-session decline was treated as momentum confirmation rather than recognized as a potential exhaustion move into a crowded short; (2) CONFIRMATION BIAS — bearish evidence was counted as 'independent lines' when supply/storage/demand signals are highly correlated and derive from the same macro regime, inflating perceived convergence; (3) CROWDED TRADE RISK — CFTC spec shorts at -206.4K contracts is not a continuation signal, it is a coiled spring. The bear case described is already IN THE PRICE. Markets don't pay you for consensus. The asymmetric risk here is violently to the upside: geopolitical tail risk (Hormuz) + weather optionality + crowded positioning + extreme vol regime = the trade that feels most justified by the data is the one most likely to be catastrophically wrong. If this trade is taken at all, size must be reduced to a fraction of normal allocation and hard stops must be set at $3.35 (the pre-decline level). The 0.8 stated confidence is not warranted given agent disagreement, vol regime, and the pre-mortem scenarios above. Recommended action: PASS on this trade entirely or wait for a dead-cat bounce to $3.25-3.30 before entering with a defined-risk structure (e.g., put spreads if IV normalizes, not naked directional futures exposure).
 2026-03-16 15:40:21,709 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Liquidity Depletion: 9% of average
@@ -78,4 +77,5 @@ Recent orchestrator errors [NG]:
 2026-03-16 16:28:01,108 - trading_bot.agents - WARNING - [geopolitical] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
 2026-03-16 16:28:09,382 - trading_bot.weighted_voting - WARNING - Agent geopolitical: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
 2026-03-16 16:28:31,181 - trading_bot.weighted_voting - WARNING - Agent geopolitical: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-16 17:06:24,963 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Liquidity Depletion: 10% of average
 
