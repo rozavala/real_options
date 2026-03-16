@@ -8,6 +8,7 @@ Usage:
 """
 
 import asyncio
+import math
 import os
 import sys
 
@@ -70,10 +71,17 @@ async def main():
         await ib.qualifyContractsAsync(c)
         ticker = ib.reqMktData(c, genericTickList="", snapshot=False)
 
-        # Wait up to 5 seconds for data to arrive
-        for _ in range(50):
+        # Wait up to 10 seconds for data to arrive
+        # ib_insync initializes fields to float('nan'), not None
+        def has_data(t):
+            for val in (t.last, t.bid, t.ask):
+                if val is not None and not math.isnan(val):
+                    return True
+            return False
+
+        for _ in range(100):
             await asyncio.sleep(0.1)
-            if ticker.last is not None or ticker.bid is not None:
+            if has_data(ticker):
                 break
 
         # Determine data type from marketDataType field
@@ -82,14 +90,14 @@ async def main():
         type_labels = {1: "LIVE", 2: "FROZEN", 3: "DELAYED", 4: "DELAYED_FROZEN"}
         type_str = type_labels.get(md_type, f"UNKNOWN({md_type})")
 
-        last = ticker.last if ticker.last is not None else "-"
-        bid = ticker.bid if ticker.bid is not None else "-"
-        ask = ticker.ask if ticker.ask is not None else "-"
-        volume = ticker.volume if ticker.volume is not None else "-"
+        def fmt(val):
+            if val is None or (isinstance(val, float) and math.isnan(val)):
+                return "-"
+            return str(val)
 
         print(f"{c.symbol:4s}  {c.localSymbol:12s}  "
-              f"last={last!s:>8s}  bid={bid!s:>8s}  ask={ask!s:>8s}  "
-              f"vol={volume!s:>10s}  dataType={type_str}")
+              f"last={fmt(ticker.last):>8s}  bid={fmt(ticker.bid):>8s}  ask={fmt(ticker.ask):>8s}  "
+              f"vol={fmt(ticker.volume):>10s}  dataType={type_str}")
 
         ib.cancelMktData(c)
 
