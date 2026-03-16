@@ -1346,3 +1346,88 @@
 2026-03-16 18:25:00,013 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
 2026-03-16 18:25:00,017 - Orchestrator - INFO - [OFF] emergency_hard_close skipped — no positions exist in OFF mode
 2026-03-16 18:25:00,023 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-16 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-16 18:35:00,010 - Engine.NG - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-03-16 18:35:00,020 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
+2026-03-16 18:35:00,027 - Engine.NG - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-03-16 18:38:00 UTC. Waiting for 0.05 hours.
+2026-03-16 18:38:00,010 - Engine.NG - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-03-16 18:38:00,018 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-03-16 18:38:00,019 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
+2026-03-16 18:38:00,019 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-03-16 18:38:00,019 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-16 18:38:00,019 - TradeReconciler - INFO - Fetching report for Query ID: 1370939
+2026-03-16 18:38:00,297 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-16 18:38:10,303 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-16 18:38:10,428 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-16 18:38:10,431 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-03-16 18:38:10,432 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-03-16 18:38:10,432 - TradeReconciler - INFO - Fetching report for Query ID: 1370908
+2026-03-16 18:38:10,639 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-16 18:38:20,649 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-16 18:38:20,858 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-16 18:38:20,862 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-03-16 18:38:20,863 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-03-16 18:38:20,863 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
+2026-03-16 18:38:20,864 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-03-16 18:38:20,864 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-03-16 18:38:21,151 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-16 18:38:31,162 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-16 18:38:31,304 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-16 18:38:31,308 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-03-16 18:38:31,309 - TradeReconciler - WARNING - No trade ledger data found.
+2026-03-16 18:38:31,318 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-03-16 18:38:31,318 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-03-16 18:38:31,713 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-16 18:38:32,183 - trading_bot.reconciliation - INFO - No rows required updates.
+2026-03-16 18:38:35,188 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-03-16 18:38:35,188 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-03-16 18:38:35,188 - PerformanceAnalyzer - INFO - Archive directory not found, skipping.
+2026-03-16 18:38:35,189 - PerformanceAnalyzer - WARNING - No trade ledger data found to consolidate.
+2026-03-16 18:38:35,194 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-03-16 18:38:35,704 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $32,331.59
+2026-03-16 18:38:37,709 - PerformanceAnalyzer - INFO - Successfully fetched 0 execution(s) for today from IB.
+2026-03-16 18:38:40,720 - PerformanceAnalyzer - WARNING - Trade ledger is empty, skipping chart generation.
+2026-03-16 18:38:40,721 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-03-16 18:38:41,034 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 18:38:41,039 - root - INFO - 'trade_ledger.csv' not found, no action taken.
+2026-03-16 18:38:41,049 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-16 18:38:41,051 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=64
+2026-03-16 18:38:41,052 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-03-16 18:38:41,052 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-03-16 18:38:41,075 - Engine.NG - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-03-16 18:50:00 UTC. Waiting for 0.19 hours.
+2026-03-16 18:50:00,013 - Engine.NG - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-03-16 18:50:00,019 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-16 18:50:00,020 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-03-16 18:50:00,020 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-16 18:50:00,038 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,039 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,039 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,039 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,039 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,039 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,040 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,040 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,040 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,040 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,042 - Orchestrator - WARNING - Brier stall: 88 pending, 0 resolved today (streak: 1 days)
+2026-03-16 18:50:00,042 - Orchestrator - INFO - Running feedback loop health check...
+2026-03-16 18:50:00,042 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
+2026-03-16 18:50:00,050 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-03-16 18:53:00 UTC. Waiting for 0.05 hours.
+2026-03-16 18:53:00,012 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-03-16 18:53:00,016 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-03-16 18:53:00,117 - Orchestrator - WARNING - 🟡 SENTINEL EFFECTIVENESS ALERT\nNatural Gas (Henry Hub) weekly change: -5.5%\nSentinel alerts: 18, Trades from sentinels: 0\nDiagnosis: Pipeline working — DA vetoed 2/10 council decisions today (risk management working as intended)
+2026-03-16 18:53:00,124 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-03-16 18:56:00 UTC. Waiting for 0.05 hours.
+2026-03-16 18:56:00,003 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-03-16 18:56:00,007 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-03-16 18:56:00,007 - Orchestrator - INFO - Scheduled shutdown flag SET — no new scheduled trades will be processed
+2026-03-16 18:56:00,008 - OrderManager - INFO - [OFF] cancel_all_open_orders skipped — no real orders exist in OFF mode
+2026-03-16 18:56:00,010 - Orchestrator - INFO - Market entering PASSIVE state — position monitor stays alive, emergency cycles remain enabled
+2026-03-16 18:56:00,011 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-03-16 18:56:00,017 - Engine.NG - INFO - Next task 'system_digest' (System Health Digest) scheduled for 2026-03-16 19:00:00 UTC. Waiting for 0.07 hours.
+2026-03-16 19:00:00,012 - Engine.NG - INFO - --- Running scheduled task: system_digest [generate_system_digest_task] ---
+2026-03-16 19:00:00,018 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
+2026-03-16 19:00:00,273 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 9 agents: {agronomist: 0.47, geopolitical: 0.20, inventory: 0.46, macro: 0.02, master_decision: 0.33, sentiment: 0.41, supply_chain: 0.51, technical: 0.42, volatility: 0.24}
+2026-03-16 19:00:00,316 - trading_bot.brier_scoring - INFO - No accuracy history file found
+2026-03-16 19:00:00,330 - trading_bot.brier_scoring - INFO - No accuracy history file found
+2026-03-16 19:00:00,376 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-16_fb68cc163d03 (3 commodities, 5 improvement opportunities)
+2026-03-16 19:00:01,869 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 19:00:01,986 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-17 12:15:00 UTC. Waiting for 17.25 hours.
