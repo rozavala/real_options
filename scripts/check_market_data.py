@@ -14,15 +14,26 @@ import sys
 # Allow imports from project root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ib_insync import IB, Future
+from ib_insync import IB, Future, ContractDetails
 from config_loader import load_config
 
 
-# Contracts to check — front-month futures for each active commodity
-CONTRACTS = [
-    Future(symbol="KC", exchange="NYBOT", currency="USD"),
-    Future(symbol="NG", exchange="NYMEX", currency="USD"),
+# Symbols to check with their exchanges
+SYMBOLS = [
+    ("KC", "NYBOT", "USD"),
+    ("NG", "NYMEX", "USD"),
 ]
+
+
+async def resolve_front_month(ib: IB, symbol: str, exchange: str, currency: str):
+    """Find the front-month (nearest expiry) future contract."""
+    generic = Future(symbol=symbol, exchange=exchange, currency=currency)
+    details: list[ContractDetails] = await ib.reqContractDetailsAsync(generic)
+    if not details:
+        return None
+    # Sort by expiry and pick the nearest
+    details.sort(key=lambda d: d.contract.lastTradeDateOrContractMonth)
+    return details[0].contract
 
 
 async def main():
@@ -49,14 +60,14 @@ async def main():
     print(f"Connected  (server v{ib.client.serverVersion()})")
     print("-" * 60)
 
-    for contract in CONTRACTS:
-        # Qualify to get the front-month expiry
-        qualified = await ib.qualifyContractsAsync(contract)
-        if not qualified:
-            print(f"{contract.symbol:4s}  Could not qualify contract")
+    for symbol, exchange, currency in SYMBOLS:
+        c = await resolve_front_month(ib, symbol, exchange, currency)
+        if c is None:
+            print(f"{symbol:4s}  Could not resolve front-month contract")
             continue
 
-        c = qualified[0]
+        # Qualify so ib_insync tracks it properly
+        await ib.qualifyContractsAsync(c)
         ticker = ib.reqMktData(c, genericTickList="", snapshot=False)
 
         # Wait up to 5 seconds for data to arrive
