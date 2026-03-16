@@ -112,7 +112,7 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
             st.caption(f"Triggers: {triggers}")
 
 
-def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
+def render_portfolio_risk_summary(live_data: dict, active_theses: list = None, ticker: str = None):
     """Portfolio risk using margin/P&L proxies (not live Greeks)."""
     st.subheader("📊 Portfolio Risk")
 
@@ -155,8 +155,23 @@ def render_portfolio_risk_summary(live_data: dict, active_theses: list = None):
             )
 
     with cols[3]:
-        # Filter for active positions (quantity != 0)
-        positions = [p for p in live_data.get('open_positions', []) if p.position != 0]
+        # Filter for active positions (quantity != 0), scoped to selected commodity
+        _IBKR_SYMBOL_PREFIXES = {
+            "KC": ("KC", "KO"), "CC": ("CC", "DC"),
+            "SB": ("SB", "SO"),
+            "NG": ("NG", "LNE", "LN1", "LN2", "LN3", "LN4", "LN5"),
+        }
+        prefixes = _IBKR_SYMBOL_PREFIXES.get(ticker, (ticker,)) if ticker else None
+
+        def _belongs_to_commodity(pos):
+            if pos.position == 0:
+                return False
+            if prefixes is None:
+                return True
+            sym = getattr(pos.contract, 'localSymbol', '') or getattr(pos.contract, 'symbol', '')
+            return any(sym.startswith(p) for p in prefixes)
+
+        positions = [p for p in live_data.get('open_positions', []) if _belongs_to_commodity(p)]
         leg_count = len(positions)
 
         # Count positions (spreads) from TMS theses
@@ -827,7 +842,7 @@ if config:
     benchmarks = fetch_todays_benchmark_data(commodity_tickers=_all_commodities)
 
     # Render Portfolio Risk
-    render_portfolio_risk_summary(live_data, _active_theses)
+    render_portfolio_risk_summary(live_data, _active_theses, ticker=ticker)
 
     # === E.1: Portfolio VaR Display ===
     try:
