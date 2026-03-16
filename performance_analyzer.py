@@ -277,10 +277,18 @@ def generate_morning_signals_report(signals_df: pd.DataFrame, today_date: dateti
 
     report = f"{'Contract':<12} {'Signal':<10}\n"
     report += "-" * 22 + "\n"
-    for _, row in today_signals.iterrows():
-        contract_col = 'contract' if 'contract' in row.index else 'symbol'
-        signal_col = 'signal' if 'signal' in row.index else 'master_decision'
-        report += f"{row.get(contract_col, 'N/A'):<12} {row.get(signal_col, 'N/A'):<10}\n"
+
+    # ⚡ Bolt: Vectorized string formatting is significantly faster than .iterrows() loop
+    contract_col = 'contract' if 'contract' in today_signals.columns else 'symbol'
+    signal_col = 'signal' if 'signal' in today_signals.columns else 'master_decision'
+
+    c_series = today_signals.get(contract_col, pd.Series("N/A", index=today_signals.index)).fillna("N/A").astype(str)
+    s_series = today_signals.get(signal_col, pd.Series("N/A", index=today_signals.index)).fillna("N/A").astype(str)
+
+    # Format and concatenate strings vectorially
+    formatted_lines = c_series.str.ljust(12) + " " + s_series.str.ljust(10)
+    report += formatted_lines.str.cat(sep="\n") + "\n"
+
     return report
 
 def generate_open_positions_report(portfolio: list) -> tuple[str, float]:
