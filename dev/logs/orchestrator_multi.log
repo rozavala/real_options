@@ -13831,3 +13831,117 @@
 2026-03-16 18:25:00,355 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
 2026-03-16 18:25:00,355 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
 2026-03-16 18:25:03,365 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-16 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-16 18:35:00,011 - Engine.NG - INFO - --- Running scheduled task: log_equity_snapshot [log_equity_snapshot] ---
+2026-03-16 18:35:00,014 - EquityLogger - INFO - Equity snapshot skipped (non-primary engine).
+2026-03-16 18:35:00,019 - Engine.NG - INFO - Next task 'reconcile_and_analyze' (Reconcile & Analyze) scheduled for 2026-03-16 18:38:00 UTC. Waiting for 0.05 hours.
+2026-03-16 18:38:00,011 - Engine.NG - INFO - --- Running scheduled task: reconcile_and_analyze [reconcile_and_analyze] ---
+2026-03-16 18:38:00,016 - Orchestrator - INFO - --- Kicking off end-of-day reconciliation and analysis process ---
+2026-03-16 18:38:00,017 - EquityLogger - INFO - Equity sync skipped (non-primary engine).
+2026-03-16 18:38:00,017 - Orchestrator - INFO - --- Starting trade reconciliation ---
+2026-03-16 18:38:00,017 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-16 18:38:00,018 - TradeReconciler - INFO - Fetching report for Query ID: 1328326
+2026-03-16 18:38:00,276 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-16 18:38:10,280 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-16 18:38:10,478 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-16 18:38:10,481 - TradeReconciler - INFO - Parsed 155 executions from the Flex Query report.
+2026-03-16 18:38:10,509 - TradeReconciler - INFO - Successfully processed 155 trades into the reconciliation DataFrame.
+2026-03-16 18:38:10,510 - TradeReconciler - INFO - Fetching report for Query ID: 1331422
+2026-03-16 18:38:10,681 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-16 18:38:20,691 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-16 18:38:20,807 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-16 18:38:20,809 - TradeReconciler - INFO - Parsed 12 executions from the Flex Query report.
+2026-03-16 18:38:20,820 - TradeReconciler - INFO - Successfully processed 12 trades into the reconciliation DataFrame.
+2026-03-16 18:38:20,823 - TradeReconciler - INFO - Consolidated to 167 unique trades from all reports.
+2026-03-16 18:38:20,824 - TradeReconciler - INFO - Filtered IB trades by commodity NG (prefixes ('NG', 'LNE', 'LN1', 'LN2', 'LN3', 'LN4', 'LN5')): 167 -> 67
+2026-03-16 18:38:20,826 - TradeReconciler - INFO - Loaded 6 trades from the main ledger.
+2026-03-16 18:38:20,826 - TradeReconciler - INFO - Found 13 archived ledger files.
+2026-03-16 18:38:20,862 - TradeReconciler - INFO - Consolidated a total of 67 trades from all ledgers.
+2026-03-16 18:38:20,865 - TradeReconciler - INFO - Filtered IB trades from 67 to 67 records within the last 30 days.
+2026-03-16 18:38:20,866 - TradeReconciler - INFO - Filtered local ledger from 67 to 67 records within the last 30 days.
+2026-03-16 18:38:20,984 - TradeReconciler - INFO - Reconciliation complete. Found 0 trade(s) missing from local ledger. Found 0 superfluous trade(s) in local ledger.
+2026-03-16 18:38:20,985 - TradeReconciler - INFO - No discrepancies found. The local ledger is perfectly in sync with the IB report.
+2026-03-16 18:38:20,985 - Orchestrator - INFO - Trade reconciliation complete. No discrepancies found.
+2026-03-16 18:38:20,985 - TradeReconciler - INFO - Starting Active Position Reconciliation...
+2026-03-16 18:38:21,178 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-16 18:38:31,188 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-16 18:38:31,318 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-16 18:38:31,323 - TradeReconciler - INFO - Parsed 0 positions from the Flex Query report.
+2026-03-16 18:38:31,326 - TradeReconciler - INFO - Loaded 6 trades from the main ledger.
+2026-03-16 18:38:31,327 - TradeReconciler - INFO - Found 13 archived ledger files.
+2026-03-16 18:38:31,357 - TradeReconciler - INFO - Consolidated a total of 67 trades from all ledgers.
+2026-03-16 18:38:31,361 - TradeReconciler - INFO - Skipping reconciliation for recently traded symbols: {'LNEU6 P3450', 'LNEQ6 P3500', 'LNEN6 P3400', 'LNEQ6 P3450', 'LNEU6 P3500', 'LNEN6 P3350'}
+2026-03-16 18:38:31,365 - TradeReconciler - INFO - Active Position Reconciliation complete. No discrepancies found.
+2026-03-16 18:38:31,366 - trading_bot.reconciliation - INFO - --- Starting Council History Reconciliation ---
+2026-03-16 18:38:31,606 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-16 18:38:31,839 - trading_bot.reconciliation - INFO - No rows required updates.
+2026-03-16 18:38:34,843 - Orchestrator - INFO - --- Initiating end-of-day analysis and archiving ---
+2026-03-16 18:38:34,844 - PerformanceAnalyzer - INFO - --- Consolidating Trade Ledgers ---
+2026-03-16 18:38:34,844 - PerformanceAnalyzer - INFO - Loading main trade ledger: trade_ledger.csv
+2026-03-16 18:38:34,848 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_v2.csv
+2026-03-16 18:38:34,852 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260311_184006.csv
+2026-03-16 18:38:34,856 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260226_194006.csv
+2026-03-16 18:38:34,861 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260313_184144.csv
+2026-03-16 18:38:34,865 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260305_194013.csv
+2026-03-16 18:38:34,868 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_194136.csv
+2026-03-16 18:38:34,871 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260310_184130.csv
+2026-03-16 18:38:34,875 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260305_v2.csv
+2026-03-16 18:38:34,878 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260312_183841.csv
+2026-03-16 18:38:34,881 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260304_v2.csv
+2026-03-16 18:38:34,885 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_missing_trades.csv
+2026-03-16 18:38:34,888 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260227_v2.csv
+2026-03-16 18:38:34,891 - PerformanceAnalyzer - INFO - Loading archived ledger: trade_ledger_20260313_v2.csv
+2026-03-16 18:38:34,898 - PerformanceAnalyzer - INFO - Consolidated a total of 67 trade records.
+2026-03-16 18:38:34,902 - PerformanceAnalyzer - INFO - --- Starting Daily Performance Analysis ---
+2026-03-16 18:38:35,089 - PerformanceAnalyzer - INFO - Fetched Net Liquidation Value: $23,467.06
+2026-03-16 18:38:37,101 - PerformanceAnalyzer - INFO - Successfully fetched 18 execution(s) for today from IB.
+2026-03-16 18:38:40,818 - PerformanceAnalyzer - INFO - --- Analysis Complete ---
+2026-03-16 18:38:41,148 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-16 18:38:41,394 - notifications - INFO - Pushover chunk sent successfully (Attachment: True).
+2026-03-16 18:38:41,398 - root - INFO - Successfully archived 'trade_ledger.csv' to '/home/rodrigo/real_options/data/NG/archive_ledger/trade_ledger_20260316_183841.csv'
+2026-03-16 18:38:41,409 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-16 18:38:41,411 - Orchestrator - INFO - TMS Diagnostics: Status=active, Docs=1262
+2026-03-16 18:38:41,411 - Orchestrator - INFO - --- End-of-day analysis and archiving complete ---
+2026-03-16 18:38:41,411 - Orchestrator - INFO - --- End-of-day reconciliation and analysis process complete ---
+2026-03-16 18:38:41,419 - Engine.NG - INFO - Next task 'brier_reconciliation' (Brier Reconciliation) scheduled for 2026-03-16 18:50:00 UTC. Waiting for 0.19 hours.
+2026-03-16 18:50:00,010 - Engine.NG - INFO - --- Running scheduled task: brier_reconciliation [run_brier_reconciliation] ---
+2026-03-16 18:50:00,015 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-16 18:50:00,016 - Orchestrator - INFO - Brier reconciliation complete: 0 predictions resolved
+2026-03-16 18:50:00,016 - trading_bot.enhanced_brier - INFO - Backfill Pass 2 skipped (legacy CSV deprecated 2026-03-01, no new rows to import)
+2026-03-16 18:50:00,071 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,071 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,072 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,072 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,072 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,073 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,073 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,073 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,073 - trading_bot.enhanced_brier - WARNING - Unresolvable outcome: atd='nan', ptype='DIRECTIONAL', vol='nan'
+2026-03-16 18:50:00,083 - Orchestrator - WARNING - Brier stall: 80 pending, 0 resolved today (streak: 1 days)
+2026-03-16 18:50:00,084 - Orchestrator - INFO - Running feedback loop health check...
+2026-03-16 18:50:00,084 - Orchestrator - INFO - Feedback Loop Health: No structured predictions file yet (expected for new deployments)
+2026-03-16 18:50:00,092 - Engine.NG - INFO - Next task 'sentinel_effectiveness' (Sentinel Effectiveness Check) scheduled for 2026-03-16 18:53:00 UTC. Waiting for 0.05 hours.
+2026-03-16 18:53:00,006 - Engine.NG - INFO - --- Running scheduled task: sentinel_effectiveness [sentinel_effectiveness_check] ---
+2026-03-16 18:53:00,011 - Orchestrator - INFO - --- Sentinel Effectiveness Check ---
+2026-03-16 18:53:00,099 - Orchestrator - INFO - Sentinel effectiveness OK: weekly change -5.5%, alerts: 163, sentinel trades: 2
+2026-03-16 18:53:00,105 - Engine.NG - INFO - Next task 'eod_shutdown' (End-of-Day Shutdown) scheduled for 2026-03-16 18:56:00 UTC. Waiting for 0.05 hours.
+2026-03-16 18:56:00,004 - Engine.NG - INFO - --- Running scheduled task: eod_shutdown [cancel_and_stop_monitoring] ---
+2026-03-16 18:56:00,009 - Orchestrator - INFO - --- Initiating end-of-day shutdown sequence ---
+2026-03-16 18:56:00,010 - Orchestrator - INFO - Scheduled shutdown flag SET — no new scheduled trades will be processed
+2026-03-16 18:56:00,010 - OrderManager - INFO - --- Canceling any remaining open DAY orders ---
+2026-03-16 18:56:00,011 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1238 [REMOTE/PAPER]...
+2026-03-16 18:56:00,482 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1238
+2026-03-16 18:56:00,488 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-16 18:56:00,489 - OrderManager - INFO - Connected to IB for canceling open orders (purpose: orchestrator_orders).
+2026-03-16 18:56:00,492 - OrderManager - INFO - No open orders found to cancel.
+2026-03-16 18:56:00,492 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-16 18:56:00,492 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-16 18:56:03,499 - Orchestrator - INFO - Market entering PASSIVE state — position monitor stays alive, emergency cycles remain enabled
+2026-03-16 18:56:03,499 - Orchestrator - INFO - --- End-of-day shutdown sequence complete ---
+2026-03-16 18:56:03,505 - Engine.NG - INFO - Next task 'system_digest' (System Health Digest) scheduled for 2026-03-16 19:00:00 UTC. Waiting for 0.07 hours.
+2026-03-16 19:00:00,007 - Engine.NG - INFO - --- Running scheduled task: system_digest [generate_system_digest_task] ---
+2026-03-16 19:00:00,012 - trading_bot.system_digest - INFO - --- Generating System Health Digest ---
+2026-03-16 19:00:00,132 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.41}
+2026-03-16 19:00:00,230 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.00}
+2026-03-16 19:00:00,306 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.29}
+2026-03-16 19:00:00,357 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-16_bfd52419dee3 (3 commodities, 11 improvement opportunities)
+2026-03-16 19:00:00,368 - Engine.NG - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-17 12:15:00 UTC. Waiting for 17.25 hours.
