@@ -3722,6 +3722,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
+        return {"failed_closes": len(failed_closes), "attempted": len(positions_to_close)}
+
     except Exception as e:
         msg = f"A critical error occurred while closing positions: {e}"
         logger.critical(msg, exc_info=True)
@@ -3731,6 +3733,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
             await IBConnectionPool._force_reset_connection(connection_purpose)
         except Exception as e:
             logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
+        return {"failed_closes": -1, "attempted": 0, "error": True}
     finally:
         if ib is not None:
             try:
