@@ -4492,7 +4492,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
 
                         order_objects = await create_combo_order_object(ib, config, strategy_def)
                         if order_objects:
-                            contract, order = order_objects
+                            contract, order, _ = order_objects
 
                             # Queue and Execute (Fix Global Queue Collision)
                             # Pass specific list to place_queued_orders so we don't wipe the global queue

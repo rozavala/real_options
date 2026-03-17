@@ -94,7 +94,7 @@ class TestIbInterface(unittest.TestCase):
 
             # 4. Assertions
             self.assertIsNotNone(result)
-            _, market_order = result
+            _, market_order, _ = result
             self.assertIsInstance(market_order, Order)
             self.assertEqual(market_order.orderType, "MKT")
             self.assertEqual(market_order.action, "BUY")
@@ -150,7 +150,7 @@ class TestIbInterface(unittest.TestCase):
 
             # 4. Assertions
             self.assertIsNotNone(result)
-            _, limit_order = result
+            _, limit_order, _ = result
 
             # Theoretical Price: 1.0 (buy) - 0.5 (sell) = 0.5
             # Fixed Slippage: 0.2
