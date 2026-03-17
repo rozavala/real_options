@@ -598,6 +598,7 @@ with st.expander("Raw Funnel Data", expanded=False):
             display_df.to_csv(index=False).encode('utf-8'),
             f"execution_funnel_{ticker}.csv",
             "text/csv",
+            help="Download the complete execution funnel data as a CSV file for detailed analysis."
         )
     else:
         st.info("No funnel data available.")
