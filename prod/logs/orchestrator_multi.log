@@ -5063,3 +5063,130 @@
 2026-03-17 16:29:27,098 - trading_bot.strategy_router - INFO - NO TRADE (scheduled): vol=NEUTRAL, regime=HIGH_VOLATILITY
 2026-03-17 16:29:27,098 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for NGQ26
 2026-03-17 16:29:32,381 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.460883 seconds
+2026-03-17 16:30:38,556 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2310, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:30:56,172 - trading_bot.agents - INFO - Master Decision: BEARISH | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: High-probability domestic oversupply/shoulder-season softnes
+2026-03-17 16:30:56,172 - trading_bot.signal_generator - INFO - Consensus Sensor: Master=BEARISH, Vote=NEUTRAL → multiplier=1.0, adj_confidence=0.8
+2026-03-17 16:30:56,179 - trading_bot.signal_generator - INFO - DA SKIPPED: Scheduled cycle (v7.0 — DA reserved for emergency triggers)
+2026-03-17 16:30:59,448 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:31:05,724 - trading_bot.signal_generator - INFO - Council Decision NGU26 (202608): BEARISH (0.8)
+2026-03-17 16:31:05,727 - root - INFO - Logged council decision for NGU26 (202608)
+2026-03-17 16:31:05,732 - trading_bot.decision_signals - INFO - Decision signal logged: NGU26 (202608) → BEARISH (DIRECTIONAL/BEAR_PUT_SPREAD)
+2026-03-17 16:31:05,757 - trading_bot.prompt_trace - INFO - Flushed 19 prompt traces to /home/console/real_options/data/NG/prompt_trace.csv
+2026-03-17 16:31:05,766 - trading_bot.signal_generator - WARNING - CONVICTION GATE: Suppressing BEARISH signal for NGU26 (202608). |weighted_score|=0.0347 < threshold=0.2. Overriding to NEUTRAL (no trade).
+2026-03-17 16:31:05,767 - trading_bot.signal_generator - INFO - NO TRADE: vol=NEUTRAL, regime=HIGH_VOLATILITY, catalyst=None
+2026-03-17 16:31:05,767 - trading_bot.strategy_router - INFO - NO TRADE (scheduled): vol=NEUTRAL, regime=HIGH_VOLATILITY
+2026-03-17 16:31:05,768 - trading_bot.signal_generator - INFO - Router decision: DIRECTIONAL/None for NGU26
+2026-03-17 16:31:05,782 - trading_bot.signal_generator - INFO - Persisted 8 agent reports to state.
+2026-03-17 16:31:05,784 - OrderManager - INFO - Generated 4 signals: [{'contract_month': '202605', 'prediction_type': 'DIRECTIONAL', 'direction': 'BEARISH', 'reason': 'The Permabear argument is more grounded in the data packet because it leans on multiple direct, domestic balance-sheet indicators that connect cleanly to Henry Hub pricing, whereas the Permabull relies more on second-order inferences (global LNG stress must translate into incremental U.S. feedgas demand) while downplaying contradictory domestic signals.\n\nIndependent bearish lines of evidence (different mechanisms):\n1) Storage/draw pattern: Inventory and Agronomist both cite the 38 Bcf withdrawal to 1,848 Bcf, explicitly described as below expectation and well below the 5-year seasonal norm, which is a concrete bearish balance signal entering injection season. Separately, Sentiment/Volatility cite the first net injection (~42 Bcf) and Volatility notes this flips to a surplus vs the five-year average—another independent sign that the market is moving into a looser regime.\n2) Supply: Multiple reports converge on high production (near-record ~110 Bcf/d; Agronomist additionally references record-level framing and EIA’s 2026 production outlook). This is a direct domestic bearish driver, not a narrative proxy.\n3) Demand softness: Macro reports a ~10% week-over-week demand drop tied to warmer weather—seasonal, but it’s the only clearly quantified broad demand swing in the packet and it points down.\n4) Market/derivatives sentiment: Sentiment highlights persistent heavy net shorts and summer put skew (downside concern). While positioning can create squeeze risk, it still corroborates that informed participants are leaning bearish. \n5) Price/trend context as a soft factor: Price is materially below the 200-day SMA and the 5-day trend is sharply negative. Per the framework, this can’t override fundamentals, but here it is consistent with them.\n\nWhy the bull is less grounded:\n- The bull’s core premise is that global LNG tightness (Europe storage at 18%, Hormuz disruption, high Asian spot prices) will force higher U.S. LNG utilization and lift Henry Hub. That link is plausible, but the Macro report itself flags the causal chain as not fully evidenced (limited data on utilization changes/outages; Golden Pass flows may be commissioning and still small). \n- Bullish domestic items (SNG OFOs, strong LNG exports, Waha constraints) are real but partly regional/operational and do not overturn the broader signals of high production plus the market transitioning to injections. The bull also overweights the 17 Bcf below-5yr storage detail, which the Inventory report explicitly characterizes as “within noise” and not a scarcity premium.\n\nHegelian synthesis: the bear fairly acknowledges squeeze/geopolitical tail risks, and the bull is right that LNG/export call provides a floor and can create upside spikes. But to justify a directional bullish stance, the bull needed stronger independent confirmation that geopolitics is translating into sustained incremental U.S. feedgas demand beyond what is already a “known feature” (~20 Bcf/d feedgas floor) and beyond what domestic loosening (injections + high supply) is signaling.\n\nVolatility cost awareness: CVOL is discussed but not as “options are expensive.” Therefore no automatic thesis-strength downgrade applies. Still, the mixture of signals (global bullish vs domestic bearish) and some data staleness in inventory items argues against “PROVEN.” [Consensus ALIGNED (Vote=BEARISH)] [VOL WARNING: Options expensive. Spread costs elevated. Thesis: PLAUSIBLE]', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'BEARISH', 'confidence': 0.8, 'price': 3.137, 'sma_200': 3.6742000000000004, 'expected_price': 3.137, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0, '_cycle_id': 'NG-8b5635a7'}, {'contract_month': '202606', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=RANGE_BOUND, conflict=0.56)', 'regime': 'RANGE_BOUND', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.8, 'price': 3.422, 'sma_200': 3.8800049999999997, 'expected_price': 3.422, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0, '_cycle_id': 'NG-0b859f0e'}, {'contract_month': '202607', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=HIGH_VOLATILITY, conflict=0.56)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.8, 'price': 3.509, 'sma_200': 3.9361599999999997, 'expected_price': 3.509, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0, '_cycle_id': 'NG-90b0176c'}, {'contract_month': '202608', 'prediction_type': 'DIRECTIONAL', 'direction': 'NEUTRAL', 'reason': 'NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=HIGH_VOLATILITY, conflict=0.40)', 'regime': 'HIGH_VOLATILITY', 'volatility_sentiment': 'NEUTRAL', 'confidence': 0.8, 'price': 3.491, 'sma_200': 3.900315, 'expected_price': 3.491, 'predicted_return': 0.0, 'thesis_strength': 'PLAUSIBLE', 'conviction_multiplier': 1.0, '_cycle_id': 'NG-6a3a0e1f'}]
+2026-03-17 16:31:05,789 - root - INFO - Fetching 5 active futures contracts for NG on NYMEX...
+2026-03-17 16:31:05,794 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-03-17 16:31:05,795 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-03-17 16:31:05,993 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-17 16:31:05,993 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-17 16:31:05,998 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-03-17 16:31:06,000 - OrderManager - INFO - Skipping NGV26: Too deferred (194 days > 180 max)
+2026-03-17 16:31:06,001 - OrderManager - INFO - Date filter passed: 4/5 contracts within 180 days.
+2026-03-17 16:31:06,002 - OrderManager - INFO - Checking liquidity for 4 contracts (parallel)...
+2026-03-17 16:31:08,506 - OrderManager - INFO - Liquidity check cleanup complete.
+2026-03-17 16:31:08,507 - OrderManager - INFO - Volume filter passed: 4 liquid candidates proceeding to signal generation.
+2026-03-17 16:31:08,577 - OrderManager - INFO - Account Value for Sizing: $32,333.33
+2026-03-17 16:31:08,582 - OrderManager - INFO - L1 RECONCILED: Reset committed capital from $8,340.00 to $0.00
+2026-03-17 16:31:08,594 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-17 16:31:08,600 - OrderManager - INFO - Requesting snapshot market price for NGM26...
+2026-03-17 16:31:08,644 - OrderManager - INFO - Using bid/ask midpoint for NGM26: 3.1215
+2026-03-17 16:31:08,644 - root - INFO - Fetching option chain for future NGM26...
+2026-03-17 16:31:08,690 - root - INFO - --- Defining BEARISH Spread for NGM26 ---
+2026-03-17 16:31:08,691 - root - WARNING - No strikes near 3.1215 meet min OI threshold (10). Using closest strike 3.1 anyway.
+2026-03-17 16:31:08,692 - root - INFO - Identified ATM strike: 3.1 for underlying price 3.1215
+2026-03-17 16:31:08,693 - root - WARNING - No strikes near 3.055518625 meet min OI threshold (10). Using closest strike 3.05 anyway.
+2026-03-17 16:31:08,693 - root - INFO - Defined Bear Put Spread legs: BUY 3.1P, SELL 3.05P
+2026-03-17 16:31:08,695 - trading_bot.position_sizer - INFO - Dynamic Sizing: Base=1 * Conf(0.90) * Vol(0.6) * Heat(1.0) * Conviction(1.0) = 1 (raw: 0.540)
+2026-03-17 16:31:08,695 - root - INFO - --- Pricing individual legs and creating order object ---
+2026-03-17 16:31:08,898 - root - INFO - Fetching market data for option: LNEM6 P3100
+2026-03-17 16:31:10,899 - root - INFO - Using IBKR Model Greeks IV: 54.52%
+2026-03-17 16:31:10,908 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-03-17 16:31:10,908 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-03-17 16:31:10,913 - root - INFO - Theoretical price calculated for P @ 3.1: {'price': np.float64(0.2724), 'delta': np.float64(-0.4284), 'gamma': np.float64(0.5266), 'vega': np.float64(0.5365), 'theta': np.float64(-0.0023)}
+2026-03-17 16:31:10,914 - root - INFO -   -> Leg Theoretical Price (BUY): LNEM6 P3100 @ 0.27
+2026-03-17 16:31:10,914 - root - INFO - Fetching market data for option: LNEM6 P3050
+2026-03-17 16:31:12,916 - root - INFO - Using IBKR Model Greeks IV: 54.44%
+2026-03-17 16:31:12,925 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-03-17 16:31:12,927 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-03-17 16:31:12,931 - root - INFO - Theoretical price calculated for P @ 3.05: {'price': np.float64(0.2467), 'delta': np.float64(-0.4018), 'gamma': np.float64(0.5198), 'vega': np.float64(0.5288), 'theta': np.float64(-0.0022)}
+2026-03-17 16:31:12,931 - root - INFO -   -> Leg Theoretical Price (SELL): LNEM6 P3050 @ 0.25
+2026-03-17 16:31:12,933 - root - INFO - LIQUIDITY FILTER PASSED: Market spread (0.01) within allowed (0.08, binding=TICK_FLOOR). [liquidity_metric: contract=LNE, expiry=20260526, spread_pct=0.272, spread_ticks=7.0, abs_spread=0.007, theo=0.0257, allowed=0.08, binding=TICK_FLOOR, tick_allow=0.08, pct_allow=0.0193, hour_utc=16]
+2026-03-17 16:31:12,934 - root - INFO - BUY Cap Calc: Theoretical=0.53, MarketAggressive=0.03 (aggression=0.75), Mid=0.03, Ask=0.03, Final Cap=0.03
+2026-03-17 16:31:12,934 - root - INFO - Net Theoretical: 0.03, Market Spread: 0.01
+2026-03-17 16:31:12,935 - root - INFO - Adaptive Strategy: Start @ 0.02, Cap/Floor @ 0.03
+2026-03-17 16:31:12,935 - root - INFO - Creating Limit Order for BUY 1 @ 0.02 (Adaptive Cap: 0.03).
+2026-03-17 16:31:12,935 - root - INFO - Using Custom Adaptive Logic (IBKR Algo Disabled).
+2026-03-17 16:31:12,936 - root - INFO - Assigned OrderRef: 37c71949-2e2f-4cfd-8077-ecf90c2715e6
+2026-03-17 16:31:13,039 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $240.00 (premium paid)
+2026-03-17 16:31:13,040 - OrderManager - INFO - Capital tracking: Committed $240.00 | Remaining $32,093.33 | This order: $240.00
+2026-03-17 16:31:13,045 - OrderManager - INFO - Successfully queued order for NGM26.
+2026-03-17 16:31:13,045 - OrderManager - INFO - NO TRADE: 202606 — Direction=NEUTRAL, Type=DIRECTIONAL. Reason: NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=RANGE_BOUND, conflict=0.
+2026-03-17 16:31:13,045 - OrderManager - INFO - NO TRADE: 202607 — Direction=NEUTRAL, Type=DIRECTIONAL. Reason: NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=HIGH_VOLATILITY, conflic
+2026-03-17 16:31:13,046 - OrderManager - INFO - NO TRADE: 202608 — Direction=NEUTRAL, Type=DIRECTIONAL. Reason: NO TRADE: Direction neutral, no positive-EV vol trade. (vol=NEUTRAL, regime=HIGH_VOLATILITY, conflic
+2026-03-17 16:31:13,046 - OrderManager - INFO - --- Order generation complete. 1 orders queued. ---
+2026-03-17 16:31:13,315 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-17 16:31:13,319 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 16:31:13,321 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-17 16:31:16,323 - OrderManager - INFO - --- Placing and monitoring 1 orders ---
+2026-03-17 16:31:16,324 - OrderManager - INFO - Processing 1 orders SEQUENTIALLY
+2026-03-17 16:31:16,324 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-03-17 16:31:16,325 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-17 16:31:16,325 - trading_bot.drawdown_circuit_breaker - INFO - Loaded drawdown state: NORMAL (0.00%), starting_equity=0 (will re-derive from prev close)
+2026-03-17 16:31:16,326 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1342...
+2026-03-17 16:31:16,642 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1342
+2026-03-17 16:31:16,651 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:31:16,663 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-17 16:31:16,665 - OrderManager - INFO - Using pooled IB connection for order placement.
+2026-03-17 16:31:16,666 - OrderManager - INFO - Sorted orders by expiration proximity.
+2026-03-17 16:31:16,765 - OrderManager - INFO - Current Available Funds: $32,324.61 | Equity: $32,333.33
+2026-03-17 16:31:16,770 - OrderManager - INFO - Pre-batch VaR refresh complete
+2026-03-17 16:31:16,771 - OrderManager - INFO - Processing order 1/1: 
+2026-03-17 16:31:19,066 - trading_bot.compliance - INFO - Resolved underlying future: NGM26 (conId: 269460069)
+2026-03-17 16:31:19,180 - trading_bot.compliance - INFO - Volume from IB (NGM26): 265.0
+2026-03-17 16:31:19,183 - trading_bot.compliance - INFO - DEBIT spread: Max risk = $240.00 (premium paid)
+2026-03-17 16:31:19,184 - trading_bot.compliance - INFO - Article V [LOG_ONLY]: VaR 0.0%
+2026-03-17 16:31:23,597 - trading_bot.compliance - INFO - Compliance decision: approved=True, method=direct_json
+2026-03-17 16:31:23,686 - OrderManager - INFO - Approved NG-P3.1+P3.05: Margin $208.46 | Remaining: $32,116.15
+2026-03-17 16:31:23,686 - OrderManager - INFO - [OFF] WOULD PLACE BUY 1 NG-P3.1+P3.05 @ 0.024
+2026-03-17 16:31:23,937 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-17 16:31:23,940 - OrderManager - INFO - Order placement complete. Releasing event handlers.
+2026-03-17 16:31:23,941 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 16:31:23,941 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-17 16:31:26,943 - OrderManager - INFO - >>> Combined task 'Generate and Execute Orders' complete <<<
+2026-03-17 16:31:26,944 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (NG): 1 entries removed
+2026-03-17 16:31:26,960 - Engine.NG - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-03-17 17:24:00 UTC. Waiting for 0.88 hours.
+2026-03-17 16:31:28,774 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2305, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:32:42,978 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 38% of average (Sev: 6)
+2026-03-17 16:32:42,987 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-17 16:32:50,854 - trading_bot.self_healing - WARNING - SELF-HEAL: 12 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 16:35:50,329 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2315, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:35:59,873 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:36:45,509 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2310, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:37:50,888 - trading_bot.self_healing - WARNING - SELF-HEAL: 12 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 16:40:52,165 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2320, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:41:00,396 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:41:48,568 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2315, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:42:50,931 - trading_bot.self_healing - WARNING - SELF-HEAL: 12 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 16:42:52,623 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 35% of average (Sev: 6)
+2026-03-17 16:42:52,630 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-17 16:45:54,582 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2325, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:46:00,858 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:46:51,784 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2320, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:47:50,988 - trading_bot.self_healing - WARNING - SELF-HEAL: 12 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 16:50:56,372 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2330, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:51:01,181 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:51:54,730 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2325, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:52:51,018 - trading_bot.self_healing - WARNING - SELF-HEAL: 12 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 16:55:00,003 - Engine.KC - INFO - --- Running scheduled task: audit_pre_close [run_position_audit_cycle] ---
+2026-03-17 16:55:00,009 - Orchestrator - INFO - [OFF] run_position_audit_cycle skipped — no positions exist in OFF mode
+2026-03-17 16:55:00,021 - Engine.KC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-17 17:05:00 UTC. Waiting for 0.17 hours.
+2026-03-17 16:55:58,405 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2335, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:56:01,425 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 16:56:57,867 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=2330, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 16:57:51,057 - trading_bot.self_healing - WARNING - SELF-HEAL: 12 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 17:00:00,638 - Orchestrator - WARNING - MICROSTRUCTURE ALERT: Liquidity Depletion: 14% of average (Severity: 8.0)
+2026-03-17 17:00:00,648 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
