@@ -7689,3 +7689,121 @@
 2026-03-17 16:55:58,127 - Orchestrator - INFO - 2026-03-17 16:55:58,127 - root - INFO - Combo 2 Legs on KOK6 P2.9: PnL=$-182.25 | Capture: -9.9% | Risk Used: -19.7%
 2026-03-17 16:55:58,127 - Orchestrator - INFO - 2026-03-17 16:55:58,127 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-236.56 | Capture: -1.3% | Risk Used: -2.7%
 2026-03-17 16:55:58,128 - Orchestrator - INFO - 2026-03-17 16:55:58,127 - root - INFO - Combo 2 Legs on KON6 P2.75: PnL=$-323.82 | Capture: -15.1% | Risk Used: -30.1%
+2026-03-17 17:00:28,848 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=750, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 17:05:00,002 - Engine.KC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-17 17:05:00,006 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-17 17:05:00,008 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 39 [REMOTE/PAPER]...
+2026-03-17 17:05:00,332 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 39
+2026-03-17 17:05:00,337 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 17:05:00,338 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-17 17:05:00,443 - OrderManager - INFO - Found 18 live position legs in the IB account.
+2026-03-17 17:05:00,443 - OrderManager - INFO -   Filtered to 4 KC positions with non-zero quantity (from 18 total across all commodities)
+2026-03-17 17:05:00,522 - OrderManager - INFO - Reconstruction: KOK6 P2.9 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 17:05:00,525 - OrderManager - INFO - Reconstruction: KOK6 P2.85 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 17:05:00,528 - OrderManager - INFO - Reconstruction: KON6 P2.75 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 17:05:00,530 - OrderManager - INFO - Reconstruction: KON6 P2.7 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 17:05:00,530 - OrderManager - INFO - Processing closure for Position ID 6abbb481-713a-4498-b391-999b10be2a14 with 2 legs.
+2026-03-17 17:05:00,531 - OrderManager - INFO - Constructed BAG order for Pos ID 6abbb481-713a-4498-b391-999b10be2a14: ['SELL 1 x 673787147', 'BUY 1 x 725781074']
+2026-03-17 17:05:00,531 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-17 17:05:02,086 - ib_insync.wrapper - ERROR - Error 300, reqId 358: Can't find EId with tickerId:358
+2026-03-17 17:05:03,700 - OrderManager - INFO - Calculated combo limit price: -1.95 (raw: -2.00, slippage: 0.05)
+2026-03-17 17:05:03,700 - OrderManager - INFO - Placing LIMIT order for KC. Price: -1.95 (CREDIT)
+2026-03-17 17:05:03,701 - root - INFO - Assigned new unique OrderRef for tracking: 73447e08-b88a-47a0-a192-d4a87ea238c2
+2026-03-17 17:05:03,701 - root - INFO - Placing BUY order for ...
+2026-03-17 17:05:03,702 - root - INFO - Successfully placed order ID 361 for .
+2026-03-17 17:05:03,702 - OrderManager - INFO - Placed close order 361 for Pos ID 6abbb481-713a-4498-b391-999b10be2a14. Waiting for fill...
+2026-03-17 17:05:18,719 - OrderManager - INFO - Price walk #1: -1.95 -> -1.85 (CREDIT)
+2026-03-17 17:05:30,730 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=755, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 17:05:33,737 - OrderManager - INFO - Price walk #2: -1.85 -> -1.80 (CREDIT)
+2026-03-17 17:05:48,758 - OrderManager - INFO - Price walk #3: -1.80 -> -1.75 (CREDIT)
+2026-03-17 17:05:58,197 - Orchestrator - INFO - 2026-03-17 17:05:58,196 - root - INFO - --- Risk Monitor: Checking 6 combo position(s) ---
+2026-03-17 17:05:58,198 - Orchestrator - INFO - 2026-03-17 17:05:58,198 - root - INFO - Combo 2 Legs on LNEM6 P3200: PnL=$-100.48 | Capture: -0.8% | Risk Used: -1.6%
+2026-03-17 17:05:58,199 - Orchestrator - INFO - 2026-03-17 17:05:58,198 - root - INFO - Combo 2 Legs on LNEU6 P3500: PnL=$-81.74 | Capture: -11.5% | Risk Used: -23.0%
+2026-03-17 17:05:58,199 - Orchestrator - INFO - 2026-03-17 17:05:58,199 - root - INFO - Combo 3 Legs on LNEN6 P3350: PnL=$329.28 | Capture: 2.2% | Risk Used: 4.4%
+2026-03-17 17:05:58,200 - Orchestrator - INFO - 2026-03-17 17:05:58,199 - root - INFO - Combo 2 Legs on KOK6 P2.9: PnL=$-178.55 | Capture: -9.7% | Risk Used: -19.3%
+2026-03-17 17:05:58,200 - Orchestrator - INFO - 2026-03-17 17:05:58,200 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-237.80 | Capture: -1.3% | Risk Used: -2.7%
+2026-03-17 17:05:58,200 - Orchestrator - INFO - 2026-03-17 17:05:58,200 - root - INFO - Combo 2 Legs on KON6 P2.75: PnL=$-322.63 | Capture: -15.0% | Risk Used: -30.0%
+2026-03-17 17:06:03,780 - OrderManager - INFO - Price walk #4: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:06:18,798 - OrderManager - INFO - Price walk #5: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:06:33,822 - OrderManager - INFO - Price walk #6: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:06:48,840 - OrderManager - INFO - Price walk #7: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:07:03,868 - OrderManager - INFO - Price walk #8: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:07:18,888 - OrderManager - INFO - Price walk #9: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:07:33,909 - OrderManager - INFO - Price walk #10: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:07:48,932 - OrderManager - INFO - Price walk #11: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:08:03,950 - OrderManager - INFO - Price walk #12: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:10:32,553 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=760, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 17:12:34,289 - OrderManager - WARNING - Order 361 not filled after 450s and 12 walks. Converting to Market.
+2026-03-17 17:12:36,292 - root - INFO - Assigned new unique OrderRef for tracking: 2c9143a6-0744-43a7-9287-1c03b8374cc4
+2026-03-17 17:12:36,292 - root - INFO - Placing BUY order for ...
+2026-03-17 17:12:36,292 - root - INFO - Successfully placed order ID 362 for .
+2026-03-17 17:12:36,293 - OrderManager - INFO - Market order fallback: waiting up to 60s for fill
+2026-03-17 17:12:42,300 - OrderManager - INFO - Market order filled at -1.65
+2026-03-17 17:12:43,302 - root - INFO - Skipping ledger entry for BAG contract KC (legs will be logged individually).
+2026-03-17 17:12:43,304 - root - INFO - Logged 2 leg(s) to ledger for position_id 6abbb481-713a-4498-b391-999b10be2a14 (Stale Position Close)
+2026-03-17 17:12:43,305 - OrderManager - INFO - Successfully closed Combo (Pos ID: 6abbb481-713a-4498-b391-999b10be2a14). P&L: -311.8800000000001
+2026-03-17 17:12:43,313 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-17 17:12:43,366 - trading_bot.tms - INFO - TMS: Invalidated thesis for 6abbb481-713a-4498-b391-999b10be2a14: Stale position (>2 days)
+2026-03-17 17:12:43,366 - OrderManager - INFO - TMS: Invalidated thesis for 6abbb481-713a-4498-b391-999b10be2a14: Stale position (>2 days)
+2026-03-17 17:12:44,371 - OrderManager - INFO - Processing closure for Position ID ea560014-343c-4735-96fc-3c0bec49f7dd with 2 legs.
+2026-03-17 17:12:44,372 - OrderManager - INFO - Constructed BAG order for Pos ID ea560014-343c-4735-96fc-3c0bec49f7dd: ['SELL 1 x 698168705', 'BUY 1 x 665333357']
+2026-03-17 17:12:44,373 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-17 17:12:47,483 - OrderManager - INFO - Calculated combo limit price: -1.95 (raw: -2.00, slippage: 0.05)
+2026-03-17 17:12:47,483 - OrderManager - INFO - Placing LIMIT order for KC. Price: -1.95 (CREDIT)
+2026-03-17 17:12:47,483 - root - INFO - Assigned new unique OrderRef for tracking: 4aaefc51-74e6-474d-a6fb-20de422bebf1
+2026-03-17 17:12:47,484 - root - INFO - Placing BUY order for ...
+2026-03-17 17:12:47,484 - root - INFO - Successfully placed order ID 367 for .
+2026-03-17 17:12:47,484 - OrderManager - INFO - Placed close order 367 for Pos ID ea560014-343c-4735-96fc-3c0bec49f7dd. Waiting for fill...
+2026-03-17 17:13:02,499 - OrderManager - INFO - Price walk #1: -1.95 -> -1.85 (CREDIT)
+2026-03-17 17:13:17,517 - OrderManager - INFO - Price walk #2: -1.85 -> -1.80 (CREDIT)
+2026-03-17 17:13:32,538 - OrderManager - INFO - Price walk #3: -1.80 -> -1.75 (CREDIT)
+2026-03-17 17:13:47,562 - OrderManager - INFO - Price walk #4: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:14:02,584 - OrderManager - INFO - Price walk #5: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:14:17,605 - OrderManager - INFO - Price walk #6: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:14:32,627 - OrderManager - INFO - Price walk #7: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:14:34,394 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 42% of average (Sev: 5)
+2026-03-17 17:14:34,398 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-17 17:14:47,645 - OrderManager - INFO - Price walk #8: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:15:02,667 - OrderManager - INFO - Price walk #9: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:15:17,690 - OrderManager - INFO - Price walk #10: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:15:32,710 - OrderManager - INFO - Price walk #11: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:15:34,406 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=765, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 17:15:47,733 - OrderManager - INFO - Price walk #12: -1.75 -> -1.75 (CREDIT)
+2026-03-17 17:15:58,296 - Orchestrator - INFO - 2026-03-17 17:15:58,296 - root - INFO - --- Risk Monitor: Checking 5 combo position(s) ---
+2026-03-17 17:15:58,297 - Orchestrator - INFO - 2026-03-17 17:15:58,296 - root - INFO - Combo 2 Legs on LNEM6 P3200: PnL=$-104.79 | Capture: -0.9% | Risk Used: -1.7%
+2026-03-17 17:15:58,298 - Orchestrator - INFO - 2026-03-17 17:15:58,298 - root - INFO - Combo 2 Legs on LNEU6 P3500: PnL=$-79.18 | Capture: -11.2% | Risk Used: -22.3%
+2026-03-17 17:15:58,299 - Orchestrator - INFO - 2026-03-17 17:15:58,298 - root - INFO - Combo 3 Legs on LNEN6 P3350: PnL=$311.79 | Capture: 2.1% | Risk Used: 4.1%
+2026-03-17 17:15:58,299 - Orchestrator - INFO - 2026-03-17 17:15:58,299 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-232.24 | Capture: -1.3% | Risk Used: -2.6%
+2026-03-17 17:15:58,300 - Orchestrator - INFO - 2026-03-17 17:15:58,299 - root - INFO - Combo 2 Legs on KON6 P2.75: PnL=$-322.97 | Capture: -15.0% | Risk Used: -30.1%
+2026-03-17 17:20:18,078 - OrderManager - WARNING - Order 367 not filled after 450s and 12 walks. Converting to Market.
+2026-03-17 17:20:20,081 - root - INFO - Assigned new unique OrderRef for tracking: e5f193d9-bda3-4e50-aba5-20dcbebc549e
+2026-03-17 17:20:20,081 - root - INFO - Placing BUY order for ...
+2026-03-17 17:20:20,082 - root - INFO - Successfully placed order ID 368 for .
+2026-03-17 17:20:20,083 - OrderManager - INFO - Market order fallback: waiting up to 60s for fill
+2026-03-17 17:20:22,086 - OrderManager - INFO - Market order filled at -1.61
+2026-03-17 17:20:23,087 - root - INFO - Skipping ledger entry for BAG contract KC (legs will be logged individually).
+2026-03-17 17:20:23,089 - root - INFO - Logged 2 leg(s) to ledger for position_id ea560014-343c-4735-96fc-3c0bec49f7dd (Stale Position Close)
+2026-03-17 17:20:23,090 - OrderManager - INFO - Successfully closed Combo (Pos ID: ea560014-343c-4735-96fc-3c0bec49f7dd). P&L: -476.8800000000001
+2026-03-17 17:20:23,099 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/KC/tms
+2026-03-17 17:20:23,153 - trading_bot.tms - INFO - TMS: Invalidated thesis for ea560014-343c-4735-96fc-3c0bec49f7dd: Stale position (>2 days)
+2026-03-17 17:20:23,154 - OrderManager - INFO - TMS: Invalidated thesis for ea560014-343c-4735-96fc-3c0bec49f7dd: Stale position (>2 days)
+2026-03-17 17:20:24,559 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-17 17:20:24,562 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [KC_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 17:20:24,563 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-03-17 17:20:27,570 - Engine.KC - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-17 17:25:00 UTC. Waiting for 0.08 hours.
+2026-03-17 17:20:36,306 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=770, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 17:25:00,001 - Engine.KC - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-17 17:25:00,005 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-17 17:25:00,006 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 35 [REMOTE/PAPER]...
+2026-03-17 17:25:00,341 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 35
+2026-03-17 17:25:00,346 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 17:25:00,352 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-17 17:25:00,352 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [KC_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 17:25:00,352 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-03-17 17:25:03,358 - Engine.KC - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-17 17:35:00 UTC. Waiting for 0.17 hours.
+2026-03-17 17:25:38,111 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=775, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-17 17:25:58,363 - Orchestrator - INFO - 2026-03-17 17:25:58,363 - root - INFO - --- Risk Monitor: Checking 4 combo position(s) ---
+2026-03-17 17:25:58,364 - Orchestrator - INFO - 2026-03-17 17:25:58,364 - root - INFO - Combo 2 Legs on LNEM6 P3200: PnL=$-102.89 | Capture: -0.8% | Risk Used: -1.7%
+2026-03-17 17:25:58,364 - Orchestrator - INFO - 2026-03-17 17:25:58,364 - root - INFO - Combo 2 Legs on LNEU6 P3500: PnL=$-78.16 | Capture: -11.0% | Risk Used: -22.0%
+2026-03-17 17:25:58,365 - Orchestrator - INFO - 2026-03-17 17:25:58,365 - root - INFO - Combo 3 Legs on LNEN6 P3350: PnL=$312.95 | Capture: 2.1% | Risk Used: 4.2%
+2026-03-17 17:25:58,366 - Orchestrator - INFO - 2026-03-17 17:25:58,365 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-255.09 | Capture: -1.4% | Risk Used: -2.9%
