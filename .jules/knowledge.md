@@ -25,7 +25,7 @@ When a sentinel triggers or a scheduled cycle runs, a Council of specialized AI 
 - **Macro Economist:** Assesses global economic trends and currency impacts.
 - **Fundamentalist:** Focuses on supply/demand balance and inventory reports.
 - **Technical Analyst:** Interprets chart patterns and price action.
-- **Volatility Analyst:** Analyzes implied volatility and options pricing.
+- **Volatility Analyst:** Analyzes implied volatility and options pricing. Provides a non-directional signal (indicating expensive or cheap options) that is explicitly excluded from the directional weighted score.
 - **Geopolitical Analyst:** Evaluates the impact of international relations and conflicts.
 - **Sentiment Analyst:** Gauges the market mood from social and news sources.
 - **Inventory Analyst:** Monitors certified stocks.
@@ -34,14 +34,14 @@ When a sentinel triggers or a scheduled cycle runs, a Council of specialized AI 
 ### Tier 3: Decision Council
 A set of agents that synthesize the analysts' reports.
 - **Permabear:** Attacks the bullish thesis.
-- **Permabull:** Defends the bullish thesis.
+- **Permabull:** Defends the bullish thesis. Model assignment and debate order are randomized to prevent anchoring bias.
 - **Master Strategist:** Weighs all evidence and makes the final directional decision.
 - **Devil's Advocate:** Performs a pre-mortem to identify risks in the master strategy.
 
 ### Tier 4: Execution & Risk Management
 - **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.), the Conviction Gate (blocking weak signals, e.g., |weighted_score| < 0.20), and Sentinel IC Suppression (blocking short premium positions during sentinel-triggered high-volatility events).
 - **Dynamic Position Sizer:** Calculates optimal trade size.
-- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking, falling back to market orders via a profile-driven timeout (e.g., KC=90s, CC=120s, NG=60s). Catastrophe stops are gated by an account Net Liquidation Value (NLV) minimum threshold to fail-closed without stop protection if margin is insufficient.
+- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking, falling back to market orders via a profile-driven timeout (e.g., KC=90s, CC=120s, NG=60s). Stale-close fallbacks automatically skip execution if the primary close succeeds with no failures. Catastrophe stops are gated by an account Net Liquidation Value (NLV) minimum threshold to fail-closed without stop protection if margin is insufficient.
 
 ## Infrastructure
 

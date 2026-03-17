@@ -18,7 +18,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM calls to different providers. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 -   **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches decisions to avoid redundant API calls.
 -   **Sentinels (`trading_bot/sentinels.py`):** Monitor external events (Price, Weather, News, Polymarket, Macro). Must implement graceful rate-limiting and API spend-cap circuit breakers to control costs autonomously.
--   **Council (`trading_bot/agents.py`):** Specialized agents that debate and decide on trades.
+-   **Council (`trading_bot/agents.py`):** Specialized agents that debate and decide on trades. The Master Strategist acts on reports from multiple analysts, including the Volatility Analyst (whose signal is non-directional, representing expensive/cheap options rather than directional market views). The Permabear/Permabull debate order and model assignments are randomized to prevent anchoring bias.
 -   **Compliance (`trading_bot/compliance.py`):** Enforces risk limits, "dead checks", the "conviction gate" (suppressing weak directional signals), and "Sentinel IC suppression" (blocking Iron Condors during sentinel-triggered high-vol events).
 -   **Portfolio Risk Guard (`trading_bot/var_calculator.py`):** Calculates portfolio-wide VaR (95%/99%) and runs the **AI Risk Agent** for narrative analysis and stress testing.
 -   **Drawdown Circuit Breaker (`trading_bot/drawdown_circuit_breaker.py`):** Monitors intraday P&L drops from the previous day's close and enforces multi-commodity-aware halt/panic thresholds (e.g., 6% halt, 9% panic).
@@ -52,4 +52,5 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **Backtesting:** Use `backtesting/` directory.
 -   **Dashboard:** Streamlit dashboard (`dashboard.py`) is the primary interface.
 -   **Observability/Telemetry:** Error telemetry and log parsing are handled out-of-band by the `scripts/error_reporter.py` script. Do not add logic for agents to parse their own system-level execution exceptions. The system filters transient noise (like 429 rate limits, lock timeouts, and 503 unavailability errors) and auto-generates structured GitHub issues.
+-   **Execution Reliability:** The orchestrator utilizes a stale-close fallback mechanism. This fallback is automatically skipped if the primary execution successfully closes the necessary positions without failures.
 -   **Market Data Diagnostic:** Use `scripts/check_market_data.py` to quickly verify if the Interactive Brokers data feed is LIVE or DELAYED.
