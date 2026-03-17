@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-03-17T18:00:00.021646+00:00",
+  "generated_at": "2026-03-17T19:00:00.020270+00:00",
   "active_tickers": [
     "KC",
     "CC",
@@ -263,42 +263,42 @@
       "data_freshness": {
         "sentinels": {
           "WeatherSentinel": {
-            "last_check_minutes_ago": 148.1,
+            "last_check_minutes_ago": 208.1,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "LogisticsSentinel": {
-            "last_check_minutes_ago": 269.7,
+            "last_check_minutes_ago": 329.7,
             "check_interval_seconds": 21600,
             "is_stale": false
           },
           "NewsSentinel": {
-            "last_check_minutes_ago": 27.4,
+            "last_check_minutes_ago": 87.4,
             "check_interval_seconds": 7200,
             "is_stale": false
           },
           "XSentimentSentinel": {
-            "last_check_minutes_ago": 88.3,
+            "last_check_minutes_ago": 148.3,
             "check_interval_seconds": 5400,
             "is_stale": false
           },
           "PredictionMarketSentinel": {
-            "last_check_minutes_ago": 4.3,
+            "last_check_minutes_ago": 64.3,
             "check_interval_seconds": 300,
             "is_stale": false
           },
           "MacroContagionSentinel": {
-            "last_check_minutes_ago": 148.1,
+            "last_check_minutes_ago": 208.1,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "PriceSentinel": {
-            "last_check_minutes_ago": 29.5,
+            "last_check_minutes_ago": 89.5,
             "check_interval_seconds": 60,
             "is_stale": false
           },
           "MicrostructureSentinel": {
-            "last_check_minutes_ago": 29.4,
+            "last_check_minutes_ago": 89.4,
             "check_interval_seconds": 60,
             "is_stale": false
           }
@@ -422,20 +422,25 @@
     },
     "NG": {
       "feedback_loop": {
-        "status": "critical",
-        "resolution_rate": 0.0,
+        "status": "degraded",
+        "resolution_rate": 0.524,
         "total_predictions": 168,
-        "resolved": 0,
-        "pending": 168,
+        "resolved": 88,
+        "pending": 80,
         "thresholds": {
           "healthy": 0.75,
           "critical": 0.5
         }
       },
       "agent_calibration": {
-        "agents": {},
-        "avg_brier": null,
-        "tracked_count": 0
+        "agents": {
+          "master_decision": {
+            "brier_score": 0.6,
+            "weight_multiplier": 1.4
+          }
+        },
+        "avg_brier": 0.6,
+        "tracked_count": 1
       },
       "cognitive_layer": {
         "decisions_today": 9,
@@ -466,10 +471,10 @@
         "total_trades_triggered": 0
       },
       "efficiency": {
-        "daily_spend_usd": 2.2356525499999997,
-        "request_count": 259,
+        "daily_spend_usd": 2.2387944499999994,
+        "request_count": 269,
         "router_metrics": {
-          "total_requests": 8640,
+          "total_requests": 8650,
           "total_errors": 0,
           "total_fallbacks": 0
         },
@@ -605,42 +610,42 @@
       "data_freshness": {
         "sentinels": {
           "WeatherSentinel": {
-            "last_check_minutes_ago": 148.9,
+            "last_check_minutes_ago": 208.9,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "LogisticsSentinel": {
-            "last_check_minutes_ago": 269.2,
+            "last_check_minutes_ago": 329.2,
             "check_interval_seconds": 21600,
             "is_stale": false
           },
           "NewsSentinel": {
-            "last_check_minutes_ago": 26.5,
+            "last_check_minutes_ago": 86.5,
             "check_interval_seconds": 7200,
             "is_stale": false
           },
           "XSentimentSentinel": {
-            "last_check_minutes_ago": 86.2,
+            "last_check_minutes_ago": 146.2,
             "check_interval_seconds": 5400,
             "is_stale": false
           },
           "PredictionMarketSentinel": {
-            "last_check_minutes_ago": 4.2,
+            "last_check_minutes_ago": 64.2,
             "check_interval_seconds": 300,
             "is_stale": false
           },
           "MacroContagionSentinel": {
-            "last_check_minutes_ago": 148.9,
+            "last_check_minutes_ago": 208.9,
             "check_interval_seconds": 14400,
             "is_stale": false
           },
           "PriceSentinel": {
-            "last_check_minutes_ago": 4.3,
+            "last_check_minutes_ago": 64.3,
             "check_interval_seconds": 60,
             "is_stale": false
           },
           "MicrostructureSentinel": {
-            "last_check_minutes_ago": 4.2,
+            "last_check_minutes_ago": 64.2,
             "check_interval_seconds": 60,
             "is_stale": false
           }
@@ -709,10 +714,10 @@
   },
   "improvement_opportunities": [
     {
-      "priority": "HIGH",
+      "priority": "MEDIUM",
       "component": "NG/feedback_loop",
-      "observation": "Resolution rate 0.0 below critical threshold 0.50",
-      "suggestion": "Check Brier reconciliation pipeline \u2014 predictions may not be resolving"
+      "observation": "Resolution rate 0.524 below healthy threshold 0.75",
+      "suggestion": "Review pending predictions for stale entries"
     },
     {
       "priority": "MEDIUM",
@@ -763,7 +768,8 @@
       "soft_freshness_limit_hours": 4,
       "max_total_positions": 30,
       "max_commodity_concentration_pct": 0.5,
-      "max_correlated_exposure_pct": 0.7
+      "max_correlated_exposure_pct": 0.7,
+      "max_open_positions": 3
     },
     "drawdown": {
       "enabled": true,
@@ -780,7 +786,7 @@
         "adaptive_step_percentage": 0.04,
         "ceiling_aggression_factor": 0.75,
         "adaptive_target_steps": 10,
-        "cap_timeout_seconds": 1800,
+        "cap_timeout_seconds": 900,
         "iron_condor_short_strikes_from_atm": 2,
         "iron_condor_wing_strikes_apart": 2,
         "slippage_spread_percentage": 0.5,
@@ -789,11 +795,11 @@
         "min_book_depth_multiplier": 3,
         "max_single_leg_spread_pct": 0.5,
         "fixed_slippage_cents": 0.5,
-        "close_timeout_seconds": 450,
-        "close_walk_steps": 12,
+        "close_timeout_seconds": 240,
+        "close_walk_steps": 8,
         "close_walk_interval_seconds": 15,
         "close_walk_increment_pct": 0.04,
-        "monitoring_duration_seconds": 2400
+        "monitoring_duration_seconds": 1800
       },
       "KC": {
         "max_liquidity_spread_percentage": 0.75,
@@ -898,12 +904,12 @@
       "last_report_time": null
     }
   },
-  "digest_id": "2026-03-17_e63f3cceb73b",
+  "digest_id": "2026-03-17_3cade508c8de",
   "system_health_score": {
-    "overall": 0.5884,
+    "overall": 0.6298,
     "components": {
-      "feedback_health": 0.6073,
-      "prediction_accuracy": 0.4474,
+      "feedback_health": 0.9567,
+      "prediction_accuracy": 0.1237,
       "execution_quality": 1.0,
       "sentinel_efficiency": 0.0933
     },
@@ -915,5 +921,5 @@
     },
     "formula": "overall = 0.35*feedback + 0.25*(1-brier) + 0.25*exec_quality + 0.15*sentinel_snr"
   },
-  "executive_summary": "KC: 12 decisions, regime=UNKNOWN | CC: 0 decisions, regime=UNKNOWN | NG: 9 decisions, regime=UNKNOWN | Degraded feedback loops: NG (critical: resolution_rate=0.0) | 1 HIGH-priority issue(s) requiring attention | System health score: 0.59/1.00"
+  "executive_summary": "KC: 12 decisions, regime=UNKNOWN | CC: 0 decisions, regime=UNKNOWN | NG: 9 decisions, regime=UNKNOWN | Degraded feedback loops: NG (degraded: resolution_rate=0.524) | No high-priority issues | System health score: 0.63/1.00"
 }
