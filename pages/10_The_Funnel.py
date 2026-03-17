@@ -35,7 +35,7 @@ st.caption("Where does alpha leak? Track every signal from council decision thro
 @st.cache_data(ttl=60)
 def load_funnel_data(ticker: str) -> pd.DataFrame:
     """Load execution funnel data for a commodity."""
-    path = _resolve_data_path_for(ticker, 'execution_funnel.csv')
+    path = _resolve_data_path_for('execution_funnel.csv', ticker)
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -50,7 +50,7 @@ def load_funnel_data(ticker: str) -> pd.DataFrame:
 @st.cache_data(ttl=60)
 def load_order_events(ticker: str) -> pd.DataFrame:
     """Load order events for slippage analysis."""
-    path = _resolve_data_path_for(ticker, 'order_events.csv')
+    path = _resolve_data_path_for('order_events.csv', ticker)
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
