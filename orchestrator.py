@@ -1422,6 +1422,41 @@ async def _reconcile_orphaned_theses(
                             f"Keeping alive (fail-closed)."
                         )
 
+        # 2d. Cross-thesis netting check: when multiple theses share a contract
+        # in opposite directions, IB's net position can't satisfy either thesis
+        # individually, but the aggregate may match perfectly.
+        # Collect theses that are partially covered (in live_position_ids but
+        # not fully matched) and check if their combined expected equals remaining IB.
+        partial_tids = [
+            tid for tid, _ in thesis_order
+            if tid in live_position_ids and tid in thesis_expected
+        ]
+        # Only partially covered theses contribute to remaining — fully matched
+        # theses already had their qty deducted. Check if remaining_ib is fully
+        # explained by partial theses' expected legs.
+        remaining_nonzero = {s: q for s, q in remaining_ib.items() if q != 0}
+        if remaining_nonzero and partial_tids:
+            partial_aggregate = {}
+            for tid in partial_tids:
+                for sym, exp_qty in thesis_expected[tid].items():
+                    partial_aggregate[sym] = partial_aggregate.get(sym, 0) + exp_qty
+            # Check if partial aggregate equals remaining IB (all accounted for)
+            all_netted = True
+            all_syms = set(remaining_nonzero) | {s for s, q in partial_aggregate.items() if q != 0}
+            for sym in all_syms:
+                if remaining_nonzero.get(sym, 0) != partial_aggregate.get(sym, 0):
+                    all_netted = False
+                    break
+            if all_netted:
+                logger.info(
+                    f"Reconciliation: {len(partial_tids)} partially-covered theses "
+                    f"net to IB positions (cross-thesis netting). "
+                    f"No real orphans. aggregate={partial_aggregate}"
+                )
+                # Deduct so remaining_ib goes to zero — no orphan alert
+                for sym, exp_qty in partial_aggregate.items():
+                    remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
+
         # Theses with no ledger entries but IB has positions: fail closed
         for tid in active_thesis_ids:
             if tid not in thesis_expected and tid not in live_position_ids:
