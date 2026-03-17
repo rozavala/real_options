@@ -10,6 +10,7 @@ import json
 import logging
 import asyncio
 import time
+import random
 from typing import Dict, List
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
@@ -1209,7 +1210,8 @@ OUTPUT FORMAT (JSON ONLY):
 
         context_prompt = ""
         if opponent_argument:
-            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: The Bear has argued X. You must explicitly refute this point with evidence."
+            opponent_label = "Bear" if persona_key == "permabull" else "Bull"
+            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: The {opponent_label} has argued the above. You must explicitly refute their points with evidence."
 
         market_data_str = format_market_context_for_prompt(market_data)
 
@@ -1256,18 +1258,43 @@ OUTPUT FORMAT (JSON ONLY):
 
     async def run_debate(self, reports_text: str, market_data: dict, market_context: str = "", trace_collector=None) -> tuple[str, str]:
         """
-        Run sequential attack-defense debate.
-        Step 1: PERMABEAR generates the Thesis (Attack).
-        Step 2: PERMABULL must refute specific points (Defense).
+        Run sequential attack-defense debate with randomized order.
+
+        v9.0: Randomly selects which debater goes first to prevent anchoring bias.
+        Previously, the Permabear always attacked first, giving it framing control
+        and creating a primacy effect that biased the Master toward bearish outcomes.
         """
+        # v9.0: Randomly swap model assignments between Bear and Bull each cycle
+        # to prevent one debater from consistently having a more capable model.
+        if self.use_heterogeneous and self.heterogeneous_router:
+            from trading_bot.heterogeneous_router import AgentRole as HetAgentRole
+            bear_assignment = self.heterogeneous_router.assignments.get(HetAgentRole.PERMABEAR)
+            bull_assignment = self.heterogeneous_router.assignments.get(HetAgentRole.PERMABULL)
+            if bear_assignment and bull_assignment and random.random() < 0.5:
+                self.heterogeneous_router.assignments[HetAgentRole.PERMABEAR] = bull_assignment
+                self.heterogeneous_router.assignments[HetAgentRole.PERMABULL] = bear_assignment
+                logger.info(f"Debate model swap: Bear←{bull_assignment[0].value}, Bull←{bear_assignment[0].value}")
 
-        # Step 1: Bear attacks the thesis (with market context including sentinel briefing)
-        bear_json = await self._get_red_team_analysis("permabear", reports_text, market_data, market_context=market_context, trace_collector=trace_collector)
+        # Randomize who attacks first to eliminate anchoring bias
+        bear_first = random.random() < 0.5
+        if bear_first:
+            first_persona, second_persona = "permabear", "permabull"
+        else:
+            first_persona, second_persona = "permabull", "permabear"
 
-        # Step 2: Bull must RESPOND to the specific critique
-        bull_json = await self._get_red_team_analysis("permabull", reports_text, market_data, opponent_argument=bear_json, market_context=market_context, trace_collector=trace_collector)
+        logger.info(f"Debate order: {first_persona} attacks first")
 
-        return bear_json, bull_json
+        # Step 1: First debater attacks the thesis
+        first_json = await self._get_red_team_analysis(first_persona, reports_text, market_data, market_context=market_context, trace_collector=trace_collector)
+
+        # Step 2: Second debater must RESPOND to the specific critique
+        second_json = await self._get_red_team_analysis(second_persona, reports_text, market_data, opponent_argument=first_json, market_context=market_context, trace_collector=trace_collector)
+
+        # Always return (bear_json, bull_json) regardless of order
+        if bear_first:
+            return first_json, second_json
+        else:
+            return second_json, first_json
 
     async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str, trace_collector=None) -> dict:
         """

@@ -6,36 +6,22 @@ from trading_bot.observability import count_directional_evidence, BULLISH_WORDS,
 
 
 class TestDirectionalEvidenceCounting:
-    """Fix B: Inventory-domain vocabulary in BEARISH_WORDS."""
+    """v9.0: Updated after removing ambiguous logistics words from BEARISH_WORDS.
 
-    def test_inventory_building_language_counted_bearish(self):
-        """Stock-building terms should register as bearish evidence."""
-        text = "Certified stocks building steadily with fresh inflows and arrivals at port"
+    Words like 'building', 'inflows', 'arrivals', 'restocking', 'replenishment'
+    were removed because they triggered false direction-evidence mismatches
+    on bullish supply-recovery reports (e.g., "demand building" is bullish,
+    not bearish). Only unambiguously bearish words remain.
+    """
+
+    def test_unambiguous_oversupply_language_counted_bearish(self):
+        """Clear oversupply terms should register as bearish evidence."""
+        text = "Surplus bumper crop leads to glut and oversupply in warehouses"
         bullish, bearish = count_directional_evidence(text)
-        assert bearish >= 3, f"Expected >=3 bearish words, got {bearish} (building, inflows, arrivals)"
-
-    def test_restocking_replenishment_bearish(self):
-        text = "Warehouse replenishment cycle underway, restocking from Brazil origins"
-        bullish, bearish = count_directional_evidence(text)
-        assert bearish >= 2, f"Expected >=2 bearish words, got {bearish}"
-
-    def test_new_words_in_bearish_set(self):
-        for word in ('building', 'inflows', 'arrivals', 'replenishment', 'restocking'):
-            assert word in BEARISH_WORDS, f"'{word}' missing from BEARISH_WORDS"
-
-    def test_inventory_report_balanced_evidence(self):
-        """A typical inventory report should now show balanced or bearish-leaning evidence."""
-        text = (
-            "ICE certified stocks rose to 435,494 bags, building from prior tight conditions. "
-            "Shortage concerns easing as arrivals increase. Fresh inflows from Brazil."
-        )
-        bullish, bearish = count_directional_evidence(text)
-        # Before fix: 4+ bullish (rose/shortage/tight/increase), 0-1 bearish
-        # After fix: also counts building, arrivals, inflows, easing → bearish >= 4
-        assert bearish >= 3, f"Expected >=3 bearish, got {bearish}"
+        assert bearish >= 3, f"Expected >=3 bearish words, got {bearish}"
 
     def test_existing_bearish_words_unchanged(self):
-        """Existing bearish vocabulary still works."""
+        """Core bearish vocabulary still works."""
         text = "Surplus bumper crop leads to glut and selloff in warehouses"
         bullish, bearish = count_directional_evidence(text)
         assert bearish >= 3
@@ -46,18 +32,32 @@ class TestDirectionalEvidenceCounting:
         bullish, bearish = count_directional_evidence(text)
         assert bullish >= 4
 
+    def test_ambiguous_logistics_words_no_longer_bearish(self):
+        """Ambiguous logistics words should NOT count as bearish evidence.
+
+        These words caused false direction-evidence mismatches on bullish
+        supply-recovery reports, contributing to systematic bearish bias.
+        """
+        for word in ('building', 'inflows', 'arrivals', 'replenishment', 'restocking',
+                     'easing', 'normalizing', 'resolved', 'resolution'):
+            assert word not in BEARISH_WORDS, f"'{word}' should have been removed from BEARISH_WORDS"
+
     def test_negation_still_works(self):
-        """'not building' should flip to bullish."""
-        text = "Stocks are not building at current levels"
+        """Negation flips direction."""
+        text = "There is not a surplus at current levels"
         bullish, bearish = count_directional_evidence(text)
-        # "not building" → bullish (negated bearish)
+        # "not surplus" → bullish (negated bearish)
         assert bullish >= 1
 
-    def test_unnegated_arrivals_bearish(self):
-        """Arrivals without negation context should count as bearish."""
-        text = "Port arrivals and warehouse inflows continued this week"
+    def test_inventory_report_now_balanced(self):
+        """A typical inventory report with mixed language should not be heavily bearish."""
+        text = (
+            "ICE certified stocks rose to 435,494 bags. "
+            "Shortage concerns persist as supply tightness continues."
+        )
         bullish, bearish = count_directional_evidence(text)
-        assert bearish >= 2
+        # rose + shortage + tightness = bullish; stocks is neutral
+        assert bullish >= 2, f"Expected >=2 bullish, got {bullish}"
 
 
 class TestNumberWhitelistArithmetic:

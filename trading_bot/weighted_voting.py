@@ -674,9 +674,21 @@ async def calculate_weighted_decision(
 
         final_weight = base_domain_weight * reliability_multiplier * staleness_weight * freshness_penalty * mismatch_discount
 
-        contribution = vote.direction.value * vote.confidence * final_weight
-        total_weighted_score += contribution
-        total_weight += final_weight
+        # Fix: Volatility agent's BEARISH/BULLISH means "options expensive/cheap",
+        # NOT a directional market view. Exclude it from the directional weighted score
+        # but preserve its vote in the breakdown for strategy routing (Iron Condor / Straddle logic).
+        is_vol_agent = vote.agent_name in ('volatility', 'volatility_analyst')
+        if is_vol_agent:
+            # Vol agent does not contribute to the directional weighted score
+            directional_contribution = 0.0
+            logger.debug(f"Agent {vote.agent_name}: Vol sentiment '{vote.direction.name}' excluded from directional score (non-directional signal)")
+        else:
+            directional_contribution = vote.direction.value * vote.confidence * final_weight
+
+        contribution = vote.direction.value * vote.confidence * final_weight  # Full contribution for logging
+        total_weighted_score += directional_contribution
+        if not is_vol_agent:
+            total_weight += final_weight
 
         vote_breakdown.append({
             'agent': vote.agent_name,
@@ -689,6 +701,7 @@ async def calculate_weighted_decision(
             'mismatch_discount': round(mismatch_discount, 2),
             'final_weight': round(final_weight, 2),
             'contribution': round(contribution, 3),
+            'directional_contribution': round(directional_contribution, 3),
         })
 
         if abs(contribution) > max_contribution:
