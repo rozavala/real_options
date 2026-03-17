@@ -108,7 +108,7 @@ STAGE_ORDER = [
 # ============================================================
 # ROW 1: KPI CARDS
 # ============================================================
-st.subheader("Key Metrics")
+st.subheader("📈 Key Metrics")
 
 # Calculate funnel metrics
 def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
@@ -181,19 +181,19 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
 kpis = calc_funnel_kpis(funnel_df, council_df)
 
 k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
-k1.metric("Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
+k1.metric("📡 Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
           help="% of actionable council signals that resulted in filled orders")
-k2.metric("Fill Rate", f"{kpis['fill_rate_pct']:.0f}%",
+k2.metric("⛽ Fill Rate", f"{kpis['fill_rate_pct']:.0f}%",
           help="% of placed orders that filled (vs timed out/cancelled)")
-k3.metric("Avg Slippage", f"{kpis['avg_slippage_pct']:.1f}%",
+k3.metric("📉 Avg Slippage", f"{kpis['avg_slippage_pct']:.1f}%",
           help="Average slippage as % of credit/debit (fill vs initial limit)")
-k4.metric("Conviction Blocks", f"{kpis['conviction_block_pct']:.0f}%",
+k4.metric("🛡️ Conviction Blocks", f"{kpis['conviction_block_pct']:.0f}%",
           help="% of directional signals blocked by conviction gate")
-k5.metric("Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
+k5.metric("👣 Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
           help="Average adaptive walk steps per placed order (est.)")
-k6.metric("Signal Win Rate", f"{kpis['signal_win_rate']:.0f}%",
+k6.metric("🎯 Signal Win Rate", f"{kpis['signal_win_rate']:.0f}%",
           help=f"Directional accuracy of resolved signals (n={kpis['n_resolved']})")
-k7.metric("Alpha Left on Table", f"{kpis['alpha_left_count']}",
+k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
           delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
           delta_color="inverse",
           help="Orders that passed all gates but failed to fill — potential alpha lost to adaptive walk timeout")
@@ -202,7 +202,7 @@ k7.metric("Alpha Left on Table", f"{kpis['alpha_left_count']}",
 # ============================================================
 # ROW 2: FUNNEL WATERFALL
 # ============================================================
-st.subheader("Funnel Waterfall — Where Do Signals Die?")
+st.subheader("🌊 Funnel Waterfall — Where Do Signals Die?")
 
 def _build_waterfall_data(df: pd.DataFrame) -> pd.DataFrame:
     """Build waterfall DataFrame from funnel events."""
@@ -305,7 +305,17 @@ if not funnel_df.empty and 'stage' in funnel_df.columns:
                                 'Filled': n_filled,
                                 'Survival %': f"{n_filled / max(n_dec, 1) * 100:.1f}%",
                             })
-                        st.dataframe(pd.DataFrame(regime_survival), hide_index=True, use_container_width=True)
+                        st.dataframe(
+                            pd.DataFrame(regime_survival),
+                            hide_index=True,
+                            use_container_width=True,
+                            column_config={
+                                "Regime": st.column_config.TextColumn("🎭 Regime", help="The market regime at the time of the decision."),
+                                "Decisions": st.column_config.NumberColumn("⚖️ Decisions", help="Total number of council decisions in this regime."),
+                                "Filled": st.column_config.NumberColumn("⛽ Filled", help="Total number of filled orders in this regime."),
+                                "Survival %": st.column_config.TextColumn("🏁 Survival %", help="End-to-end survival rate from signal to fill."),
+                            }
+                        )
     else:
         st.info("No stage data available for waterfall chart.")
 else:
@@ -313,9 +323,9 @@ else:
     st.info("No real-time funnel data yet. Showing summary from council history.")
     if not council_df.empty:
         total_decisions = len(council_df)
-        actionable = len(council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])])
-        with_strategy = len(council_df[council_df['strategy_type'].notna() & (council_df['strategy_type'] != 'NONE')])
-        compliant = len(council_df[council_df['compliance_approved'] == True])
+        actionable = len(council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])]) if 'master_decision' in council_df.columns else 0
+        with_strategy = len(council_df[council_df['strategy_type'].notna() & (council_df['strategy_type'] != 'NONE')]) if 'strategy_type' in council_df.columns else 0
+        compliant = len(council_df[council_df['compliance_approved'] == True]) if 'compliance_approved' in council_df.columns else 0
 
         summary_data = {
             'Stage': ['Council Decisions', 'Actionable (Bull/Bear)', 'Strategy Selected', 'Compliance Approved'],
@@ -327,7 +337,7 @@ else:
 # ============================================================
 # ROW 3: SIGNAL vs OUTCOME MATRIX
 # ============================================================
-st.subheader("Signal vs Outcome — Skill or Luck?")
+st.subheader("🎯 Signal vs Outcome — Skill or Luck?")
 
 if not council_df.empty and 'pnl_realized' in council_df.columns and 'weighted_score' in council_df.columns:
     resolved = council_df[council_df['pnl_realized'].notna()].copy()
@@ -367,10 +377,10 @@ if not council_df.empty and 'pnl_realized' in council_df.columns and 'weighted_s
         # Quadrant summary
         quad_counts = resolved['quadrant'].value_counts()
         qc1, qc2, qc3, qc4 = st.columns(4)
-        qc1.metric("Skill", quad_counts.get('Skill', 0), help="Good process + positive P&L")
-        qc2.metric("Lucky", quad_counts.get('Lucky', 0), help="Weak process + positive P&L")
-        qc3.metric("Execution Leak", quad_counts.get('Execution Leak', 0), help="Good process + negative P&L")
-        qc4.metric("Bad Call", quad_counts.get('Bad Call', 0), help="Weak process + negative P&L")
+        qc1.metric("✅ Skill", quad_counts.get('Skill', 0), help="Good process + positive P&L")
+        qc2.metric("🍀 Lucky", quad_counts.get('Lucky', 0), help="Weak process + positive P&L")
+        qc3.metric("⚠️ Execution Leak", quad_counts.get('Execution Leak', 0), help="Good process + negative P&L")
+        qc4.metric("❌ Bad Call", quad_counts.get('Bad Call', 0), help="Weak process + negative P&L")
 else:
     st.info("Insufficient council history data for matrix analysis.")
 
@@ -399,20 +409,20 @@ with tab_exec:
                     slip_stats = filled_clean['slippage_pct'].dropna()
                     if not slip_stats.empty:
                         ss1, ss2, ss3, ss4 = st.columns(4)
-                        ss1.metric("Mean", f"{slip_stats.mean():.1f}%", help="Mean slippage as % of credit/debit")
-                        ss2.metric("Median", f"{slip_stats.median():.1f}%", help="Median slippage as % of credit/debit")
-                        ss3.metric("P75", f"{slip_stats.quantile(0.75):.1f}%", help="75th percentile of slippage as % of credit/debit")
-                        ss4.metric("Max", f"{slip_stats.max():.1f}%", help="Maximum slippage as % of credit/debit")
+                        ss1.metric("📊 Mean", f"{slip_stats.mean():.1f}%", help="Mean slippage as % of credit/debit")
+                        ss2.metric("🎯 Median", f"{slip_stats.median():.1f}%", help="Median slippage as % of credit/debit")
+                        ss3.metric("🔝 P75", f"{slip_stats.quantile(0.75):.1f}%", help="75th percentile of slippage as % of credit/debit")
+                        ss4.metric("🚀 Max", f"{slip_stats.max():.1f}%", help="Maximum slippage as % of credit/debit")
 
                 with slip_col2:
                     st.markdown("**Absolute Slippage (cents/ticks)**")
                     abs_stats = filled_clean['slippage_abs'].dropna()
                     if not abs_stats.empty:
                         sa1, sa2, sa3, sa4 = st.columns(4)
-                        sa1.metric("Mean", f"{abs_stats.mean():.2f}", help="Mean absolute slippage in cents/ticks")
-                        sa2.metric("Median", f"{abs_stats.median():.2f}", help="Median absolute slippage in cents/ticks")
-                        sa3.metric("Favorable", f"{(abs_stats < 0).sum()}", help="Fills better than initial limit")
-                        sa4.metric("Adverse", f"{(abs_stats > 0).sum()}", help="Fills worse than initial limit")
+                        sa1.metric("📊 Mean", f"{abs_stats.mean():.2f}", help="Mean absolute slippage in cents/ticks")
+                        sa2.metric("🎯 Median", f"{abs_stats.median():.2f}", help="Median absolute slippage in cents/ticks")
+                        sa3.metric("✅ Favorable", f"{(abs_stats < 0).sum()}", help="Fills better than initial limit")
+                        sa4.metric("⚠️ Adverse", f"{(abs_stats > 0).sum()}", help="Fills worse than initial limit")
 
                 # Histogram
                 st.markdown("**Slippage Distribution (% of credit/debit)**")
@@ -432,7 +442,16 @@ with tab_exec:
             avail_cols = [c for c in display_cols if c in cancelled.columns]
             st.dataframe(
                 cancelled[avail_cols].tail(10).sort_values('timestamp', ascending=False),
-                hide_index=True, use_container_width=True,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "timestamp": st.column_config.TextColumn("🕒 Time", help="Time when the order was cancelled."),
+                    "cycle_id": st.column_config.TextColumn("🆔 Cycle ID", help="Unique identifier for the trading cycle."),
+                    "contract": st.column_config.TextColumn("📜 Contract", help="The futures contract for the order."),
+                    "detail": st.column_config.TextColumn("📝 Detail", help="Additional details about the cancellation."),
+                    "walk_away_price": st.column_config.NumberColumn("🚪 Walk Away", format="$%.2f", help="The price at which the adaptive walk would have stopped."),
+                    "initial_limit": st.column_config.NumberColumn("🎯 Initial Limit", format="$%.2f", help="The initial limit price of the order."),
+                }
             )
     else:
         st.info("No execution data yet. Funnel events will appear after the next trading cycle.")
@@ -466,7 +485,13 @@ with tab_lifecycle:
             avail_cols = [c for c in display_cols if c in risk_events.columns]
             st.dataframe(
                 risk_events[avail_cols].tail(10).sort_values('timestamp', ascending=False),
-                hide_index=True, use_container_width=True,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "timestamp": st.column_config.TextColumn("🕒 Time", help="Time when the risk trigger occurred."),
+                    "contract": st.column_config.TextColumn("📜 Contract", help="The contract affected by the risk event."),
+                    "detail": st.column_config.TextColumn("📝 Detail", help="Descriptive details of the risk trigger."),
+                }
             )
     else:
         st.info("No lifecycle data yet.")
@@ -475,7 +500,7 @@ with tab_lifecycle:
 # ============================================================
 # ROW 5: TOP LEAKS TABLE
 # ============================================================
-st.subheader("Top Alpha Leaks — Ranked by Impact")
+st.subheader("🚰 Top Alpha Leaks — Ranked by Impact")
 
 if not funnel_df.empty and 'stage' in funnel_df.columns:
     leak_data = []
@@ -550,7 +575,18 @@ if not funnel_df.empty and 'stage' in funnel_df.columns:
 
     if leak_data:
         leak_df = pd.DataFrame(leak_data).sort_values('Count', ascending=False)
-        st.dataframe(leak_df, hide_index=True, use_container_width=True)
+        st.dataframe(
+            leak_df,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Leak Category": st.column_config.TextColumn("🚰 Leak Category", help="The stage or component where alpha was lost."),
+                "Count": st.column_config.NumberColumn("🔢 Count", help="Number of signals blocked or lost at this stage."),
+                "% of Pipeline": st.column_config.TextColumn("📊 % of Pipeline", help="The relative impact of this leak on the total signal flow."),
+                "Diagnosis": st.column_config.TextColumn("🩺 Diagnosis", help="The underlying reason for the leak."),
+                "Config Key": st.column_config.TextColumn("⚙️ Config Key", help="The configuration parameter governing this gate."),
+            }
+        )
     else:
         st.success("No significant leaks detected in the current period.")
 else:
@@ -583,7 +619,19 @@ with st.expander("Raw Funnel Data", expanded=False):
         sort_asc = (sel_cycle != 'ALL')
         st.dataframe(
             display_df.sort_values('timestamp', ascending=sort_asc).head(200),
-            hide_index=True, use_container_width=True,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "timestamp": st.column_config.TextColumn("🕒 Time", help="Timestamp of the funnel event."),
+                "cycle_id": st.column_config.TextColumn("🆔 Cycle ID", help="The unique cycle ID."),
+                "stage": st.column_config.TextColumn("🎭 Stage", help="The execution stage name."),
+                "outcome": st.column_config.TextColumn("🏁 Outcome", help="PASS/BLOCK outcome at this stage."),
+                "detail": st.column_config.TextColumn("📝 Detail", help="Technical metadata for the event."),
+                "source": st.column_config.TextColumn("🔌 Source", help="The data source (e.g., orchestrator)."),
+                "regime": st.column_config.TextColumn("🎭 Regime", help="Market regime during the event."),
+                "fill_price": st.column_config.NumberColumn("💰 Fill Price", format="$%.2f"),
+                "initial_limit": st.column_config.NumberColumn("🎯 Limit", format="$%.2f"),
+            }
         )
 
         # Cycle journey summary when a specific cycle is selected
@@ -591,7 +639,17 @@ with st.expander("Raw Funnel Data", expanded=False):
             journey = display_df.sort_values('timestamp')[['timestamp', 'stage', 'outcome', 'detail']].copy()
             journey['timestamp'] = journey['timestamp'].dt.strftime('%H:%M:%S')
             st.markdown(f"**Cycle Journey: `{sel_cycle}`** ({len(journey)} events)")
-            st.dataframe(journey, hide_index=True, use_container_width=True)
+            st.dataframe(
+                journey,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "timestamp": st.column_config.TextColumn("🕒 Time", help="Time of day for the event."),
+                    "stage": st.column_config.TextColumn("🎭 Stage", help="Execution stage."),
+                    "outcome": st.column_config.TextColumn("🏁 Outcome", help="Result at this stage."),
+                    "detail": st.column_config.TextColumn("📝 Detail", help="Detailed event metadata."),
+                }
+            )
 
         st.download_button(
             "Download Funnel CSV",
