@@ -1433,6 +1433,7 @@ if price_df is not None and not price_df.empty:
             data=csv,
             file_name=f"{profile.contract.symbol.lower()}_data_{lookback_days}d_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime='text/csv',
+            help="Download the displayed market data and overlaid signals as a CSV file for external analysis."
         )
 
     # === RAW SIGNAL LOG ===

@@ -227,6 +227,26 @@ class TestFunnelUX(unittest.TestCase):
                 found_config = True
         self.assertTrue(found_config, "No metrics found to check in The Funnel")
 
+    def test_funnel_download_button_tooltip(self):
+        """Verify that the download button in pages/10_The_Funnel.py has a help tooltip."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "10_The_Funnel.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_button = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "download_button":
+                has_help = False
+                for kw in node.keywords:
+                    if kw.arg == "help":
+                        has_help = True
+                        break
+                self.assertTrue(has_help, f"download_button missing tooltip help in {file_path}")
+                found_button = True
+        self.assertTrue(found_button, "No download_button found to check in The Funnel")
+
 
 class TestDashboardUX(unittest.TestCase):
     def test_dashboard_metric_tooltips(self):
@@ -551,6 +571,26 @@ class TestSignalOverlayUX(unittest.TestCase):
             self.assertTrue(
                 found, f"Could not find metric '{metric}' in pages/6_Signal_Overlay.py"
             )
+
+    def test_signal_overlay_download_button_tooltip(self):
+        """Verify that the download button in pages/6_Signal_Overlay.py has a help tooltip."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "6_Signal_Overlay.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_button = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "download_button":
+                has_help = False
+                for kw in node.keywords:
+                    if kw.arg == "help":
+                        has_help = True
+                        break
+                self.assertTrue(has_help, f"download_button missing tooltip help in {file_path}")
+                found_button = True
+        self.assertTrue(found_button, "No download_button found to check in Signal Overlay")
 
 
 class TestBrierAnalysisUX(unittest.TestCase):

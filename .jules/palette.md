@@ -69,3 +69,6 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2026-03-10 - Visual Anchors in Data Tables
 **Learning:** Data tables often feel "heavy" and purely technical. Prepending semantic emojis to `st.column_config` headers (e.g., 🕒 Time, 📜 Decision) provides visual anchors that make the table more approachable and scan-friendly, especially when mixed with other metric cards that use icons.
 **Action:** Consistently use emojis in `column_config` titles for high-impact dashboards to maintain the visual language of the application.
+## 2024-05-23 - Add Tooltips to `st.download_button`
+**Learning:** Streamlit UI components like `st.download_button` can lack sufficient context, reducing accessibility and clarity. Adding the built-in `help` parameter provides native, descriptive tooltips that explain button functionality.
+**Action:** Consistently enforce `help` tooltips on `st.download_button` components (and others like `st.metric` or `st.checkbox`) across the dashboard to improve micro-UX and accessibility. Use `ast` unit tests to statically verify their presence.
