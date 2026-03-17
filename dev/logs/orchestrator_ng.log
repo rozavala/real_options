@@ -13328,3 +13328,105 @@
 2026-03-17 17:56:01,128 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=810, market_state=ACTIVE, market_open=True, trading_day=True
 2026-03-17 17:56:29,606 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
 2026-03-17 17:57:10,342 - Orchestrator - INFO - Shutdown: Gracefully disengaging Microstructure Sentinel
+2026-03-17 18:01:29,650 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 18:05:00,002 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-17 18:05:00,006 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-17 18:05:00,007 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1234 [REMOTE/PAPER]...
+2026-03-17 18:05:00,194 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1234
+2026-03-17 18:05:00,200 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 18:05:00,200 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-17 18:05:00,304 - OrderManager - INFO - Found 18 live position legs in the IB account.
+2026-03-17 18:05:00,305 - OrderManager - INFO -   Filtered to 11 NG positions with non-zero quantity (from 18 total across all commodities)
+2026-03-17 18:05:00,361 - OrderManager - INFO - Reconstruction: LNEM6 P3200 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:05:00,363 - OrderManager - INFO - Reconstruction: LNEU6 P3500 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 18:05:00,365 - OrderManager - INFO - Reconstruction: LNEM6 C3200 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:05:00,367 - OrderManager - INFO - Reconstruction: LNEN6 P3350 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 18:05:00,369 - OrderManager - INFO - Reconstruction: LNEQ6 P3450 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 18:05:00,370 - OrderManager - INFO - Reconstruction: LNEN6 P3450 | Trade Date: 2026-03-17 | Age: 1 | Qty: 2.0
+2026-03-17 18:05:00,372 - OrderManager - INFO - Reconstruction: LNEN6 C3400 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:05:00,374 - OrderManager - INFO - Reconstruction: LNEQ6 P3500 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 18:05:00,376 - OrderManager - INFO - Reconstruction: LNEQ6 P3550 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:05:00,378 - OrderManager - INFO - Reconstruction: LNEU6 P3450 | Trade Date: 2026-03-16 | Age: 2 | Qty: 1.0
+2026-03-17 18:05:00,379 - OrderManager - INFO - Reconstruction: LNEQ6 C3550 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:05:00,379 - OrderManager - INFO - Processing closure for Position ID 1bd75902-3f33-47a2-8a92-7fd2cd4ae938 with 2 legs.
+2026-03-17 18:05:00,380 - OrderManager - INFO - Constructed BAG order for Pos ID 1bd75902-3f33-47a2-8a92-7fd2cd4ae938: ['SELL 1 x 269462137', 'BUY 1 x 650972367']
+2026-03-17 18:05:00,380 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-17 18:05:03,409 - OrderManager - WARNING - Leg 650972367 (LNEU6 P3450): No valid price data
+2026-03-17 18:05:03,409 - OrderManager - WARNING - Limit price is zero for NG
+2026-03-17 18:05:03,409 - OrderManager - WARNING - Invalid limit price for NG. Using Market Order.
+2026-03-17 18:05:03,409 - root - INFO - Assigned new unique OrderRef for tracking: 8804ebef-f728-4c01-b661-96691396dcd2
+2026-03-17 18:05:03,410 - root - INFO - Placing BUY order for ...
+2026-03-17 18:05:03,411 - root - INFO - Successfully placed order ID 366 for .
+2026-03-17 18:05:03,411 - OrderManager - INFO - Placed close order 366 for Pos ID 1bd75902-3f33-47a2-8a92-7fd2cd4ae938. Waiting for fill...
+2026-03-17 18:05:06,414 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-17 18:05:06,416 - root - INFO - Logged 2 leg(s) to ledger for position_id 1bd75902-3f33-47a2-8a92-7fd2cd4ae938 (Stale Position Close)
+2026-03-17 18:05:06,416 - OrderManager - INFO - Successfully closed Combo (Pos ID: 1bd75902-3f33-47a2-8a92-7fd2cd4ae938). P&L: -139.48
+2026-03-17 18:05:06,423 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-17 18:05:06,510 - trading_bot.tms - INFO - TMS: Invalidated thesis for 1bd75902-3f33-47a2-8a92-7fd2cd4ae938: Stale position (>2 days)
+2026-03-17 18:05:06,513 - OrderManager - INFO - TMS: Invalidated thesis for 1bd75902-3f33-47a2-8a92-7fd2cd4ae938: Stale position (>2 days)
+2026-03-17 18:05:07,527 - OrderManager - INFO - Processing closure for Position ID 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a with 1 legs.
+2026-03-17 18:05:07,528 - OrderManager - INFO - Constructed SINGLE order for Pos ID 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a: BUY 1.0 LNEN6 P3350
+2026-03-17 18:05:09,531 - OrderManager - INFO - Placing LIMIT order for NG. Price: 0.32 (DEBIT)
+2026-03-17 18:05:09,532 - root - INFO - Assigned new unique OrderRef for tracking: 1540c7f8-7c3a-474c-b8aa-1151bc629af4
+2026-03-17 18:05:09,532 - root - INFO - Placing BUY order for LNEN6 P3350...
+2026-03-17 18:05:09,533 - root - INFO - Successfully placed order ID 368 for LNEN6 P3350.
+2026-03-17 18:05:09,533 - OrderManager - INFO - Placed close order 368 for Pos ID 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a. Waiting for fill...
+2026-03-17 18:05:24,552 - OrderManager - INFO - Price walk #1: 0.32 -> 0.33 (DEBIT)
+2026-03-17 18:05:26,558 - root - INFO - Logged 1 leg(s) to ledger for position_id 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a (Stale Position Close)
+2026-03-17 18:05:26,558 - OrderManager - INFO - Successfully closed LNEN6 P3350 (Pos ID: 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a). P&L: -34.74
+2026-03-17 18:05:26,565 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-17 18:05:26,617 - trading_bot.tms - INFO - TMS: Invalidated thesis for 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a: Stale position (>2 days)
+2026-03-17 18:05:26,617 - OrderManager - INFO - TMS: Invalidated thesis for 79503cd8-cde4-4ae3-9c60-c8fe1c493d2a: Stale position (>2 days)
+2026-03-17 18:05:27,622 - OrderManager - INFO - Processing closure for Position ID 943cf99d-000e-406e-a1fd-1c75f5b8be89 with 2 legs.
+2026-03-17 18:05:27,623 - OrderManager - INFO - Constructed BAG order for Pos ID 943cf99d-000e-406e-a1fd-1c75f5b8be89: ['BUY 1 x 644918362', 'SELL 1 x 269462097']
+2026-03-17 18:05:27,624 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-17 18:05:30,735 - OrderManager - WARNING - Leg 269462097 (LNEQ6 P3500): No valid price data
+2026-03-17 18:05:30,736 - OrderManager - WARNING - Limit price is zero for NG
+2026-03-17 18:05:30,736 - OrderManager - WARNING - Invalid limit price for NG. Using Market Order.
+2026-03-17 18:05:30,736 - root - INFO - Assigned new unique OrderRef for tracking: addff692-e612-4a82-80db-e367be9ce8be
+2026-03-17 18:05:30,736 - root - INFO - Placing BUY order for ...
+2026-03-17 18:05:30,737 - root - INFO - Successfully placed order ID 373 for .
+2026-03-17 18:05:30,738 - OrderManager - INFO - Placed close order 373 for Pos ID 943cf99d-000e-406e-a1fd-1c75f5b8be89. Waiting for fill...
+2026-03-17 18:05:35,747 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-17 18:05:35,748 - root - INFO - Logged 2 leg(s) to ledger for position_id 943cf99d-000e-406e-a1fd-1c75f5b8be89 (Stale Position Close)
+2026-03-17 18:05:35,749 - OrderManager - INFO - Successfully closed Combo (Pos ID: 943cf99d-000e-406e-a1fd-1c75f5b8be89). P&L: -119.47999999999999
+2026-03-17 18:05:35,755 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-17 18:05:35,787 - trading_bot.tms - INFO - TMS: Invalidated thesis for 943cf99d-000e-406e-a1fd-1c75f5b8be89: Stale position (>2 days)
+2026-03-17 18:05:35,787 - OrderManager - INFO - TMS: Invalidated thesis for 943cf99d-000e-406e-a1fd-1c75f5b8be89: Stale position (>2 days)
+2026-03-17 18:05:37,113 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-17 18:05:37,115 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 18:05:37,116 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-17 18:05:40,125 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-17 18:15:00 UTC. Waiting for 0.16 hours.
+2026-03-17 18:06:29,681 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 18:11:29,719 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 18:15:00,001 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-17 18:15:00,007 - Orchestrator - INFO - --- Fallback Close Attempt [NG] --- (primary result unknown, running as safety net)
+2026-03-17 18:15:00,008 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-17 18:15:00,009 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1234 [REMOTE/PAPER]...
+2026-03-17 18:15:00,484 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1234
+2026-03-17 18:15:00,490 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 18:15:00,490 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-17 18:15:00,638 - OrderManager - INFO - Found 18 live position legs in the IB account.
+2026-03-17 18:15:00,638 - OrderManager - INFO -   Filtered to 6 NG positions with non-zero quantity (from 18 total across all commodities)
+2026-03-17 18:15:00,684 - OrderManager - INFO - Reconstruction: LNEM6 P3200 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:15:00,686 - OrderManager - INFO - Reconstruction: LNEM6 C3200 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:15:00,689 - OrderManager - INFO - Reconstruction: LNEN6 P3450 | Trade Date: 2026-03-17 | Age: 1 | Qty: 2.0
+2026-03-17 18:15:00,691 - OrderManager - INFO - Reconstruction: LNEN6 C3400 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:15:00,693 - OrderManager - INFO - Reconstruction: LNEQ6 P3550 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:15:00,696 - OrderManager - INFO - Reconstruction: LNEQ6 C3550 | Trade Date: 2026-03-17 | Age: 1 | Qty: 1.0
+2026-03-17 18:15:01,016 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-17 18:15:01,018 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 18:15:01,019 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-17 18:15:04,030 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-17 18:25:00 UTC. Waiting for 0.17 hours.
+2026-03-17 18:16:29,758 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 18:21:29,790 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-17 18:25:00,001 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-17 18:25:00,006 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-17 18:25:00,006 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1239 [REMOTE/PAPER]...
+2026-03-17 18:25:00,352 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1239
+2026-03-17 18:25:00,358 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-17 18:25:00,529 - Orchestrator - INFO - Emergency hard close: 6 legs open but none are stale (max_holding_days=2). Skipping.
+2026-03-17 18:25:00,530 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-17 18:25:00,530 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-17 18:25:03,540 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-17 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-17 18:26:29,830 - trading_bot.self_healing - WARNING - SELF-HEAL: 14 deferred triggers accumulated. Check process_deferred_triggers.
