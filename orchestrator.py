@@ -1371,6 +1371,7 @@ async def _reconcile_orphaned_theses(
 
         remaining_ib = dict(ib_aggregate)
         live_position_ids = set()
+        fully_matched_tids = set()  # Theses whose ALL legs were consumed by FIFO
 
         for tid, _ in thesis_order:
             expected_legs = thesis_expected[tid]
@@ -1388,6 +1389,7 @@ async def _reconcile_orphaned_theses(
                 for sym, exp_qty in expected_legs.items():
                     remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
                 live_position_ids.add(tid)
+                fully_matched_tids.add(tid)
             else:
                 # Fail closed: if ANY leg still has IB backing, don't orphan
                 any_present = any(
@@ -1434,19 +1436,21 @@ async def _reconcile_orphaned_theses(
         # 2d. Cross-thesis netting check: when multiple theses share a contract
         # in opposite directions, IB's net position can't satisfy either thesis
         # individually, but the aggregate may match perfectly.
-        # Collect theses that are partially covered (in live_position_ids but
-        # not fully matched) and check if their combined expected equals remaining IB.
-        partial_tids = [
+        # Include ALL unmatched theses — not just those with visible legs.
+        # A thesis whose legs are entirely netted to zero in IB (e.g., after
+        # a stale close removed one leg) has no IB presence but its expected
+        # quantities are still needed for the aggregate to balance.
+        # Safety: the all_netted check validates the aggregate matches IB
+        # exactly, so truly orphaned theses (closed externally) won't suppress
+        # valid alerts — their expected legs would break the aggregate match.
+        unmatched_tids = [
             tid for tid, _ in thesis_order
-            if tid in live_position_ids and tid in thesis_expected
+            if tid not in fully_matched_tids and tid in thesis_expected
         ]
-        # Only partially covered theses contribute to remaining — fully matched
-        # theses already had their qty deducted. Check if remaining_ib is fully
-        # explained by partial theses' expected legs.
         remaining_nonzero = {s: q for s, q in remaining_ib.items() if q != 0}
-        if remaining_nonzero and partial_tids:
+        if remaining_nonzero and unmatched_tids:
             partial_aggregate = {}
-            for tid in partial_tids:
+            for tid in unmatched_tids:
                 for sym, exp_qty in thesis_expected[tid].items():
                     partial_aggregate[sym] = partial_aggregate.get(sym, 0) + exp_qty
             # Check if partial aggregate equals remaining IB (all accounted for)
@@ -1458,13 +1462,16 @@ async def _reconcile_orphaned_theses(
                     break
             if all_netted:
                 logger.info(
-                    f"Reconciliation: {len(partial_tids)} partially-covered theses "
+                    f"Reconciliation: {len(unmatched_tids)} unmatched theses "
                     f"net to IB positions (cross-thesis netting). "
                     f"No real orphans. aggregate={partial_aggregate}"
                 )
                 # Deduct so remaining_ib goes to zero — no orphan alert
                 for sym, exp_qty in partial_aggregate.items():
                     remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
+                # Keep these theses alive — they are accounted for
+                for tid in unmatched_tids:
+                    live_position_ids.add(tid)
 
         # Theses with no ledger entries but IB has positions: fail closed
         for tid in active_thesis_ids:
