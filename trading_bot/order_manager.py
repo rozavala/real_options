@@ -1377,7 +1377,7 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
                                 log_funnel_event(
                                     cycle_id=signal.get('_cycle_id', 'unknown'),
                                     contract=signal.get('contract_month', 'unknown'),
-                                    stage=FunnelStage.COMPLIANCE_CHECK,
+                                    stage=FunnelStage.COMPLIANCE_AUDIT,
                                     outcome="BLOCK",
                                     detail=overlap_reason[:200],
                                     price_snapshot=signal.get('price'),
