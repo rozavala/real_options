@@ -213,6 +213,9 @@ def _build_waterfall_data(df: pd.DataFrame) -> pd.DataFrame:
         stage_df = df[df['stage'] == stage]
         passed = len(stage_df[stage_df['outcome'] == 'PASS'])
         blocked = len(stage_df[stage_df['outcome'] == 'BLOCK'])
+        # INFO outcomes (e.g., neutral council decisions) are not blocked — count as passed-through
+        info = len(stage_df[stage_df['outcome'] == 'INFO'])
+        passed += info
         total = passed + blocked
         rows.append({
             'Stage': stage.replace('_', ' ').title(),
@@ -299,7 +302,7 @@ if not funnel_df.empty and 'stage' in funnel_df.columns:
                         for regime in sorted(regime_values):
                             rdf = funnel_df[funnel_df[regime_col] == regime]
                             decisions = rdf[(rdf['stage'] == 'COUNCIL_DECISION')]
-                            n_dec = len(decisions[decisions['outcome'].isin(['PASS', 'BLOCK'])])
+                            n_dec = len(decisions[decisions['outcome'].isin(['PASS', 'BLOCK', 'INFO'])])
                             n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
                             regime_survival.append({
                                 'Regime': str(regime).title(),
