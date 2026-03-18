@@ -442,8 +442,11 @@ with tab_exec:
             st.markdown("**Recent Unfilled Orders**")
             display_cols = ['timestamp', 'cycle_id', 'contract', 'detail', 'walk_away_price', 'initial_limit']
             avail_cols = [c for c in display_cols if c in cancelled.columns]
+            _cancelled_display = cancelled[avail_cols].tail(10).sort_values('timestamp', ascending=False).copy()
+            if 'timestamp' in _cancelled_display.columns:
+                _cancelled_display['timestamp'] = _cancelled_display['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
             st.dataframe(
-                cancelled[avail_cols].tail(10).sort_values('timestamp', ascending=False),
+                _cancelled_display,
                 hide_index=True,
                 use_container_width=True,
                 column_config={
@@ -485,8 +488,11 @@ with tab_lifecycle:
             st.markdown("**Recent Risk Triggers**")
             display_cols = ['timestamp', 'contract', 'detail']
             avail_cols = [c for c in display_cols if c in risk_events.columns]
+            _risk_display = risk_events[avail_cols].tail(10).sort_values('timestamp', ascending=False).copy()
+            if 'timestamp' in _risk_display.columns:
+                _risk_display['timestamp'] = _risk_display['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
             st.dataframe(
-                risk_events[avail_cols].tail(10).sort_values('timestamp', ascending=False),
+                _risk_display,
                 hide_index=True,
                 use_container_width=True,
                 column_config={
@@ -619,8 +625,11 @@ with st.expander("Raw Funnel Data", expanded=False):
 
         # When drilling into a cycle, show events in chronological order
         sort_asc = (sel_cycle != 'ALL')
+        _raw_display = display_df.sort_values('timestamp', ascending=sort_asc).head(200).copy()
+        if 'timestamp' in _raw_display.columns:
+            _raw_display['timestamp'] = _raw_display['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
         st.dataframe(
-            display_df.sort_values('timestamp', ascending=sort_asc).head(200),
+            _raw_display,
             hide_index=True,
             use_container_width=True,
             column_config={
@@ -639,7 +648,7 @@ with st.expander("Raw Funnel Data", expanded=False):
         # Cycle journey summary when a specific cycle is selected
         if sel_cycle != 'ALL' and not display_df.empty:
             journey = display_df.sort_values('timestamp')[['timestamp', 'stage', 'outcome', 'detail']].copy()
-            journey['timestamp'] = journey['timestamp'].dt.strftime('%H:%M:%S')
+            journey['timestamp'] = journey['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
             st.markdown(f"**Cycle Journey: `{sel_cycle}`** ({len(journey)} events)")
             st.dataframe(
                 journey,
