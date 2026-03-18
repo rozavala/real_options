@@ -41,7 +41,9 @@ def load_funnel_data(ticker: str) -> pd.DataFrame:
     try:
         df = pd.read_csv(path)
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            # format='mixed' required: backfill rows have tz-aware timestamps
+            # while realtime execution events (ORDER_PLACED, PRICE_WALK_STEP) are naive
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True, errors='coerce')
         return df
     except Exception:
         return pd.DataFrame()
@@ -56,7 +58,7 @@ def load_order_events(ticker: str) -> pd.DataFrame:
     try:
         df = pd.read_csv(path)
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True, errors='coerce')
         return df
     except Exception:
         return pd.DataFrame()
@@ -211,6 +213,9 @@ def _build_waterfall_data(df: pd.DataFrame) -> pd.DataFrame:
         stage_df = df[df['stage'] == stage]
         passed = len(stage_df[stage_df['outcome'] == 'PASS'])
         blocked = len(stage_df[stage_df['outcome'] == 'BLOCK'])
+        # INFO outcomes (e.g., neutral council decisions) are not blocked — count as passed-through
+        info = len(stage_df[stage_df['outcome'] == 'INFO'])
+        passed += info
         total = passed + blocked
         rows.append({
             'Stage': stage.replace('_', ' ').title(),
@@ -297,7 +302,7 @@ if not funnel_df.empty and 'stage' in funnel_df.columns:
                         for regime in sorted(regime_values):
                             rdf = funnel_df[funnel_df[regime_col] == regime]
                             decisions = rdf[(rdf['stage'] == 'COUNCIL_DECISION')]
-                            n_dec = len(decisions[decisions['outcome'].isin(['PASS', 'BLOCK'])])
+                            n_dec = len(decisions[decisions['outcome'].isin(['PASS', 'BLOCK', 'INFO'])])
                             n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
                             regime_survival.append({
                                 'Regime': str(regime).title(),
@@ -440,8 +445,11 @@ with tab_exec:
             st.markdown("**Recent Unfilled Orders**")
             display_cols = ['timestamp', 'cycle_id', 'contract', 'detail', 'walk_away_price', 'initial_limit']
             avail_cols = [c for c in display_cols if c in cancelled.columns]
+            _cancelled_display = cancelled[avail_cols].tail(10).sort_values('timestamp', ascending=False).copy()
+            if 'timestamp' in _cancelled_display.columns:
+                _cancelled_display['timestamp'] = _cancelled_display['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
             st.dataframe(
-                cancelled[avail_cols].tail(10).sort_values('timestamp', ascending=False),
+                _cancelled_display,
                 hide_index=True,
                 use_container_width=True,
                 column_config={
@@ -483,8 +491,11 @@ with tab_lifecycle:
             st.markdown("**Recent Risk Triggers**")
             display_cols = ['timestamp', 'contract', 'detail']
             avail_cols = [c for c in display_cols if c in risk_events.columns]
+            _risk_display = risk_events[avail_cols].tail(10).sort_values('timestamp', ascending=False).copy()
+            if 'timestamp' in _risk_display.columns:
+                _risk_display['timestamp'] = _risk_display['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
             st.dataframe(
-                risk_events[avail_cols].tail(10).sort_values('timestamp', ascending=False),
+                _risk_display,
                 hide_index=True,
                 use_container_width=True,
                 column_config={
@@ -617,8 +628,11 @@ with st.expander("Raw Funnel Data", expanded=False):
 
         # When drilling into a cycle, show events in chronological order
         sort_asc = (sel_cycle != 'ALL')
+        _raw_display = display_df.sort_values('timestamp', ascending=sort_asc).head(200).copy()
+        if 'timestamp' in _raw_display.columns:
+            _raw_display['timestamp'] = _raw_display['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
         st.dataframe(
-            display_df.sort_values('timestamp', ascending=sort_asc).head(200),
+            _raw_display,
             hide_index=True,
             use_container_width=True,
             column_config={
@@ -637,7 +651,7 @@ with st.expander("Raw Funnel Data", expanded=False):
         # Cycle journey summary when a specific cycle is selected
         if sel_cycle != 'ALL' and not display_df.empty:
             journey = display_df.sort_values('timestamp')[['timestamp', 'stage', 'outcome', 'detail']].copy()
-            journey['timestamp'] = journey['timestamp'].dt.strftime('%H:%M:%S')
+            journey['timestamp'] = journey['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
             st.markdown(f"**Cycle Journey: `{sel_cycle}`** ({len(journey)} events)")
             st.dataframe(
                 journey,
