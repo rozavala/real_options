@@ -139,7 +139,7 @@ Specialized LLM personas that analyze grounded data.
 7.  **Compliance & Risk:**
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration. Also enforces a **Conviction Gate** (suppressing low-conviction signals) and **Sentinel IC Suppression** (blocking short premium positions during sentinel-triggered high-volatility events).
-8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions. Multi-leg positions (e.g., spreads) are closed atomically via single BAG (combo) orders to prevent orphaned legs, falling back to sequential closures only if necessary. All exits use limit orders with adaptive price walking, dropping to a profile-driven timeout for market order fallbacks (e.g., KC=90s, CC=120s, NG=60s). Stale-close fallbacks are automatically skipped if the primary close succeeds. New orders are constructed and submitted to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Catastrophe stops are placed dynamically, gated by account Net Liquidation Value (NLV) thresholds to fail-closed without stop protection if margin is insufficient. Emergency closures execute as concurrent market orders.
+8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions. Multi-leg positions (e.g., spreads) are closed atomically via single BAG (combo) orders to prevent orphaned legs, falling back to sequential closures only if necessary. All exits use limit orders with adaptive price walking, dropping to a profile-driven timeout for market order fallbacks (e.g., KC=90s, CC=120s, NG=60s). Stale-close fallbacks are automatically skipped if the primary close succeeds. New orders are constructed and submitted to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. A **Contract Overlap Guard** blocks proposed orders with opposing-direction overlaps against active theses to prevent invisible IBKR netting, while allowing same-direction additive overlaps. Catastrophe stops are placed dynamically, gated by account Net Liquidation Value (NLV) thresholds to fail-closed without stop protection if margin is insufficient. Emergency closures execute as concurrent market orders.
 9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching and securely parses IBKR Flex Queries via `defusedxml` to prevent XXE attacks. The reconciliation loop is algorithmically optimized via vectorized pandas `.groupby()` chunking on deterministic characteristics (like symbol and quantity) to map real trades to local synthetic state with $O(1)$ precision, while automatically invalidating superseded synthetic entries to eliminate false-positive phantom position alerts. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
@@ -188,13 +188,14 @@ git push origin production
 
 -   **Runtime:** Python 3.11+, `asyncio`
 -   **Execution:** Interactive Brokers Gateway (`ib_insync`)
--   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1)
+-   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1), Perplexity (Sonar)
 -   **Memory:** ChromaDB (Vector Store)
 -   **Data Sources:**
     -   **Market Data:** IBKR, yfinance (History/VaR)
     -   **Weather:** Open-Meteo
     -   **Prediction Markets:** Polymarket (via Gamma API)
     -   **News:** Google News RSS
+    -   **Search:** Perplexity Sonar (with Gemini fallback)
 -   **Dashboard:** Streamlit
 -   **Orchestration:** MasterOrchestrator → CommodityEngine
 -   **Observability:** Custom logging + Pushover notifications
