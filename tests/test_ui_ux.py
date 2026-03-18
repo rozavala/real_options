@@ -225,7 +225,7 @@ class TestFunnelUX(unittest.TestCase):
             "💸 Alpha Left on Table",
             "✅ Skill",
             "🍀 Lucky",
-            "⚠️ Execution Leak",
+            "📉 Market Risk",
             "❌ Bad Call",
             "📊 Mean",
             "🎯 Median",
