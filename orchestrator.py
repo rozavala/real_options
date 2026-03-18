@@ -57,6 +57,7 @@ from trading_bot.weighted_voting import RegimeDetector
 from trading_bot.tms import TransactiveMemory
 from trading_bot.budget_guard import get_budget_guard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
+from trading_bot.data_dir_context import get_engine_runtime
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
 from trading_bot.risk_management import _calculate_combo_risk_metrics
@@ -88,6 +89,40 @@ _SCHEDULED_SHUTDOWN = False
 _FULL_SHUTDOWN = False
 _brier_zero_resolution_streak = 0
 
+
+# --- Per-engine shutdown flag helpers (Issue #1346) ---
+# These replace direct reads/writes of _SCHEDULED_SHUTDOWN / _FULL_SHUTDOWN so
+# that each CommodityEngine's asyncio Task has isolated shutdown state.
+# Falls back to the module-level globals when no EngineRuntime is set (legacy /
+# single-engine / test contexts).
+
+def _get_scheduled_shutdown() -> bool:
+    rt = get_engine_runtime()
+    return rt.scheduled_shutdown if rt is not None else _SCHEDULED_SHUTDOWN
+
+
+def _set_scheduled_shutdown(value: bool) -> None:
+    global _SCHEDULED_SHUTDOWN
+    rt = get_engine_runtime()
+    if rt is not None:
+        rt.scheduled_shutdown = value
+    else:
+        _SCHEDULED_SHUTDOWN = value
+
+
+def _get_full_shutdown() -> bool:
+    rt = get_engine_runtime()
+    return rt.full_shutdown if rt is not None else _FULL_SHUTDOWN
+
+
+def _set_full_shutdown(value: bool) -> None:
+    global _FULL_SHUTDOWN
+    rt = get_engine_runtime()
+    if rt is not None:
+        rt.full_shutdown = value
+    else:
+        _FULL_SHUTDOWN = value
+
 # Passive emergency cooldown tracking: ticker → datetime of last trigger
 _last_passive_emergency: dict = {}
 # Deferred trigger rate limiting: (ticker, sentinel_type) → datetime
@@ -108,7 +143,7 @@ def _in_ib_startup_grace() -> bool:
 
 def is_system_shutdown() -> bool:
     """Check if the system has fully shut down (SLEEPING state)."""
-    return _FULL_SHUTDOWN
+    return _get_full_shutdown()
 
 
 def is_scheduled_shutdown() -> bool:
@@ -117,7 +152,7 @@ def is_scheduled_shutdown() -> bool:
     True after cancel_and_stop_monitoring() runs. Used by
     guarded_generate_orders() to block new scheduled signals.
     """
-    return _SCHEDULED_SHUTDOWN
+    return _get_scheduled_shutdown()
 
 
 def _is_in_passive_emergency_cooldown(ticker: str, cooldown_seconds: int) -> bool:
@@ -2989,11 +3024,11 @@ async def log_stream(stream, logger_func):
 
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
-    global monitor_process, _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
+    global monitor_process
 
     # Reset both shutdown flags for new trading day
-    _SCHEDULED_SHUTDOWN = False
-    _FULL_SHUTDOWN = False
+    _set_scheduled_shutdown(False)
+    _set_full_shutdown(False)
     logger.info("Shutdown flags CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
@@ -3045,10 +3080,8 @@ async def stop_monitoring(config: dict):
 
 async def cancel_and_stop_monitoring(config: dict):
     """Wrapper task to cancel open orders and then stop the monitor."""
-    global _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
-
     logger.info("--- Initiating end-of-day shutdown sequence ---")
-    _SCHEDULED_SHUTDOWN = True  # Block new scheduled signals immediately
+    _set_scheduled_shutdown(True)  # Block new scheduled signals immediately
     logger.info("Scheduled shutdown flag SET — no new scheduled trades will be processed")
 
     await cancel_all_open_orders(config)
@@ -3062,9 +3095,9 @@ async def cancel_and_stop_monitoring(config: dict):
             "Market entering PASSIVE state — position monitor stays alive, "
             "emergency cycles remain enabled"
         )
-        # Don't stop monitoring, don't set _FULL_SHUTDOWN
+        # Don't stop monitoring, don't set full_shutdown
     else:
-        _FULL_SHUTDOWN = True
+        _set_full_shutdown(True)
         logger.info("Full shutdown flag SET — system entering SLEEPING state")
         await stop_monitoring(config)
 
@@ -4710,7 +4743,6 @@ async def run_sentinels(config: dict):
     - Price/Microstructure sentinels only run during market hours (IB needed)
     - IB connection is LAZY: only established when market is actually open
     """
-    global _FULL_SHUTDOWN  # Written during PASSIVE → SLEEPING transitions
     logger.info("--- Starting Sentinel Array ---")
 
     # === 1. LAZY INITIALIZATION: Start with NO connection ===
@@ -4783,7 +4815,7 @@ async def run_sentinels(config: dict):
             _sentinel_iteration += 1
 
             # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
-            if _FULL_SHUTDOWN:
+            if _get_full_shutdown():
                 # One-time microstructure cleanup (Issue 7 integrated)
                 if micro_sentinel is not None:
                     logger.info("Shutdown: Gracefully disengaging Microstructure Sentinel")
@@ -4843,7 +4875,7 @@ async def run_sentinels(config: dict):
                         # === SAFETY NET: Ensure position monitoring is running ===
                         # Covers the gap where bot starts just before market open
                         # and the scheduled start_monitoring was already missed.
-                        if not _FULL_SHUTDOWN and (
+                        if not _get_full_shutdown() and (
                             monitor_process is None or monitor_process.returncode is not None
                         ):
                             logger.info(
@@ -4899,9 +4931,9 @@ async def run_sentinels(config: dict):
 
             else:
                 # === 4. MARKET SLEEPING: Disconnect to prevent zombie state ===
-                # Also ensure _FULL_SHUTDOWN is set when entering SLEEPING
-                if market_state == 'SLEEPING' and not _FULL_SHUTDOWN and _SCHEDULED_SHUTDOWN:
-                    _FULL_SHUTDOWN = True
+                # Also ensure full_shutdown is set when entering SLEEPING
+                if market_state == 'SLEEPING' and not _get_full_shutdown() and _get_scheduled_shutdown():
+                    _set_full_shutdown(True)
                     logger.info("State transition: PASSIVE → SLEEPING — full shutdown engaged")
 
                 if sentinel_ib is not None and sentinel_ib.isConnected():
