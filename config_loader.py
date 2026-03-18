@@ -195,7 +195,7 @@ def load_config() -> dict | None:
     config['data_dir'] = os.path.join(base_dir, 'data', ticker)
 
     # Log successful load
-    loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai'] if config.get(p, {}).get('api_key')]
+    loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai', 'perplexity'] if config.get(p, {}).get('api_key')]
     logger.info(f"Config loaded successfully. Mode: {trading_mode}. Providers: {', '.join(loaded_providers)}")
 
     return config
