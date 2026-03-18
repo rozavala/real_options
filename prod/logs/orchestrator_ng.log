@@ -3499,3 +3499,74 @@
 2026-03-18 15:23:01,388 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
 2026-03-18 15:25:53,513 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3680, market_state=ACTIVE, market_open=True, trading_day=True
 2026-03-18 15:28:01,423 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-18 15:30:56,137 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3685, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 15:31:56,280 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-18 15:31:56,286 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-03-18 15:31:56,287 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-03-18 15:31:56,526 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-18 15:31:56,526 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-18 15:31:56,529 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-18 15:31:56,530 - Orchestrator - INFO - Refreshed contract cache: NGM26
+2026-03-18 15:33:01,466 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-18 15:34:02,837 - Orchestrator - INFO - NewsSentinel: trigger detected (source=NewsSentinel, severity=7)
+2026-03-18 15:34:02,913 - trading_bot.state_manager - INFO - Logged sentinel event from NewsSentinel to history.
+2026-03-18 15:34:02,979 - Orchestrator - INFO - 🚨 EMERGENCY CYCLE TRIGGERED by NewsSentinel: Extreme Sentiment Detected (Score: 9/10): Reported strikes on Iran's South Pars gas field, the world's largest gas reserve, combined with threats of regional retaliation, create an extreme geopolitical supply shock scenario. Such events typically trigger massive panic and upward price volatility in global energy markets, significantly impacting Henry Hub sentiment due to the globalized nature of LNG demand. (Cycle: NG-8b8b182b)
+2026-03-18 15:34:03,337 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-18 15:34:03,354 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-18 15:34:03,564 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=PROD, multiplier=1.0
+2026-03-18 15:34:03,565 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-18 15:34:03,565 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-03-18 15:34:03,581 - trading_bot.tms - INFO - TMS initialized at /home/console/real_options/data/NG/tms
+2026-03-18 15:34:03,589 - trading_bot.enhanced_brier - INFO - Loaded 200 predictions from /home/console/real_options/data/NG/enhanced_brier.json
+2026-03-18 15:34:03,592 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-03-18 15:34:03,593 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-03-18 15:34:03,594 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-03-18 15:34:03,594 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-18 15:34:03,594 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-18 15:34:03,595 - root - INFO - Fetching 2 active futures contracts for NG on NYMEX...
+2026-03-18 15:34:03,601 - ConfigLoader - WARNING - *** TRADING MODE OFF — No real orders will be placed ***
+2026-03-18 15:34:03,601 - ConfigLoader - INFO - Config loaded successfully. Mode: OFF. Providers: gemini, anthropic, openai, xai
+2026-03-18 15:34:03,802 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-18 15:34:03,803 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-18 15:34:03,807 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 2.
+2026-03-18 15:34:03,808 - Orchestrator - INFO - Targeting contract: NGM26 (202605)
+2026-03-18 15:34:07,928 - trading_bot.market_data_provider - INFO - Building market context for NGM26 (202605)...
+2026-03-18 15:34:08,410 - trading_bot.market_data_provider - INFO - Market context for NGM26 (202605): price=3.15, sma_200=3.670175, regime=TRENDING, vol_5d=0.0200
+2026-03-18 15:34:08,411 - Orchestrator - INFO - Emergency market context: price=3.152, regime=TRENDING
+2026-03-18 15:34:08,412 - trading_bot.agents - INFO - Running Specialized Cycle triggered by NewsSentinel...
+2026-03-18 15:34:08,413 - trading_bot.agents - INFO - Routing to sentiment (Reason: Default routing)
+2026-03-18 15:34:08,414 - trading_bot.agents - INFO - Waking up sentiment...
+2026-03-18 15:34:08,851 - trading_bot.agents - INFO - Retrieved 3 TMS insights for sentiment.
+2026-03-18 15:34:08,852 - trading_bot.agents - INFO - [sentiment] Phase 1: Gathering grounded data...
+2026-03-18 15:35:07,991 - trading_bot.weighted_voting - INFO - Market Regime Detected: TRENDING
+2026-03-18 15:35:07,992 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 15:35:07,992 - trading_bot.weighted_voting - INFO - Dynamic Weights: {"macro": "domain=3.0 \u00d7 reliability=1.0 = 2.89", "geopolitical": "domain=3.0 \u00d7 reliability=0.2 = 0.55", "supply_chain": "domain=1.5 \u00d7 reliability=0.5 = 0.66", "inventory": "domain=1.0 \u00d7 reliability=1.5 = 1.41", "sentiment": "domain=3.0 \u00d7 reliability=1.4 = 4.08", "technical": "domain=1.5 \u00d7 reliability=1.4 = 2.06", "volatility": "domain=1.5 \u00d7 reliability=1.1 = 1.51"}
+2026-03-18 15:35:07,993 - trading_bot.weighted_voting - INFO - Weighted Vote: NEUTRAL (score=0.033, dominant=sentiment)
+2026-03-18 15:35:07,996 - trading_bot.weighted_voting - INFO - Vote Breakdown: [\n  {\n    "agent": "macro",\n    "direction": "NEUTRAL",\n    "confidence": 0.55,\n    "domain_weight": 3.0,\n    "reliability_mult": 1.0,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "mismatch_discount": 1.0,\n    "final_weight": 2.89,\n    "contribution": 0.0\n  },\n  {\n    "agent": "geopolitical",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 3.0,\n    "reliability_mult": 0.19,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.55,\n    "contribution": 0.357\n  },\n  {\n    "agent": "supply_chain",\n    "direction": "BULLISH",\n    "confidence": 0.8,\n    "domain_weight": 1.5,\n    "reliability_mult": 0.46,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "mismatch_discount": 1.0,\n    "final_weight": 0.66,\n    "contribution": 0.529\n  },\n  {\n    "agent": "inventory",\n    "direction": "BEARISH",\n    "confidence": 0.55,\n    "domain_weight": 1.0,\n    "reliability_mult": 1.46,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "mismatch_discount": 1.0,\n    "final_weight": 1.41,\n    "contribution": -0.775\n  },\n  {\n    "agent": "sentiment",\n    "direction": "BULLISH",\n    "confidence": 0.65,\n    "domain_weight": 3.0,\n    "reliability_mult": 1.36,\n    "staleness_weight": 1.0,\n    "age_hours": 0.0,\n    "mismatch_discount": 1.0,\n    "final_weight": 4.08,\n    "contribution": 2.65\n  },\n  {\n    "agent": "technical",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 1.42,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "mismatch_discount": 1.0,\n    "final_weight": 2.06,\n    "contribution": -1.339\n  },\n  {\n    "agent": "volatility",\n    "direction": "BEARISH",\n    "confidence": 0.65,\n    "domain_weight": 1.5,\n    "reliability_mult": 1.05,\n    "staleness_weight": 0.96,\n    "age_hours": 1.4,\n    "mismatch_discount": 1.0,\n    "final_weight": 1.51,\n    "contribution": -0.985\n  }\n]
+2026-03-18 15:36:04,185 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3690, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 15:36:16,210 - trading_bot.agents - INFO - Master Decision: NEUTRAL | Thesis: PLAUSIBLE (conf=0.8) | Catalyst: South Pars strike-driven geopolitical tail risk colliding wi
+2026-03-18 15:36:16,212 - Orchestrator - INFO - Emergency Decision: NEUTRAL (0.8)
+2026-03-18 15:36:16,213 - Orchestrator - INFO - EMERGENCY NO TRADE: vol=BEARISH, regime=TRENDING
+2026-03-18 15:36:16,213 - trading_bot.strategy_router - INFO - H7-B: IC SUPPRESSED on sentinel trigger (NewsSentinel) with expensive vol. Falling through to NO TRADE.
+2026-03-18 15:36:16,213 - trading_bot.strategy_router - INFO - NO TRADE (emergency): vol=BEARISH, regime=TRENDING
+2026-03-18 15:36:16,214 - Orchestrator - INFO - Emergency Router Shadow Run: MATCH ✅
+2026-03-18 15:36:16,215 - root - INFO - Logged council decision for NGM26 (202605)
+2026-03-18 15:36:16,220 - trading_bot.decision_signals - INFO - Decision signal logged: NGM26 (202605) → NEUTRAL (DIRECTIONAL/NONE)
+2026-03-18 15:36:16,346 - Orchestrator - INFO - Emergency Cycle concluded with no action: NEUTRAL (DIRECTIONAL)
+2026-03-18 15:36:16,351 - Orchestrator - INFO - Post-cycle debounce: 300s (neutral decision)
+2026-03-18 15:37:04,655 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 31% of average (Sev: 6)
+2026-03-18 15:37:04,661 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-18 15:38:01,502 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-18 15:41:07,061 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3695, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 15:43:02,204 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-18 15:45:00,001 - Engine.NG - INFO - --- Running scheduled task: audit_mid_session [run_position_audit_cycle] ---
+2026-03-18 15:45:00,027 - Orchestrator - INFO - [OFF] run_position_audit_cycle skipped — no positions exist in OFF mode
+2026-03-18 15:45:00,035 - Engine.NG - INFO - Next task 'signal_early' (Signal: Early) scheduled for 2026-03-18 16:24:00 UTC. Waiting for 0.65 hours.
+2026-03-18 15:46:09,452 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3700, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 15:48:02,253 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-18 15:51:11,775 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3705, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 15:51:12,033 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 34% of average (Sev: 6)
+2026-03-18 15:51:12,041 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-18 15:53:02,289 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
+2026-03-18 15:56:14,237 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=3710, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 15:58:02,331 - trading_bot.self_healing - WARNING - SELF-HEAL: 15 deferred triggers accumulated. Check process_deferred_triggers.
