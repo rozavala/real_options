@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Wed Mar 18 03:00:04 UTC 2026
+Timestamp: Wed Mar 18 13:00:04 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  03:00:04 up 65 days,  9:23,  2 users,  load average: 0.33, 0.10, 0.02
+Uptime:  13:00:04 up 65 days, 19:23,  2 users,  load average: 0.00, 0.04, 0.01
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,18 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.7Gi       218Mi        36Mi       1.1Gi       1.1Gi
+Mem:           3.8Gi       3.0Gi       146Mi        30Mi       867Mi       797Mi
 Swap:          4.0Gi       1.3Gi       2.7Gi
 
 === LOAD AVERAGE ===
-0.33 0.10 0.02 2/783 2081641
+0.00 0.04 0.01 1/863 2093807
 
 === PROCESS STATUS ===
 Trading processes:
-console  2019203  0.4 15.0 2135132 605236 ?      Ssl  Mar16  14:16 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2019203  0.4 14.8 2130012 595144 ?      Ssl  Mar16  16:22 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2086814  0.0  7.6 1371164 307980 ?      Sl   08:15   0:11 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  2019264  0.5  1.6 2883664 65264 ?       Sl   Mar16  16:48 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2019264  0.5  0.7 2883664 30960 ?       Sl   Mar16  19:11 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,14 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
-2026-03-16 15:36:25,953 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade fails multiple pre-mortem stress tests simultaneously. The core analytical error is that a 0.8 confidence BEARISH call was constructed on a foundation where 3 of 8 agents were NEUTRAL or BULLISH, consensus confidence was only 0.61, and CVOL sits at an extreme 84.42 — a regime that structurally punishes directional shorts because the options market is pricing in violent move potential in BOTH directions. We succumbed to at least three distinct cognitive biases: (1) RECENCY BIAS — the -6.18% three-session decline was treated as momentum confirmation rather than recognized as a potential exhaustion move into a crowded short; (2) CONFIRMATION BIAS — bearish evidence was counted as 'independent lines' when supply/storage/demand signals are highly correlated and derive from the same macro regime, inflating perceived convergence; (3) CROWDED TRADE RISK — CFTC spec shorts at -206.4K contracts is not a continuation signal, it is a coiled spring. The bear case described is already IN THE PRICE. Markets don't pay you for consensus. The asymmetric risk here is violently to the upside: geopolitical tail risk (Hormuz) + weather optionality + crowded positioning + extreme vol regime = the trade that feels most justified by the data is the one most likely to be catastrophically wrong. If this trade is taken at all, size must be reduced to a fraction of normal allocation and hard stops must be set at $3.35 (the pre-decline level). The 0.8 stated confidence is not warranted given agent disagreement, vol regime, and the pre-mortem scenarios above. Recommended action: PASS on this trade entirely or wait for a dead-cat bounce to $3.25-3.30 before entering with a defined-risk structure (e.g., put spreads if IV normalizes, not naked directional futures exposure).
-2026-03-16 15:39:15,192 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-03-16 15:39:15,701 - trading_bot.connection_pool - ERROR - IB (KC_drawdown_check) connection failed: . Next retry backoff: 10.0s
-2026-03-16 15:39:15,701 - Orchestrator - ERROR - Drawdown guard check failed (fail-closed): 
-2026-03-16 15:40:21,709 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Liquidity Depletion: 9% of average
-2026-03-16 15:40:21,709 - Orchestrator - WARNING - CRITICAL trigger MicrostructureSentinel (Sev: 9) bypassing post-cycle debounce
-2026-03-16 15:43:21,341 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade fails the pre-mortem on three independent catastrophic pathways, and critically, all three are amplified by the single most dangerous feature of this setup: NGM26 liquidity at 9% of normal depth with -206,400 net speculative shorts already in the market. We committed CONFIRMATION BIAS by treating every piece of evidence through a bearish lens — the same liquidity depletion flagged as 'reduces confidence in bull squeeze claims' is actually the primary mechanism by which we get destroyed if wrong. We committed CROWDED TRADE error by gaining 'confidence' from consensus when consensus in a thin book means we are the marginal short entering after the trade is already crowded. We IGNORED the geopolitical tail-risk severity: TTF at $23.62 versus Henry Hub at $3.15 is a 7.5x differential that represents an arbitrage so violent it will find a way through 'capped' export infrastructure via regulatory, operational, or financial channels. We MISINTERPRETED the 38 Bcf withdrawal as purely bearish when the correct reading is: withdrawals are slowing because winter is ending, which is SEASONAL, not structural — this does not predict June 2026 storage trajectory. The EIA $3.80 2026 forecast that was cited as bearish validation was a DOWNWARD REVISION from a higher number, meaning the market has already partially priced this. At current price of $3.146 versus EIA forecast of $3.80, we are proposing to SHORT a contract 20% BELOW the official EIA forward estimate. The asymmetric risk profile is deeply unfavorable: maximum realistic bear case is $2.50-2.80 (12-20% downside), while a Hormuz/squeeze scenario could take NGM26 to $4.50-5.00+ (43-59% upside move against us) in a book with no liquidity to exit.
-2026-03-16 16:27:15,814 - trading_bot.agents - WARNING - [geopolitical] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
 2026-03-16 16:28:01,108 - trading_bot.agents - WARNING - [geopolitical] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
 2026-03-16 16:28:09,382 - trading_bot.weighted_voting - WARNING - Agent geopolitical: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
 2026-03-16 16:28:31,181 - trading_bot.weighted_voting - WARNING - Agent geopolitical: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
@@ -55,18 +48,26 @@ Recent orchestrator errors [multi]:
 2026-03-17 15:39:15,746 - Orchestrator - ERROR - Drawdown guard check failed (fail-closed): 
 2026-03-17 16:28:09,956 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
 2026-03-17 16:28:32,241 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 10:08:49,038 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-18 10:09:09,957 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-18 10:10:05,281 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 10:10:16,845 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-18 10:10:36,234 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 10:11:28,933 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 11:34:08,950 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 11:40:44,733 - ib_insync.client - ERROR - API connection failed: TimeoutError()
 
 Recent orchestrator errors [KC]:
-2026-03-16 12:04:45,499 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
-2026-03-16 14:02:34,176 - trading_bot.heterogeneous_router - WARNING - Attempt 1 failed for generate, retrying in 1.0s: Error code: 400 - {'error': {'message': "We could not parse the JSON body of your request. (HINT: This likely means you aren't using your HTTP library correctly. The OpenAI API expects a JSON payload, but what was sent was not valid JSON. If you have trouble figuring out how to fix this, please contact us through our help center at help.openai.com.)", 'type': 'invalid_request_error', 'param': None, 'code': None}}
-2026-03-16 15:39:15,192 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-03-16 15:39:15,701 - trading_bot.connection_pool - ERROR - IB (KC_drawdown_check) connection failed: . Next retry backoff: 10.0s
-2026-03-16 15:39:15,701 - Orchestrator - ERROR - Drawdown guard check failed (fail-closed): 
-2026-03-17 08:18:56,145 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. The pre-mortem reveals three independent catastrophic failure modes, any one of which is sufficient to cause severe loss. CRITICAL STRUCTURAL WEAKNESSES: (1) IV data is explicitly N/A — we cannot calculate position sizing, premium cost, or risk-reward with any precision. Trading a directional position without IV data on a commodity with 35% deferred IV is reckless. (2) The dominant bearish agent is 'volatility,' yet the volatility report itself highlights elevated OTM call skew and deferred IV at 35.31% — this is the OPTIONS MARKET pricing in exactly the upside tail risks we are fading. The dominant agent is warning us not to be high-conviction directional, and we are overriding it. (3) Consensus confidence is only 0.58 on a -0.150 weighted score — barely bearish. The proposed trade confidence of 0.80 is a significant override of weak consensus that is not justified by the evidence quality. (4) We succumbed to CONFIRMATION BIAS by treating multiple agents' NEUTRAL readings (Agronomist: NEUTRAL, Macro: NEUTRAL, Geopolitical: NEUTRAL) as silent agreement with the bear case, when they explicitly argue for balance. (5) We succumbed to ANCHORING BIAS on the StoneX forecast — a single secondary-sourced analyst projection cited through non-primary outlets is doing enormous weight-bearing work in this thesis. (6) The supply chain agent — which has direct, specifically sourced evidence of 28.9% Arabica shipment declines and Santos bottlenecks — is rated BULLISH at 0.8 confidence, the highest confidence score in the packet. We are directly fading the highest-confidence agent. VERDICT: The asymmetry of risk is unfavorable. The bear case requires multiple forecasts to materialize over 6-12 months. The bull case requires only one weather confirmation, one short squeeze trigger, or one forecast revision to inflict catastrophic near-term loss. With no IV data for sizing, a crowded short positioning structure, the highest-confidence agent bullish, and the volatility market pricing upside tail risk, this trade should not be executed.
-2026-03-17 11:33:57,639 - trading_bot.agents - WARNING - Devil's Advocate VETOED emergency trade: DO NOT PROCEED. This trade fails the pre-mortem stress test on multiple dimensions simultaneously. (1) CONFIRMATION BIAS: We accepted the supply-chain bullish narrative uncritically despite its core evidence being 6-week-old port data, while dismissing the bear case of rising ICE stocks, record crop projections, and a weekly downtrend as 'less decisive.' (2) DATA WE IGNORED: The January 27 Cecafé report age was never flagged as a staleness risk. The weekly lower-highs structure was explicitly noted by the technical analyst and dismissed. ICE stocks building to a 5.5-month high in an accelerating trend directly contradicts backwardation-based tightness arguments — we treated these as contradictions to explain away rather than as disqualifying signals. (3) CROWDED TRADE RISK: A 120% WoW surge in spec net longs is not 'not overcrowded relative to 2022 peaks' — it is a violent short-term momentum signal that historically precedes sharp reversals when the catalyst fades. (4) PRICE LOCATION: Entering at 294.6 cents places the trade directly at R2 resistance with the next target being psychological 300 cents — a 5-cent upside versus a potential 15-20 cent downside if any of the three failure scenarios materialize. The asymmetry is unfavorable. (5) VOLATILITY PENALTY: Elevated options premiums mean even directionally correct bullish positioning via options is expensive, and a direct futures position carries full downside exposure in a range-bound tape. The 0.58 consensus confidence (notably lower than the proposed 0.8) from the weighted agent vote is the honest number — this is a coin-flip trade dressed up in selective evidence selection, entered at resistance, in a downtrend, on aging data, with crowded short-term positioning. STAND ASIDE.
 2026-03-17 15:39:15,230 - ib_insync.client - ERROR - API connection failed: TimeoutError()
 2026-03-17 15:39:15,746 - trading_bot.connection_pool - ERROR - IB (KC_drawdown_check) connection failed: . Next retry backoff: 10.0s
 2026-03-17 15:39:15,746 - Orchestrator - ERROR - Drawdown guard check failed (fail-closed): 
+2026-03-18 10:08:49,038 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-18 10:09:09,957 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-18 10:10:05,281 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 10:10:16,845 - trading_bot.agents - WARNING - [agronomist] Skipping reflexion — initial research returned error. Returning error struct as-is to avoid poisoned-state loop.
+2026-03-18 10:10:36,234 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 10:11:28,933 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
+2026-03-18 11:34:08,950 - trading_bot.weighted_voting - WARNING - Agent agronomist: Research failed (dict-wrapped) - Error conducting research: LLM returned non-dict JSON
 
 Recent orchestrator errors [NG]:
 2026-03-16 15:40:21,709 - Orchestrator - WARNING - MICROSTRUCTURE CRITICAL: Liquidity Depletion: 9% of average
