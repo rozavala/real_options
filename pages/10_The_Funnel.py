@@ -141,7 +141,9 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
 
     Top half (Intelligence + Gates): derived from council_history columns.
     Bottom half (Execution): derived from execution_funnel.csv aggregate stage counts.
-    Final stage (P&L): derived from council_history pnl_realized.
+
+    Ends at Orders Filled — P&L is an outcome metric, not a pipeline gate,
+    and is shown separately in the Post-Funnel Outcome section.
 
     Returns DataFrame with columns: stage, survivors, drop, drop_pct, source_label
     """
@@ -154,13 +156,22 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
     stages.append({'stage': 'Council Decisions', 'survivors': n_total,
                    'source_label': 'council_history'})
 
-    # 2. Actionable (BULLISH/BEARISH)
+    # 2. Actionable — matches order_manager.py gate logic:
+    # Directional (BULL/BEAR) OR volatility plays (NEUTRAL + VOLATILITY prediction_type) pass through.
+    # NEUTRAL + DIRECTIONAL = no trade (the "Cash is a Position" path).
     if 'master_decision' in council_df.columns:
-        actionable = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])]
+        directional = council_df['master_decision'].isin(['BULLISH', 'BEARISH'])
+
+        if 'prediction_type' in council_df.columns:
+            vol_play = council_df['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY'
+        else:
+            vol_play = pd.Series(False, index=council_df.index)
+
+        actionable = council_df[directional | vol_play]
     else:
         actionable = council_df
     n_actionable = len(actionable)
-    stages.append({'stage': 'Actionable (Bull/Bear)', 'survivors': n_actionable,
+    stages.append({'stage': 'Actionable', 'survivors': n_actionable,
                    'source_label': 'council_history'})
 
     # 3. Compliance Passed (subset of actionable)
@@ -210,16 +221,21 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
     stages.append({'stage': 'Orders Filled', 'survivors': n_filled,
                    'source_label': 'execution_funnel'})
 
-    # 8. P&L Resolved (from council_history)
+    # ── OUTCOME: P&L from council cascade (scoped to strategized subset) ──
+
+    # 8. P&L Resolved (trades from the strategy-selected subset that have outcomes)
     n_pnl = 0
     n_profitable = 0
-    if 'pnl_realized' in council_df.columns:
-        pnl_series = pd.to_numeric(council_df['pnl_realized'], errors='coerce')
+    if 'pnl_realized' in strategized.columns:
+        pnl_series = pd.to_numeric(strategized['pnl_realized'], errors='coerce')
         n_pnl = int(pnl_series.notna().sum())
         n_profitable = int((pnl_series > 0).sum())
     stages.append({'stage': 'P&L Resolved', 'survivors': n_pnl,
-                   'source_label': 'council_history',
-                   '_n_profitable': n_profitable})
+                   'source_label': 'council_history'})
+
+    # 9. Profitable
+    stages.append({'stage': 'Profitable', 'survivors': n_profitable,
+                   'source_label': 'council_history'})
 
     # Build DataFrame with drop calculations
     result = pd.DataFrame(stages)
@@ -342,42 +358,61 @@ k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
 st.subheader("🌊 Funnel Waterfall — Where Do Signals Die?")
 
 if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
+    # Build custom text labels: "N (XX% of initial)"
+    first_count = int(funnel_cascade.iloc[0]['survivors'])
+    custom_text = []
+    for idx in range(len(funnel_cascade)):
+        row = funnel_cascade.iloc[idx]
+        val = int(row['survivors'])
+        pct_initial = val / max(first_count, 1) * 100
+        if idx == 0:
+            custom_text.append(f"<b>{val}</b>")
+        else:
+            prev_val = int(funnel_cascade.iloc[idx - 1]['survivors'])
+            pct_prev = val / max(prev_val, 1) * 100
+            custom_text.append(f"<b>{val}</b>  ({pct_initial:.0f}% of initial, {pct_prev:.0f}% of prev)")
+
     fig_funnel = go.Figure(go.Funnel(
         y=funnel_cascade['stage'],
         x=funnel_cascade['survivors'],
-        textinfo="value+percent initial+percent previous",
+        text=custom_text,
+        textinfo="text",
+        textfont=dict(size=14),
         marker=dict(
             color=[
                 '#2ecc71', '#27ae60', '#1abc9c', '#16a085',  # Green: intelligence gates
                 '#2980b9',                                     # Blue: strategy
                 '#3498db', '#5dade2',                          # Light blue: execution
-                '#f39c12',                                     # Gold: P&L
+                '#f39c12', '#e67e22',                          # Gold/orange: P&L outcome
             ][:len(funnel_cascade)],
         ),
         connector=dict(line=dict(color="gray", dash="dot", width=1)),
     ))
     fig_funnel.update_layout(
-        height=450,
+        height=500,
         margin=dict(t=20, b=20, l=10, r=10),
         funnelmode="stack",
+        font=dict(size=13),
     )
     st.plotly_chart(fig_funnel, use_container_width=True)
 
-    # Survival summary
-    first_count = funnel_cascade.iloc[0]['survivors']
+    # --- Survival Summary ---
     filled_row = funnel_cascade[funnel_cascade['stage'] == 'Orders Filled']
     filled_count = int(filled_row['survivors'].values[0]) if not filled_row.empty else 0
-    pnl_row = funnel_cascade[funnel_cascade['stage'] == 'P&L Resolved']
-    n_profitable = int(pnl_row['_n_profitable'].values[0]) if not pnl_row.empty and '_n_profitable' in pnl_row.columns else 0
-    n_pnl = int(pnl_row['survivors'].values[0]) if not pnl_row.empty else 0
-
     surv_pct = filled_count / max(first_count, 1) * 100
-    win_rate = n_profitable / max(n_pnl, 1) * 100
+
+    profit_row = funnel_cascade[funnel_cascade['stage'] == 'Profitable']
+    n_profitable_funnel = int(profit_row['survivors'].values[0]) if not profit_row.empty else 0
+    pnl_row = funnel_cascade[funnel_cascade['stage'] == 'P&L Resolved']
+    n_pnl_funnel = int(pnl_row['survivors'].values[0]) if not pnl_row.empty else 0
+    strat_row = funnel_cascade[funnel_cascade['stage'] == 'Strategy Selected']
+    n_strat = int(strat_row['survivors'].values[0]) if not strat_row.empty else 0
+    win_rate_funnel = n_profitable_funnel / max(n_pnl_funnel, 1) * 100
 
     cap_col1, cap_col2, cap_col3 = st.columns(3)
     cap_col1.caption(f"End-to-end survival: **{filled_count}/{first_count} ({surv_pct:.0f}%)**")
-    cap_col2.caption(f"P&L resolved: **{n_pnl}** trades")
-    cap_col3.caption(f"Win rate (among resolved): **{win_rate:.0f}%**")
+    cap_col2.caption(f"P&L resolved: **{n_pnl_funnel}** of **{n_strat}** strategy-selected trades")
+    cap_col3.caption(f"Win rate (among resolved): **{win_rate_funnel:.0f}%**")
 
     # Source boundary indicator
     has_realtime = False
@@ -392,6 +427,78 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
             "Intelligence gates (top half) are reconstructed from council_history columns. "
             "Per-signal tracing requires REALTIME data."
         )
+
+    # ── POST-FUNNEL OUTCOME: Did the surviving signals make money? ──
+    st.markdown("---")
+    st.subheader("💰 Post-Funnel Outcome — Are We Making Money?")
+    st.caption("Outcome of all resolved trades (from council_history, independent of funnel tracing).")
+
+    if not council_df.empty and 'pnl_realized' in council_df.columns:
+        pnl_series = pd.to_numeric(council_df['pnl_realized'], errors='coerce')
+        resolved = council_df[pnl_series.notna()].copy()
+        resolved['pnl'] = pnl_series[pnl_series.notna()]
+
+        n_resolved = len(resolved)
+        n_wins = int((resolved['pnl'] > 0).sum())
+        n_losses = int((resolved['pnl'] <= 0).sum())
+        total_pnl = resolved['pnl'].sum()
+        avg_pnl = resolved['pnl'].mean() if n_resolved > 0 else 0
+        avg_win = resolved.loc[resolved['pnl'] > 0, 'pnl'].mean() if n_wins > 0 else 0
+        avg_loss = resolved.loc[resolved['pnl'] <= 0, 'pnl'].mean() if n_losses > 0 else 0
+        win_rate_pnl = n_wins / max(n_resolved, 1) * 100
+
+        # Row 1: Big-picture P&L metrics
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric("📊 Resolved Trades", f"{n_resolved}",
+                   help="Total trades with realized P&L outcome.")
+        p2.metric("🏆 Win Rate", f"{win_rate_pnl:.0f}%",
+                   delta=f"{n_wins}W / {n_losses}L",
+                   help="Percentage of resolved trades with positive P&L.")
+        p3.metric("💵 Total P&L", f"{total_pnl:+.1f} cents",
+                   delta="profitable" if total_pnl > 0 else "unprofitable",
+                   delta_color="normal" if total_pnl > 0 else "inverse",
+                   help="Sum of all realized P&L in cents (KC) or ticks (NG).")
+        p4.metric("📐 Avg P&L/Trade", f"{avg_pnl:+.2f} cents",
+                   help="Average realized P&L per resolved trade.")
+
+        # Row 2: Win/Loss asymmetry
+        a1, a2, a3 = st.columns(3)
+        a1.metric("✅ Avg Win", f"+{avg_win:.2f} cents" if avg_win > 0 else "\u2014",
+                   help="Average P&L of winning trades.")
+        a2.metric("❌ Avg Loss", f"{avg_loss:.2f} cents" if n_losses > 0 else "\u2014",
+                   help="Average P&L of losing trades.")
+
+        # Profit factor: gross wins / abs(gross losses)
+        gross_wins = resolved.loc[resolved['pnl'] > 0, 'pnl'].sum()
+        gross_losses = abs(resolved.loc[resolved['pnl'] <= 0, 'pnl'].sum())
+        profit_factor = gross_wins / max(gross_losses, 0.01)
+        a3.metric("⚖️ Profit Factor", f"{profit_factor:.2f}x",
+                   help="Gross wins / gross losses. >1.0 = profitable system. "
+                        ">1.5 = good. >2.0 = excellent.")
+
+        # Mini P&L distribution chart
+        if n_resolved >= 5:
+            fig_pnl = go.Figure()
+            fig_pnl.add_trace(go.Histogram(
+                x=resolved['pnl'],
+                nbinsx=25,
+                marker_color='#3498db',
+                name='P&L Distribution',
+            ))
+            fig_pnl.add_vline(x=0, line_dash="dash", line_color="gray", opacity=0.7)
+            fig_pnl.add_vline(x=avg_pnl, line_dash="dot", line_color="#f39c12",
+                              annotation_text=f"Mean: {avg_pnl:+.2f}",
+                              annotation_position="top right")
+            fig_pnl.update_layout(
+                height=250,
+                margin=dict(t=30, b=30, l=40, r=20),
+                xaxis_title="P&L (cents)",
+                yaxis_title="Count",
+                showlegend=False,
+            )
+            st.plotly_chart(fig_pnl, use_container_width=True)
+    else:
+        st.info("No P&L data available yet. Will populate after trades are resolved.")
 
     # --- Regime Comparison ---
     regime_col = 'regime'
@@ -664,7 +771,7 @@ st.subheader("🚰 Top Alpha Leaks — Ranked by Impact")
 
 # Extract survivor counts from the cascade for proper denominators
 _count_for = {row['stage']: row['survivors'] for _, row in funnel_cascade.iterrows()}
-n_actionable_decisions = _count_for.get('Actionable (Bull/Bear)', 1)
+n_actionable_decisions = _count_for.get('Actionable', _count_for.get('Actionable (Bull/Bear)', 1))
 n_compliance_passed = _count_for.get('Compliance Passed', 1)
 # Find conviction gate count (label includes threshold value)
 _conviction_labels = [k for k in _count_for if 'Conviction' in k]
