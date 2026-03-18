@@ -149,7 +149,7 @@ def load_config() -> dict | None:
 
     # 8. Models
     # Helper to load LLM keys (Loop to handle LOADED_FROM_ENV replacements)
-    for provider in ['gemini', 'anthropic', 'openai', 'xai']:
+    for provider in ['gemini', 'anthropic', 'openai', 'xai', 'perplexity']:
         if provider in config and 'api_key' in config[provider]:
             if config[provider]['api_key'] == "LOADED_FROM_ENV":
                 config[provider]['api_key'] = os.getenv(f"{provider.upper()}_API_KEY")
