@@ -990,7 +990,9 @@ if config:
         if not council_df.empty:
             _recent = council_df.head(10).copy()
             _display_rows = []
-            for _, _r in _recent.iterrows():
+
+            # ⚡ Bolt: Convert to list of dicts to avoid iterrows() overhead
+            for _r in _recent.to_dict('records'):
                 _ts = _r.get('timestamp', '')
                 _pnl_val = pd.to_numeric(_r.get('pnl_realized', None), errors='coerce')
                 # Keep outcome as numeric for proper sorting and formatting via NumberColumn
@@ -1205,7 +1207,8 @@ with st.expander("Recent Compliance Decisions"):
                 _rejections = _comp_df[_comp_df['_approved'] == 'false'].tail(5).iloc[::-1]
                 if not _rejections.empty:
                     _rej_rows = []
-                    for _, row in _rejections.iterrows():
+                    # ⚡ Bolt: Convert to list of dicts to avoid iterrows() overhead
+                    for row in _rejections.to_dict('records'):
                         _rej_rows.append({
                             'Time': _relative_time(row.get('timestamp', '')),
                             'Contract': str(row.get('contract', 'N/A'))[:20],
