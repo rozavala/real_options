@@ -41,7 +41,9 @@ def load_funnel_data(ticker: str) -> pd.DataFrame:
     try:
         df = pd.read_csv(path)
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            # format='mixed' required: backfill rows have tz-aware timestamps
+            # while realtime execution events (ORDER_PLACED, PRICE_WALK_STEP) are naive
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True, errors='coerce')
         return df
     except Exception:
         return pd.DataFrame()
@@ -56,7 +58,7 @@ def load_order_events(ticker: str) -> pd.DataFrame:
     try:
         df = pd.read_csv(path)
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True, errors='coerce')
         return df
     except Exception:
         return pd.DataFrame()
