@@ -2100,7 +2100,7 @@ async def _attempt_bag_close(
 
         bag.comboLegs = combo_legs_list
         bag_action = 'BUY'  # IB convention: BAG action BUY with explicit leg actions
-        order_size = qty_gcd
+        order_size = int(qty_gcd)  # LimitOrder requires int; leg.position may be float
 
         # Get market data for each leg to calculate combo price
         calculated_combo_price = 0.0
