@@ -1006,3 +1006,71 @@
 2026-03-18 16:55:00,603 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_audit)...
 2026-03-18 16:55:03,612 - Engine.KC - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-18 17:05:00 UTC. Waiting for 0.17 hours.
 2026-03-18 16:59:56,231 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=140, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 17:02:58,668 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 32% of average (Sev: 6)
+2026-03-18 17:02:58,675 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-18 17:03:29,316 - Orchestrator - INFO - 2026-03-18 17:03:29,316 - root - INFO - --- Risk Monitor: Checking 4 combo position(s) ---
+2026-03-18 17:03:29,317 - Orchestrator - INFO - 2026-03-18 17:03:29,317 - root - INFO - Combo 2 Legs on LNEM6 P3100: PnL=$-88.65 | Capture: -7.0% | Risk Used: -14.1%
+2026-03-18 17:03:29,318 - Orchestrator - INFO - 2026-03-18 17:03:29,318 - root - INFO - Combo 2 Legs on LNEU6 P3500: PnL=$-68.68 | Capture: -10.0% | Risk Used: -19.9%
+2026-03-18 17:03:29,318 - Orchestrator - INFO - 2026-03-18 17:03:29,318 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-215.21 | Capture: -1.2% | Risk Used: -2.4%
+2026-03-18 17:03:29,319 - Orchestrator - INFO - 2026-03-18 17:03:29,318 - root - INFO - Combo 1 Legs on LNEN6 P3450: PnL=$286.91 | Capture: 2.0% | Risk Used: 4.0%
+2026-03-18 17:04:58,955 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=145, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 17:05:00,001 - Engine.KC - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-18 17:05:00,004 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-18 17:05:00,006 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-03-18 17:05:00,335 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 34
+2026-03-18 17:05:00,341 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-18 17:05:00,342 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-18 17:05:00,446 - OrderManager - INFO - Found 20 live position legs in the IB account.
+2026-03-18 17:05:00,446 - OrderManager - INFO -   Filtered to 0 KC positions with non-zero quantity (from 20 total across all commodities)
+2026-03-18 17:05:00,446 - OrderManager - INFO - No open KC positions to close.
+2026-03-18 17:05:00,446 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [KC_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-18 17:05:00,446 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-03-18 17:05:03,452 - Engine.KC - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-18 17:15:00 UTC. Waiting for 0.17 hours.
+2026-03-18 17:09:49,392 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-18 17:09:49,392 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-18 17:09:49,393 - Orchestrator - INFO - 2026-03-18 17:09:49,392 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-18 17:10:02,014 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=150, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 17:10:20,472 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-18 17:10:20,473 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-18 17:10:20,473 - Orchestrator - INFO - 2026-03-18 17:10:20,472 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-18 17:10:32,025 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-18 17:11:22,160 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-03-18 17:11:22,160 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-03-18 17:11:22,161 - Orchestrator - INFO - 2026-03-18 17:11:22,158 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture.nj; usfuture; usfarm; ushmds; secdefil.
+2026-03-18 17:13:29,375 - Orchestrator - INFO - 2026-03-18 17:13:29,374 - root - INFO - --- Risk Monitor: Checking 3 combo position(s) ---
+2026-03-18 17:13:29,375 - Orchestrator - INFO - 2026-03-18 17:13:29,375 - root - INFO - Combo 2 Legs on LNEM6 P3100: PnL=$-85.09 | Capture: -6.8% | Risk Used: -13.5%
+2026-03-18 17:13:29,377 - Orchestrator - INFO - 2026-03-18 17:13:29,376 - root - INFO - Combo 2 Legs on LNEU6 P3500: PnL=$-68.36 | Capture: -9.9% | Risk Used: -19.8%
+2026-03-18 17:13:29,378 - Orchestrator - INFO - 2026-03-18 17:13:29,378 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-211.17 | Capture: -1.2% | Risk Used: -2.4%
+2026-03-18 17:14:34,389 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 49% of average (Sev: 5)
+2026-03-18 17:14:34,394 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-18 17:15:00,000 - Engine.KC - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-18 17:15:00,005 - Orchestrator - INFO - --- Fallback Close Attempt [KC] --- (primary result unknown, running as safety net)
+2026-03-18 17:15:00,005 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-18 17:15:00,006 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 39 [REMOTE/PAPER]...
+2026-03-18 17:15:00,339 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 39
+2026-03-18 17:15:00,345 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-18 17:15:00,346 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-18 17:15:00,451 - OrderManager - INFO - Found 20 live position legs in the IB account.
+2026-03-18 17:15:00,451 - OrderManager - INFO -   Filtered to 0 KC positions with non-zero quantity (from 20 total across all commodities)
+2026-03-18 17:15:00,452 - OrderManager - INFO - No open KC positions to close.
+2026-03-18 17:15:00,452 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [KC_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-18 17:15:00,452 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-03-18 17:15:03,462 - Engine.KC - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-18 17:25:00 UTC. Waiting for 0.17 hours.
+2026-03-18 17:15:34,402 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=155, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 17:20:37,028 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=160, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 17:23:29,423 - Orchestrator - INFO - 2026-03-18 17:23:29,423 - root - INFO - --- Risk Monitor: Checking 3 combo position(s) ---
+2026-03-18 17:23:29,423 - Orchestrator - INFO - 2026-03-18 17:23:29,423 - root - INFO - Combo 2 Legs on LNEM6 P3100: PnL=$-84.44 | Capture: -6.7% | Risk Used: -13.4%
+2026-03-18 17:23:29,424 - Orchestrator - INFO - 2026-03-18 17:23:29,424 - root - INFO - Combo 2 Legs on LNEU6 P3500: PnL=$-62.21 | Capture: -9.0% | Risk Used: -18.0%
+2026-03-18 17:23:29,424 - Orchestrator - INFO - 2026-03-18 17:23:29,424 - root - INFO - Combo 4 Legs on LNEQ6 P3450: PnL=$-225.30 | Capture: -1.3% | Risk Used: -2.6%
+2026-03-18 17:25:00,001 - Engine.KC - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-18 17:25:00,006 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-18 17:25:00,007 - trading_bot.connection_pool - INFO - Connecting IB (KC_orchestrator_orders) ID: 34 [REMOTE/PAPER]...
+2026-03-18 17:25:00,332 - trading_bot.connection_pool - INFO - IB (KC_orchestrator_orders) connected successfully with ID 34
+2026-03-18 17:25:00,337 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-18 17:25:00,483 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-18 17:25:00,483 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [KC_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-18 17:25:00,483 - trading_bot.connection_pool - INFO - Disconnecting IB (KC_orchestrator_orders)...
+2026-03-18 17:25:03,490 - Engine.KC - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-18 17:35:00 UTC. Waiting for 0.17 hours.
+2026-03-18 17:25:39,556 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=165, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-18 17:26:42,615 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 32% of average (Sev: 6)
+2026-03-18 17:26:43,001 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
