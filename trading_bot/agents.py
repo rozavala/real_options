@@ -713,6 +713,14 @@ class TradingCouncil:
         try:
             if self._perplexity_enabled:
                 data = await self._gather_via_perplexity(search_instruction, persona_key)
+                # If Perplexity returned non-JSON (wrapped as raw_summary with LOW quality),
+                # fall back to Gemini rather than proceeding with degraded data.
+                if data.get('data_quality') == 'LOW' and not data.get('dated_facts'):
+                    logger.warning(f"[{persona_key}] Perplexity returned low-quality data, falling back to Gemini...")
+                    try:
+                        data = await self._gather_via_gemini(search_instruction, persona_key)
+                    except Exception as gem_err:
+                        logger.warning(f"[{persona_key}] Gemini fallback also failed: {gem_err}")
             else:
                 data = await self._gather_via_gemini(search_instruction, persona_key)
 
@@ -1114,6 +1122,9 @@ OUTPUT FORMAT (JSON):
             # Parse JSON
             try:
                 data = json.loads(self._clean_json_text(result_raw))
+                # Gemini Pro occasionally wraps the response in a list — unwrap if unambiguous
+                if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
+                    data = data[0]
                 if not isinstance(data, dict):
                     raise ValueError("LLM returned non-dict JSON")
                 # === A1-R1: Canonicalize confidence IMMEDIATELY after JSON parse ===
@@ -1263,6 +1274,8 @@ OUTPUT FORMAT (JSON ONLY):
 
         try:
             data = json.loads(self._clean_json_text(revised_raw))
+            if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
+                data = data[0]
             if not isinstance(data, dict):
                 raise ValueError("LLM returned non-dict JSON")
             # === A1-R1: Canonicalize confidence immediately (reflexion path) ===
