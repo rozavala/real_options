@@ -222,23 +222,32 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
                    'source_label': 'execution_funnel'})
 
     # ── OUTCOME: P&L from council cascade (scoped to strategized subset) ──
+    # Capped at n_filled to enforce funnel monotonicity: P&L-resolved trades
+    # can never exceed filled orders, regardless of data-source divergence
+    # between council_history and execution_funnel.csv.
 
     # 8. P&L Resolved (trades from the strategy-selected subset that have outcomes)
     n_pnl = 0
+    n_pnl_raw = 0
     n_profitable = 0
+    n_profitable_raw = 0
     if 'pnl_realized' in strategized.columns:
         pnl_series = pd.to_numeric(strategized['pnl_realized'], errors='coerce')
-        n_pnl = int(pnl_series.notna().sum())
-        n_profitable = int((pnl_series > 0).sum())
-    stages.append({'stage': 'P&L Resolved', 'survivors': n_pnl,
+        n_pnl_raw = int(pnl_series.notna().sum())
+        n_profitable_raw = int((pnl_series > 0).sum())
+        n_pnl = min(n_pnl_raw, n_filled)
+        n_profitable = min(n_profitable_raw, n_pnl)
+    stages.append({'stage': 'P&L Resolved', 'survivors': n_pnl, 'survivors_raw': n_pnl_raw,
                    'source_label': 'council_history'})
 
     # 9. Profitable
-    stages.append({'stage': 'Profitable', 'survivors': n_profitable,
+    stages.append({'stage': 'Profitable', 'survivors': n_profitable, 'survivors_raw': n_profitable_raw,
                    'source_label': 'council_history'})
 
     # Build DataFrame with drop calculations
     result = pd.DataFrame(stages)
+    # Backfill survivors_raw for stages that don't need capping (raw == capped)
+    result['survivors_raw'] = result['survivors_raw'].fillna(result['survivors']).astype(int)
     result['drop'] = -result['survivors'].diff().fillna(0).astype(int).clip(upper=0)
     result.loc[0, 'drop'] = 0
     result['drop_pct'] = 0.0
@@ -395,6 +404,26 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
         font=dict(size=13),
     )
     st.plotly_chart(fig_funnel, use_container_width=True)
+
+    # --- Capping Warning ---
+    # Show when P&L outcome counts were capped to preserve funnel monotonicity
+    capped_rows = funnel_cascade[
+        funnel_cascade.get('survivors_raw', funnel_cascade['survivors']) > funnel_cascade['survivors']
+    ] if 'survivors_raw' in funnel_cascade.columns else pd.DataFrame()
+    if not capped_rows.empty:
+        cap_msgs = []
+        for _, row in capped_rows.iterrows():
+            cap_msgs.append(
+                f"**{row['stage']}**: showing {int(row['survivors'])} "
+                f"(capped from {int(row['survivors_raw'])} in council_history)"
+            )
+        st.info(
+            "⚠️ Some outcome stages were capped to maintain funnel order. "
+            "council_history has more P&L records than execution_funnel.csv has ORDER_FILLED "
+            "events in this date range — typically due to backfill gaps.\n\n"
+            + "\n\n".join(cap_msgs),
+            icon=None,
+        )
 
     # --- Survival Summary ---
     filled_row = funnel_cascade[funnel_cascade['stage'] == 'Orders Filled']
