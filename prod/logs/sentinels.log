@@ -4153,3 +4153,198 @@
 2026-03-19 16:59:54,454 - sentinel_diag - INFO - XSentimentSentinel [KC]: cycle complete — 4/4 queries valid, grok_tokens=7678p/723c, broad_fallback=OFF, spend_cap=clear
 2026-03-19 16:59:54,454 - sentinel_diag - INFO - XSentimentSentinel: avg_sentiment=5.00, avg_confidence=0.12, total_volume=0, volume_spike=False, thresholds: bullish>=6.5, bearish<=3.5, top_themes=[]
 2026-03-19 16:59:54,454 - sentinel_diag - INFO - XSentimentSentinel: no trigger (sentiment within normal range, no volume spike)
+2026-03-19 17:02:43,069 - sentinel_diag - INFO - XSentimentSentinel: running (market open)
+2026-03-19 17:02:43,069 - sentinel_diag - INFO - XSentimentSentinel: querying 4 queries: ['"Henry Hub" OR "natural gas futures"', '"EIA storage" OR "gas storage report"', 'LNG (export OR shipping OR demand)', '(polar vortex OR "heating degree days") (gas OR "natural gas")']
+2026-03-19 17:02:43,643 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='"Henry Hub" OR "natural gas futures"', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-19 17:02:43,643 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-19 17:02:45,144 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='LNG (export OR shipping OR demand)', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-19 17:02:45,144 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-19 17:02:45,147 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='"EIA storage" OR "gas storage report"', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-19 17:02:45,148 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-19 17:02:46,063 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-19 17:02:46,063 - sentinel_diag - INFO -   Tool args: {'query': '"Henry Hub" OR "natural gas futures" (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-19 17:02:46,063 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='"Henry Hub" OR "natural gas futures" (from:EIAgov OR from:Pl', limit=50)
+2026-03-19 17:02:46,292 - sentinel_diag - INFO -   X API response status: 200
+2026-03-19 17:02:46,294 - sentinel_diag - INFO -   X API: 20 raw tweets, 1 after engagement filter (>=10 likes)
+2026-03-19 17:02:46,294 - trading_bot.sentinels - DEBUG - Top post: As of today (March 19, 2026), UK wholesale natural...
+2026-03-19 17:02:46,295 - sentinel_diag - INFO -   x_search result: 1 posts, stage=curated, quality=low
+2026-03-19 17:02:46,295 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-19 17:02:46,648 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='(polar vortex OR "heating degree days") (gas OR "natural gas")', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-19 17:02:46,648 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-19 17:02:47,342 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-19 17:02:47,342 - sentinel_diag - INFO -   Tool args: {'query': 'LNG (export OR shipping OR demand) (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-19 17:02:47,342 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='LNG (export OR shipping OR demand) (from:EIAgov OR from:Plat', limit=50)
+2026-03-19 17:02:47,389 - sentinel_diag - INFO -   X API response status: 400
+2026-03-19 17:02:47,389 - trading_bot.sentinels - ERROR - X API error 400: {"errors":[{"parameters":{"since_id":["2031000166749057159"]},"message":"'since_id' must be a tweet id created after 2026-03-12T17:02Z. Please use a 'since_id' that is larger than 2032140215509843968"}],"title":"Invalid Request","detail":"One or more parameters to your request was invalid.","type":"https://api.twitter.com/2/problems/invalid-request"}
+2026-03-19 17:02:47,389 - sentinel_diag - ERROR -   X API error 400: {"errors":[{"parameters":{"since_id":["2031000166749057159"]},"message":"'since_id' must be a tweet id created after 2026-03-12T17:02Z. Please use a 'since_id' that is larger than 2032140215509843968"
+2026-03-19 17:02:47,389 - sentinel_diag - INFO -   x_search result: 0 posts, stage=curated, quality=low
+2026-03-19 17:02:47,389 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-19 17:02:49,007 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-19 17:02:49,008 - sentinel_diag - INFO -   Tool args: {'query': '"EIA storage" OR "gas storage report" (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-19 17:02:49,008 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='"EIA storage" OR "gas storage report" (from:EIAgov OR from:P', limit=50)
+2026-03-19 17:02:49,247 - sentinel_diag - INFO -   X API response status: 200
+2026-03-19 17:02:49,248 - sentinel_diag - INFO -   X API: 4 raw tweets, 1 after engagement filter (>=10 likes)
+2026-03-19 17:02:49,248 - trading_bot.sentinels - DEBUG - Top post: For the EIA storage report, survey averages sugges...
+2026-03-19 17:02:49,248 - sentinel_diag - INFO -   x_search result: 1 posts, stage=curated, quality=low
+2026-03-19 17:02:49,248 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-19 17:02:49,279 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-19 17:02:49,279 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found from specified accounts (EIAgov, PlattsGas, RBNEn
+2026-03-19 17:02:49,693 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-19 17:02:49,693 - sentinel_diag - INFO -   Tool args: {'query': '(polar vortex OR "heating degree days") (gas OR "natural gas") (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-19 17:02:49,693 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='(polar vortex OR "heating degree days") (gas OR "natural gas', limit=50)
+2026-03-19 17:02:49,761 - sentinel_diag - INFO -   X API response status: 200
+2026-03-19 17:02:49,762 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-03-19 17:02:49,762 - sentinel_diag - INFO -   x_search result: 0 posts, stage=curated, quality=low
+2026-03-19 17:02:49,762 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-19 17:02:51,907 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-19 17:02:51,908 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.1, volume=0, summary=No recent relevant posts found from specified accounts on polar vortex or heatin
+2026-03-19 17:02:52,404 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-19 17:02:52,404 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=1, summary=Extremely low volume of relevant posts (only 1 found, not from specified account
+2026-03-19 17:02:55,799 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-19 17:02:55,799 - sentinel_diag - INFO -   Grok result: sentiment=2.0, confidence=0.2, volume=1, summary=Very limited data with only one recent post indicating expectations of a signifi
+2026-03-19 17:02:55,800 - sentinel_diag - INFO - XSentimentSentinel: 4/4 queries returned valid results
+2026-03-19 17:02:55,800 - sentinel_diag - INFO -   Query 0 result: sentiment=5.0, confidence=0.2, volume=1, themes=['US-UK natural gas price differential']
+2026-03-19 17:02:55,800 - sentinel_diag - INFO -   Query 1 result: sentiment=2.0, confidence=0.2, volume=1, themes=['Large storage build', 'Warmer-than-normal weather', 'Strong wind energy generation']
+2026-03-19 17:02:55,800 - sentinel_diag - INFO -   Query 2 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-03-19 17:02:55,800 - sentinel_diag - INFO -   Query 3 result: sentiment=5.0, confidence=0.1, volume=0, themes=[]
+2026-03-19 17:02:55,805 - sentinel_diag - INFO - XSentimentSentinel [NG]: cycle complete — 4/4 queries valid, grok_tokens=7148p/812c, broad_fallback=OFF, spend_cap=clear
+2026-03-19 17:02:55,805 - sentinel_diag - INFO - XSentimentSentinel: avg_sentiment=4.14, avg_confidence=0.18, total_volume=2, volume_spike=False, thresholds: bullish>=6.5, bearish<=3.5, top_themes=['US-UK natural gas price differential', 'Large storage build', 'Warmer-than-normal weather']
+2026-03-19 17:02:55,805 - sentinel_diag - INFO - XSentimentSentinel: no trigger (sentiment within normal range, no volume spike)
+2026-03-19 17:03:55,503 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:03:55,537 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.020, last=0.020, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:55,721 - sentinel_diag - INFO -   PredictionMarket [Colombia Presidential Election 1st round winner?]: price=0.026, last=0.026, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:03:55,736 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:55,923 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Venezuela by...?]: price=0.125, last=0.125, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:03:55,936 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.160, delta=0.5%, threshold=8%, hwm=0
+2026-03-19 17:03:55,943 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:03:55,976 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:55,990 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,003 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,017 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,032 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.160, delta=0.5%, threshold=8%, hwm=0
+2026-03-19 17:03:56,047 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,065 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,079 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:03:56,092 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.130, last=0.130, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,107 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.525, last=0.525, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,112 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:03:56,142 - sentinel_diag - INFO -   PredictionMarket [Colombia Chamber of Representatives Election Winne]: price=0.003, last=0.003, delta=0.1%, threshold=5%, hwm=0
+2026-03-19 17:03:56,155 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,344 - sentinel_diag - INFO -   PredictionMarket [Brazil Presidential Election]: price=0.004, last=0.004, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:03:56,357 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:03:56,363 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:08:56,790 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:08:57,007 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,197 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,211 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,228 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,407 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.155, last=0.165, delta=1.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,577 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,593 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,633 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:08:57,668 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.020, last=0.020, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,774 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:08:57,790 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.130, last=0.130, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,806 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.525, last=0.525, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:57,817 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:08:57,857 - sentinel_diag - INFO -   PredictionMarket [Colombia Presidential Election 1st round winner?]: price=0.026, last=0.026, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:08:57,874 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:58,106 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Venezuela by...?]: price=0.125, last=0.125, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:08:58,121 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.155, last=0.165, delta=1.0%, threshold=8%, hwm=0
+2026-03-19 17:08:58,318 - sentinel_diag - INFO -   PredictionMarket [Colombia Chamber of Representatives Election Winne]: price=0.003, last=0.003, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:08:58,332 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:58,533 - sentinel_diag - INFO -   PredictionMarket [Brazil Presidential Election]: price=0.004, last=0.004, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:08:58,545 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:08:58,554 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:13:58,505 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:13:58,532 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,548 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,565 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,583 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,599 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.155, delta=1.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,618 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,632 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,647 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:13:58,666 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.130, last=0.130, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,683 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.525, last=0.525, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:13:58,690 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:14:00,055 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:14:00,089 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.019, last=0.020, delta=0.1%, threshold=8%, hwm=0
+2026-03-19 17:14:00,286 - sentinel_diag - INFO -   PredictionMarket [Colombia Presidential Election 1st round winner?]: price=0.026, last=0.026, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:14:00,302 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:14:00,512 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Venezuela by...?]: price=0.125, last=0.125, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:14:00,527 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.155, delta=1.0%, threshold=8%, hwm=0
+2026-03-19 17:14:00,731 - sentinel_diag - INFO -   PredictionMarket [Colombia Chamber of Representatives Election Winne]: price=0.003, last=0.003, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:14:00,747 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:14:00,932 - sentinel_diag - INFO -   PredictionMarket [Brazil Presidential Election]: price=0.004, last=0.004, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:14:00,947 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:14:00,953 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:18:59,369 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:18:59,594 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:18:59,762 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:18:59,773 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:18:59,788 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:18:59,965 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:00,143 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:00,158 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:00,331 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:19:00,344 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.130, last=0.130, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:00,358 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.525, last=0.525, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:00,365 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:19:02,239 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:19:02,275 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.020, last=0.019, delta=0.1%, threshold=8%, hwm=0
+2026-03-19 17:19:02,459 - sentinel_diag - INFO -   PredictionMarket [Colombia Presidential Election 1st round winner?]: price=0.025, last=0.026, delta=0.1%, threshold=5%, hwm=0
+2026-03-19 17:19:02,474 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:02,690 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Venezuela by...?]: price=0.125, last=0.125, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:19:02,706 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:02,905 - sentinel_diag - INFO -   PredictionMarket [Colombia Chamber of Representatives Election Winne]: price=0.003, last=0.003, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:19:02,921 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:03,116 - sentinel_diag - INFO -   PredictionMarket [Brazil Presidential Election]: price=0.004, last=0.004, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:19:03,130 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:19:03,138 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:24:01,049 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:24:01,087 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,104 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,121 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,137 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,152 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,170 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,185 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,202 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:24:01,219 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.130, last=0.130, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,235 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.525, last=0.525, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:01,241 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:24:04,475 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:24:04,511 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.020, last=0.020, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:04,699 - sentinel_diag - INFO -   PredictionMarket [Colombia Presidential Election 1st round winner?]: price=0.025, last=0.025, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:24:04,715 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:04,907 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Venezuela by...?]: price=0.125, last=0.125, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:24:04,921 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:05,127 - sentinel_diag - INFO -   PredictionMarket [Colombia Chamber of Representatives Election Winne]: price=0.003, last=0.003, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:24:05,144 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:05,332 - sentinel_diag - INFO -   PredictionMarket [Brazil Presidential Election]: price=0.004, last=0.004, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:24:05,346 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:24:05,353 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:29:02,139 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:29:02,444 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.006, last=0.006, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:02,618 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:02,633 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:02,648 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.013, last=0.013, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:02,837 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:03,008 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:03,022 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:03,186 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:29:03,200 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.130, last=0.130, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:03,214 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.530, last=0.525, delta=0.5%, threshold=8%, hwm=0
+2026-03-19 17:29:03,222 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-19 17:29:06,635 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-19 17:29:06,674 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.020, last=0.020, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:06,870 - sentinel_diag - INFO -   PredictionMarket [Colombia Presidential Election 1st round winner?]: price=0.025, last=0.025, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:29:06,886 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.003, last=0.003, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:07,084 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Venezuela by...?]: price=0.125, last=0.125, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:29:07,097 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:07,313 - sentinel_diag - INFO -   PredictionMarket [Colombia Chamber of Representatives Election Winne]: price=0.003, last=0.003, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:29:07,328 - sentinel_diag - INFO -   PredictionMarket [Which countries will Trump make new trade deals wi]: price=0.250, last=0.250, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:07,516 - sentinel_diag - INFO -   PredictionMarket [Brazil Presidential Election]: price=0.004, last=0.004, delta=0.0%, threshold=8%, hwm=0
+2026-03-19 17:29:07,532 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.335, last=0.335, delta=0.0%, threshold=5%, hwm=0
+2026-03-19 17:29:07,539 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
