@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Thu Mar 19 16:30:03 UTC 2026
+Timestamp: Thu Mar 19 17:00:04 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  16:30:03 up 66 days, 22:53,  2 users,  load average: 0.52, 0.32, 0.18
+Uptime:  17:00:04 up 66 days, 23:23,  2 users,  load average: 0.07, 0.06, 0.07
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.9Gi       221Mi        30Mi       958Mi       911Mi
-Swap:          4.0Gi       757Mi       3.3Gi
+Mem:           3.8Gi       2.9Gi       203Mi        30Mi       965Mi       902Mi
+Swap:          4.0Gi       756Mi       3.3Gi
 
 === LOAD AVERAGE ===
-0.52 0.32 0.18 4/868 2132857
+0.07 0.06 0.07 1/855 2133532
 
 === PROCESS STATUS ===
 Trading processes:
-console  2111039  0.7 13.8 2082920 555720 ?      Ssl  00:25   7:18 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2111039  0.7 13.8 2082920 555848 ?      Ssl  00:25   7:23 /home/console/real_options/venv/bin/python -u orchestrator.py
 console  2119997  0.0  7.5 1439016 302672 ?      Sl   08:15   0:14 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  2111587  0.4  9.4 2735132 380320 ?      Sl   00:25   3:59 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2111587  0.4  9.4 2735132 380320 ?      Sl   00:25   4:07 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,7 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
-2026-03-19 13:59:54,603 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:56,197 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:56,221 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 14:00:36,097 - trading_bot.agents - ERROR - Model call failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Request contains an invalid argument.', 'status': 'INVALID_ARGUMENT'}}
@@ -56,6 +55,7 @@ Recent orchestrator errors [multi]:
 2026-03-19 16:24:52,621 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 16:24:52,627 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 16:24:55,383 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 16:35:53,315 - ib_insync.client - ERROR - API connection failed: TimeoutError()
 
 Recent orchestrator errors [KC]:
 2026-03-19 13:59:54,603 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
