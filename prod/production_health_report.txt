@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Thu Mar 19 14:00:04 UTC 2026
+Timestamp: Thu Mar 19 14:30:05 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  14:00:04 up 66 days, 20:23,  2 users,  load average: 0.38, 0.14, 0.04
+Uptime:  14:30:05 up 66 days, 20:53,  2 users,  load average: 0.37, 0.15, 0.10
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,19 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       3.0Gi       169Mi        31Mi       939Mi       889Mi
-Swap:          4.0Gi       528Mi       3.5Gi
+Mem:           3.8Gi       2.9Gi       227Mi        31Mi       914Mi       919Mi
+Swap:          4.0Gi       534Mi       3.5Gi
 
 === LOAD AVERAGE ===
-0.38 0.14 0.04 1/861 2128204
+0.37 0.15 0.10 1/855 2129368
 
 === PROCESS STATUS ===
 Trading processes:
-console  2111039  0.4 13.5 2074472 544588 ?      Ssl  00:25   3:18 /home/console/real_options/venv/bin/python -u orchestrator.py
-console  2119997  0.0  7.5 1438752 302416 ?      Sl   08:15   0:11 /home/console/real_options/venv/bin/python position_monitor.py
+console  2111039  0.5 13.7 2080616 549728 ?      Ssl  00:25   4:59 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2119997  0.0  7.5 1438884 302416 ?      Sl   08:15   0:11 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  2111587  0.3  1.9 606188 77924 ?        Sl   00:25   2:48 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2111587  0.3  1.9 606188 77924 ?        Sl   00:25   2:55 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -36,13 +36,6 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
-2026-03-19 04:19:36,030 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-03-19 04:19:36,031 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-03-19 04:19:55,829 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
-2026-03-19 04:20:13,527 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
-2026-03-19 04:20:13,529 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
-2026-03-19 08:35:08,490 - ib_insync.client - ERROR - API connection failed: TimeoutError()
-2026-03-19 10:06:48,832 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 10:06:50,885 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 10:06:53,391 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 10:06:54,022 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
@@ -56,10 +49,15 @@ Recent orchestrator errors [multi]:
 2026-03-19 13:59:54,603 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:56,197 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:56,221 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:00:36,097 - trading_bot.agents - ERROR - Model call failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Request contains an invalid argument.', 'status': 'INVALID_ARGUMENT'}}
+2026-03-19 14:00:36,098 - trading_bot.agents - WARNING - [agronomist] Gemini fallback also failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Request contains an invalid argument.', 'status': 'INVALID_ARGUMENT'}}
+2026-03-19 14:06:50,575 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:53,110 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:54,715 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:55,365 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:56,522 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 
 Recent orchestrator errors [KC]:
-2026-03-19 10:06:55,103 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
-2026-03-19 10:06:55,108 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 10:06:55,842 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 10:06:57,041 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:50,808 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
@@ -68,16 +66,18 @@ Recent orchestrator errors [KC]:
 2026-03-19 13:59:54,603 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:56,197 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 2026-03-19 13:59:56,221 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:00:36,097 - trading_bot.agents - ERROR - Model call failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Request contains an invalid argument.', 'status': 'INVALID_ARGUMENT'}}
+2026-03-19 14:00:36,098 - trading_bot.agents - WARNING - [agronomist] Gemini fallback also failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Request contains an invalid argument.', 'status': 'INVALID_ARGUMENT'}}
 
 Recent orchestrator errors [NG]:
-2026-03-19 04:18:25,797 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
-2026-03-19 04:18:28,455 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-03-19 04:18:28,457 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-03-19 04:19:05,538 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
-2026-03-19 04:19:05,539 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-19 04:19:36,030 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-19 04:19:36,031 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
 2026-03-19 04:19:55,829 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
 2026-03-19 04:20:13,527 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
 2026-03-19 04:20:13,529 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-19 14:06:50,575 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:53,110 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:54,715 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:55,365 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-19 14:06:56,522 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 
