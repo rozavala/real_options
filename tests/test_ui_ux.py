@@ -758,6 +758,26 @@ class TestScorecardUX(unittest.TestCase):
             )
 
 
+class TestFinancialsUX(unittest.TestCase):
+    def test_strategy_efficiency_dataframe_config(self):
+        """Verify that the Strategy Efficiency dataframe in Trade Analytics uses column_config."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '4_Financials.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'dataframe':
+                for kw in node.keywords:
+                    if kw.arg == 'column_config':
+                        # Check for Strategy Efficiency specific headers
+                        config_str = ast.dump(kw.value)
+                        if "🛡️ Strategy" in config_str and "💰 Total P&L" in config_str:
+                            found_config = True
+                            break
+        self.assertTrue(found_config, "Strategy Efficiency dataframe is missing 'column_config' with professional headers")
+
+
 class TestLLMMonitorUX(unittest.TestCase):
     def test_llm_monitor_dataframe_config(self):
         """Verify that the Provider Health dataframe in LLM Monitor uses column_config."""

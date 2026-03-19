@@ -99,10 +99,20 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
     strategy_perf.columns = ['Total P&L', 'Avg P&L', 'Trade Count']
     strategy_perf = strategy_perf.reset_index()
 
+    # Mapping for pretty strategy names
+    _STRAT_DISPLAY = {
+        'BULL_CALL_SPREAD': 'Bull Call Spread',
+        'BEAR_PUT_SPREAD': 'Bear Put Spread',
+        'LONG_STRADDLE': 'Long Straddle',
+        'IRON_CONDOR': 'Iron Condor',
+        'DIRECTIONAL': 'Directional',
+    }
+    strategy_perf['Strategy'] = strategy_perf['strategy_type'].map(_STRAT_DISPLAY).fillna(strategy_perf['strategy_type'])
+
     # Create bar chart
     fig = px.bar(
         strategy_perf,
-        x='strategy_type',
+        x='Strategy',
         y='Total P&L',
         color='Total P&L',
         color_continuous_scale='RdYlGn',
@@ -111,10 +121,28 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
     )
 
     fig.update_traces(texttemplate='%{text} trades', textposition='outside')
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     # Detailed table
-    st.dataframe(strategy_perf)
+    st.dataframe(
+        strategy_perf[['Strategy', 'Total P&L', 'Avg P&L', 'Trade Count']],
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Strategy": st.column_config.TextColumn("🛡️ Strategy", help="The specific options strategy type."),
+            "Total P&L": st.column_config.NumberColumn(
+                "💰 Total P&L", format="$%.2f",
+                help="Sum of all realized profit and loss for this strategy."
+            ),
+            "Avg P&L": st.column_config.NumberColumn(
+                "📐 Avg P&L", format="$%.2f",
+                help="Average profit and loss per trade for this strategy."
+            ),
+            "Trade Count": st.column_config.NumberColumn(
+                "📦 Trades", help="Total number of trades executed using this strategy."
+            ),
+        }
+    )
 
     # Rolling win rate by strategy (time dimension)
     if not graded_fin.empty and 'strategy_type' in graded_fin.columns:
