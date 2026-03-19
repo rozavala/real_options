@@ -3443,6 +3443,13 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             leg_ask = leg_ticker.ask if not util.isNan(leg_ticker.ask) else 0
                             leg_last = leg_ticker.last if not util.isNan(leg_ticker.last) else 0
 
+                            # Retry once if no data yet (slow quote delivery on illiquid legs)
+                            if leg_bid == 0 and leg_ask == 0 and leg_last == 0:
+                                await asyncio.sleep(1.5)
+                                leg_bid = leg_ticker.bid if not util.isNan(leg_ticker.bid) else 0
+                                leg_ask = leg_ticker.ask if not util.isNan(leg_ticker.ask) else 0
+                                leg_last = leg_ticker.last if not util.isNan(leg_ticker.last) else 0
+
                             ib.cancelMktData(leg_contract)
 
                             if leg_bid > 0 and leg_ask > 0:
@@ -3450,7 +3457,11 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
                             elif leg_last > 0:
                                 leg_mid = leg_last
                             else:
-                                logger.warning(f"Leg {combo_leg.conId} ({leg_contract.localSymbol}): No valid price data")
+                                logger.warning(
+                                    f"Leg {combo_leg.conId} ({leg_contract.localSymbol}): No valid price data "
+                                    f"(bid={leg_ticker.bid}, ask={leg_ticker.ask}, last={leg_ticker.last}) — "
+                                    f"will fall back to market order"
+                                )
                                 leg_prices_valid = False
                                 break
 
