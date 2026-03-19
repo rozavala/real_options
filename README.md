@@ -80,7 +80,7 @@ graph TD
 ### Core Components
 
 1.  **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor. Spawns and monitors `CommodityEngine` processes for each active ticker. Manages **Shared Services** (Equity Polling, Macro Research, Post-Close Reconciliation, System Health Digest) to prevent API redundancy.
-2.  **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity. Manages its own Sentinels, Council, and Schedule. Ensures strict data isolation.
+2.  **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity. Manages its own Sentinels, Council, and Schedule. Ensures strict data isolation using `ContextVar` to prevent cross-engine contamination of flags (like shutdown states) and dynamically generates commodity-specific configs for dashboard utilities.
 3.  **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM requests to the best-fit provider based on the agent's role (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 4.  **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches Council decisions based on market state vectors. Prevents redundant LLM calls.
 5.  **Transactive Memory System (`trading_bot/tms.py`):** ChromaDB-based vector store for "institutional memory" across cycles.
