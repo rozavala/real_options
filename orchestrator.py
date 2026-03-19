@@ -2963,10 +2963,16 @@ async def run_position_audit_cycle(config: dict, trigger_source: str = "Schedule
             var_result = await asyncio.wait_for(
                 var_calc.compute_portfolio_var(ib, config), timeout=30.0
             )
-            logger.info(
-                f"Post-audit VaR: 95%={var_result.var_95_pct:.2%} "
-                f"(${var_result.var_95:,.0f}), positions={var_result.position_count}"
-            )
+            if var_result.var_95 == 0 and var_result.position_count > 0:
+                logger.info(
+                    f"Post-audit VaR: 95%=0.00% ($0), positions={var_result.position_count} "
+                    f"— portfolio profitable in ≥95% of Monte Carlo scenarios (long put spread bias)"
+                )
+            else:
+                logger.info(
+                    f"Post-audit VaR: 95%={var_result.var_95_pct:.2%} "
+                    f"(${var_result.var_95:,.0f}), positions={var_result.position_count}"
+                )
 
             # Run AI Risk Agent (L1 + L2)
             try:
