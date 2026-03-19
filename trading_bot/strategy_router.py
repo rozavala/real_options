@@ -223,10 +223,11 @@ def route_strategy(
                         thesis_strength, conviction_multiplier, volatility_sentiment,
                         regime, reason
     """
-    # v7.0 SAFETY: Default to BEARISH (expensive) when vol data missing.
-    # Fail-safe, not fail-neutral.
+    # v9.0: Default to NEUTRAL when vol data missing.
+    # Vol sentiment (expensive/cheap) is non-directional — defaulting to BEARISH
+    # created a systematic bearish bias by blocking Straddles and forcing Iron Condors.
     if not vol_sentiment or vol_sentiment == 'N/A':
-        vol_sentiment = 'BEARISH'
+        vol_sentiment = 'NEUTRAL'
 
     prediction_type = "DIRECTIONAL"
     vol_level = None

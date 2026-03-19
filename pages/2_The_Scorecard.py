@@ -643,8 +643,8 @@ if os.path.exists(_signals_path):
 
                     # Trade counts per regime
                     counts = [
-                        f"**{row['regime']}**: {row['total']} trades"
-                        for _, row in regime_stats.iterrows()
+                        f"**{regime}**: {total} trades"
+                        for regime, total in zip(regime_stats["regime"], regime_stats["total"])
                     ]
                     st.caption(" | ".join(counts))
                     _regime_shown = True

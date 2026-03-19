@@ -89,6 +89,8 @@ class EngineRuntime:
     startup_discovery_time: float = 0.0
     shared: Any = None             # SharedContext reference (Phase 2)
     brier_zero_resolution_streak: int = 0
+    scheduled_shutdown: bool = False  # Per-engine replacement for _SCHEDULED_SHUTDOWN global
+    full_shutdown: bool = False        # Per-engine replacement for _FULL_SHUTDOWN global
 
 
 # No default — LookupError triggers fallback to module globals in legacy mode

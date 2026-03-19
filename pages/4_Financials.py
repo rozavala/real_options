@@ -56,7 +56,7 @@ with metric_cols[0]:
         trade_count = council_df['pnl_realized'].notna().sum()
     else:
         trade_count = 0
-    st.metric("Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
+    st.metric("📦 Total Trades", trade_count, help="Total number of reconciled trades with P&L data.")
 
 with metric_cols[1]:
     # Calculate win rate from council history
@@ -75,12 +75,12 @@ with metric_cols[2]:
     if not council_df.empty and 'pnl_realized' in council_df.columns:
         realized_pnl = council_df['pnl_realized'].fillna(0).sum()
         st.metric(
-            "Realized P&L",
+            "💰 Realized P&L",
             f"${realized_pnl:+,.2f}",
             help="Sum of P&L from reconciled trades in council_history"
         )
     else:
-        st.metric("Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
+        st.metric("💰 Realized P&L", "$0.00", help="Sum of P&L from reconciled trades in council_history")
 
 # Pre-compute graded trades for sections that need it
 graded_fin = grade_decision_quality(council_df) if not council_df.empty else pd.DataFrame()
@@ -99,10 +99,20 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
     strategy_perf.columns = ['Total P&L', 'Avg P&L', 'Trade Count']
     strategy_perf = strategy_perf.reset_index()
 
+    # Mapping for pretty strategy names
+    _STRAT_DISPLAY = {
+        'BULL_CALL_SPREAD': 'Bull Call Spread',
+        'BEAR_PUT_SPREAD': 'Bear Put Spread',
+        'LONG_STRADDLE': 'Long Straddle',
+        'IRON_CONDOR': 'Iron Condor',
+        'DIRECTIONAL': 'Directional',
+    }
+    strategy_perf['Strategy'] = strategy_perf['strategy_type'].map(_STRAT_DISPLAY).fillna(strategy_perf['strategy_type'])
+
     # Create bar chart
     fig = px.bar(
         strategy_perf,
-        x='strategy_type',
+        x='Strategy',
         y='Total P&L',
         color='Total P&L',
         color_continuous_scale='RdYlGn',
@@ -111,10 +121,28 @@ if not council_df.empty and 'strategy_type' in council_df.columns and 'pnl_reali
     )
 
     fig.update_traces(texttemplate='%{text} trades', textposition='outside')
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     # Detailed table
-    st.dataframe(strategy_perf)
+    st.dataframe(
+        strategy_perf[['Strategy', 'Total P&L', 'Avg P&L', 'Trade Count']],
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Strategy": st.column_config.TextColumn("🛡️ Strategy", help="The specific options strategy type."),
+            "Total P&L": st.column_config.NumberColumn(
+                "💰 Total P&L", format="$%.2f",
+                help="Sum of all realized profit and loss for this strategy."
+            ),
+            "Avg P&L": st.column_config.NumberColumn(
+                "📐 Avg P&L", format="$%.2f",
+                help="Average profit and loss per trade for this strategy."
+            ),
+            "Trade Count": st.column_config.NumberColumn(
+                "📦 Trades", help="Total number of trades executed using this strategy."
+            ),
+        }
+    )
 
     # Rolling win rate by strategy (time dimension)
     if not graded_fin.empty and 'strategy_type' in graded_fin.columns:

@@ -149,7 +149,7 @@ def load_config() -> dict | None:
 
     # 8. Models
     # Helper to load LLM keys (Loop to handle LOADED_FROM_ENV replacements)
-    for provider in ['gemini', 'anthropic', 'openai', 'xai']:
+    for provider in ['gemini', 'anthropic', 'openai', 'xai', 'perplexity']:
         if provider in config and 'api_key' in config[provider]:
             if config[provider]['api_key'] == "LOADED_FROM_ENV":
                 config[provider]['api_key'] = os.getenv(f"{provider.upper()}_API_KEY")
@@ -195,7 +195,7 @@ def load_config() -> dict | None:
     config['data_dir'] = os.path.join(base_dir, 'data', ticker)
 
     # Log successful load
-    loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai'] if config.get(p, {}).get('api_key')]
+    loaded_providers = [p for p in ['gemini', 'anthropic', 'openai', 'xai', 'perplexity'] if config.get(p, {}).get('api_key')]
     logger.info(f"Config loaded successfully. Mode: {trading_mode}. Providers: {', '.join(loaded_providers)}")
 
     return config

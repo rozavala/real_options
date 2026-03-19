@@ -75,7 +75,7 @@ if prg_state:
                 help="Peak-to-trough drawdown: percentage decline from all-time peak equity."
             )
         else:
-            st.metric("Drawdown", "N/A", help="Cannot calculate drawdown without peak equity.")
+            st.metric("📉 Drawdown", "N/A", help="Cannot calculate drawdown without peak equity.")
 
     last_upd = prg_state.get('last_updated', 'unknown')
     st.caption(f"Last updated: {last_upd} ({_relative_time(last_upd)})")

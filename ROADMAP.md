@@ -1,7 +1,7 @@
 # Real Options — Engineering Roadmap
 
-**Last updated:** 2026-02-27
-**Reviewed by:** Jules
+**Last updated:** 2026-03-16
+**Reviewed by:** Claude
 
 ---
 
@@ -44,7 +44,14 @@
 | E.3 Liquidity-Aware Execution | **Done.** `order_manager.py:check_liquidity_conditions()` — pre-execution bid/ask depth analysis using a Hybrid Tick/Percentage Liquidity Filter (replacing the pure-ratio model), BAG combo leg liquidity aggregation, per-order spread logging. Remaining VWAP/TWAP only matters at much larger position sizes ($500K+). |
 | G.6 3rd Commodity (NG) | **Done.** Natural Gas (NG) launched Feb 27. Commodity profile created, systemd service installed, data dirs initialized. Running live alongside KC and CC. |
 | **Schedule Optimization** | **Done.** Reduced signal frequency from 4 to 3 cycles per session (20%, 62%, 80%) to eliminate illiquid pre-open window and reduce cost. |
-| **Execution Scaling** | **Done.** Introduced atomic BAG combo closes for multi-leg option positions with limit-and-walk fallback. Widened Drawdown circuit breaker thresholds (6% halt, 9% panic) to account for multi-commodity mark-to-market bid-ask noise. Added Conviction Gate to suppress weak signals, and Sentinel IC suppression. |
+| **Execution Scaling** | **Done.** Introduced atomic BAG combo closes for multi-leg option positions with limit-and-walk fallback. Widened Drawdown circuit breaker thresholds (6% halt, 9% panic) to account for multi-commodity mark-to-market bid-ask noise. Added Conviction Gate to suppress weak signals, and Sentinel IC suppression. Further hardened in March 2026: disconnect guard clientId filtering (#1279), cross-commodity close prevention (#1281), profile-driven market order fallback timeouts (#1275), NG emergency trigger tuning (#1261), CC liquidity threshold adjustment (#1259) |
+| **Contribution-Based Scoring** | **Done.** PRs #1249-#1255 (March 2026). Replaced Brier-only accuracy scoring with contribution-based agent attribution — measures whether each agent helped or hurt the council's final decision. `trading_bot/contribution_scoring.py` computes per-agent scores across regimes (NORMAL, HIGH_VOL, RANGE_BOUND). DSPy evaluation and enablement checks updated to use contribution metric. NEUTRAL penalized on real moves. Per-agent abstention ceilings added. Migration script backfills from `council_history.csv`. |
+| **Execution Funnel** | **Done.** PRs #1287-#1291 (March 2026). Signal-to-P&L diagnostic pipeline: append-only CSV event log tracking each decision from council signal through order placement, fill, and realized P&L. Dashboard page (10_The_Funnel.py) with regime comparison, slippage stats, and cycle drill-down. Backfill script reconstructs funnel from historical `council_history.csv` + `trade_ledger.csv`. |
+| **Master Strategist Forensics** | **Done.** PRs #1256-#1257 (March 2026). `scripts/master_strategist_forensics.py` analyzes Master Strategist override patterns, agent agreement rates, and decision quality. Integrated into Scorecard dashboard page. |
+| **Reconciliation Hardening** | **Done.** PRs #1217-#1218, #1229, #1233-#1235, #1247 (March 2026). Eliminated phantom position alerts from double-counted reconciliation entries. Fixed multi-lot combo fill recording. Increased timestamp tolerance to 30s. Disabled phantom reconciliation that was creating false RECON_MISSING entries. Vectorized trade reconciliation loop (#1303). |
+| **MasterOrchestrator (Multi-Engine)** | **Done.** Consolidated KC and NG into a single `MasterOrchestrator` process with ContextVar isolation per engine. Replaced per-commodity systemd services. Staggered boot, shared IB Gateway, per-commodity client ID offsets. Deployed to production March 2026 (#1294). |
+| **Production Deployment** | **Done.** System deployed to production (March 2026). 11-step `deploy.sh` with automatic rollback, `verify_deploy.sh` (8 checks), `run_migrations.py` framework with `--verify` flag. KC and NG engines running live. Trading mode OFF (observation only) pending validation. |
+| G.7 Three-Tier Market State | **Done.** `ACTIVE`/`PASSIVE`/`SLEEPING` state model for extended-hours commodities (NG). Uses JSON config profiles. |
 
 ---
 
@@ -107,11 +114,13 @@ When DSPy/TextGrad propose prompt changes, run them as A/B tests. 50% of cycles 
 ---
 
 ### #5 — D.5 Reasoning Quality Metrics
-**Type:** Insight | **Effort:** 3-4 weeks | **Status:** Not started
+**Type:** Insight | **Effort:** 2-3 weeks | **Status:** Partial
 
 Text-Based Information Coefficient (sentiment signal x confidence vs actual returns), Faithfulness via NLI (are claims supported by retrieved docs?), Debate Divergence (semantic distance between Permabear/Permabull — low = mode collapse).
 
-**Why #5:** Identifies *why* bad decisions happen, not just *that* they happened. Brier scoring (done) tells you accuracy; this tells you reasoning quality. Catches mode collapse (all agents agreeing for wrong reasons) and hallucination (confident claims unsupported by data).
+**Partial progress:** Contribution scoring (done) now tracks per-agent value-add vs the council decision. Execution Funnel (done) traces signal-to-P&L with slippage analysis. Master Strategist forensics (done) analyzes override patterns and agent agreement rates. Direction-evidence mismatch detection already flags agents whose directional call contradicts their own evidence. **Remaining:** formal NLI faithfulness checking, debate divergence metric, systematic mode-collapse detection.
+
+**Why #5:** Identifies *why* bad decisions happen, not just *that* they happened. Contribution scoring tells you *who* helps/hurts; this tells you *why*. Catches mode collapse (all agents agreeing for wrong reasons) and hallucination (confident claims unsupported by data).
 
 **Revenue impact:** Medium — diagnostic, not directly revenue-generating. But saves weeks of debugging when something goes wrong.
 
@@ -160,13 +169,6 @@ Custom `observability.py` exists with HallucinationDetector, AgentTrace, and Obs
 
 ---
 
-### #12 — G.7 Three-Tier Market State Model
-**Type:** Ops | **Effort:** 1-2 weeks | **Status:** Complete
-
-**Completed (March 2026):** Implemented an `ACTIVE`/`PASSIVE`/`SLEEPING` state model to handle 24/7 coverage for extended hours commodities like Natural Gas (NG). `PASSIVE` mode allows Sentinel surveillance and emergency closures while saving costs by pausing regular active polling and full Council cycles. Uses JSON configuration profiles (`config/profiles/<ticker>.json`).
-
----
-
 ### #11 — F.6 Synthetic Rare Event Generation
 **Type:** Stress test | **Effort:** 3-4 weeks | **Status:** Not started
 
@@ -185,6 +187,8 @@ Combine real historical events in novel ways for stress testing. "What if frost 
 
 ✅ C.1 Semantic Cache (done)
 ✅ C.5 Budget Guard (done)
+✅ Contribution Scoring (done) ──→ D.5 Reasoning Metrics (partial)
+✅ Execution Funnel (done) ────────┘
 
 C.4 Surrogate ──→ C.2 Regime Switching
        │
@@ -196,8 +200,13 @@ C.4 Surrogate ──→ C.2 Regime Switching
 
 ✅ E.2 Exit Enhancements (done)
 ✅ E.3 Liquidity-Aware (done)
+✅ Execution Scaling (done)
+✅ Reconciliation Hardening (done)
 
-✅ G.5 Multi-Commodity (done) ──→ ✅ G.6 3rd Commodity (done)
+✅ G.5 Multi-Commodity (done) ──→ ✅ G.6 3rd Commodity (done) ──→ ✅ MasterOrchestrator (done)
+                                                                          │
+✅ G.7 Three-Tier State (done) ────────────────────────────────────────────┘
+✅ Production Deploy (done)
 ```
 
 ## Recommended Execution Plan
@@ -211,10 +220,11 @@ C.4 Surrogate ──→ C.2 Regime Switching
 | ~~Phase 4b~~ | ~~E.1 VaR, F.5 Prediction Market~~ | ~~3-4 weeks~~ | **Done** (VaR Feb 20, PM Integration) |
 | ~~Phase 4c~~ | ~~G.6 3rd Commodity (NG)~~ | ~~1 week~~ | **Done** (NG launched Feb 27) |
 | ~~Phase 4d~~ | ~~Data Pipeline Migrations~~ | ~~1 week~~ | **Done** (Execution Funnel & Contribution Scores backfilled via framework) |
+| ~~Phase 4e~~ | ~~Contribution Scoring, Execution Funnel, Forensics, Reconciliation, MasterOrchestrator, Production Deploy~~ | ~~3 weeks~~ | **Done** (March 2026). Contribution scoring replaces Brier-only. Execution Funnel traces signal→P&L. Forensics dashboard. Reconciliation hardened. MasterOrchestrator consolidates engines. Deployed to production. |
 | **Phase 5** | **#1 C.4/C.2 Surrogate+Regime** | **3-4 weeks** | **Cost reduction — LLM costs tripled with 3 commodities, surrogate saves 60-80%** |
 | Phase 6 | #2 E.4 Greeks | 2-3 weeks | Risk visibility |
 | Phase 7 | #3 A.2 TextGrad + #4 G.2 A/B Testing | 4-6 weeks | Decision quality + optimization safety |
-| Phase 8 | #5 D.5 Reasoning Metrics | 4-6 weeks | Diagnostics + validation |
+| Phase 8 | #5 D.5 Reasoning Metrics | 2-3 weeks | Diagnostics (partially done — contribution scoring, funnel, forensics) |
 | Phase 9 | #6-#11 (depth + scale) | 20-30 weeks | Foundation for scale |
 
-**Phase 5 rationale:** Surrogate/regime-switching is now the clear #1 priority. E.1 VaR shipped, so the survival gap is closed. LLM costs are the biggest drag on profitability — three commodities each running 3 scheduled signal cycles/day (optimized from 4) plus sentinels through a 7-agent Council is expensive. Regime routing on quiet days (70% of sessions) could save $900-2400/month across KC+CC+NG.
+**Phase 5 rationale:** Surrogate/regime-switching is now the clear #1 priority. The system is live in production with KC and NG engines running (trading mode OFF, observation only). LLM costs are the biggest drag on profitability — two active commodities each running 3 scheduled signal cycles/day plus sentinels through a 7-agent Council is expensive. Regime routing on quiet days (70% of sessions) could save $600-1600/month across KC+NG.

@@ -31,7 +31,10 @@ __all__ = [
 ]
 
 BULLISH_WORDS = {'increase', 'rise', 'surge', 'shortage', 'deficit', 'drought', 'frost', 'bullish', 'strong', 'growth', 'up', 'rose', 'gained', 'rally', 'congestion', 'bottleneck', 'backwardation', 'tightness', 'disruption', 'delay', 'restricted', 'drawdown', 'depletion', 'thinning', 'rationing', 'hawkish', 'hoarding', 'scarcity'}
-BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied', 'liquidation', 'selloff', 'selling', 'overproduction', 'ample', 'easing', 'normalizing', 'weakening', 'buildup', 'accumulation', 'stockpile', 'plentiful', 'resolved', 'resolution', 'deleverage', 'building', 'inflows', 'arrivals', 'replenishment', 'restocking'}
+# v9.0: Removed ambiguous logistics/inventory words (building, inflows, arrivals,
+# replenishment, restocking, easing, normalizing, resolved, resolution) that
+# triggered false direction-evidence mismatches on bullish supply-recovery reports.
+BEARISH_WORDS = {'decrease', 'fall', 'surplus', 'bumper', 'oversupply', 'bearish', 'weak', 'decline', 'down', 'fell', 'lost', 'crash', 'plunge', 'contango', 'glut', 'abundance', 'oversupplied', 'liquidation', 'selloff', 'selling', 'overproduction', 'ample', 'weakening', 'buildup', 'accumulation', 'stockpile', 'plentiful', 'deleverage'}
 NEGATION_WORDS = {'not', 'no', 'never', 'neither', 'nor', 'rejected', 'failed',
                   'despite', 'unlikely', 'against', 'overcame', 'ignored', 'dismissed',
                   'without', 'lack', 'absence', 'declining', 'decreased'}

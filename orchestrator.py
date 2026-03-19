@@ -57,6 +57,7 @@ from trading_bot.weighted_voting import RegimeDetector
 from trading_bot.tms import TransactiveMemory
 from trading_bot.budget_guard import get_budget_guard
 from trading_bot.drawdown_circuit_breaker import DrawdownGuard
+from trading_bot.data_dir_context import get_engine_runtime
 from trading_bot.cycle_id import generate_cycle_id
 from trading_bot.strategy_router import route_strategy
 from trading_bot.risk_management import _calculate_combo_risk_metrics
@@ -88,10 +89,46 @@ _SCHEDULED_SHUTDOWN = False
 _FULL_SHUTDOWN = False
 _brier_zero_resolution_streak = 0
 
+
+# --- Per-engine shutdown flag helpers (Issue #1346) ---
+# These replace direct reads/writes of _SCHEDULED_SHUTDOWN / _FULL_SHUTDOWN so
+# that each CommodityEngine's asyncio Task has isolated shutdown state.
+# Falls back to the module-level globals when no EngineRuntime is set (legacy /
+# single-engine / test contexts).
+
+def _get_scheduled_shutdown() -> bool:
+    rt = get_engine_runtime()
+    return rt.scheduled_shutdown if rt is not None else _SCHEDULED_SHUTDOWN
+
+
+def _set_scheduled_shutdown(value: bool) -> None:
+    global _SCHEDULED_SHUTDOWN
+    rt = get_engine_runtime()
+    if rt is not None:
+        rt.scheduled_shutdown = value
+    else:
+        _SCHEDULED_SHUTDOWN = value
+
+
+def _get_full_shutdown() -> bool:
+    rt = get_engine_runtime()
+    return rt.full_shutdown if rt is not None else _FULL_SHUTDOWN
+
+
+def _set_full_shutdown(value: bool) -> None:
+    global _FULL_SHUTDOWN
+    rt = get_engine_runtime()
+    if rt is not None:
+        rt.full_shutdown = value
+    else:
+        _FULL_SHUTDOWN = value
+
 # Passive emergency cooldown tracking: ticker → datetime of last trigger
 _last_passive_emergency: dict = {}
 # Deferred trigger rate limiting: (ticker, sentinel_type) → datetime
 _deferred_trigger_times: dict = {}
+# Track primary stale close result per ticker so fallback can skip if unnecessary
+_stale_close_primary_result: dict = {}
 
 # IB startup grace — suppress ERROR logging for IB failures during first 2 minutes
 _IB_BOOT_TIME = None
@@ -106,7 +143,7 @@ def _in_ib_startup_grace() -> bool:
 
 def is_system_shutdown() -> bool:
     """Check if the system has fully shut down (SLEEPING state)."""
-    return _FULL_SHUTDOWN
+    return _get_full_shutdown()
 
 
 def is_scheduled_shutdown() -> bool:
@@ -115,7 +152,7 @@ def is_scheduled_shutdown() -> bool:
     True after cancel_and_stop_monitoring() runs. Used by
     guarded_generate_orders() to block new scheduled signals.
     """
-    return _SCHEDULED_SHUTDOWN
+    return _get_scheduled_shutdown()
 
 
 def _is_in_passive_emergency_cooldown(ticker: str, cooldown_seconds: int) -> bool:
@@ -1369,6 +1406,7 @@ async def _reconcile_orphaned_theses(
 
         remaining_ib = dict(ib_aggregate)
         live_position_ids = set()
+        fully_matched_tids = set()  # Theses whose ALL legs were consumed by FIFO
 
         for tid, _ in thesis_order:
             expected_legs = thesis_expected[tid]
@@ -1386,6 +1424,7 @@ async def _reconcile_orphaned_theses(
                 for sym, exp_qty in expected_legs.items():
                     remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
                 live_position_ids.add(tid)
+                fully_matched_tids.add(tid)
             else:
                 # Fail closed: if ANY leg still has IB backing, don't orphan
                 any_present = any(
@@ -1428,6 +1467,46 @@ async def _reconcile_orphaned_theses(
                             f"(expected={expected_legs}, remaining={remaining_ib}). "
                             f"Keeping alive (fail-closed)."
                         )
+
+        # 2d. Cross-thesis netting check: when multiple theses share a contract
+        # in opposite directions, IB's net position can't satisfy either thesis
+        # individually, but the aggregate may match perfectly.
+        # Include ALL unmatched theses — not just those with visible legs.
+        # A thesis whose legs are entirely netted to zero in IB (e.g., after
+        # a stale close removed one leg) has no IB presence but its expected
+        # quantities are still needed for the aggregate to balance.
+        # Safety: the all_netted check validates the aggregate matches IB
+        # exactly, so truly orphaned theses (closed externally) won't suppress
+        # valid alerts — their expected legs would break the aggregate match.
+        unmatched_tids = [
+            tid for tid, _ in thesis_order
+            if tid not in fully_matched_tids and tid in thesis_expected
+        ]
+        remaining_nonzero = {s: q for s, q in remaining_ib.items() if q != 0}
+        if remaining_nonzero and unmatched_tids:
+            partial_aggregate = {}
+            for tid in unmatched_tids:
+                for sym, exp_qty in thesis_expected[tid].items():
+                    partial_aggregate[sym] = partial_aggregate.get(sym, 0) + exp_qty
+            # Check if partial aggregate equals remaining IB (all accounted for)
+            all_netted = True
+            all_syms = set(remaining_nonzero) | {s for s, q in partial_aggregate.items() if q != 0}
+            for sym in all_syms:
+                if remaining_nonzero.get(sym, 0) != partial_aggregate.get(sym, 0):
+                    all_netted = False
+                    break
+            if all_netted:
+                logger.info(
+                    f"Reconciliation: {len(unmatched_tids)} unmatched theses "
+                    f"net to IB positions (cross-thesis netting). "
+                    f"No real orphans. aggregate={partial_aggregate}"
+                )
+                # Deduct so remaining_ib goes to zero — no orphan alert
+                for sym, exp_qty in partial_aggregate.items():
+                    remaining_ib[sym] = remaining_ib.get(sym, 0) - exp_qty
+                # Keep these theses alive — they are accounted for
+                for tid in unmatched_tids:
+                    live_position_ids.add(tid)
 
         # Theses with no ledger entries but IB has positions: fail closed
         for tid in active_thesis_ids:
@@ -2056,7 +2135,7 @@ async def _attempt_bag_close(
 
         bag.comboLegs = combo_legs_list
         bag_action = 'BUY'  # IB convention: BAG action BUY with explicit leg actions
-        order_size = qty_gcd
+        order_size = int(qty_gcd)  # LimitOrder requires int; leg.position may be float
 
         # Get market data for each leg to calculate combo price
         calculated_combo_price = 0.0
@@ -2945,11 +3024,11 @@ async def log_stream(stream, logger_func):
 
 async def start_monitoring(config: dict):
     """Starts the `position_monitor.py` script as a background process."""
-    global monitor_process, _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
+    global monitor_process
 
     # Reset both shutdown flags for new trading day
-    _SCHEDULED_SHUTDOWN = False
-    _FULL_SHUTDOWN = False
+    _set_scheduled_shutdown(False)
+    _set_full_shutdown(False)
     logger.info("Shutdown flags CLEARED — new trading day beginning")
 
     # === EARLY EXIT: Don't start monitor on non-trading days ===
@@ -3001,10 +3080,8 @@ async def stop_monitoring(config: dict):
 
 async def cancel_and_stop_monitoring(config: dict):
     """Wrapper task to cancel open orders and then stop the monitor."""
-    global _SCHEDULED_SHUTDOWN, _FULL_SHUTDOWN
-
     logger.info("--- Initiating end-of-day shutdown sequence ---")
-    _SCHEDULED_SHUTDOWN = True  # Block new scheduled signals immediately
+    _set_scheduled_shutdown(True)  # Block new scheduled signals immediately
     logger.info("Scheduled shutdown flag SET — no new scheduled trades will be processed")
 
     await cancel_all_open_orders(config)
@@ -3018,9 +3095,9 @@ async def cancel_and_stop_monitoring(config: dict):
             "Market entering PASSIVE state — position monitor stays alive, "
             "emergency cycles remain enabled"
         )
-        # Don't stop monitoring, don't set _FULL_SHUTDOWN
+        # Don't stop monitoring, don't set full_shutdown
     else:
-        _FULL_SHUTDOWN = True
+        _set_full_shutdown(True)
         logger.info("Full shutdown flag SET — system entering SLEEPING state")
         await stop_monitoring(config)
 
@@ -4455,7 +4532,7 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
 
                         order_objects = await create_combo_order_object(ib, config, strategy_def)
                         if order_objects:
-                            contract, order = order_objects
+                            contract, order, _ = order_objects
 
                             # Queue and Execute (Fix Global Queue Collision)
                             # Pass specific list to place_queued_orders so we don't wipe the global queue
@@ -4666,7 +4743,6 @@ async def run_sentinels(config: dict):
     - Price/Microstructure sentinels only run during market hours (IB needed)
     - IB connection is LAZY: only established when market is actually open
     """
-    global _FULL_SHUTDOWN  # Written during PASSIVE → SLEEPING transitions
     logger.info("--- Starting Sentinel Array ---")
 
     # === 1. LAZY INITIALIZATION: Start with NO connection ===
@@ -4739,7 +4815,7 @@ async def run_sentinels(config: dict):
             _sentinel_iteration += 1
 
             # v5.4: Shutdown gate — stop all sentinel activity post-shutdown
-            if _FULL_SHUTDOWN:
+            if _get_full_shutdown():
                 # One-time microstructure cleanup (Issue 7 integrated)
                 if micro_sentinel is not None:
                     logger.info("Shutdown: Gracefully disengaging Microstructure Sentinel")
@@ -4799,7 +4875,7 @@ async def run_sentinels(config: dict):
                         # === SAFETY NET: Ensure position monitoring is running ===
                         # Covers the gap where bot starts just before market open
                         # and the scheduled start_monitoring was already missed.
-                        if not _FULL_SHUTDOWN and (
+                        if not _get_full_shutdown() and (
                             monitor_process is None or monitor_process.returncode is not None
                         ):
                             logger.info(
@@ -4855,9 +4931,9 @@ async def run_sentinels(config: dict):
 
             else:
                 # === 4. MARKET SLEEPING: Disconnect to prevent zombie state ===
-                # Also ensure _FULL_SHUTDOWN is set when entering SLEEPING
-                if market_state == 'SLEEPING' and not _FULL_SHUTDOWN and _SCHEDULED_SHUTDOWN:
-                    _FULL_SHUTDOWN = True
+                # Also ensure full_shutdown is set when entering SLEEPING
+                if market_state == 'SLEEPING' and not _get_full_shutdown() and _get_scheduled_shutdown():
+                    _set_full_shutdown(True)
                     logger.info("State transition: PASSIVE → SLEEPING — full shutdown engaged")
 
                 if sentinel_ib is not None and sentinel_ib.isConnected():
@@ -5607,15 +5683,38 @@ async def emergency_hard_close(config: dict):
             except Exception:
                 pass
 
+async def close_stale_positions_primary(config: dict):
+    """Primary stale position close. Records result so fallback can skip if unnecessary."""
+    global _stale_close_primary_result
+    result = await close_stale_positions(config)
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    _stale_close_primary_result[ticker] = result or {}
+    logger.info(f"Primary stale close [{ticker}] result: {result}")
+
+
 async def close_stale_positions_fallback(config: dict):
-    """Fallback close attempt at 12:45 ET. Only acts if 11:00 primary close missed anything."""
+    """Fallback close attempt. Only runs if primary had failed closes or errors."""
+    global _stale_close_primary_result
     from trading_bot.utils import is_trading_off
     if is_trading_off():
         logger.info("[OFF] close_stale_positions_fallback skipped — no positions exist in OFF mode")
         return
 
-    logger.info("--- Fallback Close Attempt (12:45 ET) ---")
-    logger.info("This is a retry for any positions the 11:00 primary close failed to handle.")
+    ticker = config.get('commodity', {}).get('ticker', config.get('symbol', 'KC'))
+    primary = _stale_close_primary_result.get(ticker, {})
+    failed = primary.get('failed_closes', -1)
+
+    if failed == 0:
+        logger.info(
+            f"Fallback close [{ticker}] skipped — primary completed with 0 failures"
+        )
+        return
+
+    if failed > 0:
+        logger.info(f"--- Fallback Close Attempt [{ticker}] --- (primary had {failed} failed closes)")
+    else:
+        logger.info(f"--- Fallback Close Attempt [{ticker}] --- (primary result unknown, running as safety net)")
+
     await close_stale_positions(config)
 
 async def run_brier_reconciliation(config: dict):
@@ -5833,6 +5932,7 @@ FUNCTION_REGISTRY = {
     'guarded_generate_orders': guarded_generate_orders,
     'run_position_audit_cycle': run_position_audit_cycle,
     'close_stale_positions': close_stale_positions,
+    'close_stale_positions_primary': close_stale_positions_primary,
     'close_stale_positions_fallback': close_stale_positions_fallback,
     'emergency_hard_close': emergency_hard_close,
     'cancel_and_stop_monitoring': cancel_and_stop_monitoring,
@@ -5856,7 +5956,7 @@ def _build_default_schedule() -> list:
         ("signal_peak",               time(15, 0),  guarded_generate_orders,       "Signal: Peak Liquidity (15:00 ET)"),
         ("signal_settlement",         time(17, 0),  guarded_generate_orders,       "Signal: Settlement (17:00 ET)"),
         ("audit_morning",             time(13, 30), run_position_audit_cycle,      "Audit: Midday (13:30 ET)"),
-        ("close_stale_primary",       time(15, 30), close_stale_positions,         "Close Stale: Primary (15:30 ET)"),
+        ("close_stale_primary",       time(15, 30), close_stale_positions_primary,  "Close Stale: Primary (15:30 ET)"),
         ("audit_post_close",          time(15, 45), run_position_audit_cycle,      "Audit: Post-Close (15:45 ET)"),
         ("close_stale_fallback",      time(16, 30), close_stale_positions_fallback,"Close Stale: Fallback (16:30 ET)"),
         ("audit_pre_close",           time(17, 15), run_position_audit_cycle,      "Audit: Pre-Shutdown (17:15 ET)"),
@@ -6106,6 +6206,7 @@ RECOVERY_POLICY = {
     'run_position_audit_cycle':       {'policy': 'MARKET_OPEN',   'idempotent': True},
     'guarded_generate_orders':        {'policy': 'BEFORE_CUTOFF', 'idempotent': False},  # 5 daily cycles (09:00-17:00 UTC)
     'close_stale_positions':          {'policy': 'MARKET_OPEN',   'idempotent': True},
+    'close_stale_positions_primary':  {'policy': 'MARKET_OPEN',   'idempotent': True},
     'close_stale_positions_fallback': {'policy': 'MARKET_OPEN',   'idempotent': True},
     'emergency_hard_close':           {'policy': 'MARKET_OPEN',   'idempotent': True},
     'cancel_and_stop_monitoring':     {'policy': 'NEVER',         'idempotent': False},

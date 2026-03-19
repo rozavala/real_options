@@ -25,7 +25,7 @@ When a sentinel triggers or a scheduled cycle runs, a Council of specialized AI 
 - **Macro Economist:** Assesses global economic trends and currency impacts.
 - **Fundamentalist:** Focuses on supply/demand balance and inventory reports.
 - **Technical Analyst:** Interprets chart patterns and price action.
-- **Volatility Analyst:** Analyzes implied volatility and options pricing.
+- **Volatility Analyst:** Analyzes implied volatility and options pricing. Provides a non-directional signal (indicating expensive or cheap options) that is explicitly excluded from the directional weighted score.
 - **Geopolitical Analyst:** Evaluates the impact of international relations and conflicts.
 - **Sentiment Analyst:** Gauges the market mood from social and news sources.
 - **Inventory Analyst:** Monitors certified stocks.
@@ -34,24 +34,25 @@ When a sentinel triggers or a scheduled cycle runs, a Council of specialized AI 
 ### Tier 3: Decision Council
 A set of agents that synthesize the analysts' reports.
 - **Permabear:** Attacks the bullish thesis.
-- **Permabull:** Defends the bullish thesis.
+- **Permabull:** Defends the bullish thesis. Model assignment and debate order are randomized to prevent anchoring bias.
 - **Master Strategist:** Weighs all evidence and makes the final directional decision.
 - **Devil's Advocate:** Performs a pre-mortem to identify risks in the master strategy.
 
 ### Tier 4: Execution & Risk Management
 - **Compliance Guardian:** The final arbiter of all trades, enforcing risk limits (VaR, Margin, etc.), the Conviction Gate (blocking weak signals, e.g., |weighted_score| < 0.20), and Sentinel IC Suppression (blocking short premium positions during sentinel-triggered high-volatility events).
 - **Dynamic Position Sizer:** Calculates optimal trade size.
-- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking, falling back to market orders via a profile-driven timeout (e.g., KC=90s, CC=120s, NG=60s). Catastrophe stops are gated by an account Net Liquidation Value (NLV) minimum threshold to fail-closed without stop protection if margin is insufficient.
+- **Order Manager:** Queues and executes orders via Interactive Brokers, utilizing a Hybrid Tick/Percentage Liquidity Filter for combo orders. It executes CONTRADICT closures immediately prior to new entries to prevent quantity aggregation race conditions. Multi-leg positions are closed atomically via single BAG (combo) orders, and the execution is verified via `reqPositionsAsync` before falling back to individual leg closures to prevent orphan legs. All exits utilize limit orders with adaptive price walking, falling back to market orders via a profile-driven timeout (e.g., KC=90s, CC=120s, NG=60s). Stale-close fallbacks automatically skip execution if the primary close succeeds with no failures. A **Contract Overlap Guard** is implemented to prevent invisible IBKR position netting by blocking new orders that have opposing-direction overlaps with active theses, while same-direction additive overlaps are permitted. Catastrophe stops are gated by an account Net Liquidation Value (NLV) minimum threshold to fail-closed without stop protection if margin is insufficient.
 
 ## Infrastructure
 
 - **Master Orchestrator:** Manages multi-commodity instances for active tickers (Coffee, Cocoa, Natural Gas). Notifications are isolated per commodity ticker via ContextVar. Multi-commodity isolation requires strict `clientId` filtering and symbol prefix matching to prevent cross-engine order corruption or false untracked positions.
 - **Commodity Engine:** Runs the per-commodity loop.
-- **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
+- **Heterogeneous Router:** Dispatches LLM calls to Gemini, OpenAI, Anthropic, or xAI. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience. Grounded research relies on **Perplexity Sonar**, with a low-quality or failure fallback to Gemini.
 - **Semantic Cache:** Caches decisions to optimize costs and latency.
 - **DSPy Optimizer:** Offline pipeline that refines agent prompts using historical feedback (BootstrapFewShot). Evaluates based on directional accuracy and abstention rate directly from `enhanced_brier.json` (legacy CSV paths have been deprecated).
 - **Error Reporter Pipeline:** A standalone telemetry script (`scripts/error_reporter.py`) decoupled from the orchestrator. It ensures fail-safe operational awareness by parsing system logs, filtering out expected transient noise (e.g., `503 UNAVAILABLE`, `RESOURCE_EXHAUSTED`, rate limits, `CIRCUIT BREAKER`, emergency lock timeouts), and uses fingerprinting to deduplicate and auto-generate structured GitHub issues for true anomalies.
 - **System Readiness Verifier:** A comprehensive pre-flight diagnostic script (`verify_system_readiness.py`) that performs 27 comprehensive component checks (infrastructure, connections, data fallbacks, agent array, and execution pipeline) to diagnose system state before runtime.
+- **Market Data Diagnostic:** A lightweight utility (`scripts/check_market_data.py`) to verify Interactive Brokers data feed status, ensuring `FORCE_DELAYED_DATA` overrides function correctly across DEV and PROD environments by resolving front-month contracts and reporting LIVE/DELAYED quote status.
 - **Migration Pipeline:** Wraps standalone data backfill operations (such as the Execution Funnel backfill via `scripts/migrations/backfill_execution_funnel.py` and the Contribution Scores migration via `scripts/migrations/migrate_contribution_scores.py`) into the idempotent `run_migrations.py` framework for automated deployment consistency.
 
 ## Knowledge Generation and Memory

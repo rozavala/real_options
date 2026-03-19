@@ -293,7 +293,7 @@ async def build_option_chain(ib: IB, future_contract: Contract) -> dict | None:
         logging.error(f"Failed to build option chain for {future_contract.localSymbol}: {e}"); return None
 
 
-async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) -> tuple[Contract, Order] | None:
+async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) -> tuple[Contract, Order, list] | None:
     """
     Prices a combo strategy and creates qualified Contract and Order objects without placing them.
 
@@ -673,7 +673,7 @@ async def create_combo_order_object(ib: IB, config: dict, strategy_def: dict) ->
     order.orderRef = str(uuid.uuid4())
     logging.info(f"Assigned OrderRef: {order.orderRef}")
 
-    return (combo, order)
+    return (combo, order, qualified_legs)
 
 
 def place_order(ib: IB, contract: Contract, order: Order) -> Trade | None:

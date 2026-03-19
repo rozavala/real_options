@@ -10,6 +10,7 @@ import json
 import logging
 import asyncio
 import time
+import random
 from typing import Dict, List
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
@@ -23,6 +24,7 @@ from trading_bot.utils import escape_xml, sanitize_prompt_content
 from trading_bot.market_data_provider import format_market_context_for_prompt
 from trading_bot.heterogeneous_router import HeterogeneousRouter, AgentRole, get_router, CriticalRPCError
 from trading_bot.budget_guard import BudgetThrottledError
+from trading_bot.perplexity_client import perplexity_grounded_search
 from trading_bot.tms import TransactiveMemory
 from trading_bot.reliability_scorer import ReliabilityScorer
 from trading_bot.weighted_voting import calculate_weighted_decision, determine_trigger_type
@@ -212,6 +214,19 @@ class TradingCouncil:
 
         # Semaphore for grounded data calls (rate limiting)
         self._grounded_data_semaphore = asyncio.Semaphore(3)
+
+        # Perplexity Sonar config for grounded data gathering
+        pplx_config = config.get('perplexity', {})
+        self._perplexity_enabled = pplx_config.get('enabled', False)
+        self._perplexity_api_key = pplx_config.get('api_key')
+        self._perplexity_model = pplx_config.get('model', 'sonar')
+        self._perplexity_search_context = pplx_config.get('search_context_size', 'low')
+
+        if self._perplexity_enabled and self._perplexity_api_key:
+            logger.info(f"Perplexity Sonar enabled for grounded data (model={self._perplexity_model}, context={self._perplexity_search_context})")
+        elif self._perplexity_enabled and not self._perplexity_api_key:
+            logger.warning("Perplexity enabled but PERPLEXITY_API_KEY not found — falling back to Gemini")
+            self._perplexity_enabled = False
 
         # 5. Initialize Heterogeneous Router (for multi-model support)
         self.heterogeneous_router = None
@@ -678,9 +693,13 @@ class TradingCouncil:
 
     async def _gather_grounded_data(self, search_instruction: str, persona_key: str) -> GroundedDataPacket:
         """
-        Phase 1: Use Gemini with Google Search to gather current data.
-        This method ALWAYS uses tools, regardless of heterogeneous routing settings.
-        Includes 10-minute caching and Sentinel fallback.
+        Phase 1: Gather current data via web search.
+
+        Provider selection:
+        - If Perplexity Sonar enabled → use it (deterministic cost, no AFC multiplier)
+        - Otherwise → fall back to Gemini Flash + Google Search
+
+        Includes 10-minute caching and Sentinel fallback on failure.
         """
         # 1. Check Cache
         now = datetime.now(timezone.utc)
@@ -690,8 +709,130 @@ class TradingCouncil:
                 logger.info(f"[{persona_key}] Using cached grounded data.")
                 return entry['packet']
 
-        # 2. Craft Data-Gathering Prompt
-        # Sanitize untrusted input from sentinels
+        # 2. Attempt data gathering
+        try:
+            if self._perplexity_enabled:
+                data = await self._gather_via_perplexity(search_instruction, persona_key)
+                # If Perplexity returned non-JSON (wrapped as raw_summary with LOW quality),
+                # fall back to Gemini rather than proceeding with degraded data.
+                if data.get('data_quality') == 'LOW' and not data.get('dated_facts'):
+                    logger.warning(f"[{persona_key}] Perplexity returned low-quality data, falling back to Gemini...")
+                    try:
+                        data = await self._gather_via_gemini(search_instruction, persona_key)
+                    except Exception as gem_err:
+                        logger.warning(f"[{persona_key}] Gemini fallback also failed: {gem_err}")
+            else:
+                data = await self._gather_via_gemini(search_instruction, persona_key)
+
+            freshness_hours = self._compute_data_freshness(
+                data.get('dated_facts', []),
+                data.get('data_freshness', '')
+            )
+
+            packet = GroundedDataPacket(
+                search_query=search_instruction,
+                raw_findings=data.get('raw_summary', ''),
+                extracted_facts=data.get('dated_facts', []),
+                source_urls=data.get('search_queries_used', []),
+                data_freshness_hours=freshness_hours
+            )
+
+            if "NO RECENT NEWS FOUND" in packet.raw_findings or not packet.extracted_facts:
+                logger.warning(f"[{persona_key}] Grounded search yielded no recent results.")
+
+            self._search_cache[search_instruction] = {'timestamp': now, 'packet': packet}
+
+            provider_tag = "perplexity" if self._perplexity_enabled else "gemini"
+            provenance_logger.info(
+                f"QUERY: {search_instruction} | PROVIDER: {provider_tag} | "
+                f"FACTS: {len(packet.extracted_facts)}"
+            )
+
+            return packet
+
+        except Exception as e:
+            logger.error(f"Grounded data gathering failed ({type(e).__name__}): {e}")
+
+            # Fallback: If Perplexity failed, try Gemini
+            if self._perplexity_enabled:
+                try:
+                    logger.warning(f"[{persona_key}] Perplexity failed, trying Gemini fallback...")
+                    data = await self._gather_via_gemini(search_instruction, persona_key)
+                    freshness_hours = self._compute_data_freshness(
+                        data.get('dated_facts', []),
+                        data.get('data_freshness', '')
+                    )
+                    packet = GroundedDataPacket(
+                        search_query=search_instruction,
+                        raw_findings=data.get('raw_summary', ''),
+                        extracted_facts=data.get('dated_facts', []),
+                        source_urls=data.get('search_queries_used', []),
+                        data_freshness_hours=freshness_hours
+                    )
+                    self._search_cache[search_instruction] = {'timestamp': now, 'packet': packet}
+                    provenance_logger.info(
+                        f"QUERY: {search_instruction} | PROVIDER: gemini_fallback | "
+                        f"FACTS: {len(packet.extracted_facts)}"
+                    )
+                    return packet
+                except Exception as e2:
+                    logger.error(f"Gemini fallback also failed: {e2}")
+
+            # Final fallback: Sentinel history
+            history = StateManager.load_state("sentinel_history")
+            fallback_events = []
+            if 'events' in history:
+                evt_data = history['events']
+                if isinstance(evt_data, str) and evt_data.startswith("STALE"):
+                    fallback_events = [evt_data]
+                elif isinstance(evt_data, list):
+                    fallback_events = evt_data
+
+            fallback_text = "\n".join([str(evt) for evt in fallback_events])
+            packet = GroundedDataPacket(
+                search_query=search_instruction,
+                raw_findings=f"SEARCH FAILED. FALLBACK DATA (SENTINEL ALERTS):\n{fallback_text}",
+                data_freshness_hours=999
+            )
+            provenance_logger.warning(f"QUERY: {search_instruction} | FALLBACK TRIGGERED")
+            return packet
+
+    async def _gather_via_perplexity(self, search_instruction: str, persona_key: str) -> dict:
+        """Phase 1 via Perplexity Sonar — deterministic search cost."""
+        logger.info(f"[{persona_key}] Phase 1: Gathering grounded data via Perplexity Sonar...")
+
+        async with self._grounded_data_semaphore:
+            data = await perplexity_grounded_search(
+                search_instruction=search_instruction,
+                api_key=self._perplexity_api_key,
+                model=self._perplexity_model,
+                search_context_size=self._perplexity_search_context,
+                timeout_seconds=30,
+            )
+
+        # Budget tracking
+        usage = data.pop("_usage", {})
+        if usage:
+            try:
+                from trading_bot.budget_guard import calculate_api_cost, get_budget_guard
+                budget = get_budget_guard()
+                if budget:
+                    token_cost = calculate_api_cost(
+                        usage.get("model", "sonar"),
+                        usage.get("input_tokens", 0),
+                        usage.get("output_tokens", 0),
+                    )
+                    request_fee = usage.get("request_fee", 0.005)
+                    budget.record_cost(token_cost + request_fee, source="council/grounded_data")
+            except Exception:
+                pass
+
+        return data
+
+    async def _gather_via_gemini(self, search_instruction: str, persona_key: str) -> dict:
+        """Phase 1 via Gemini Flash + Google Search (legacy path)."""
+        logger.info(f"[{persona_key}] Phase 1: Gathering grounded data via Gemini...")
+
         safe_instruction = escape_xml(search_instruction)
 
         gathering_prompt = f"""You are a Research Data Gatherer. Your ONLY job is to find CURRENT information.
@@ -720,111 +861,58 @@ OUTPUT FORMAT (JSON):
 }}
 """
 
-        try:
-            # Rate-limited Gemini call to prevent 429 errors
-            # === FIX A2: Retry wrapper for transient 503 timeouts ===
-            max_attempts = 2
-            last_error = None
-            response = None
+        max_attempts = 2
+        last_error = None
+        response = None
 
-            async with self._grounded_data_semaphore:
-                for attempt in range(max_attempts):
-                    try:
-                        # Enforce minimum interval between calls
-                        import time as _time
-                        elapsed = _time.monotonic() - self._last_grounded_call_time
-                        if elapsed < self._grounded_data_min_interval:
-                            await asyncio.sleep(self._grounded_data_min_interval - elapsed)
+        async with self._grounded_data_semaphore:
+            for attempt in range(max_attempts):
+                try:
+                    import time as _time
+                    elapsed = _time.monotonic() - self._last_grounded_call_time
+                    if elapsed < self._grounded_data_min_interval:
+                        await asyncio.sleep(self._grounded_data_min_interval - elapsed)
 
-                        response = await self._call_model(
-                            self.grounded_data_model,
-                            gathering_prompt,
-                            use_tools=True,
-                            response_json=True
+                    response = await self._call_model(
+                        self.grounded_data_model,
+                        gathering_prompt,
+                        use_tools=True,
+                        response_json=True
+                    )
+                    self._last_grounded_call_time = _time.monotonic()
+                    last_error = None
+                    break
+
+                except Exception as e:
+                    last_error = e
+                    self._last_grounded_call_time = _time.monotonic()
+                    if '503' in str(e) and attempt < max_attempts - 1:
+                        backoff_seconds = 5 * (attempt + 1)
+                        logger.warning(
+                            f"[{persona_key}] Gemini 503 (attempt {attempt + 1}/{max_attempts}) "
+                            f"— retrying after {backoff_seconds}s backoff..."
                         )
-                        self._last_grounded_call_time = _time.monotonic()
-                        last_error = None
-                        break  # Success — exit retry loop
+                        await asyncio.sleep(backoff_seconds)
+                        continue
+                    else:
+                        break
 
-                    except Exception as e:
-                        last_error = e
-                        self._last_grounded_call_time = _time.monotonic() # Update time even on fail
-                        if '503' in str(e) and attempt < max_attempts - 1:
-                            backoff_seconds = 5 * (attempt + 1)  # 5s first retry
-                            logger.warning(
-                                f"[{persona_key}] Gemini 503 (attempt {attempt + 1}/{max_attempts}) "
-                                f"— retrying after {backoff_seconds}s backoff..."
-                            )
-                            await asyncio.sleep(backoff_seconds)
-                            continue
-                        else:
-                            break  # Non-503 error or final attempt
+        if last_error:
+            raise last_error
 
-                if last_error:
-                    raise last_error
+        data = json.loads(self._clean_json_text(response))
 
-            # Parse response
-            data = json.loads(self._clean_json_text(response))
+        if isinstance(data, list):
+            data = {
+                'raw_summary': str(data),
+                'dated_facts': [item for item in data if isinstance(item, dict)],
+                'data_freshness': '',
+                'search_queries_used': []
+            }
+        elif not isinstance(data, dict):
+            data = {'raw_summary': str(data), 'dated_facts': [], 'data_freshness': '', 'search_queries_used': []}
 
-            # Type guard: LLM may return a JSON array instead of object
-            if isinstance(data, list):
-                data = {
-                    'raw_summary': str(data),
-                    'dated_facts': [item for item in data if isinstance(item, dict)],
-                    'data_freshness': '',
-                    'search_queries_used': []
-                }
-            elif not isinstance(data, dict):
-                data = {'raw_summary': str(data), 'dated_facts': [], 'data_freshness': '', 'search_queries_used': []}
-
-            # === COMPUTE ACTUAL DATA FRESHNESS ===
-            freshness_hours = self._compute_data_freshness(
-                data.get('dated_facts', []),
-                data.get('data_freshness', '')
-            )
-
-            packet = GroundedDataPacket(
-                search_query=search_instruction,
-                raw_findings=data.get('raw_summary', ''),
-                extracted_facts=data.get('dated_facts', []),
-                source_urls=data.get('search_queries_used', []),
-                data_freshness_hours=freshness_hours
-            )
-
-            # Check for freshness/empty results
-            if "NO RECENT NEWS FOUND" in packet.raw_findings or not packet.extracted_facts:
-                 logger.warning(f"[{persona_key}] Grounded search yielded no recent results.")
-
-            # Update Cache
-            self._search_cache[search_instruction] = {'timestamp': now, 'packet': packet}
-
-            # Log Provenance
-            provenance_logger.info(f"QUERY: {search_instruction} | FACTS: {len(packet.extracted_facts)}")
-
-            return packet
-
-        except Exception as e:
-            logger.error(f"Grounded data gathering failed: {e}")
-
-            # FALLBACK: Inject Sentinel History
-            history = StateManager.load_state("sentinel_history")
-            fallback_events = []
-            if 'events' in history:
-                data = history['events']
-                if isinstance(data, str) and data.startswith("STALE"):
-                     fallback_events = [data]
-                elif isinstance(data, list):
-                    fallback_events = data
-
-            fallback_text = "\n".join([str(evt) for evt in fallback_events])
-
-            packet = GroundedDataPacket(
-                search_query=search_instruction,
-                raw_findings=f"SEARCH FAILED. FALLBACK DATA (SENTINEL ALERTS):\n{fallback_text}",
-                data_freshness_hours=999
-            )
-            provenance_logger.warning(f"QUERY: {search_instruction} | FALLBACK TRIGGERED")
-            return packet
+        return data
 
     async def _apply_reflexion(self, agent_name: str, base_prompt: str,
                                 contract_name: str = "") -> str:
@@ -1034,6 +1122,9 @@ OUTPUT FORMAT (JSON):
             # Parse JSON
             try:
                 data = json.loads(self._clean_json_text(result_raw))
+                # Gemini Pro occasionally wraps the response in a list — unwrap if unambiguous
+                if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
+                    data = data[0]
                 if not isinstance(data, dict):
                     raise ValueError("LLM returned non-dict JSON")
                 # === A1-R1: Canonicalize confidence IMMEDIATELY after JSON parse ===
@@ -1183,6 +1274,8 @@ OUTPUT FORMAT (JSON ONLY):
 
         try:
             data = json.loads(self._clean_json_text(revised_raw))
+            if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
+                data = data[0]
             if not isinstance(data, dict):
                 raise ValueError("LLM returned non-dict JSON")
             # === A1-R1: Canonicalize confidence immediately (reflexion path) ===
@@ -1209,7 +1302,8 @@ OUTPUT FORMAT (JSON ONLY):
 
         context_prompt = ""
         if opponent_argument:
-            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: The Bear has argued X. You must explicitly refute this point with evidence."
+            opponent_label = "Bear" if persona_key == "permabull" else "Bull"
+            context_prompt = f"\n\n--- OPPONENT ARGUMENT ---\n{opponent_argument}\n\nTASK: The {opponent_label} has argued the above. You must explicitly refute their points with evidence."
 
         market_data_str = format_market_context_for_prompt(market_data)
 
@@ -1256,18 +1350,43 @@ OUTPUT FORMAT (JSON ONLY):
 
     async def run_debate(self, reports_text: str, market_data: dict, market_context: str = "", trace_collector=None) -> tuple[str, str]:
         """
-        Run sequential attack-defense debate.
-        Step 1: PERMABEAR generates the Thesis (Attack).
-        Step 2: PERMABULL must refute specific points (Defense).
+        Run sequential attack-defense debate with randomized order.
+
+        v9.0: Randomly selects which debater goes first to prevent anchoring bias.
+        Previously, the Permabear always attacked first, giving it framing control
+        and creating a primacy effect that biased the Master toward bearish outcomes.
         """
+        # v9.0: Randomly swap model assignments between Bear and Bull each cycle
+        # to prevent one debater from consistently having a more capable model.
+        if self.use_heterogeneous and self.heterogeneous_router:
+            from trading_bot.heterogeneous_router import AgentRole as HetAgentRole
+            bear_assignment = self.heterogeneous_router.assignments.get(HetAgentRole.PERMABEAR)
+            bull_assignment = self.heterogeneous_router.assignments.get(HetAgentRole.PERMABULL)
+            if bear_assignment and bull_assignment and random.random() < 0.5:
+                self.heterogeneous_router.assignments[HetAgentRole.PERMABEAR] = bull_assignment
+                self.heterogeneous_router.assignments[HetAgentRole.PERMABULL] = bear_assignment
+                logger.info(f"Debate model swap: Bear←{bull_assignment[0].value}, Bull←{bear_assignment[0].value}")
 
-        # Step 1: Bear attacks the thesis (with market context including sentinel briefing)
-        bear_json = await self._get_red_team_analysis("permabear", reports_text, market_data, market_context=market_context, trace_collector=trace_collector)
+        # Randomize who attacks first to eliminate anchoring bias
+        bear_first = random.random() < 0.5
+        if bear_first:
+            first_persona, second_persona = "permabear", "permabull"
+        else:
+            first_persona, second_persona = "permabull", "permabear"
 
-        # Step 2: Bull must RESPOND to the specific critique
-        bull_json = await self._get_red_team_analysis("permabull", reports_text, market_data, opponent_argument=bear_json, market_context=market_context, trace_collector=trace_collector)
+        logger.info(f"Debate order: {first_persona} attacks first")
 
-        return bear_json, bull_json
+        # Step 1: First debater attacks the thesis
+        first_json = await self._get_red_team_analysis(first_persona, reports_text, market_data, market_context=market_context, trace_collector=trace_collector)
+
+        # Step 2: Second debater must RESPOND to the specific critique
+        second_json = await self._get_red_team_analysis(second_persona, reports_text, market_data, opponent_argument=first_json, market_context=market_context, trace_collector=trace_collector)
+
+        # Always return (bear_json, bull_json) regardless of order
+        if bear_first:
+            return first_json, second_json
+        else:
+            return second_json, first_json
 
     async def run_devils_advocate(self, decision: dict, reports_text: str, market_context: str, trace_collector=None) -> dict:
         """

@@ -773,8 +773,8 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                     # === DECISION LOGIC FOR PREDICTION TYPE ===
                     # Moved inside logging block to capture state for DB
                     final_direction_log = final_data["action"]
-                    # v7.0 SAFETY: Match execution path default
-                    vol_sentiment_log = agent_data.get('volatility_sentiment', 'BEARISH')
+                    # v9.0: Match execution path default (NEUTRAL, not BEARISH)
+                    vol_sentiment_log = agent_data.get('volatility_sentiment', 'NEUTRAL')
                     regime_log = harmonize_regime(regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN'))
 
                     if final_direction_log == 'NEUTRAL':
@@ -1014,10 +1014,10 @@ async def generate_signals(ib: IB, config: dict, shutdown_check=None, trigger_ty
                 regime=regime_for_voting or 'UNKNOWN',
             )
 
-        # v7.0 SAFETY: Default to BEARISH (expensive) when vol data is missing.
-        # Rationale: On a $50K account, assume worst-case (expensive options)
-        # rather than neutral. Fail-safe, not fail-neutral.
-        vol_sentiment = agent_data.get('volatility_sentiment', 'BEARISH')
+        # v9.0: Default to NEUTRAL when vol data is missing.
+        # Vol sentiment is non-directional (expensive/cheap) — defaulting to BEARISH
+        # created systematic bearish bias across strategy routing.
+        vol_sentiment = agent_data.get('volatility_sentiment', 'NEUTRAL')
 
         regime = regime_for_voting if regime_for_voting != 'UNKNOWN' else market_ctx.get('regime', 'UNKNOWN')
         thesis_strength = decision.get('thesis_strength', 'SPECULATIVE') if 'decision' in dir() else 'SPECULATIVE'

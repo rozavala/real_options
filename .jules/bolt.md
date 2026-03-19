@@ -42,3 +42,10 @@
 ## 2025-03-15 - Grouped Iteration for Trade Reconciliation
 **Learning:** O(N^2) row-wise matching using `iterrows()` to find the closest match within a time window (e.g., in `reconcile_trades.py`) is exceptionally slow. Grouping by unique identifiers (e.g. `['local_symbol', 'action', 'quantity']`) and isolating iterations within those groups provides a massive speedup (~3x-50x) while retaining perfect 1-to-1 matching behavior. `pd.merge_asof` is even faster but introduces complex mapping anomalies for exact one-to-one state consumption.
 **Action:** Always use DataFrame grouping to shrink the problem space when executing algorithms that require iterative state mutation (like 1-to-1 reconciliations) rather than globally iterating..
+## 2026-03-16 - Vectorized String Formatting in Pandas
+**Learning:** Iterating over rows with `.iterrows()` to format strings and concatenate them is significantly slower than using vectorized pandas string operations like `.astype(str)`, `.str.ljust()`, and `.str.cat()`. Vectorized operations bypass python-level iteration overhead and can offer substantial speedups.
+**Action:** Use vectorized string operations (`.str`) and string concatenation on pandas Series instead of row-by-row iteration for string formatting tasks.
+
+## 2026-03-17 - Vectorized State Change Detection for UI Overlays
+**Learning:** Detecting sequential regime/state changes in a time-series dataframe by iterating over all rows with `iterrows()` is extremely slow (O(N) with Python overhead), which introduces significant latency to Streamlit chart renderings. Using vectorized `.shift(1)` combined with boolean masking (`df['col'] != df['col'].shift(1)`) to identify change points, and iterating *only* over those changes via `zip()`, offers a ~50x speedup and keeps the UI responsive.
+**Action:** Never use `iterrows()` to detect sequential state changes. Always use vectorized `shift(1)` comparisons to extract change-point masks before iterating.

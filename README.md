@@ -91,6 +91,7 @@ graph TD
 10. **Error Reporter & Telemetry:** A standalone telemetry script (`scripts/error_reporter.py`, decoupled from the orchestrator) scans system logs, uses fingerprinting to deduplicate errors, intelligently filters out transient operational noise (e.g., 429 rate limits, 503 unavailable, lock timeouts), and auto-generates structured GitHub issues to track true system anomalies. Real-time operator alerts (via Pushover) are explicitly severity-gated (e.g., `PriceSentinel` >= 8, `WeatherSentinel` >= 7) to eliminate routine noise.
 11. **Three-Tier Market State Resolver (`trading_bot/utils.py`):** Dynamically dictates the state of each commodity (`Active`, `Passive`, `Sleeping`), allowing continuous 24/7 surveillance of extended sessions (e.g., CME Globex overnight) without the risk of generating unnecessary active cycle trades.
 12. **System Readiness Verifier (`verify_system_readiness.py`):** A comprehensive pre-flight diagnostic script that runs checks across 27 distinct system components, verifying infrastructure, connections, data fallbacks, agent health, and execution pipelines.
+13. **Market Data Diagnostic (`scripts/check_market_data.py`):** A lightweight utility to verify Interactive Brokers data feed status, ensuring `FORCE_DELAYED_DATA` overrides function correctly across DEV and PROD environments by resolving front-month contracts and reporting LIVE/DELAYED quote status.
 
 ### Tier 1: Sentinels (`trading_bot/sentinels.py`)
 Lightweight monitors that scan 24/7 for specific triggers.
@@ -111,14 +112,14 @@ Specialized LLM personas that analyze grounded data.
 *   **Macro Economist:** FX, interest rates, global demand.
 *   **Fundamentalist:** Supply/demand balance, COT reports.
 *   **Technical Analyst:** Chart patterns, momentum.
-*   **Volatility Analyst:** IV rank, term structure, skew.
+*   **Volatility Analyst:** IV rank, term structure, skew. Provides a non-directional (expensive/cheap options) signal that is excluded from the directional weighted score.
 *   **Geopolitical Analyst:** Trade wars, sanctions, conflict.
 *   **Sentiment Analyst:** Crowd psychology, fear/greed.
 *   **Inventory Analyst:** Stockpile levels (ICE certified stocks).
 *   **Supply Chain Analyst:** Shipping routes, freight rates.
 
 ### Tier 3: Decision & Risk
-*   **Permabear & Permabull:** Engage in dialectical debate.
+*   **Permabear & Permabull:** Engage in dialectical debate. Model assignment and debate order are randomized to prevent anchoring bias.
 *   **Master Strategist:** Synthesizes reports and debate to render a verdict.
 *   **Devil's Advocate:** Runs a pre-mortem check.
 *   **Compliance Guardian (`trading_bot/compliance.py`):** Deterministic veto power based on risk limits.
@@ -138,7 +139,7 @@ Specialized LLM personas that analyze grounded data.
 7.  **Compliance & Risk:**
     *   **Portfolio Risk Guard** calculates new VaR impact.
     *   **Compliance Guardian** checks VaR limits, margin, and concentration. Also enforces a **Conviction Gate** (suppressing low-conviction signals) and **Sentinel IC Suppression** (blocking short premium positions during sentinel-triggered high-volatility events).
-8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions. Multi-leg positions (e.g., spreads) are closed atomically via single BAG (combo) orders to prevent orphaned legs, falling back to sequential closures only if necessary. All exits use limit orders with adaptive price walking, dropping to a profile-driven timeout for market order fallbacks (e.g., KC=90s, CC=120s, NG=60s). New orders are constructed and submitted to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. Catastrophe stops are placed dynamically, gated by account Net Liquidation Value (NLV) thresholds to fail-closed without stop protection if margin is insufficient. Emergency closures execute as concurrent market orders.
+8.  **Execution:** `OrderManager` immediately executes closures for contradicted positions to prevent quantity aggregation race conditions. Multi-leg positions (e.g., spreads) are closed atomically via single BAG (combo) orders to prevent orphaned legs, falling back to sequential closures only if necessary. All exits use limit orders with adaptive price walking, dropping to a profile-driven timeout for market order fallbacks (e.g., KC=90s, CC=120s, NG=60s). Stale-close fallbacks are automatically skipped if the primary close succeeds. New orders are constructed and submitted to `ib_interface.py` using a Hybrid Tick/Percentage Liquidity Filter. A **Contract Overlap Guard** blocks proposed orders with opposing-direction overlaps against active theses to prevent invisible IBKR netting, while allowing same-direction additive overlaps. Catastrophe stops are placed dynamically, gated by account Net Liquidation Value (NLV) thresholds to fail-closed without stop protection if margin is insufficient. Emergency closures execute as concurrent market orders.
 9.  **Monitoring:** System monitors positions at the *thesis level* (grouping spread legs) for P&L, regime shifts, and thesis invalidation. Reconciliation uses aggregate quantity matching and securely parses IBKR Flex Queries via `defusedxml` to prevent XXE attacks. The reconciliation loop is algorithmically optimized via vectorized pandas `.groupby()` chunking on deterministic characteristics (like symbol and quantity) to map real trades to local synthetic state with $O(1)$ precision, while automatically invalidating superseded synthetic entries to eliminate false-positive phantom position alerts. During `Passive` market hours, only emergency surveillance runs and passive emergency closures can be triggered.
 10. **Digest:** Post-close `System Health Digest` generation summarizes multi-commodity system state and errors for observability.
 
@@ -187,13 +188,14 @@ git push origin production
 
 -   **Runtime:** Python 3.11+, `asyncio`
 -   **Execution:** Interactive Brokers Gateway (`ib_insync`)
--   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1)
+-   **AI:** Google Gemini (1.5 Pro/Flash), OpenAI (GPT-5.2/o3), Anthropic (Claude 4.6 Sonnet/Haiku), xAI (Grok 4.1), Perplexity (Sonar)
 -   **Memory:** ChromaDB (Vector Store)
 -   **Data Sources:**
     -   **Market Data:** IBKR, yfinance (History/VaR)
     -   **Weather:** Open-Meteo
     -   **Prediction Markets:** Polymarket (via Gamma API)
     -   **News:** Google News RSS
+    -   **Search:** Perplexity Sonar (with Gemini fallback)
 -   **Dashboard:** Streamlit
 -   **Orchestration:** MasterOrchestrator → CommodityEngine
 -   **Observability:** Custom logging + Pushover notifications

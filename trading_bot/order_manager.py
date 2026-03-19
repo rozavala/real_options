@@ -846,6 +846,135 @@ def _check_thesis_coherence(
     return "PROCEED", []
 
 
+def _build_active_contract_map(config: dict) -> dict[str, list[tuple[str, int]]]:
+    """Build {localSymbol: [(tid, signed_net_qty), ...]} for all active theses.
+
+    Called once per order-generation cycle. The returned map is passed to
+    _check_contract_overlap() for each proposed order, avoiding redundant
+    trade ledger + TMS queries.
+
+    Returns empty dict on any failure (fail-open: no overlaps detected).
+
+    IMPORTANT: We store per-thesis quantities (not net across theses) because
+    emergency sentinel orders bypass this guard and can create opposing
+    positions. A net-only view would mask those conflicts.
+    """
+    trade_ledger = get_trade_ledger_df(config.get('data_dir'))
+    if trade_ledger.empty:
+        return {}
+
+    try:
+        tms = TransactiveMemory()
+        if not tms.collection:
+            logger.warning("Overlap map: TMS collection unavailable (fail-open)")
+            return {}
+
+        active_results = tms.collection.get(
+            where={"active": "true"},
+            include=['metadatas']
+        )
+        active_tids = [
+            m.get('trade_id')
+            for m in active_results.get('metadatas', [])
+            if m.get('trade_id')
+        ]
+    except Exception as e:
+        logger.warning(f"Overlap map: TMS query failed (fail-open): {e}")
+        return {}
+
+    if not active_tids:
+        return {}
+
+    active_map = {}  # {localSymbol: [(tid, signed_net_qty), ...]}
+    for tid in active_tids:
+        tid_rows = trade_ledger[trade_ledger['position_id'] == tid]
+        if tid_rows.empty:
+            continue
+        tid_valid = tid_rows[
+            tid_rows['local_symbol'].astype(str).str.strip() != ''
+        ].copy()
+        if tid_valid.empty:
+            continue
+
+        tid_valid['signed_qty'] = np.where(
+            tid_valid['action'] == 'BUY',
+            tid_valid['quantity'],
+            -tid_valid['quantity']
+        )
+        leg_map = tid_valid.groupby('local_symbol')['signed_qty'].sum()
+        for sym, net in leg_map.items():
+            if net != 0:
+                if sym not in active_map:
+                    active_map[sym] = []
+                active_map[sym].append((tid, int(net)))
+
+    return active_map
+
+
+def _check_contract_overlap(
+    qualified_legs: list,
+    legs_def: list,
+    order_qty: int,
+    active_contract_map: dict,
+) -> tuple[bool, str]:
+    """Check if a proposed order's legs overlap with active theses' legs
+    in opposing directions, which would cause IB position netting.
+
+    Args:
+        qualified_legs:      List of qualified FuturesOption contracts from
+                             create_combo_order_object(). Each has .localSymbol.
+        legs_def:            Strategy definition legs [(right, action, strike), ...].
+        order_qty:           Total order quantity (lots).
+        active_contract_map: Pre-built map from _build_active_contract_map().
+
+    Returns:
+        (blocked, reason) where blocked=True means the order must not proceed.
+    """
+    if not active_contract_map:
+        return False, ""
+
+    if len(qualified_legs) != len(legs_def):
+        logger.warning(
+            f"Overlap check: leg count mismatch "
+            f"(qualified={len(qualified_legs)}, def={len(legs_def)}). "
+            f"Skipping check (fail-open)."
+        )
+        return False, ""
+
+    # Build proposed legs: {localSymbol: signed_qty}
+    proposed = {}
+    for leg_contract, (_, action, strike) in zip(qualified_legs, legs_def):
+        sym = leg_contract.localSymbol
+        sign = 1 if action == 'BUY' else -1
+        proposed[sym] = proposed.get(sym, 0) + (sign * order_qty)
+
+    if not proposed:
+        return False, ""
+
+    # Check for opposing directions against each active thesis individually.
+    overlaps = []
+    for sym, proposed_qty in proposed.items():
+        for tid, existing_qty in active_contract_map.get(sym, []):
+            if (proposed_qty > 0 and existing_qty < 0) or \
+               (proposed_qty < 0 and existing_qty > 0):
+                overlaps.append(
+                    f"{sym}: proposed={proposed_qty:+d} vs "
+                    f"thesis {tid[:8]}={existing_qty:+d}"
+                )
+
+    if overlaps:
+        reason = (
+            f"BLOCKED - Contract Overlap: New order shares "
+            f"{len(overlaps)} contract(s) with existing theses in "
+            f"opposing directions (would cause IB netting). "
+            f"Details: {'; '.join(overlaps)}"
+        )
+        logger.warning(reason)
+        return True, reason
+
+    return False, ""
+
+
 async def generate_and_queue_orders(config: dict, connection_purpose: str = "orchestrator_orders", shutdown_check=None, trigger_type=None, schedule_id: str = None):
     """
     Generates trading strategies based on market data and API predictions,
@@ -1010,6 +1139,14 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
 
             if committed_capital > 0:
                 logger.info(f"L1 RECONCILED: Starting with ${committed_capital:,.2f} already committed")
+
+            # === BUILD ACTIVE CONTRACT MAP (once per cycle) ===
+            active_contract_map = _build_active_contract_map(config)
+            if active_contract_map:
+                logger.info(
+                    f"Active contract map: {len(active_contract_map)} symbols "
+                    f"across active theses"
+                )
 
             # === FLIGHT DIRECTOR WARNING ===
             # DO NOT PARALLELIZE THIS LOOP WITH asyncio.gather()
@@ -1227,7 +1364,29 @@ async def generate_and_queue_orders(config: dict, connection_purpose: str = "orc
 
                         order_objects = await create_combo_order_object(ib, config, strategy_def)
                         if order_objects:
-                            contract, order = order_objects
+                            contract, order, qualified_legs = order_objects
+
+                            # === CONTRACT OVERLAP GUARD ===
+                            overlap_blocked, overlap_reason = _check_contract_overlap(
+                                qualified_legs,
+                                strategy_def.get('legs_def', []),
+                                strategy_def.get('quantity', 1),
+                                active_contract_map,
+                            )
+                            if overlap_blocked:
+                                log_funnel_event(
+                                    cycle_id=signal.get('_cycle_id', 'unknown'),
+                                    contract=signal.get('contract_month', 'unknown'),
+                                    stage=FunnelStage.COMPLIANCE_AUDIT,
+                                    outcome="BLOCK",
+                                    detail=overlap_reason[:200],
+                                    price_snapshot=signal.get('price'),
+                                    regime=signal.get('regime', 'UNKNOWN'),
+                                )
+                                logger.warning(
+                                    f"Skipping order for {future.localSymbol}: {overlap_reason}"
+                                )
+                                continue
 
                             # Calculate and track committed capital
                             estimated_risk = await calculate_spread_max_risk(ib, contract, order, config)
@@ -3722,6 +3881,8 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
 
         send_pushover_notification(config.get('notifications', {}), notification_title, message)
 
+        return {"failed_closes": len(failed_closes), "attempted": len(positions_to_close)}
+
     except Exception as e:
         msg = f"A critical error occurred while closing positions: {e}"
         logger.critical(msg, exc_info=True)
@@ -3731,6 +3892,7 @@ async def close_stale_positions(config: dict, connection_purpose: str = "orchest
             await IBConnectionPool._force_reset_connection(connection_purpose)
         except Exception as e:
             logger.warning(f"Force-reset connection ({connection_purpose}) also failed: {e}")
+        return {"failed_closes": -1, "attempted": 0, "error": True}
     finally:
         if ib is not None:
             try:

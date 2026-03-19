@@ -208,24 +208,104 @@ class TestCockpitUX(unittest.TestCase):
 
 class TestFunnelUX(unittest.TestCase):
     def test_funnel_metric_tooltips(self):
-        """Verify that key metrics in pages/10_The_Funnel.py have help tooltips."""
+        """Verify that key metrics in pages/10_The_Funnel.py have help tooltips and emojis."""
         file_path = os.path.join(
             os.path.dirname(__file__), "..", "pages", "10_The_Funnel.py"
         )
         with open(file_path, "r") as f:
             tree = ast.parse(f.read())
 
-        found_config = False
+        target_metrics = [
+            "📡 Signal-to-Trade",
+            "⛽ Fill Rate",
+            "📉 Avg Slippage",
+            "🛡️ Conviction Blocks",
+            "👣 Avg Walk Steps",
+            "🎯 Signal Win Rate",
+            "💸 Alpha Left on Table",
+            "✅ Skill",
+            "🍀 Lucky",
+            "📉 Market Risk",
+            "❌ Bad Call",
+            "📊 Mean",
+            "🎯 Median",
+            "🔝 P75",
+            "🚀 Max",
+            "✅ Favorable",
+            "⚠️ Adverse",
+        ]
+        found_metrics = {m: False for m in target_metrics}
+
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "metric":
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "metric"
+            ):
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(
+                        has_help,
+                        f"Metric '{label}' in The Funnel is missing 'help' tooltip",
+                    )
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(
+                found, f"Could not find metric '{metric}' in pages/10_The_Funnel.py"
+            )
+
+    def test_funnel_dataframe_config(self):
+        """Verify that dataframes in The Funnel use column_config."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "10_The_Funnel.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_configs = 0
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "dataframe"
+            ):
+                for kw in node.keywords:
+                    if kw.arg == "column_config":
+                        found_configs += 1
+                        break
+
+        # We updated 6 dataframes with column_config
+        self.assertGreaterEqual(
+            found_configs, 6, "Expected at least 6 dataframes with column_config in The Funnel"
+        )
+
+    def test_funnel_download_button_tooltip(self):
+        """Verify that the download button in pages/10_The_Funnel.py has a help tooltip."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "10_The_Funnel.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_button = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "download_button":
                 has_help = False
                 for kw in node.keywords:
                     if kw.arg == "help":
                         has_help = True
                         break
-                self.assertTrue(has_help, f"Metric missing tooltip help in {file_path}")
-                found_config = True
-        self.assertTrue(found_config, "No metrics found to check in The Funnel")
+                self.assertTrue(has_help, f"download_button missing tooltip help in {file_path}")
+                found_button = True
+        self.assertTrue(found_button, "No download_button found to check in The Funnel")
 
 
 class TestDashboardUX(unittest.TestCase):
@@ -552,6 +632,26 @@ class TestSignalOverlayUX(unittest.TestCase):
                 found, f"Could not find metric '{metric}' in pages/6_Signal_Overlay.py"
             )
 
+    def test_signal_overlay_download_button_tooltip(self):
+        """Verify that the download button in pages/6_Signal_Overlay.py has a help tooltip."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "6_Signal_Overlay.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_button = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "download_button":
+                has_help = False
+                for kw in node.keywords:
+                    if kw.arg == "help":
+                        has_help = True
+                        break
+                self.assertTrue(has_help, f"download_button missing tooltip help in {file_path}")
+                found_button = True
+        self.assertTrue(found_button, "No download_button found to check in Signal Overlay")
+
 
 class TestBrierAnalysisUX(unittest.TestCase):
     def test_brier_analysis_metric_tooltips(self):
@@ -656,6 +756,26 @@ class TestScorecardUX(unittest.TestCase):
             self.assertTrue(
                 found, f"Could not find metric '{metric}' in pages/2_The_Scorecard.py"
             )
+
+
+class TestFinancialsUX(unittest.TestCase):
+    def test_strategy_efficiency_dataframe_config(self):
+        """Verify that the Strategy Efficiency dataframe in Trade Analytics uses column_config."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '4_Financials.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_config = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'dataframe':
+                for kw in node.keywords:
+                    if kw.arg == 'column_config':
+                        # Check for Strategy Efficiency specific headers
+                        config_str = ast.dump(kw.value)
+                        if "🛡️ Strategy" in config_str and "💰 Total P&L" in config_str:
+                            found_config = True
+                            break
+        self.assertTrue(found_config, "Strategy Efficiency dataframe is missing 'column_config' with professional headers")
 
 
 class TestLLMMonitorUX(unittest.TestCase):
