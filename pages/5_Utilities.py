@@ -238,11 +238,20 @@ with manual_cols[0]:
                     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                     from trading_bot.order_manager import generate_and_execute_orders
 
+                    # Build commodity-specific config so NG gets NYMEX, not KC's NYBOT
+                    import copy
+                    from trading_bot.utils import get_ibkr_exchange
+                    cycle_config = copy.deepcopy(config)
+                    cycle_config['symbol'] = ticker
+                    cycle_config.setdefault('commodity', {})['ticker'] = ticker
+                    cycle_config['exchange'] = get_ibkr_exchange(cycle_config)
+                    cycle_config['data_dir'] = f'data/{ticker}'
+
                     # === FLIGHT DIRECTOR MANDATE: Connection Cleanup ===
                     async def run_with_cleanup():
                         """Run order generation with guaranteed connection cleanup."""
                         try:
-                            await generate_and_execute_orders(config, connection_purpose="dashboard_orders", trigger_type=TriggerType.MANUAL)
+                            await generate_and_execute_orders(cycle_config, connection_purpose="dashboard_orders", trigger_type=TriggerType.MANUAL)
                         finally:
                             # Ensure pool connections are released before loop closes
                             try:
