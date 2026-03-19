@@ -2106,6 +2106,20 @@ class PredictionMarketSentinel(Sentinel):
 
         self.topics = self._merge_discovered_topics(static_topics)
 
+        # Re-apply disabled state for topics that already hit max_failures in a
+        # prior run. Failure counts are now persisted (see _save_state_cache),
+        # so we can restore them here without re-sending a Pushover notification.
+        _max_failures = self.sentinel_config.get('max_consecutive_failures', 50)
+        for topic in self.topics:
+            query = topic.get('query', '')
+            fc = self._topic_failure_counts.get(query, 0)
+            if fc >= _max_failures:
+                topic['enabled'] = False
+                logger.info(
+                    f"PredictionMarket: '{topic.get('display_name', query)}' "
+                    f"kept disabled (failure_count={fc} restored from state)"
+                )
+
         # Prune orphaned cache entries for topics no longer active
         active_queries = {t.get('query', '') for t in self.topics}
         orphaned = [key for key in self.state_cache if key not in active_queries]
@@ -2535,10 +2549,12 @@ class PredictionMarketSentinel(Sentinel):
             except Exception as topic_error:
                 logger.warning(f"Error processing prediction market topic '{query}': {topic_error}")
                 continue
-        # Persist failure counts alongside state cache
+        # Persist failure counts alongside state cache — always, even for topics
+        # that never had a successful market lookup (no state_cache entry yet).
         for query_key, fail_count in self._topic_failure_counts.items():
-            if query_key in self.state_cache:
-                self.state_cache[query_key]['failure_count'] = fail_count
+            if query_key not in self.state_cache:
+                self.state_cache[query_key] = {}
+            self.state_cache[query_key]['failure_count'] = fail_count
         self._save_state_cache()
         if triggers:
             triggers.sort(key=lambda t: t.severity, reverse=True)
