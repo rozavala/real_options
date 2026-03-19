@@ -802,6 +802,12 @@ class TradingCouncil:
         logger.info(f"[{persona_key}] Phase 1: Gathering grounded data via Perplexity Sonar...")
 
         async with self._grounded_data_semaphore:
+            import time as _time
+            elapsed = _time.monotonic() - self._last_grounded_call_time
+            if elapsed < self._grounded_data_min_interval:
+                await asyncio.sleep(self._grounded_data_min_interval - elapsed)
+            self._last_grounded_call_time = _time.monotonic()
+
             data = await perplexity_grounded_search(
                 search_instruction=search_instruction,
                 api_key=self._perplexity_api_key,
