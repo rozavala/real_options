@@ -675,7 +675,10 @@ with state_cols[1]:
     # Use a form with confirmation checkbox to prevent accidental clicks
     with st.form("clear_state_form"):
         confirm_clear = st.checkbox("I understand this will clear all state data", help="Check this to enable the 'Clear State File' button, which completely deletes all application state (sentinels, triggers, deduplicators) and forces a fresh rebuild on next run.")
-        submit_clear = st.form_submit_button("🗑️ Clear State File")
+        submit_clear = st.form_submit_button(
+            "🗑️ Clear State File",
+            help="Permanently deletes the state.json file (a backup is created). Use this if the system is stuck or showing incorrect sentinel statuses. Requires confirmation checkbox above."
+        )
 
         if submit_clear:
             if not confirm_clear:
@@ -1176,14 +1179,14 @@ st.subheader("ℹ️ System Information")
 info_cols = st.columns(3)
 
 with info_cols[0]:
-    st.metric("Python Version", sys.version.split()[0], help="The version of the Python interpreter running this application.")
+    st.metric("🐍 Python Version", sys.version.split()[0], help="The version of the Python interpreter running this application.")
 
 with info_cols[1]:
     import streamlit
-    st.metric("Streamlit Version", streamlit.__version__, help="The version of the Streamlit framework used to build this dashboard.")
+    st.metric("📊 Streamlit Version", streamlit.__version__, help="The version of the Streamlit framework used to build this dashboard.")
 
 with info_cols[2]:
-    st.metric("Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"), help="Current system time in UTC. All bot schedules and log timestamps use UTC for consistency.")
+    st.metric("🕒 Current Time (UTC)", datetime.now(timezone.utc).strftime("%H:%M:%S"), help="Current system time in UTC. All bot schedules and log timestamps use UTC for consistency.")
 
 # Display recent log files
 st.markdown("### 📄 Recent Log Files")

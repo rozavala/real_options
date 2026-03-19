@@ -18,7 +18,8 @@ from dashboard_utils import (
     load_trade_data,
     load_council_history,
     get_config,
-    grade_decision_quality
+    grade_decision_quality,
+    _relative_time,
 )
 from _date_filter import date_range_picker, apply_date_filter
 
@@ -223,19 +224,19 @@ if 'prediction_type' in council_df.columns:
     with col1:
         dir_data = type_perf.loc['DIRECTIONAL'] if 'DIRECTIONAL' in type_perf.index else None
         if dir_data is not None:
-            st.metric("Directional P&L", f"${dir_data['Total P&L']:,.2f}", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
+            st.metric("📈 Directional P&L", f"${dir_data['Total P&L']:,.2f}", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
             st.caption(f"{int(dir_data['Trade Count'])} trades | Avg: ${dir_data['Avg P&L']:,.2f}")
         else:
-            st.metric("Directional P&L", "$0.00", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
+            st.metric("📈 Directional P&L", "$0.00", help="Total P&L from directional trades (Bull Call / Bear Put Spreads).")
             st.caption("No directional trades yet")
 
     with col2:
         vol_data = type_perf.loc['VOLATILITY'] if 'VOLATILITY' in type_perf.index else None
         if vol_data is not None:
-            st.metric("Volatility P&L", f"${vol_data['Total P&L']:,.2f}", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
+            st.metric("⚡ Volatility P&L", f"${vol_data['Total P&L']:,.2f}", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
             st.caption(f"{int(vol_data['Trade Count'])} trades | Avg: ${vol_data['Avg P&L']:,.2f}")
         else:
-            st.metric("Volatility P&L", "$0.00", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
+            st.metric("⚡ Volatility P&L", "$0.00", help="Total P&L from volatility trades (Long Straddle / Iron Condor).")
             st.caption("No volatility trades yet")
 else:
     st.info("No trade type data available.")
@@ -259,11 +260,11 @@ if not graded_fin.empty:
             if pd.notna(avg_win) and pd.notna(avg_loss) and avg_loss > 0:
                 _wl_ratio = avg_win / avg_loss
                 st.metric(
-                    "Win/Loss Ratio", f"{_wl_ratio:.2f}",
+                    "⚖️ Win/Loss Ratio", f"{_wl_ratio:.2f}",
                     help=">1.5 means winners are bigger than losers"
                 )
             else:
-                st.metric("Win/Loss Ratio", "N/A", help="Need both winning and losing trades")
+                st.metric("⚖️ Win/Loss Ratio", "N/A", help="Need both winning and losing trades")
         else:
             st.info("Need 10+ graded trades with P&L for Win/Loss ratio.")
     else:
@@ -278,11 +279,32 @@ st.subheader("\U0001f4cb Trade Ledger")
 
 if not trade_df.empty:
     # Primary: Show from trade_ledger.csv
+    _ledger_display = trade_df.sort_values('timestamp', ascending=False).head(50).copy()
+
+    # Map relative time
+    if 'timestamp' in _ledger_display.columns:
+        _ledger_display['timestamp'] = _ledger_display['timestamp'].apply(_relative_time)
+
+    # Ensure numeric for column_config
+    for col in ['price', 'total_value_usd']:
+        if col in _ledger_display.columns:
+            _ledger_display[col] = pd.to_numeric(_ledger_display[col], errors='coerce')
+
     display_cols = ['timestamp', 'local_symbol', 'action', 'quantity', 'price', 'total_value_usd']
-    display_cols = [c for c in display_cols if c in trade_df.columns]
+    display_cols = [c for c in display_cols if c in _ledger_display.columns]
+
     st.dataframe(
-        trade_df[display_cols].sort_values('timestamp', ascending=False).head(50),
-        width="stretch"
+        _ledger_display[display_cols],
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "timestamp": st.column_config.TextColumn("🕒 Time", help="Time since the trade was executed."),
+            "local_symbol": st.column_config.TextColumn("📦 Symbol", help="The specific contract or instrument traded."),
+            "action": st.column_config.TextColumn("⚡ Action", help="The trade action (BUY/SELL)."),
+            "quantity": st.column_config.NumberColumn("🔢 Qty", help="The number of units traded."),
+            "price": st.column_config.NumberColumn("💵 Price", format="$%.2f", help="The execution price per unit."),
+            "total_value_usd": st.column_config.NumberColumn("💰 Total USD", format="$%.2f", help="The total value of the trade in USD."),
+        }
     )
 
 elif not council_df.empty and 'pnl_realized' in council_df.columns:
@@ -290,13 +312,34 @@ elif not council_df.empty and 'pnl_realized' in council_df.columns:
     reconciled_trades = council_df[council_df['pnl_realized'].notna()].copy()
 
     if not reconciled_trades.empty:
+        _fallback_display = reconciled_trades.sort_values('timestamp', ascending=False).head(50).copy()
+
+        # Map relative time
+        if 'timestamp' in _fallback_display.columns:
+            _fallback_display['timestamp'] = _fallback_display['timestamp'].apply(_relative_time)
+
+        # Ensure numeric
+        for col in ['entry_price', 'exit_price', 'pnl_realized']:
+            if col in _fallback_display.columns:
+                _fallback_display[col] = pd.to_numeric(_fallback_display[col], errors='coerce')
+
         display_cols = ['timestamp', 'contract', 'strategy_type', 'master_decision',
                         'entry_price', 'exit_price', 'pnl_realized']
-        display_cols = [c for c in display_cols if c in reconciled_trades.columns]
+        display_cols = [c for c in display_cols if c in _fallback_display.columns]
 
         st.dataframe(
-            reconciled_trades[display_cols].sort_values('timestamp', ascending=False).head(50),
-            width="stretch"
+            _fallback_display[display_cols],
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "timestamp": st.column_config.TextColumn("🕒 Time", help="Time since the decision was made."),
+                "contract": st.column_config.TextColumn("📜 Contract", help="The futures contract analyzed."),
+                "strategy_type": st.column_config.TextColumn("🛡️ Strategy", help="The trading strategy applied."),
+                "master_decision": st.column_config.TextColumn("⚖️ Decision", help="The decision rendered by the Master Strategist."),
+                "entry_price": st.column_config.NumberColumn("🚪 Entry", format="$%.2f", help="The estimated entry price."),
+                "exit_price": st.column_config.NumberColumn("🚪 Exit", format="$%.2f", help="The reconciled exit price."),
+                "pnl_realized": st.column_config.NumberColumn("💰 P&L", format="$%.2f", help="The realized Profit and Loss for this trade."),
+            }
         )
         st.caption("\u26a0\ufe0f Showing reconciled trades from council_history (trade_ledger.csv is empty)")
     else:

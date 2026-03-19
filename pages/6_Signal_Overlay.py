@@ -1368,7 +1368,7 @@ if price_df is not None and not price_df.empty:
         neutral = total_signals - bullish - bearish - vol_trades
 
         with stat_cols[0]:
-            st.metric("Total Signals", total_signals, help="Total number of agent signals generated.")
+            st.metric("🎯 Total Signals", total_signals, help="Total number of agent signals generated.")
         with stat_cols[1]:
             st.metric("🟢 Bullish", int(bullish), help="Number of bullish signals.")
         with stat_cols[2]:

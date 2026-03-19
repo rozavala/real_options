@@ -156,6 +156,10 @@ class TestCockpitUX(unittest.TestCase):
             "⚠️ Overdue",
             "⏭️ Skipped",
             "⏳ Upcoming",
+            "🛡️ Total Triggers",
+            "⚙️ Processed",
+            "🧹 Filtered",
+            "📈 Efficiency",
         ]
         found_metrics = {m: False for m in target_metrics}
 
@@ -488,6 +492,47 @@ class TestUtilitiesUX(unittest.TestCase):
                         f"Checkbox '{label}' in Utilities is missing 'help' tooltip",
                     )
 
+    def test_utilities_info_emojis(self):
+        """Verify that system info metrics in pages/5_Utilities.py have emojis and tooltips."""
+        file_path = os.path.join(os.path.dirname(__file__), "..", "pages", "5_Utilities.py")
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = [
+            "🐍 Python Version",
+            "📊 Streamlit Version",
+            "🕒 Current Time (UTC)",
+        ]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "metric":
+                if not node.args: continue
+                label = node.args[0].value if isinstance(node.args[0], ast.Constant) else None
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' in Utilities is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in pages/5_Utilities.py")
+
+    def test_utilities_clear_state_form_tooltip(self):
+        """Verify that the Clear State form submit button has a help tooltip."""
+        file_path = os.path.join(os.path.dirname(__file__), "..", "pages", "5_Utilities.py")
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        found_button = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "form_submit_button":
+                if node.args and isinstance(node.args[0], ast.Constant) and "Clear State File" in node.args[0].value:
+                    found_button = True
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(has_help, "form_submit_button 'Clear State File' is missing 'help' tooltip")
+
+        self.assertTrue(found_button, "Could not find 'Clear State File' form_submit_button in Utilities")
+
     def test_utilities_safety_interlocks(self):
         """Verify that high-impact buttons in pages/5_Utilities.py have safety interlocks."""
         file_path = os.path.join(
@@ -596,7 +641,7 @@ class TestSignalOverlayUX(unittest.TestCase):
             "High",
             "Low",
             "Range",
-            "Total Signals",
+            "🎯 Total Signals",
             "🟢 Bullish",
             "🔴 Bearish",
             "🟣 Volatility",
@@ -655,14 +700,19 @@ class TestSignalOverlayUX(unittest.TestCase):
 
 class TestBrierAnalysisUX(unittest.TestCase):
     def test_brier_analysis_metric_tooltips(self):
-        """Verify that key metrics in pages/7_Brier_Analysis.py have help tooltips."""
+        """Verify that key metrics in pages/7_Brier_Analysis.py have help tooltips and emojis."""
         file_path = os.path.join(
             os.path.dirname(__file__), "..", "pages", "7_Brier_Analysis.py"
         )
         with open(file_path, "r") as f:
             tree = ast.parse(f.read())
 
-        target_metrics = ["Total Predictions", "Resolved", "Pending"]
+        target_metrics = [
+            "📊 Total Predictions",
+            "✅ Resolved",
+            "⏳ Pending",
+            "🏁 Resolution Rate",
+        ]
         found_metrics = {m: False for m in target_metrics}
 
         for node in ast.walk(tree):
@@ -678,15 +728,13 @@ class TestBrierAnalysisUX(unittest.TestCase):
                 if isinstance(node.args[0], ast.Constant):
                     label = node.args[0].value
 
-                # Use substring matching to handle emojis/icons
-                for target in target_metrics:
-                    if label and target in label:
-                        found_metrics[target] = True
-                        has_help = any(kw.arg == "help" for kw in node.keywords)
-                        self.assertTrue(
-                            has_help,
-                            f"Metric '{label}' in Brier Analysis is missing 'help' tooltip",
-                        )
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(
+                        has_help,
+                        f"Metric '{label}' in Brier Analysis is missing 'help' tooltip",
+                    )
 
         for metric, found in found_metrics.items():
             self.assertTrue(
@@ -776,6 +824,49 @@ class TestFinancialsUX(unittest.TestCase):
                             found_config = True
                             break
         self.assertTrue(found_config, "Strategy Efficiency dataframe is missing 'column_config' with professional headers")
+
+    def test_financials_metric_emojis(self):
+        """Verify that key metrics in pages/4_Financials.py have help tooltips and semantic emojis."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '4_Financials.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        target_metrics = [
+            "📈 Directional P&L",
+            "⚡ Volatility P&L",
+            "⚖️ Win/Loss Ratio",
+        ]
+        found_metrics = {m: False for m in target_metrics}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "metric":
+                if not node.args: continue
+                label = node.args[0].value if isinstance(node.args[0], ast.Constant) else None
+                if label in found_metrics:
+                    found_metrics[label] = True
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(has_help, f"Metric '{label}' is missing 'help' tooltip")
+
+        for metric, found in found_metrics.items():
+            self.assertTrue(found, f"Could not find metric '{metric}' in pages/4_Financials.py")
+
+    def test_financials_ledger_dataframe_config(self):
+        """Verify that the Trade Ledger in Financials uses professional column_config."""
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'pages', '4_Financials.py')
+        with open(file_path, 'r') as f:
+            tree = ast.parse(f.read())
+
+        found_configs = 0
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'dataframe':
+                for kw in node.keywords:
+                    if kw.arg == 'column_config':
+                        config_str = ast.dump(kw.value)
+                        if "🕒 Time" in config_str or "📦 Symbol" in config_str:
+                            found_configs += 1
+                            break
+        # We have two ledger dataframes (primary and fallback)
+        self.assertGreaterEqual(found_configs, 2, "Expected at least 2 ledger dataframes with column_config in Financials")
 
 
 class TestLLMMonitorUX(unittest.TestCase):
