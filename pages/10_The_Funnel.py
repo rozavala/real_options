@@ -251,7 +251,10 @@ def build_true_funnel(
         if not funnel_df.empty and 'stage' in funnel_df.columns:
             n_placed = len(funnel_df[funnel_df['stage'] == 'ORDER_PLACED'])
             n_reconciled = len(funnel_df[funnel_df['stage'] == 'PNL_RECONCILED'])
-        n_placed = max(n_placed, n_reconciled)
+        # Cap at n_strategy so funnel never widens across the council→execution boundary.
+        # PNL_RECONCILED from funnel_df may span a wider date range than the filtered
+        # council_df, so the lift must be bounded by the upstream stage count.
+        n_placed = min(max(n_placed, n_reconciled), n_strategy)
         stages.append({'stage': 'Orders Placed', 'survivors': n_placed,
                        'source_label': 'execution_funnel'})
 
@@ -262,7 +265,7 @@ def build_true_funnel(
         n_filled = 0
         if not funnel_df.empty and 'stage' in funnel_df.columns:
             n_filled = len(funnel_df[funnel_df['stage'] == 'ORDER_FILLED'])
-        n_filled = max(n_filled, n_reconciled)
+        n_filled = min(max(n_filled, n_reconciled), n_placed)
         stages.append({'stage': 'Orders Filled', 'survivors': n_filled,
                        'source_label': 'execution_funnel'})
 
@@ -397,11 +400,15 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
     kpis['dir_correct_and_profitable_pct'] = 0.0
     kpis['dir_correct_and_profitable_n'] = 0
     if not ch.empty and 'actual_trend_direction' in ch.columns and 'master_decision' in ch.columns:
+        # actual_trend_direction may use UP/DOWN or BULLISH/BEARISH vocabulary — normalise both.
+        _DIR_NORM = {'UP': 'UP', 'DOWN': 'DOWN', 'BULLISH': 'UP', 'BEARISH': 'DOWN'}
         _directional = ch[ch['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
-        _dir_resolved = _directional[_directional['actual_trend_direction'].isin(['UP', 'DOWN'])].copy()
+        _dir_resolved = _directional[
+            _directional['actual_trend_direction'].str.upper().isin(_DIR_NORM)
+        ].copy()
         _n_dir_resolved = len(_dir_resolved)
         if _n_dir_resolved > 0:
-            _actual = _dir_resolved['actual_trend_direction'].str.upper()
+            _actual = _dir_resolved['actual_trend_direction'].str.upper().map(_DIR_NORM)
             _predicted = _dir_resolved['master_decision'].str.upper().map(
                 {'BULLISH': 'UP', 'BEARISH': 'DOWN'}
             )
@@ -709,16 +716,17 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
             'actual_trend_direction' in council_df.columns and
             'master_decision' in council_df.columns
         ):
+            _DIR_NORM_B = {'UP': 'UP', 'DOWN': 'DOWN', 'BULLISH': 'UP', 'BEARISH': 'DOWN'}
             _bridge_df = council_df[
                 council_df['master_decision'].isin(['BULLISH', 'BEARISH']) &
-                council_df['actual_trend_direction'].isin(['UP', 'DOWN'])
+                council_df['actual_trend_direction'].str.upper().isin(_DIR_NORM_B)
             ].copy()
             _bridge_df['pnl'] = pd.to_numeric(_bridge_df['pnl_realized'], errors='coerce')
             _bridge_df = _bridge_df[_bridge_df['pnl'].notna()]
 
             if len(_bridge_df) >= 4:
                 st.markdown("**Direction → P&L** — did correct direction translate to profit?")
-                _actual_b = _bridge_df['actual_trend_direction'].str.upper()
+                _actual_b = _bridge_df['actual_trend_direction'].str.upper().map(_DIR_NORM_B)
                 _predicted_b = _bridge_df['master_decision'].str.upper().map({'BULLISH': 'UP', 'BEARISH': 'DOWN'})
                 _bridge_df['dir_correct'] = (_actual_b == _predicted_b)
                 _bridge_df['profitable'] = (_bridge_df['pnl'] > 0)
