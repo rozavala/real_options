@@ -13,7 +13,7 @@ Phase 4: Full implementation with equity, macro, and post-close services.
 import asyncio
 import logging
 import os
-import random
+
 import time as time_module
 from datetime import datetime, time, timezone
 
@@ -83,15 +83,10 @@ async def _equity_service(shared: SharedContext, config: dict):
 
             ib = None
             try:
-                from ib_insync import IB
+                from trading_bot.connection_pool import IBConnectionPool
                 from trading_bot.utils import configure_market_data_type
 
-                ib = IB()
-                host = config.get('connection', {}).get('host', '127.0.0.1')
-                port = config.get('connection', {}).get('port', 4002)
-                client_id = random.randint(3000, 3999)
-
-                await ib.connectAsync(host, port, clientId=client_id)
+                ib = await IBConnectionPool.get_connection("equity_service", config)
                 configure_market_data_type(ib)
 
                 summary = await ib.accountSummaryAsync()
@@ -123,7 +118,7 @@ async def _equity_service(shared: SharedContext, config: dict):
             finally:
                 if ib is not None:
                     try:
-                        ib.disconnect()
+                        await IBConnectionPool.release_connection("equity_service")
                     except Exception:
                         pass
 

@@ -27,6 +27,7 @@ DEV_CLIENT_ID_BASE = {
     "cleanup": 82,
     "drawdown_check": 88,
     "deferred": 94,
+    "equity_service": 106,  # Master-level equity polling (no commodity offset)
 }
 DEV_CLIENT_ID_JITTER = 5   # random(0, 5) — widened from 4 to reduce collision probability
 DEV_CLIENT_ID_DEFAULT = 100  # Unknown purposes in dev: 100-105
@@ -94,6 +95,7 @@ class IBConnectionPool:
         "reconciliation": 260,    # Range: 260-269
         "cleanup": 270,           # Range: 270-279
         "deferred": 290,          # Range: 290-299 (deferred trigger processing)
+        "equity_service": 3000,   # Range: 3000-3009 (master-level equity polling)
         # Note: position_monitor.py uses 300-399
         # Note: reconciliation uses random 5000-9999
         # DEFAULT for unknown purposes: 280-289 (avoid adding new purposes without explicit ID)
