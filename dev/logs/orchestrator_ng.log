@@ -419,3 +419,43 @@ TimeoutError
 2026-03-20 15:57:38,289 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 34% of average (Sev: 6)
 2026-03-20 15:57:38,293 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
 2026-03-20 15:59:38,539 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=495, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 16:04:39,876 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=500, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 16:09:41,286 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=505, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 16:11:45,180 - ib_insync.client - ERROR - Peer closed connection.
+2026-03-20 16:11:45,188 - ib_insync.client - ERROR - Peer closed connection.
+2026-03-20 16:12:42,143 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-03-20 16:12:42,144 - trading_bot.connection_pool - INFO - Disconnecting stale IB (NG_sentinel) before reconnect...
+2026-03-20 16:12:45,148 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1220 [REMOTE/PAPER]...
+2026-03-20 16:12:45,152 - ib_insync.client - ERROR - API connection failed: ConnectionRefusedError(111, "Connect call failed ('100.102.50.16', 4002)")
+2026-03-20 16:12:45,153 - ib_insync.client - ERROR - Make sure API port on TWS/IBG is open
+2026-03-20 16:12:45,659 - trading_bot.connection_pool - ERROR - IB (NG_sentinel) connection failed: [Errno 111] Connect call failed ('100.102.50.16', 4002). Next retry backoff: 10.0s
+2026-03-20 16:12:45,659 - Orchestrator - WARNING - Sentinel IB connection deferred: [Errno 111] Connect call failed ('100.102.50.16', 4002)
+2026-03-20 16:13:45,667 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-03-20 16:13:45,667 - trading_bot.connection_pool - INFO - Disconnecting stale IB (NG_sentinel) before reconnect...
+2026-03-20 16:13:48,668 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1220 [REMOTE/PAPER]...
+2026-03-20 16:13:48,854 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1220
+2026-03-20 16:13:48,861 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 16:13:48,861 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-03-20 16:14:49,216 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=510, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 16:19:51,730 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=515, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 16:24:00,004 - Engine.NG - INFO - --- Running scheduled task: signal_early [guarded_generate_orders] ---
+2026-03-20 16:24:00,219 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 16:24:00,581 - trading_bot.agents - INFO - Perplexity Sonar enabled for grounded data (model=sonar, context=low)
+2026-03-20 16:24:00,584 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-20 16:24:00,588 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['gemini', 'anthropic', 'openai', 'xai']
+2026-03-20 16:24:00,589 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['gemini', 'anthropic', 'openai', 'xai'], 'diversity_score': 1.0}
+2026-03-20 16:24:00,617 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 16:24:00,685 - trading_bot.enhanced_brier - INFO - Loaded 1368 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-20 16:24:00,694 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-03-20 16:24:00,696 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-03-20 16:24:00,697 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-03-20 16:24:00,697 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-20 16:24:00,697 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-20 16:24:00,701 - trading_bot.connection_pool - INFO - Connecting IB (NG_drawdown_check) ID: 1289 [REMOTE/PAPER]...
+2026-03-20 16:24:01,231 - trading_bot.connection_pool - INFO - IB (NG_drawdown_check) connected successfully with ID 1289
+2026-03-20 16:24:01,325 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_drawdown_check)...
+2026-03-20 16:24:04,596 - OrderManager - INFO - Holding-time gate: Only 1.7h until weekly close (minimum: 2.0h). Skipping order generation.
+2026-03-20 16:24:04,598 - trading_bot.semantic_cache - INFO - CACHE INVALIDATED BY TICKER (NG): 1 entries removed
+2026-03-20 16:24:04,611 - Engine.NG - INFO - Next task 'signal_mid' (Signal: Mid) scheduled for 2026-03-20 17:24:00 UTC. Waiting for 1.00 hours.
+2026-03-20 16:24:54,291 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=520, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 16:29:56,710 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=525, market_state=ACTIVE, market_open=True, trading_day=True
