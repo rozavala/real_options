@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "last_run": "2026-03-20T15:00:01.774412+00:00",
+  "last_run": "2026-03-20T16:00:01.570899+00:00",
   "log_offsets": {
     "/home/rodrigo/real_options/logs/dashboard.log": 35247,
     "/home/rodrigo/real_options/logs/dashboard_cc.log": 3301,
     "/home/rodrigo/real_options/logs/dashboard_kc.log": 23087,
     "/home/rodrigo/real_options/logs/equity_logger.log": 776,
-    "/home/rodrigo/real_options/logs/error_reporter.log": 247367,
+    "/home/rodrigo/real_options/logs/error_reporter.log": 247757,
     "/home/rodrigo/real_options/logs/manual_test.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator.log": 36249,
     "/home/rodrigo/real_options/logs/orchestrator_cc.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator_cc_service.log": 4717,
-    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 571437,
+    "/home/rodrigo/real_options/logs/orchestrator_kc.log": 582002,
     "/home/rodrigo/real_options/logs/performance_analyzer.log": 0,
-    "/home/rodrigo/real_options/logs/sentinels.log": 334188,
+    "/home/rodrigo/real_options/logs/sentinels.log": 403736,
     "/home/rodrigo/real_options/logs/dashboard_sb.log": 514,
-    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 625943,
-    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 37377,
+    "/home/rodrigo/real_options/logs/orchestrator_multi.log": 659186,
+    "/home/rodrigo/real_options/logs/orchestrator_ng.log": 57583,
     "/home/rodrigo/real_options/logs/orchestrator_sb.log": 0,
     "/home/rodrigo/real_options/logs/orchestrator_test.log": 0,
     "/home/rodrigo/real_options/logs/test_ng_sonar.log": 78752
@@ -167,10 +167,10 @@
     "fbdfe8920403f29ac170262f630845b9": {
       "category": "uncategorized",
       "fingerprint": "fbdfe8920403f29ac170262f630845b9",
-      "sample_message": "Position Audit Cycle failed:\nTraceback (most recent call last):\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\nasyncio.exceptions.CancelledError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/orchestrator.py\", line 2646, in run_position_audit_cycle\n    ib = await IBConnectionPool.get_connection(\"audit\", config)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/trading_bot/connection_pool.py\", line 310, in get_connection\n    raise e\n  File \"/home/<USER>/real_options/trading_bot/connection_pool.py\", line 217, in get_connection\n    await ib.connectAsync(\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py\", line 1748, in connectAsync\n    await self.client.connectAsync(host, port, clientId, timeout)\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py\", line 217, in connectAsync\n    await asyncio.wait_for(self.apiStart, timeout)\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 519, in wait_for\n    async with timeouts.timeout(timeout):\n  File \"/usr/lib/python3.12/asyncio/timeouts.py\", line 115, in __aexit__\n    raise TimeoutError from exc_val\nTimeoutError",
+      "sample_message": "Position Audit Cycle failed:\nTraceback (most recent call last):\n  File \"/usr/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/connection.py\", line 39, in connectAsync\n    self.transport, _ = await loop.create_connection(\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1104, in create_connection\n    sock = await self._connect_sock(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 1007, in _connect_sock\n    await self.sock_connect(sock, address)\n  File \"/usr/lib/python3.12/asyncio/selector_events.py\", line 651, in sock_connect\n    return await fut\n           ^^^^^^^^^\nasyncio.exceptions.CancelledError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/<USER>/real_options/orchestrator.py\", line 2646, in run_position_audit_cycle\n    ib = await IBConnectionPool.get_connection(\"audit\", config)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/<USER>/real_options/trading_bot/connection_pool.py\", line 310, in get_connection\n    raise e\n  File \"/home/<USER>/real_options/trading_bot/connection_pool.py\", line 217, in get_connection\n    await ib.connectAsync(\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/ib.py\", line 1748, in connectAsync\n    await self.client.connectAsync(host, port, clientId, timeout)\n  File \"/home/<USER>/real_options/venv/lib/python3.12/site-packages/ib_insync/client.py\", line 211, in connectAsync",
       "count": 2,
-      "first_seen": "2026-03-20 12:52:15,518",
-      "last_seen": "2026-03-20 12:52:15,518",
+      "first_seen": "2026-03-20 15:45:15,513",
+      "last_seen": "2026-03-20 15:45:15,513",
       "level": "ERROR"
     }
   }
