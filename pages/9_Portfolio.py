@@ -121,11 +121,23 @@ else:
 st.markdown("---")
 st.subheader("⚙️ Engine Health")
 
+def _get_commodity_meta(ticker: str) -> dict:
+    """Build display metadata from CommodityProfile."""
+    from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
+    try:
+        from config.commodity_profiles import get_commodity_profile
+        profile = get_commodity_profile(ticker)
+        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "\U0001f4ca"))
+        return {"name": profile.name, "emoji": emoji}
+    except Exception:
+        return {"name": ticker, "emoji": "\U0001f4ca"}
+
 if active_tickers:
     cols = st.columns(min(len(active_tickers), 4))
     for i, ticker in enumerate(active_tickers):
         state_path = os.path.join(DATA_ROOT, ticker, "state.json")
         state = _load_json(state_path)
+        meta = _get_commodity_meta(ticker)
         with cols[i % len(cols)]:
             if state:
                 thesis_count = _live_positions.get(ticker, 0)
@@ -136,7 +148,7 @@ if active_tickers:
                 last_activity = last_ib.get("data", "unknown") if isinstance(last_ib, dict) else "unknown"
 
                 st.metric(
-                    ticker,
+                    f"{meta['emoji']} {ticker}",
                     f"{thesis_count} Theses",
                     delta=f"IB: {_relative_time(last_activity)}",
                     delta_color="off",
@@ -146,7 +158,7 @@ if active_tickers:
                     )
                 )
             else:
-                st.metric(ticker, "No data", delta="OFFLINE", delta_color="inverse", help=f"Engine state file not found for {ticker}")
+                st.metric(f"{meta['emoji']} {ticker}", "No data", delta="OFFLINE", delta_color="inverse", help=f"Engine state file not found for {ticker}")
 else:
     st.info("No engine state files found.")
 

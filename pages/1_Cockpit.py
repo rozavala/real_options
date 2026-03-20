@@ -590,13 +590,13 @@ if dedup_metrics.get('total_triggers', 0) > 0:
     st.caption("🛡️ Trigger Deduplicator")
     d_cols = st.columns(4)
     with d_cols[0]:
-        st.metric("Total Triggers", dedup_metrics['total_triggers'], help="Total raw event triggers received from sentinels")
+        st.metric("🛡️ Total Triggers", dedup_metrics['total_triggers'], help="Total raw event triggers received from sentinels")
     with d_cols[1]:
-        st.metric("Processed", dedup_metrics['processed'], help="Unique triggers passed to the Council for analysis")
+        st.metric("⚙️ Processed", dedup_metrics['processed'], help="Unique triggers passed to the Council for analysis")
     with d_cols[2]:
-        st.metric("Filtered", dedup_metrics['filtered'], help="Duplicate triggers suppressed to prevent redundant analysis")
+        st.metric("🧹 Filtered", dedup_metrics['filtered'], help="Duplicate triggers suppressed to prevent redundant analysis")
     with d_cols[3]:
-        st.metric("Efficiency", f"{dedup_metrics['efficiency']:.1%}", help="Pass-through rate (unique signals / total triggers)")
+        st.metric("📈 Efficiency", f"{dedup_metrics['efficiency']:.1%}", help="Pass-through rate (unique signals / total triggers)")
 
 # Sentinel Details Expander
 with st.expander("🔍 Sentinel Details"):
