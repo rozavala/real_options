@@ -269,3 +269,113 @@
 2026-03-20 17:57:13,341 - Orchestrator - INFO - 2026-03-20 17:57:13,340 - __main__ - INFO - Position monitor connected and watching open positions.
 2026-03-20 17:57:13,341 - Orchestrator - INFO - 2026-03-20 17:57:13,341 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
 2026-03-20 17:57:13,342 - Orchestrator - INFO - 2026-03-20 17:57:13,341 - root - INFO - Order status and execution event handlers registered.
+2026-03-20 18:02:09,629 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=55, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:05:00,026 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-20 18:05:00,030 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-20 18:05:00,031 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-03-20 18:05:00,033 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1236 [REMOTE/PAPER]...
+2026-03-20 18:05:00,209 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1236
+2026-03-20 18:05:00,214 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 18:05:00,215 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-20 18:05:00,260 - OrderManager - INFO - Found 8 live position legs in the IB account.
+2026-03-20 18:05:00,260 - OrderManager - INFO -   Filtered to 6 NG positions with non-zero quantity (from 8 total across all commodities)
+2026-03-20 18:05:00,312 - OrderManager - INFO - Reconstruction: LNEN6 P3550 | Trade Date: 2026-03-19 | Age: 2 | Qty: 1.0
+2026-03-20 18:05:00,314 - OrderManager - INFO - Reconstruction: LNEM6 P3300 | Trade Date: 2026-03-19 | Age: 2 | Qty: 1.0
+2026-03-20 18:05:00,317 - OrderManager - INFO - Reconstruction: LNEN6 P3600 | Trade Date: 2026-03-19 | Age: 2 | Qty: 1.0
+2026-03-20 18:05:00,319 - OrderManager - INFO - Reconstruction: LNEQ6 P3550 | Trade Date: 2026-03-19 | Age: 2 | Qty: 1.0
+2026-03-20 18:05:00,321 - OrderManager - INFO - Reconstruction: LNEM6 P3350 | Trade Date: 2026-03-19 | Age: 2 | Qty: 1.0
+2026-03-20 18:05:00,323 - OrderManager - INFO - Reconstruction: LNEQ6 P3600 | Trade Date: 2026-03-19 | Age: 2 | Qty: 1.0
+2026-03-20 18:05:00,324 - OrderManager - INFO - Processing closure for Position ID d1a7d419-a31b-4b67-8285-b8cd03ad5f42 with 2 legs.
+2026-03-20 18:05:00,324 - OrderManager - INFO - Constructed BAG order for Pos ID d1a7d419-a31b-4b67-8285-b8cd03ad5f42: ['BUY 1 x 639848759', 'SELL 1 x 639848573']
+2026-03-20 18:05:00,325 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-20 18:05:03,465 - OrderManager - INFO - Calculated combo limit price: -0.03 (raw: -0.03, slippage: 0.00)
+2026-03-20 18:05:03,466 - OrderManager - INFO - Placing LIMIT order for NG. Price: -0.03 (CREDIT)
+2026-03-20 18:05:03,466 - root - INFO - Assigned new unique OrderRef for tracking: c886e546-c29b-48e7-8d72-e50a295fd621
+2026-03-20 18:05:03,466 - root - INFO - Placing BUY order for ...
+2026-03-20 18:05:03,466 - root - INFO - Successfully placed order ID 571 for .
+2026-03-20 18:05:03,467 - OrderManager - INFO - Placed close order 571 for Pos ID d1a7d419-a31b-4b67-8285-b8cd03ad5f42. Waiting for fill...
+2026-03-20 18:05:18,483 - OrderManager - INFO - Price walk #1: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:05:33,500 - OrderManager - INFO - Price walk #2: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:05:48,518 - OrderManager - INFO - Price walk #3: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:06:00,534 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-20 18:06:00,536 - root - INFO - Logged 2 leg(s) to ledger for position_id d1a7d419-a31b-4b67-8285-b8cd03ad5f42 (Stale Position Close)
+2026-03-20 18:06:00,536 - OrderManager - INFO - Successfully closed Combo (Pos ID: d1a7d419-a31b-4b67-8285-b8cd03ad5f42). P&L: -89.48000000000002
+2026-03-20 18:06:00,544 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 18:06:00,679 - trading_bot.tms - INFO - TMS: Invalidated thesis for d1a7d419-a31b-4b67-8285-b8cd03ad5f42: Friday Weekly Close
+2026-03-20 18:06:00,679 - OrderManager - INFO - TMS: Invalidated thesis for d1a7d419-a31b-4b67-8285-b8cd03ad5f42: Friday Weekly Close
+2026-03-20 18:06:01,684 - OrderManager - INFO - Processing closure for Position ID 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb with 2 legs.
+2026-03-20 18:06:01,685 - OrderManager - INFO - Constructed BAG order for Pos ID 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb: ['BUY 1 x 634030897', 'SELL 1 x 634030924']
+2026-03-20 18:06:01,685 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-20 18:06:04,798 - OrderManager - INFO - Calculated combo limit price: -0.03 (raw: -0.03, slippage: 0.00)
+2026-03-20 18:06:04,799 - OrderManager - INFO - Placing LIMIT order for NG. Price: -0.03 (CREDIT)
+2026-03-20 18:06:04,799 - root - INFO - Assigned new unique OrderRef for tracking: 1449b305-d1b9-45c7-ba4c-71f3b73b51e6
+2026-03-20 18:06:04,799 - root - INFO - Placing BUY order for ...
+2026-03-20 18:06:04,800 - root - INFO - Successfully placed order ID 576 for .
+2026-03-20 18:06:04,800 - OrderManager - INFO - Placed close order 576 for Pos ID 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb. Waiting for fill...
+2026-03-20 18:06:19,819 - OrderManager - INFO - Price walk #1: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:06:34,837 - OrderManager - INFO - Price walk #2: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:06:36,842 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-20 18:06:36,843 - root - INFO - Logged 2 leg(s) to ledger for position_id 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb (Stale Position Close)
+2026-03-20 18:06:36,844 - OrderManager - INFO - Successfully closed Combo (Pos ID: 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb). P&L: -59.48000000000002
+2026-03-20 18:06:36,851 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 18:06:36,895 - trading_bot.tms - INFO - TMS: Invalidated thesis for 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb: Friday Weekly Close
+2026-03-20 18:06:36,895 - OrderManager - INFO - TMS: Invalidated thesis for 9e1ecb61-ec99-45e0-9677-e84af1e7b7eb: Friday Weekly Close
+2026-03-20 18:06:37,900 - OrderManager - INFO - Processing closure for Position ID 89f9d35e-1309-4753-9867-9c027841fbe8 with 2 legs.
+2026-03-20 18:06:37,901 - OrderManager - INFO - Constructed BAG order for Pos ID 89f9d35e-1309-4753-9867-9c027841fbe8: ['BUY 1 x 644917806', 'SELL 1 x 644917720']
+2026-03-20 18:06:37,902 - OrderManager - INFO - Calculating combo price from 2 legs...
+2026-03-20 18:06:41,017 - OrderManager - INFO - Calculated combo limit price: -0.03 (raw: -0.03, slippage: 0.00)
+2026-03-20 18:06:41,017 - OrderManager - INFO - Placing LIMIT order for NG. Price: -0.03 (CREDIT)
+2026-03-20 18:06:41,017 - root - INFO - Assigned new unique OrderRef for tracking: f4fefa64-e635-4dd2-aa6c-33a7f8e5ffe8
+2026-03-20 18:06:41,017 - root - INFO - Placing BUY order for ...
+2026-03-20 18:06:41,018 - root - INFO - Successfully placed order ID 581 for .
+2026-03-20 18:06:41,018 - OrderManager - INFO - Placed close order 581 for Pos ID 89f9d35e-1309-4753-9867-9c027841fbe8. Waiting for fill...
+2026-03-20 18:06:56,037 - OrderManager - INFO - Price walk #1: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:07:10,975 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=60, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:07:11,053 - OrderManager - INFO - Price walk #2: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:07:26,073 - OrderManager - INFO - Price walk #3: -0.03 -> -0.03 (CREDIT)
+2026-03-20 18:10:41,299 - OrderManager - WARNING - Order 581 not filled after 240s and 3 walks. Converting to Market.
+2026-03-20 18:10:43,300 - root - INFO - Assigned new unique OrderRef for tracking: 4e1935de-f7f4-4378-91d5-42936764980e
+2026-03-20 18:10:43,301 - root - INFO - Placing BUY order for ...
+2026-03-20 18:10:43,302 - root - INFO - Successfully placed order ID 582 for .
+2026-03-20 18:10:43,302 - OrderManager - INFO - Market order fallback: waiting up to 60s for fill
+2026-03-20 18:10:44,304 - OrderManager - INFO - Market order filled at -0.02
+2026-03-20 18:10:45,306 - root - INFO - Skipping ledger entry for BAG contract NG (legs will be logged individually).
+2026-03-20 18:10:45,307 - root - INFO - Logged 2 leg(s) to ledger for position_id 89f9d35e-1309-4753-9867-9c027841fbe8 (Stale Position Close)
+2026-03-20 18:10:45,307 - OrderManager - INFO - Successfully closed Combo (Pos ID: 89f9d35e-1309-4753-9867-9c027841fbe8). P&L: -119.48
+2026-03-20 18:10:45,314 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 18:10:45,368 - trading_bot.tms - INFO - TMS: Invalidated thesis for 89f9d35e-1309-4753-9867-9c027841fbe8: Friday Weekly Close
+2026-03-20 18:10:45,368 - OrderManager - INFO - TMS: Invalidated thesis for 89f9d35e-1309-4753-9867-9c027841fbe8: Friday Weekly Close
+2026-03-20 18:10:46,373 - OrderManager - INFO - --- Post-Close Verification: Re-checking IB positions ---
+2026-03-20 18:10:51,383 - OrderManager - INFO - ✅ Post-close verification passed — all positions flat.
+2026-03-20 18:10:51,389 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 18:10:51,741 - notifications - INFO - Pushover chunk sent successfully (Attachment: False).
+2026-03-20 18:10:51,743 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-20 18:10:51,743 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-20 18:10:54,752 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-20 18:15:00 UTC. Waiting for 0.07 hours.
+2026-03-20 18:12:12,382 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=65, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:15:00,010 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-20 18:15:00,015 - Orchestrator - INFO - --- Fallback Close Attempt [NG] --- (primary result unknown, running as safety net)
+2026-03-20 18:15:00,015 - OrderManager - INFO - --- Initiating position closing based on 2-day holding period ---
+2026-03-20 18:15:00,016 - OrderManager - INFO - --- Weekly Close Triggered: Friday Weekly Close. Closing ALL positions. ---
+2026-03-20 18:15:00,017 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1237 [REMOTE/PAPER]...
+2026-03-20 18:15:00,293 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1237
+2026-03-20 18:15:00,298 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 18:15:00,299 - OrderManager - INFO - Connected to IB for closing positions (purpose: orchestrator_orders).
+2026-03-20 18:15:00,445 - OrderManager - INFO - Found 8 live position legs in the IB account.
+2026-03-20 18:15:00,445 - OrderManager - INFO -   Filtered to 0 NG positions with non-zero quantity (from 8 total across all commodities)
+2026-03-20 18:15:00,446 - OrderManager - INFO - No open NG positions to close.
+2026-03-20 18:15:00,446 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-20 18:15:00,446 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-20 18:15:03,456 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-20 18:25:00 UTC. Waiting for 0.17 hours.
+2026-03-20 18:17:13,797 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=70, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:22:15,191 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=75, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:25:00,007 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-20 18:25:00,013 - Orchestrator - INFO - --- Emergency Hard Close Check ---
+2026-03-20 18:25:00,014 - trading_bot.connection_pool - INFO - Connecting IB (NG_orchestrator_orders) ID: 1238 [REMOTE/PAPER]...
+2026-03-20 18:25:00,452 - trading_bot.connection_pool - INFO - IB (NG_orchestrator_orders) connected successfully with ID 1238
+2026-03-20 18:25:00,457 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 18:25:00,564 - Orchestrator - INFO - Emergency hard close: No open positions. All clear. ✓
+2026-03-20 18:25:00,564 - trading_bot.connection_pool - INFO - DISCONNECT GUARD [NG_orchestrator_orders]: No pending orders. Safe to disconnect.
+2026-03-20 18:25:00,564 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_orchestrator_orders)...
+2026-03-20 18:25:03,573 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-20 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-20 18:27:16,561 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=80, market_state=ACTIVE, market_open=True, trading_day=True
