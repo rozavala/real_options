@@ -650,3 +650,74 @@
 2026-03-20 18:28:17,153 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
 2026-03-20 18:28:17,167 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=5%, hwm=0
 2026-03-20 18:28:17,171 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-20 18:33:18,422 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-20 18:33:18,455 - sentinel_diag - INFO -   PredictionMarket [Fed decision in April?]: price=0.032, last=0.029, delta=0.3%, threshold=8%, hwm=0
+2026-03-20 18:33:18,476 - sentinel_diag - INFO -   PredictionMarket [How many Fed rate cuts in 2026?]: price=0.036, last=0.036, delta=0.0%, threshold=8%, hwm=0
+2026-03-20 18:33:18,493 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=8%, hwm=0
+2026-03-20 18:33:18,511 - sentinel_diag - INFO -   PredictionMarket [Russia x Ukraine ceasefire by March 31, 2026?]: price=0.009, last=0.007, delta=0.1%, threshold=8%, hwm=0
+2026-03-20 18:33:18,527 - sentinel_diag - INFO -   PredictionMarket [Fed emergency rate cut before 2027?]: price=0.165, last=0.165, delta=0.0%, threshold=8%, hwm=0
+2026-03-20 18:33:18,543 - sentinel_diag - INFO -   PredictionMarket [Putin out as President of Russia by December 31, 2]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-20 18:33:18,559 - sentinel_diag - INFO -   PredictionMarket [Will the U.S. invade Iran before 2027?]: price=0.585, last=0.595, delta=1.0%, threshold=8%, hwm=0
+2026-03-20 18:33:18,575 - sentinel_diag - INFO -   PredictionMarket [Iran Nuke before 2027?]: price=0.125, last=0.125, delta=0.0%, threshold=8%, hwm=0
+2026-03-20 18:33:18,591 - sentinel_diag - INFO -   PredictionMarket [US recession by end of 2026?]: price=0.355, last=0.355, delta=0.0%, threshold=5%, hwm=0
+2026-03-20 18:33:18,595 - sentinel_diag - INFO - PredictionMarketSentinel: all topics within thresholds, no trigger
+2026-03-20 18:38:19,857 - sentinel_diag - INFO - XSentimentSentinel: running closed-market check
+2026-03-20 18:38:19,857 - sentinel_diag - INFO - XSentimentSentinel: querying 4 queries: ['"Henry Hub" OR "natural gas futures"', '"EIA storage" OR "gas storage report"', 'LNG (export OR shipping OR demand)', '(polar vortex OR "heating degree days") (gas OR "natural gas")']
+2026-03-20 18:38:21,012 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='"EIA storage" OR "gas storage report"', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-20 18:38:21,013 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-20 18:38:22,511 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='"Henry Hub" OR "natural gas futures"', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-20 18:38:22,512 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-20 18:38:22,515 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='LNG (export OR shipping OR demand)', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-20 18:38:22,515 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-20 18:38:23,186 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-20 18:38:23,186 - sentinel_diag - INFO -   Tool args: {'query': '("EIA storage" OR "gas storage report") (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-20 18:38:23,188 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='("EIA storage" OR "gas storage report") (from:EIAgov OR from', limit=50)
+2026-03-20 18:38:23,274 - sentinel_diag - INFO -   X API response status: 200
+2026-03-20 18:38:23,275 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-03-20 18:38:23,275 - sentinel_diag - INFO -   x_search result: 0 posts, stage=curated, quality=low
+2026-03-20 18:38:23,275 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-20 18:38:24,017 - sentinel_diag - INFO - XSentimentSentinel._search_x_and_analyze: query='(polar vortex OR "heating degree days") (gas OR "natural gas")', model=grok-4-1-fast-reasoning, tools=enabled
+2026-03-20 18:38:24,017 - sentinel_diag - DEBUG -   Grok API call iteration 1/5
+2026-03-20 18:38:25,077 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-20 18:38:25,078 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent relevant posts found from specified accounts regarding EIA storage or 
+2026-03-20 18:38:25,782 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-20 18:38:25,782 - sentinel_diag - INFO -   Tool args: {'query': '"Henry Hub" OR "natural gas futures" (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-20 18:38:25,782 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='"Henry Hub" OR "natural gas futures" (from:EIAgov OR from:Pl', limit=50)
+2026-03-20 18:38:25,881 - sentinel_diag - INFO -   X API response status: 200
+2026-03-20 18:38:25,882 - sentinel_diag - INFO -   X API: 3 raw tweets, 0 after engagement filter (>=10 likes)
+2026-03-20 18:38:25,882 - sentinel_diag - INFO -   x_search result: 0 posts, stage=curated, quality=low
+2026-03-20 18:38:25,882 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-20 18:38:26,106 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-20 18:38:26,106 - sentinel_diag - INFO -   Tool args: {'query': 'LNG (export OR shipping OR demand) (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 50, 'mode': 'Latest'}
+2026-03-20 18:38:26,106 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='LNG (export OR shipping OR demand) (from:EIAgov OR from:Plat', limit=50)
+2026-03-20 18:38:26,269 - sentinel_diag - INFO -   X API response status: 200
+2026-03-20 18:38:26,270 - sentinel_diag - INFO -   X API: 1 raw tweets, 1 after engagement filter (>=10 likes)
+2026-03-20 18:38:26,271 - trading_bot.sentinels - DEBUG - Top post: U.S. LNG exports to the Caribbean neared record hi...
+2026-03-20 18:38:26,272 - sentinel_diag - INFO -   x_search result: 1 posts, stage=curated, quality=low
+2026-03-20 18:38:26,272 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-20 18:38:27,544 - sentinel_diag - INFO -   Grok invoked tool: x_search (iteration 1)
+2026-03-20 18:38:27,545 - sentinel_diag - INFO -   Tool args: {'query': '(polar vortex OR "heating degree days") (gas OR "natural gas") (from:EIAgov OR from:PlattsGas OR from:RBNEnergy OR from:NGIntelligence) -meme -joke -spam -giveaway -airdrop -nft -crypto', 'limit': 100, 'mode': 'Latest'}
+2026-03-20 18:38:27,545 - sentinel_diag - INFO - XSentimentSentinel._fetch_x_posts: calling X API (query='(polar vortex OR "heating degree days") (gas OR "natural gas', limit=100)
+2026-03-20 18:38:27,610 - sentinel_diag - INFO -   X API response status: 200
+2026-03-20 18:38:27,611 - sentinel_diag - INFO -   X API: 0 raw tweets, 0 after engagement filter (>=10 likes)
+2026-03-20 18:38:27,611 - sentinel_diag - INFO -   x_search result: 0 posts, stage=curated, quality=low
+2026-03-20 18:38:27,611 - sentinel_diag - DEBUG -   Grok API call iteration 2/5
+2026-03-20 18:38:28,514 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-20 18:38:28,514 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.1, volume=0, summary=No recent relevant posts found from specified accounts (EIAgov, PlattsGas, RBNEn
+2026-03-20 18:38:30,019 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-20 18:38:30,019 - sentinel_diag - INFO -   Grok result: sentiment=5.0, confidence=0.2, volume=0, summary=No recent posts found matching the query from the specified authoritative accoun
+2026-03-20 18:38:31,654 - sentinel_diag - INFO -   Grok returned content (iteration 2), parsing JSON...
+2026-03-20 18:38:31,654 - sentinel_diag - INFO -   Grok result: sentiment=7.0, confidence=0.3, volume=1, summary=Very limited recent posts (only 1) from specified sources indicate near-record U
+2026-03-20 18:38:31,659 - sentinel_diag - INFO - XSentimentSentinel: 4/4 queries returned valid results
+2026-03-20 18:38:31,659 - sentinel_diag - INFO -   Query 0 result: sentiment=5.0, confidence=0.1, volume=0, themes=[]
+2026-03-20 18:38:31,659 - sentinel_diag - INFO -   Query 1 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-03-20 18:38:31,659 - sentinel_diag - INFO -   Query 2 result: sentiment=7.0, confidence=0.3, volume=1, themes=['Near-record LNG exports to Caribbean', 'Robust export volumes since 2016']
+2026-03-20 18:38:31,659 - sentinel_diag - INFO -   Query 3 result: sentiment=5.0, confidence=0.2, volume=0, themes=[]
+2026-03-20 18:38:31,664 - sentinel_diag - INFO - XSentimentSentinel [NG]: cycle complete — 4/4 queries valid, grok_tokens=7132p/705c, broad_fallback=OFF, spend_cap=clear
+2026-03-20 18:38:31,665 - sentinel_diag - INFO - XSentimentSentinel: avg_sentiment=5.75, avg_confidence=0.20, total_volume=1, volume_spike=False, thresholds: bullish>=6.5, bearish<=3.5, top_themes=['Near-record LNG exports to Caribbean', 'Robust export volumes since 2016']
+2026-03-20 18:38:31,665 - sentinel_diag - INFO - XSentimentSentinel: no trigger (sentiment within normal range, no volume spike)
+2026-03-20 18:38:31,668 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-20 18:43:32,936 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-20 18:48:34,216 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-20 18:53:35,505 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
+2026-03-20 18:58:36,714 - sentinel_diag - INFO - PredictionMarketSentinel: polling 12 topics
