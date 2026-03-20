@@ -452,6 +452,31 @@ sq3.metric(
          f"(theta, strikes, timing). ({_bridge_label})",
 )
 
+# Auto-diagnosis: answer the three questions in plain English
+if kpis['dir_denominator'] >= 5:
+    _dir_ok = kpis['dir_accuracy_pct'] >= 55
+    _leak_pct = kpis['dir_accuracy_pct'] - kpis['dir_correct_and_profitable_pct']
+    _leak_ok = _leak_pct < 15
+    _pnl_ok = kpis['signal_win_rate'] >= 50
+
+    if _dir_ok and _leak_ok and _pnl_ok:
+        st.success(
+            f"✅ **System is working**: signals are accurate ({kpis['dir_accuracy_pct']:.0f}%), "
+            f"option structure is converting edge to profit (only {_leak_pct:.0f}pp leakage), "
+            f"and the win rate is {kpis['signal_win_rate']:.0f}%."
+        )
+    elif _dir_ok and not _leak_ok:
+        st.warning(
+            f"⚠️ **Option structure is leaking edge**: signals are accurate ({kpis['dir_accuracy_pct']:.0f}%) "
+            f"but {_leak_pct:.0f}pp of that edge isn't converting to profit. "
+            f"Review strike selection, theta decay, and entry timing."
+        )
+    elif not _dir_ok:
+        st.warning(
+            f"⚠️ **Signal quality is the bottleneck**: directional accuracy is {kpis['dir_accuracy_pct']:.0f}% "
+            f"(below 55% threshold). Focus on improving council decision quality before optimising execution."
+        )
+
 with st.expander("📈 Execution KPIs", expanded=False):
     k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
     k1.metric("📡 Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
@@ -579,9 +604,10 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     n_strat = int(strat_row['survivors'].values[0]) if not strat_row.empty else 0
     win_rate_funnel = n_profitable_funnel / max(n_pnl_funnel, 1) * 100
 
-    cap_col1, cap_col2 = st.columns(2)
-    cap_col1.caption(f"End-to-end survival: **{filled_count}/{first_count} ({surv_pct:.0f}%)**")
-    cap_col2.caption(f"P&L resolved: **{n_pnl_funnel}** of **{n_strat}** strategy-selected trades")
+    if not _observation_only:
+        cap_col1, cap_col2 = st.columns(2)
+        cap_col1.caption(f"End-to-end survival: **{filled_count}/{first_count} ({surv_pct:.0f}%)**")
+        cap_col2.caption(f"P&L resolved: **{n_pnl_funnel}** of **{n_strat}** strategy-selected trades")
 
     # Source boundary indicator
     has_realtime = False
@@ -727,7 +753,7 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
                 )
 
                 _correct_loss_pct = _cells[('Correct', 'Loss')] / max(_cells[('Correct', 'Profitable')] + _cells[('Correct', 'Loss')], 1) * 100
-                if _correct_loss_pct > 30:
+                if _correct_loss_pct > 30 and _n_total_b >= 10:
                     st.warning(
                         f"⚠️ **Option structure leakage detected**: {_correct_loss_pct:.0f}% of directionally "
                         f"correct calls still lost money. This suggests theta decay, OTM strikes, or premium "
