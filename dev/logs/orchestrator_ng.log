@@ -186,3 +186,86 @@
 2026-03-20 17:24:00,228 - Orchestrator - INFO - Order generation BLOCKED: Past daily cutoff (13:12 ET)
 2026-03-20 17:24:00,235 - Engine.NG - INFO - Next task 'audit_pre_close' (Audit: Pre-Close) scheduled for 2026-03-20 17:55:00 UTC. Waiting for 0.52 hours.
 2026-03-20 17:26:59,103 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=20, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:32:00,471 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=25, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:33:01,149 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 32% of average (Sev: 6)
+2026-03-20 17:33:01,153 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-20 17:37:01,920 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=30, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:42:03,730 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=35, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:46:05,158 - Orchestrator - INFO - MICROSTRUCTURE NOTE: Liquidity Depletion: 32% of average (Sev: 6)
+2026-03-20 17:46:05,162 - trading_bot.state_manager - INFO - Logged sentinel event from MicrostructureSentinel to history.
+2026-03-20 17:47:05,169 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=40, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:52:06,530 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=45, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:55:00,002 - Engine.NG - INFO - --- Running scheduled task: audit_pre_close [run_position_audit_cycle] ---
+2026-03-20 17:55:00,007 - Orchestrator - INFO - --- POSITION AUDIT CYCLE (Scheduled) ---
+2026-03-20 17:55:00,008 - trading_bot.connection_pool - INFO - Connecting IB (NG_audit) ID: 1264 [REMOTE/PAPER]...
+2026-03-20 17:55:00,389 - trading_bot.connection_pool - INFO - IB (NG_audit) connected successfully with ID 1264
+2026-03-20 17:55:00,394 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 17:55:00,545 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 17:55:00,600 - Orchestrator - INFO - State stores reconciled: 3 thesis groups (6 legs) across all stores
+2026-03-20 17:55:00,613 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 17:55:00,713 - trading_bot.agents - INFO - Perplexity Sonar enabled for grounded data (model=sonar, context=low)
+2026-03-20 17:55:00,713 - trading_bot.heterogeneous_router - INFO - ResponseCache initialized with env=DEV, multiplier=0.25
+2026-03-20 17:55:00,713 - trading_bot.heterogeneous_router - INFO - HeterogeneousRouter initialized. Available: ['xai', 'gemini', 'anthropic', 'openai']
+2026-03-20 17:55:00,713 - trading_bot.agents - INFO - Heterogeneous routing enabled. Diversity: {'available_providers': ['xai', 'gemini', 'anthropic', 'openai'], 'diversity_score': 1.0}
+2026-03-20 17:55:00,720 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 17:55:00,731 - trading_bot.enhanced_brier - INFO - Loaded 1368 predictions from /home/rodrigo/real_options/data/NG/enhanced_brier.json
+2026-03-20 17:55:00,732 - trading_bot.agents - INFO - Loaded commodity profile: Natural Gas (Henry Hub)
+2026-03-20 17:55:00,732 - trading_bot.observability - INFO - HallucinationDetector initialized for Natural Gas (Henry Hub): 12 port tokens, 16 producer tokens
+2026-03-20 17:55:00,733 - trading_bot.observability - INFO - ObservabilityHub initialized for Natural Gas (Henry Hub)
+2026-03-20 17:55:00,733 - trading_bot.agents - INFO - Observability Hub initialized.
+2026-03-20 17:55:00,733 - trading_bot.agents - INFO - Trading Council initialized for Natural Gas (Henry Hub). Agents: gemini-3.1-pro-preview, Master: gemini-3.1-pro-preview, Grounded: gemini-3-flash-preview
+2026-03-20 17:55:00,792 - Orchestrator - INFO - Grouped 6 IB positions into 3 thesis groups
+2026-03-20 17:55:00,794 - Orchestrator - INFO - Refreshing active futures cache
+2026-03-20 17:55:00,795 - root - INFO - Fetching 5 active futures contracts for NG on NYMEX...
+2026-03-20 17:55:00,798 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai, perplexity
+2026-03-20 17:55:01,037 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-20 17:55:01,038 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-20 17:55:01,041 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 5.
+2026-03-20 17:55:01,043 - root - INFO - Combo 2 Legs on LNEN6 P3550: PnL=$-36.34 | Capture: -25.0% | Risk Used: -10.2%
+2026-03-20 17:55:01,044 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-20 17:55:01,049 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai, perplexity
+2026-03-20 17:55:01,334 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-20 17:55:01,335 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-20 17:55:01,338 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-20 17:55:03,403 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 17:55:03,729 - root - INFO - Combo 2 Legs on LNEM6 P3300: PnL=$-4.62 | Capture: -2.8% | Risk Used: -1.4%
+2026-03-20 17:55:03,729 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-20 17:55:03,733 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai, perplexity
+2026-03-20 17:55:04,202 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-20 17:55:04,203 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-20 17:55:04,205 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-20 17:55:06,291 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 17:55:06,653 - root - INFO - Combo 2 Legs on LNEQ6 P3550: PnL=$-45.41 | Capture: -29.2% | Risk Used: -13.2%
+2026-03-20 17:55:06,654 - root - INFO - Fetching 1 active futures contracts for NG on NYMEX...
+2026-03-20 17:55:06,660 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai, perplexity
+2026-03-20 17:55:06,897 - root - INFO - Skipping contract NGJ26 (Exp: 20260327): Expires < 45 days.
+2026-03-20 17:55:06,898 - root - INFO - Skipping contract NGK26 (Exp: 20260428): Expires < 45 days.
+2026-03-20 17:55:06,899 - root - INFO - Found 151 active tradeable contracts (>=45d exp). Returning the first 1.
+2026-03-20 17:55:08,919 - trading_bot.tms - INFO - TMS initialized at /home/rodrigo/real_options/data/NG/tms
+2026-03-20 17:55:09,300 - Orchestrator - INFO - Reconciliation: All 3 active theses have matching IB positions ✓
+2026-03-20 17:55:09,301 - Orchestrator - INFO - Position audit complete. All theses remain valid.
+2026-03-20 17:55:09,302 - trading_bot.var_calculator - INFO - VaR: Fetching underlying prices for option-only symbols: {'NG'}
+2026-03-20 17:55:11,405 - trading_bot.var_calculator - INFO - VaR: Fetched underlying price for NG: 3.026
+2026-03-20 17:55:13,343 - trading_bot.var_calculator - WARNING - VaR=$0 with 6 positions — P1=$22 P5=$92 min=$-163
+2026-03-20 17:55:13,346 - Orchestrator - INFO - Post-audit VaR: 95%=0.00% ($0), positions=6 — portfolio profitable in ≥95% of Monte Carlo scenarios (long put spread bias)
+2026-03-20 17:55:13,347 - trading_bot.connection_pool - INFO - Disconnecting IB (NG_audit)...
+2026-03-20 17:55:16,358 - Engine.NG - INFO - Next task 'close_stale_primary' (Close Stale: Primary) scheduled for 2026-03-20 18:05:00 UTC. Waiting for 0.16 hours.
+2026-03-20 17:57:07,930 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=50, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 17:57:07,930 - Orchestrator - INFO - Market Open: Establishing Sentinel IB connection...
+2026-03-20 17:57:07,931 - trading_bot.connection_pool - INFO - Connecting IB (NG_sentinel) ID: 1219 [REMOTE/PAPER]...
+2026-03-20 17:57:08,262 - trading_bot.connection_pool - INFO - IB (NG_sentinel) connected successfully with ID 1219
+2026-03-20 17:57:08,270 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 17:57:08,271 - Orchestrator - INFO - Sentinel IB connected and injected into PriceSentinel.
+2026-03-20 17:57:08,271 - Orchestrator - INFO - 🔄 SENTINEL SAFETY NET: Market open but position monitor not running — starting it now
+2026-03-20 17:57:08,271 - Orchestrator - INFO - Shutdown flags CLEARED — new trading day beginning
+2026-03-20 17:57:08,273 - Orchestrator - INFO - --- Starting position monitoring process ---
+2026-03-20 17:57:08,275 - Orchestrator - INFO - Successfully started position monitor with PID: 4103227
+2026-03-20 17:57:08,275 - Orchestrator - INFO - Started position monitoring service.
+2026-03-20 17:57:13,159 - Orchestrator - INFO - 2026-03-20 17:57:13,158 - ConfigLoader - INFO - Config loaded successfully. Mode: LIVE. Providers: gemini, anthropic, openai, xai, perplexity
+2026-03-20 17:57:13,159 - Orchestrator - INFO - 2026-03-20 17:57:13,159 - __main__ - INFO - Position monitor connection attempt 1/5...
+2026-03-20 17:57:13,161 - Orchestrator - INFO - 2026-03-20 17:57:13,161 - trading_bot.connection_pool - INFO - Connecting IB (monitor) ID: 32 [REMOTE/PAPER]...
+2026-03-20 17:57:13,335 - Orchestrator - INFO - 2026-03-20 17:57:13,335 - trading_bot.connection_pool - INFO - IB (monitor) connected successfully with ID 32
+2026-03-20 17:57:13,340 - Orchestrator - INFO - 2026-03-20 17:57:13,340 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 17:57:13,341 - Orchestrator - INFO - 2026-03-20 17:57:13,340 - __main__ - INFO - Position monitor connected and watching open positions.
+2026-03-20 17:57:13,341 - Orchestrator - INFO - 2026-03-20 17:57:13,341 - root - INFO - Starting intraday P&L monitor. Stop: 50% (Max Risk), Profit: 80% (Capture), Interval: 600s
+2026-03-20 17:57:13,342 - Orchestrator - INFO - 2026-03-20 17:57:13,341 - root - INFO - Order status and execution event handlers registered.
