@@ -1,8 +1,8 @@
 === PRODUCTION HEALTH REPORT ===
-Timestamp: Fri Mar 20 03:00:03 UTC 2026
+Timestamp: Fri Mar 20 13:00:05 UTC 2026
 Environment: prod
 Hostname: real-options-prod
-Uptime:  03:00:03 up 67 days,  9:23,  2 users,  load average: 0.04, 0.04, 0.00
+Uptime:  13:00:05 up 67 days, 19:23,  2 users,  load average: 0.22, 0.12, 0.03
 
 === DISK USAGE ===
 Filesystem      Size  Used Avail Use% Mounted on
@@ -16,18 +16,19 @@ tmpfs           392M   52K  392M   1% /run/user/1000
 
 === MEMORY USAGE ===
                total        used        free      shared  buff/cache   available
-Mem:           3.8Gi       2.6Gi       168Mi        37Mi       1.3Gi       1.3Gi
-Swap:          4.0Gi       538Mi       3.5Gi
+Mem:           3.8Gi       3.2Gi       131Mi        32Mi       798Mi       683Mi
+Swap:          4.0Gi       823Mi       3.2Gi
 
 === LOAD AVERAGE ===
-0.04 0.04 0.00 1/771 2144682
+0.22 0.12 0.03 1/860 2157413
 
 === PROCESS STATUS ===
 Trading processes:
-console  2137013  0.1 10.7 1854052 432232 ?      Ssl  Mar19   0:40 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2137013  0.2 12.3 2057592 496268 ?      Ssl  Mar19   2:47 /home/console/real_options/venv/bin/python -u orchestrator.py
+console  2150656  0.0  6.2 1371196 252464 ?      Sl   08:15   0:09 /home/console/real_options/venv/bin/python position_monitor.py
 
 Dashboard processes:
-console  2137071  0.3  1.9 606196 79484 ?        Sl   Mar19   1:44 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+console  2137071  0.3  9.3 2938768 373344 ?      Sl   Mar19   4:17 /home/console/real_options/venv/bin/python3 /home/console/real_options/venv/bin/streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
 
 === NETWORK STATUS ===
 Open ports (Trading & Dashboard):
@@ -35,8 +36,42 @@ netstat not available
 
 === RECENT ERRORS (if any) ===
 Recent orchestrator errors [multi]:
+2026-03-20 04:17:49,037 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:17:50,124 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-20 04:18:11,849 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:18:11,849 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:18:34,970 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:18:34,971 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:08,293 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:08,295 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:20,155 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-20 04:19:39,693 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:39,693 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:20:10,130 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:20:10,131 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:20:50,192 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-20 04:20:59,543 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-20 04:20:59,546 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-20 10:06:53,897 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-20 10:06:56,739 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-20 10:06:58,504 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-20 10:06:58,594 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 
 Recent orchestrator errors [KC]:
+2026-03-20 10:06:53,897 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-20 10:06:56,739 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-20 10:06:58,504 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
+2026-03-20 10:06:58,594 - trading_bot.agents - ERROR - Grounded data gathering failed (RateLimitError): Error code: 429 - {'error': {'message': 'Request rate limit exceeded, please try again later.', 'type': 'request_rate_limit_exceeded', 'code': 429}}
 
 Recent orchestrator errors [NG]:
+2026-03-20 04:19:08,293 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:08,295 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:20,155 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-20 04:19:39,693 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:19:39,693 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:20:10,130 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:20:10,131 - ib_insync.wrapper - ERROR - Error 1100, reqId -1: Connectivity between IBKR and Trader Workstation has been lost.
+2026-03-20 04:20:50,192 - Orchestrator - ERROR - PriceSentinel TIMED OUT after 30s
+2026-03-20 04:20:59,543 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
+2026-03-20 04:20:59,546 - ib_insync.wrapper - ERROR - Error 1102, reqId -1: Connectivity between IBKR and Trader Workstation has been restored - data maintained. All data farms are connected: usfuture; usfarm; ushmds; secdefil.
 
