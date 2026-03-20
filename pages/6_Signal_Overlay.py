@@ -1021,13 +1021,13 @@ if price_df is not None and not price_df.empty:
 
         summary_cols = st.columns(4)
         with summary_cols[0]:
-            st.metric("Period Change", f"{pct_change:+.2f}%", help="Percentage change in price over the selected period.")
+            st.metric("📈 Period Change", f"{pct_change:+.2f}%", help="Percentage change in price over the selected period.")
         with summary_cols[1]:
-            st.metric("High", f"${high:{_price_fmt}}", help="Highest price observed in the selected period.")
+            st.metric("🏔️ High", f"${high:{_price_fmt}}", help="Highest price observed in the selected period.")
         with summary_cols[2]:
-            st.metric("Low", f"${low:{_price_fmt}}", help="Lowest price observed in the selected period.")
+            st.metric("📉 Low", f"${low:{_price_fmt}}", help="Lowest price observed in the selected period.")
         with summary_cols[3]:
-            st.metric("Range", f"${high - low:{_price_fmt}}", help="Difference between High and Low prices in the selected period.")
+            st.metric("📏 Range", f"${high - low:{_price_fmt}}", help="Difference between High and Low prices in the selected period.")
 
     st.caption(f"Data source: {get_data_source_label()}")
 
@@ -1405,7 +1405,17 @@ if price_df is not None and not price_df.empty:
             st.dataframe(
                 strat_stats,
                 column_config={
-                    "Win Rate%": st.column_config.ProgressColumn("Win Rate%", min_value=0, max_value=100, format="%.1f%%"),
+                    "Strategy": st.column_config.TextColumn("🛡️ Strategy", help="The specific options strategy type."),
+                    "Signals": st.column_config.NumberColumn("🎯 Signals", help="Total number of agent signals generated for this strategy."),
+                    "Wins": st.column_config.NumberColumn("✅ Wins", help="Number of signals that resulted in a win."),
+                    "Losses": st.column_config.NumberColumn("❌ Losses", help="Number of signals that resulted in a loss."),
+                    "Win Rate%": st.column_config.ProgressColumn(
+                        "📈 Win Rate%",
+                        min_value=0,
+                        max_value=100,
+                        format="%.1f%%",
+                        help="Percentage of signals that resulted in a win."
+                    ),
                 },
                 hide_index=True,
                 width="stretch"
@@ -1429,7 +1439,7 @@ if price_df is not None and not price_df.empty:
         csv = download_df.to_csv().encode('utf-8')
         
         st.download_button(
-            label="Download Data as CSV",
+            label="💾 Download Data as CSV",
             data=csv,
             file_name=f"{profile.contract.symbol.lower()}_data_{lookback_days}d_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime='text/csv',
@@ -1449,12 +1459,29 @@ if price_df is not None and not price_df.empty:
             
             display_cols = [c for c in display_cols if c in plot_df.columns]
             
+            # Prepare display dataframe: scale confidence to 100 for ProgressColumn
+            log_display_df = plot_df[display_cols].sort_values('timestamp', ascending=False).copy()
+            if 'plot_confidence' in log_display_df.columns:
+                log_display_df['plot_confidence'] = log_display_df['plot_confidence'] * 100
+
             st.dataframe(
-                plot_df[display_cols].sort_values('timestamp', ascending=False),
+                log_display_df,
                 column_config={
-                    "timestamp": st.column_config.DatetimeColumn("Time (ET)", format="D MMM HH:mm"),
-                    "plot_confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=1),
+                    "timestamp": st.column_config.DatetimeColumn("🕒 Time (ET)", format="D MMM HH:mm", help="Time of signal generation."),
+                    "signal_contract": st.column_config.TextColumn("📜 Contract", help="The futures contract targeted by the signal."),
+                    "plot_label": st.column_config.TextColumn("⚖️ Decision", help="The final directional or volatility decision."),
+                    "plot_confidence": st.column_config.ProgressColumn(
+                        "🎯 Confidence",
+                        min_value=0,
+                        max_value=100,
+                        format="%.0f%%",
+                        help="The confidence level of the decision (0-100%)."
+                    ),
+                    "strategy_type": st.column_config.TextColumn("🛡️ Strategy", help="The options strategy recommended."),
+                    "outcome": st.column_config.TextColumn("🏁 Outcome", help="The reconciled market outcome (WIN/LOSS)."),
+                    "pnl_realized": st.column_config.NumberColumn("💰 P&L", format="$%.2f", help="Realized P&L if the signal was executed."),
                 },
+                hide_index=True,
                 width='stretch'
             )
         else:
