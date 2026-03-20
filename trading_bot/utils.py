@@ -768,6 +768,10 @@ def log_council_decision(decision_data):
         for field in fieldnames
     }
 
+    # Always capture trading mode at decision time (v6)
+    # Callers don't set this — inject it here from the live runtime state.
+    row_data['trading_mode_active'] = str(not is_trading_off())
+
     # Fix precision for entry_price
     if row_data.get('entry_price'):
         try:
