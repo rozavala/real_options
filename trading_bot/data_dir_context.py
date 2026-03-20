@@ -91,6 +91,7 @@ class EngineRuntime:
     brier_zero_resolution_streak: int = 0
     scheduled_shutdown: bool = False  # Per-engine replacement for _SCHEDULED_SHUTDOWN global
     full_shutdown: bool = False        # Per-engine replacement for _FULL_SHUTDOWN global
+    ib_drawdown_failure_streak: int = 0  # Consecutive drawdown-check IB failures; resets on success
 
 
 # No default — LookupError triggers fallback to module globals in legacy mode

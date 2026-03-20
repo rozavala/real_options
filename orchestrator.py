@@ -5896,13 +5896,34 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
              if not _dg.is_entry_allowed():
                  logger.warning("Order generation BLOCKED: Drawdown Guard Active")
                  return
+             # Success — reset consecutive failure streak
+             rt = get_engine_runtime()
+             if rt:
+                 rt.ib_drawdown_failure_streak = 0
         except Exception as e:
              logger.error(f"Drawdown guard check failed (fail-closed): {e}")
-             send_pushover_notification(
-                 config.get('notifications', {}),
-                 "⚠️ Drawdown Check Failed",
-                 f"Order generation blocked — drawdown guard unreachable: {e}"
-             )
+             rt = get_engine_runtime()
+             streak = 1
+             if rt:
+                 rt.ib_drawdown_failure_streak += 1
+                 streak = rt.ib_drawdown_failure_streak
+             ticker = get_active_ticker(config)
+             if streak >= 2:
+                 # Escalate: IB gateway is persistently down, orders silently blocked
+                 send_pushover_notification(
+                     config.get('notifications', {}),
+                     f"🚨 [{ticker}] IB Gateway Down — Orders Blocked ({streak} cycles)",
+                     f"Drawdown check has failed {streak} consecutive signal cycles. "
+                     f"No new orders can be placed until IB Gateway is reachable. "
+                     f"Restart the gateway. Error: {e}",
+                     priority=1,  # HIGH priority — requires acknowledgement
+                 )
+             else:
+                 send_pushover_notification(
+                     config.get('notifications', {}),
+                     f"⚠️ [{ticker}] Drawdown Check Failed",
+                     f"Order generation blocked — drawdown guard unreachable: {e}"
+                 )
              return
         finally:
              if ib is not None:
