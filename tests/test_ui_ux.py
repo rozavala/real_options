@@ -697,6 +697,36 @@ class TestSignalOverlayUX(unittest.TestCase):
                 found_button = True
         self.assertTrue(found_button, "No download_button found to check in Signal Overlay")
 
+    def test_signal_overlay_checkbox_tooltips(self):
+        """Verify that all checkboxes in pages/6_Signal_Overlay.py have help tooltips."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "pages", "6_Signal_Overlay.py"
+        )
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "checkbox"
+            ):
+                if not node.args:
+                    continue
+
+                label = None
+                if isinstance(node.args[0], ast.Constant):
+                    label = node.args[0].value
+                elif isinstance(node.args[0], ast.JoinedStr):
+                    label = "f-string"
+
+                if label:
+                    has_help = any(kw.arg == "help" for kw in node.keywords)
+                    self.assertTrue(
+                        has_help,
+                        f"Checkbox '{label}' in Signal Overlay is missing 'help' tooltip",
+                    )
+
 
 class TestBrierAnalysisUX(unittest.TestCase):
     def test_brier_analysis_metric_tooltips(self):

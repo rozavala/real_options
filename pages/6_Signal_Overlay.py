@@ -435,7 +435,7 @@ with st.sidebar:
         filter_signals_to_contract = st.checkbox(
             f"Only show {selected_contract} signals",
             value=True,
-            help="When checked, only shows signals targeting this specific contract"
+            help="When checked, restricts the overlay to show only the signals that were explicitly generated for the selected contract."
         )
     else:
         filter_signals_to_contract = False
@@ -444,7 +444,7 @@ with st.sidebar:
     show_all_signals = st.checkbox(
         "Show signals from all contracts",
         value=False,
-        help="Shows signals from all contracts overlaid on the selected price chart"
+        help="When checked, overlays all historical signals for this commodity, regardless of which specific contract they were targeting."
     )
 
     st.markdown("---")
