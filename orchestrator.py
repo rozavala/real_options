@@ -65,6 +65,7 @@ from trading_bot.task_tracker import record_task_completion, has_task_completed_
 from trading_bot.semantic_cache import get_semantic_cache
 from trading_bot.utils import get_active_ticker
 from trading_bot.sentinel_stats import SENTINEL_STATS
+from trading_bot.execution_funnel import log_funnel_event, FunnelStage
 
 # --- Logging Setup ---
 # NOTE: setup_logging() is called in main() after --commodity arg is parsed,
@@ -4252,6 +4253,28 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                 logger.info(f"Emergency Decision: {decision.get('direction')} ({decision.get('confidence')})")
                 cycle_actually_ran = True
 
+                # --- Funnel: COUNCIL_DECISION ---
+                _em_dir = decision.get('direction', 'NEUTRAL')
+                _em_conf = decision.get('confidence', 0.0)
+                _em_conv = decision.get('conviction_multiplier', 1.0)
+                _em_thesis = decision.get('thesis_strength', 'N/A')
+                _em_ws = decision.get('weighted_score', 0)
+                log_funnel_event(
+                    cycle_id=cycle_id,
+                    contract=contract_name,
+                    stage=FunnelStage.COUNCIL_DECISION,
+                    outcome="PASS" if _em_dir != "NEUTRAL" else "INFO",
+                    detail=(
+                        f"direction={_em_dir}, confidence={_em_conf:.2f}, "
+                        f"conviction_mult={_em_conv}, "
+                        f"thesis={_em_thesis}, "
+                        f"weighted_score={_em_ws}"
+                    ),
+                    price_snapshot=market_data.get('price'),
+                    regime=market_data.get('regime', 'UNKNOWN'),
+                    source="EMERGENCY",
+                )
+
                 # === MID-DEBATE SLEEPING GUARD ===
                 # If we entered SLEEPING (e.g., maintenance break) while the council
                 # was deliberating during a passive emergency, abort before placing orders.
@@ -4315,6 +4338,21 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                         logger.info("Emergency Router Shadow Run: MATCH ✅")
                 except Exception as e:
                     logger.error(f"Emergency Router Shadow Run FAILED: {e}")
+
+                # --- Funnel: STRATEGY_SELECTION ---
+                _em_pred_type = routed['prediction_type']
+                _em_vol_level = routed.get('vol_level')
+                _em_strategy = _infer_strategy_type(routed)
+                log_funnel_event(
+                    cycle_id=cycle_id,
+                    contract=contract_name,
+                    stage=FunnelStage.STRATEGY_SELECTION,
+                    outcome="PASS" if _em_strategy != 'NONE' else "INFO",
+                    detail=f"prediction_type={_em_pred_type}, strategy={_em_strategy}, vol_level={_em_vol_level}",
+                    price_snapshot=market_data.get('price'),
+                    regime=market_data.get('regime', 'UNKNOWN'),
+                    source="EMERGENCY",
+                )
 
                 # === Log Emergency Decision to History ===
                 # Reconstruct full log entry for history
@@ -4417,6 +4455,21 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                     (direction == 'VOLATILITY' and pred_type == 'VOLATILITY' and confidence > threshold)
                 )
 
+                # --- Funnel: CONVICTION_GATE ---
+                log_funnel_event(
+                    cycle_id=cycle_id,
+                    contract=contract_name,
+                    stage=FunnelStage.CONVICTION_GATE,
+                    outcome="PASS" if is_actionable else "BLOCK",
+                    detail=(
+                        f"direction={direction}, confidence={confidence:.2f}, "
+                        f"threshold={threshold}, prediction_type={pred_type}"
+                    ),
+                    price_snapshot=market_data.get('price'),
+                    regime=market_data.get('regime', 'UNKNOWN'),
+                    source="EMERGENCY",
+                )
+
                 # Record sentinel stats
                 SENTINEL_STATS.record_alert(
                     sentinel_name=trigger.source,
@@ -4449,6 +4502,24 @@ async def run_emergency_cycle(trigger: SentinelTrigger, config: dict, ib: IB, pa
                         council.personas.get('master', ''),
                         ib=ib,
                         debate_summary=debate_summary
+                    )
+
+                    # --- Funnel: COMPLIANCE_AUDIT ---
+                    _compliance_approved = audit.get('approved', True)
+                    _compliance_detail = (
+                        audit.get('flagged_reason', '')[:200]
+                        if not _compliance_approved
+                        else "Approved"
+                    )
+                    log_funnel_event(
+                        cycle_id=cycle_id,
+                        contract=contract_name,
+                        stage=FunnelStage.COMPLIANCE_AUDIT,
+                        outcome="BLOCK" if not _compliance_approved else "PASS",
+                        detail=_compliance_detail,
+                        price_snapshot=market_data.get('price'),
+                        regime=market_data.get('regime', 'UNKNOWN'),
+                        source="EMERGENCY",
                     )
 
                     if not audit.get('approved', True):
@@ -5809,14 +5880,14 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
     _bg = _get_budget_guard()
     if _bg and _bg.is_budget_hit:
         logger.warning("Budget hit - skipping scheduled orders.")
-        return
+        return False
 
     # === Portfolio-wide risk gate (Phase 3: SharedContext) ===
     if rt and rt.shared and rt.shared.portfolio_guard:
         allowed, reason = await rt.shared.portfolio_guard.can_open_position(rt.ticker, 0)
         if not allowed:
             logger.warning(f"Signal cycle BLOCKED by PortfolioRiskGuard: {reason}")
-            return
+            return False
 
     # --- QUARANTINE HEALTH CHECK (Fix B2) ---
     # Ensure any agents past their quarantine cooldown are released
@@ -5868,7 +5939,7 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
             f"Order generation SKIPPED: Only {minutes_to_shutdown:.0f} min to shutdown. "
             f"Insufficient time for full council cycle."
         )
-        return
+        return False
 
     # Daily cutoff check
     ny_tz = pytz.timezone('America/New_York')
@@ -5877,7 +5948,7 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
 
     if now_ny.hour > cutoff_hour or (now_ny.hour == cutoff_hour and now_ny.minute >= cutoff_minute):
         logger.info(f"Order generation BLOCKED: Past daily cutoff ({cutoff_hour}:{cutoff_minute:02d} ET)")
-        return
+        return False
 
     # Check Drawdown Guard
     _dg = _get_drawdown_guard()
@@ -5895,7 +5966,7 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
                  await _dg.update_pnl(ib)
              if not _dg.is_entry_allowed():
                  logger.warning("Order generation BLOCKED: Drawdown Guard Active")
-                 return
+                 return False
              # Success — reset consecutive failure streak
              rt = get_engine_runtime()
              if rt:
@@ -5924,7 +5995,7 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
                      f"⚠️ [{ticker}] Drawdown Check Failed",
                      f"Order generation blocked — drawdown guard unreachable: {e}"
                  )
-             return
+             return False
         finally:
              if ib is not None:
                  try:
@@ -5941,6 +6012,8 @@ async def guarded_generate_orders(config: dict, schedule_id: str = None):
         sc.invalidate_by_ticker(ticker)
     except Exception as e:
         logger.warning(f"Failed to invalidate semantic cache post-scheduled: {e}")
+
+    return True
 
 @dataclass
 class ScheduledTask:
@@ -6372,9 +6445,12 @@ async def recover_missed_tasks(missed_tasks: list, config: dict):
                 f"(was scheduled {task.time_et.strftime('%H:%M')} ET)"
             )
             try:
-                await task.function(config)
-                record_task_completion(task.id)
-                logger.info(f"✅ RECOVERY: {task.id} completed")
+                result = await task.function(config)
+                if result is not False:
+                    record_task_completion(task.id)
+                    logger.info(f"✅ RECOVERY: {task.id} completed")
+                else:
+                    logger.info(f"⏭️ RECOVERY: {task.id} returned False (guarded, not marking complete)")
                 recovered += 1
                 await asyncio.sleep(6)  # Allow IB connection backoff to expire between tasks
             except Exception as e:
