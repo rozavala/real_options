@@ -460,34 +460,32 @@ sq2.metric(
     help=f"% of resolved volatility plays (straddles/condors) with positive P&L. "
          f"({_vol_label})",
 )
-_bridge_label = (f"{kpis['dir_correct_and_profitable_n']}/{kpis['dir_denominator']} resolved"
-                 if kpis['dir_denominator'] > 0 else "no data")
 sq3.metric(
-    "✅ Correct Direction & Profitable",
-    f"{kpis['dir_correct_and_profitable_pct']:.0f}%" if kpis['dir_denominator'] > 0 else "—",
-    help=f"Of resolved directional signals: % that were both directionally correct AND had "
-         f"positive P&L. Gap vs Directional Accuracy = option structure leakage "
-         f"(theta, strikes, timing). ({_bridge_label})",
+    "🎯 P&L Win Rate",
+    f"{kpis['signal_win_rate']:.0f}%" if kpis['n_resolved'] > 0 else "—",
+    help=f"% of all resolved trades (directional + vol plays) with positive P&L. "
+         f"n={kpis['n_resolved']} resolved. A gap between Directional Accuracy and this "
+         f"metric suggests option structure (theta, strikes, entry timing) is consuming edge.",
 )
 
-# Auto-diagnosis: answer the three questions in plain English
+# Auto-diagnosis: answer the three questions in plain English.
+# Leakage signal: directional accuracy is high but P&L win rate is low
+# (correct-direction trades aren't converting to profit — option structure issue).
 if kpis['dir_denominator'] >= 5:
     _dir_ok = kpis['dir_accuracy_pct'] >= 55
-    _leak_pct = kpis['dir_accuracy_pct'] - kpis['dir_correct_and_profitable_pct']
-    _leak_ok = _leak_pct < 15
     _pnl_ok = kpis['signal_win_rate'] >= 50
 
-    if _dir_ok and _leak_ok and _pnl_ok:
+    if _dir_ok and _pnl_ok:
         st.success(
-            f"✅ **System is working**: signals are accurate ({kpis['dir_accuracy_pct']:.0f}%), "
-            f"option structure is converting edge to profit (only {_leak_pct:.0f}pp leakage), "
-            f"and the win rate is {kpis['signal_win_rate']:.0f}%."
+            f"✅ **System is working**: signals are accurate ({kpis['dir_accuracy_pct']:.0f}%) "
+            f"and the P&L win rate is {kpis['signal_win_rate']:.0f}%."
         )
-    elif _dir_ok and not _leak_ok:
+    elif _dir_ok and not _pnl_ok:
         st.warning(
-            f"⚠️ **Option structure is leaking edge**: signals are accurate ({kpis['dir_accuracy_pct']:.0f}%) "
-            f"but {_leak_pct:.0f}pp of that edge isn't converting to profit. "
-            f"Review strike selection, theta decay, and entry timing."
+            f"⚠️ **Option structure may be leaking edge**: directional accuracy is "
+            f"{kpis['dir_accuracy_pct']:.0f}% but P&L win rate is only "
+            f"{kpis['signal_win_rate']:.0f}%. Correct-direction calls aren't converting to "
+            f"profit — review strike selection, theta decay, and entry timing."
         )
     elif not _dir_ok:
         st.warning(
@@ -496,7 +494,7 @@ if kpis['dir_denominator'] >= 5:
         )
 
 with st.expander("📈 Execution KPIs", expanded=False):
-    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric("📡 Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
               help="% of actionable council signals that resulted in filled orders")
     k2.metric("⛽ Fill Rate", f"{kpis['fill_rate_pct']:.0f}%",
@@ -507,10 +505,7 @@ with st.expander("📈 Execution KPIs", expanded=False):
               help="% of directional signals blocked by conviction gate")
     k5.metric("👣 Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
               help="Average adaptive walk steps per placed order (est.)")
-    k6.metric("🎯 P&L Win Rate", f"{kpis['signal_win_rate']:.0f}%",
-              help=f"% of resolved trades with positive P&L (n={kpis['n_resolved']}). "
-                   f"See Signal Quality above for pure directional accuracy.")
-    k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
+    k6.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
               delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
               delta_color="inverse",
               help="Orders that passed all gates but failed to fill — potential alpha lost to adaptive walk timeout")
@@ -726,6 +721,13 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
 
             if len(_bridge_df) >= 4:
                 st.markdown("**Direction → P&L** — did correct direction translate to profit?")
+                st.caption(
+                    "ℹ️ Under current instrumentation `actual_trend_direction` is derived from "
+                    "the same exit-price comparison used to compute P&L, so Correct+Loss and "
+                    "Wrong+Profitable are structurally zero for directional plays. "
+                    "This bridge will become fully diagnostic once direction is measured against "
+                    "an independent price window (future enhancement)."
+                )
                 _actual_b = _bridge_df['actual_trend_direction'].str.upper().map(_DIR_NORM_B)
                 _predicted_b = _bridge_df['master_decision'].str.upper().map({'BULLISH': 'UP', 'BEARISH': 'DOWN'})
                 _bridge_df['dir_correct'] = (_actual_b == _predicted_b)

@@ -393,7 +393,7 @@ def price_option_black_scholes(S: float, K: float, T: float, r: float, sigma: fl
     theta = (- (S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm.cdf(d2 if option_type.upper() == 'C' else -d2)) / 365
 
     results = {"price": round(price, 4), "delta": round(delta, 4), "gamma": round(gamma, 4), "vega": round(vega, 4), "theta": round(theta, 4)}
-    logging.info(f"Theoretical price calculated for {option_type} @ {K}: {results}")
+    logging.debug(f"Theoretical price calculated for {option_type} @ {K}: {results}")
     return results
 
 async def get_position_details(ib: IB, position: Position) -> dict:
