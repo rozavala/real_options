@@ -860,6 +860,195 @@ else:
 
 
 # ============================================================
+# CORRECT SIGNAL LEAKAGE FUNNEL
+# Starts from correct signals only and traces WHY they didn't become profitable.
+# Answers a different question than the main funnel: not "where do signals die?"
+# but "given we were right, what prevented us from capturing that edge?"
+# ============================================================
+st.subheader("🔍 Correct Signal Leakage — Given We Were Right, Why Didn't We Profit?")
+st.caption(
+    "Starts from signals where direction was correct and traces execution leakage downstream. "
+    "Each step has a specific fix. Steps marked ⚙️ need additional instrumentation."
+)
+
+if (
+    not council_df.empty and
+    'actual_trend_direction' in council_df.columns and
+    'master_decision' in council_df.columns and
+    'pnl_realized' in council_df.columns
+):
+    _csf = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+    _csf['pnl'] = pd.to_numeric(_csf['pnl_realized'], errors='coerce')
+    _csf_dir_resolved = _csf[_csf['actual_trend_direction'].isin(['UP', 'DOWN'])].copy()
+
+    if len(_csf_dir_resolved) >= 3:
+        _actual_csf = _csf_dir_resolved['actual_trend_direction'].str.upper()
+        _predicted_csf = _csf_dir_resolved['master_decision'].str.upper().map(
+            {'BULLISH': 'UP', 'BEARISH': 'DOWN'}
+        )
+        _csf_correct = _csf_dir_resolved[_actual_csf == _predicted_csf].copy()
+        n_correct = len(_csf_correct)
+
+        # Step 2: Got Executed (proxy: pnl_realized is set = filled AND resolved)
+        # Undercounts still-open positions. Precise count needs cycle_id join between
+        # council_history and execution_funnel ORDER_FILLED events.
+        n_resolved = int(_csf_correct['pnl'].notna().sum())
+
+        # Step 3: Profitable
+        n_profitable_csf = int((_csf_correct['pnl'] > 0).sum())
+
+        # Build leakage steps — mix of data-backed and aspirational
+        _csf_steps = [
+            {
+                'label': 'Correct Direction',
+                'n': n_correct,
+                'status': 'exact',
+                'fix': 'Baseline — direction was confirmed correct by actual_trend_direction.',
+                'color': '#2ecc71',
+            },
+            {
+                'label': 'Got Executed & Resolved',
+                'n': n_resolved,
+                'status': 'proxy',
+                'fix': 'Gap = signals blocked by gates, cancelled by adaptive walk timeout, '
+                       'or still open (not yet reconciled). Fix: review conviction threshold '
+                       'and liquidity gate — are we blocking correct signals?',
+                'color': '#27ae60',
+            },
+            {
+                'label': 'Good Entry Price',
+                'n': None,  # Needs cycle_id join
+                'status': 'needs_data',
+                'fix': 'Entry slippage > 1 tick eats into edge before trade starts. '
+                       'Fix: tune adaptive walk parameters. '
+                       'Needs: cycle_id join between council_history and execution_funnel.',
+                'color': '#95a5a6',
+            },
+            {
+                'label': 'Held to Plan',
+                'n': None,  # Needs stop-out event tracking
+                'status': 'needs_data',
+                'fix': 'Stopped out before target — correct direction but wrong timing/sizing. '
+                       'Fix: widen stops or reduce position size on high-vol signals. '
+                       'Needs: stop_out_event flag in execution_funnel.',
+                'color': '#95a5a6',
+            },
+            {
+                'label': 'Captured ≥50% of Move',
+                'n': None,  # Needs max favorable excursion data
+                'status': 'needs_data',
+                'fix': 'Exited before capturing the move — premature exit or exit signal too early. '
+                       'Fix: improve exit signal timing. '
+                       'Needs: max favorable excursion tracking during hold period.',
+                'color': '#95a5a6',
+            },
+            {
+                'label': 'Profitable After Costs',
+                'n': n_profitable_csf,
+                'status': 'exact',
+                'fix': 'Gap from previous step = spread/commissions/theta ate remaining edge. '
+                       'Fix: only enter when directional edge > estimated spread + time decay.',
+                'color': '#f39c12',
+            },
+        ]
+
+        # Build horizontal leakage bar chart
+        _csf_fig_data = []
+        _prev_n = n_correct
+        for step in _csf_steps:
+            if step['n'] is not None:
+                _drop = max(_prev_n - step['n'], 0) if _prev_n is not None else 0
+                _pct = step['n'] / max(n_correct, 1) * 100
+                _drop_pct = _drop / max(_prev_n, 1) * 100 if _prev_n else 0
+                _csf_fig_data.append({
+                    'Step': step['label'],
+                    'Count': step['n'],
+                    'Pct of Correct': _pct,
+                    'Drop': _drop,
+                    'Drop %': _drop_pct,
+                    'color': step['color'],
+                    'status': step['status'],
+                })
+                _prev_n = step['n']
+
+        if _csf_fig_data:
+            _csf_plot_df = pd.DataFrame(_csf_fig_data)
+            fig_csf = go.Figure()
+            fig_csf.add_trace(go.Bar(
+                x=_csf_plot_df['Count'],
+                y=_csf_plot_df['Step'],
+                orientation='h',
+                marker_color=_csf_plot_df['color'].tolist(),
+                text=[
+                    f"{int(r['Count'])}  ({r['Pct of Correct']:.0f}%)"
+                    for _, r in _csf_plot_df.iterrows()
+                ],
+                textposition='inside',
+                insidetextanchor='start',
+            ))
+            fig_csf.update_layout(
+                height=max(220, 55 * len(_csf_fig_data)),
+                xaxis_title='Signals',
+                margin=dict(t=10, b=30, l=10, r=20),
+                xaxis=dict(range=[0, n_correct * 1.1]),
+                yaxis=dict(autorange='reversed'),
+                showlegend=False,
+            )
+            st.plotly_chart(fig_csf, use_container_width=True)
+
+        # Show all steps (including aspirational) as a table
+        _proxy_note = "(proxy — precise count needs cycle_id join)" if n_resolved < n_correct else ""
+        _table_rows = []
+        _display_prev = n_correct
+        for step in _csf_steps:
+            if step['n'] is not None:
+                _drop_n = max(_display_prev - step['n'], 0)
+                _drop_p = _drop_n / max(_display_prev, 1) * 100
+                _row_count = f"{step['n']}  ({step['n'] / max(n_correct, 1) * 100:.0f}% of correct)"
+                if step['status'] == 'proxy':
+                    _row_count += " ⚠️ proxy"
+                _table_rows.append({
+                    'Step': step['label'],
+                    'Count': _row_count,
+                    f'Drop from prev': f"-{_drop_n} ({_drop_p:.0f}%)" if _drop_n > 0 else "—",
+                    'Fix': step['fix'],
+                })
+                _display_prev = step['n']
+            else:
+                _table_rows.append({
+                    'Step': f"⚙️ {step['label']}",
+                    'Count': "needs instrumentation",
+                    'Drop from prev': "—",
+                    'Fix': step['fix'],
+                })
+
+        with st.expander("Leakage steps detail + fixes", expanded=False):
+            st.dataframe(
+                pd.DataFrame(_table_rows),
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    'Step': st.column_config.TextColumn('Step', width='medium'),
+                    'Count': st.column_config.TextColumn('Count', width='medium'),
+                    'Drop from prev': st.column_config.TextColumn('Drop', width='small'),
+                    'Fix': st.column_config.TextColumn('Actionable Fix', width='large'),
+                },
+            )
+            st.caption(
+                "⚠️ = data is a proxy (proxy note: pnl_realized.notna() as fill proxy). "
+                "⚙️ = step needs new instrumentation before it can be populated. "
+                "Instrumentation roadmap: (1) cycle_id join between council_history and "
+                "execution_funnel unlocks 'Good Entry' and 'Got Executed' precision; "
+                "(2) stop_out_event flag in execution_funnel unlocks 'Held to Plan'; "
+                "(3) max favorable excursion tracking during hold period unlocks 'Captured Move'."
+            )
+    else:
+        st.info("Need at least 3 resolved directional signals to display the correct signal leakage funnel.")
+else:
+    st.info("Missing required fields for correct signal leakage analysis.")
+
+
+# ============================================================
 # ROW 3: SIGNAL vs OUTCOME MATRIX
 # ============================================================
 st.subheader("🎯 Signal vs Outcome — Skill or Luck?")
