@@ -13,7 +13,7 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 
 ## Core Components
 
--   **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor for multi-commodity operations. Manages shared services (Equity, Macro, VaR).
+-   **Master Orchestrator (`trading_bot/master_orchestrator.py`):** The top-level supervisor for multi-commodity operations. Manages shared services (Equity, Macro Research, Post-Close Reconciliation, VaR).
 -   **Commodity Engine (`trading_bot/commodity_engine.py`):** The isolated runtime for a single commodity (ticker).
 -   **Heterogeneous Router (`trading_bot/heterogeneous_router.py`):** Routes LLM calls to different providers. Dynamically routes specific agent roles to optimized providers (e.g., Gemini Pro for the Geopolitical Analyst and xAI for the Trade Analyst), incorporating multiple fallback providers for resilience.
 -   **Semantic Cache (`trading_bot/semantic_cache.py`):** Caches decisions to avoid redundant API calls.
@@ -52,5 +52,5 @@ This document provides instructions and guidelines for AI agents (like Jules) wo
 -   **Backtesting:** Use `backtesting/` directory.
 -   **Dashboard:** Streamlit dashboard (`dashboard.py`) is the primary interface.
 -   **Observability/Telemetry:** Error telemetry and log parsing are handled out-of-band by the `scripts/error_reporter.py` script. Do not add logic for agents to parse their own system-level execution exceptions. The system filters transient noise (like 429 rate limits, lock timeouts, and 503 unavailability errors) and auto-generates structured GitHub issues.
--   **Execution Reliability:** The orchestrator utilizes a stale-close fallback mechanism. This fallback is automatically skipped if the primary execution successfully closes the necessary positions without failures.
+-   **Execution Reliability:** The orchestrator utilizes a stale-close fallback mechanism. This fallback is automatically skipped if the primary execution successfully closes the necessary positions without failures. Additionally, the `IBConnectionPool` explicitly disconnects failed API handshakes to prevent CLOSE-WAIT TCP socket accumulation.
 -   **Market Data Diagnostic:** Use `scripts/check_market_data.py` to quickly verify if the Interactive Brokers data feed is LIVE or DELAYED.
