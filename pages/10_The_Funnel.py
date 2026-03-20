@@ -759,6 +759,48 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
                         f"correct calls still lost money. This suggests theta decay, OTM strikes, or premium "
                         f"costs are eroding edge even when direction is right."
                     )
+
+                # Breakdown of Correct+Loss quadrant — which conditions cluster here?
+                _correct_loss_df = _bridge_df[_bridge_df['dir_correct'] & ~_bridge_df['profitable']]
+                if len(_correct_loss_df) >= 2:
+                    with st.expander(
+                        f"🔍 Correct Direction but Lost ({len(_correct_loss_df)} trades) — where does the edge leak?",
+                        expanded=(_correct_loss_pct > 30 and _n_total_b >= 10),
+                    ):
+                        _group_cols = [c for c in ['strategy_type', 'entry_regime', 'master_decision', 'volatility_level']
+                                       if c in _correct_loss_df.columns and _correct_loss_df[c].notna().any()]
+
+                        if _group_cols:
+                            for _gc in _group_cols:
+                                _grp = (
+                                    _correct_loss_df.groupby(_gc)['pnl']
+                                    .agg(count='count', avg_pnl='mean', total_pnl='sum')
+                                    .reset_index()
+                                    .sort_values('count', ascending=False)
+                                )
+                                _grp.columns = [_gc.replace('_', ' ').title(), 'Count', 'Avg P&L', 'Total P&L']
+                                st.caption(f"By **{_gc.replace('_', ' ')}**")
+                                st.dataframe(
+                                    _grp.style.format({'Avg P&L': '{:+.2f}', 'Total P&L': '{:+.2f}'}),
+                                    hide_index=True,
+                                    use_container_width=True,
+                                )
+
+                        # Raw rows for drill-down
+                        _raw_cols = [c for c in ['timestamp', 'contract', 'master_decision',
+                                                  'strategy_type', 'entry_regime', 'pnl',
+                                                  'master_confidence', 'weighted_score']
+                                     if c in _correct_loss_df.columns]
+                        st.caption("Individual trades")
+                        _cl_display = _correct_loss_df[_raw_cols].sort_values('pnl').copy()
+                        if 'timestamp' in _cl_display.columns:
+                            _cl_display['timestamp'] = _cl_display['timestamp'].astype(str).str[:16]
+                        st.dataframe(
+                            _cl_display.style.format({'pnl': '{:+.2f}', 'master_confidence': '{:.2f}',
+                                                      'weighted_score': '{:.2f}'}),
+                            hide_index=True,
+                            use_container_width=True,
+                        )
     else:
         st.info("No P&L data available yet. Will populate after trades are resolved.")
 
