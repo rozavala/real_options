@@ -307,9 +307,11 @@ funnel_cascade = build_true_funnel(council_df, funnel_df, config, observation_on
 
 
 # ============================================================
-# ROW 1: KPI CARDS
+# ROW 1: SIGNAL QUALITY KPIs (top — independent of execution)
 # ============================================================
-st.subheader("📈 Key Metrics")
+st.subheader("🧭 Signal Quality")
+st.caption("Independent of execution, strike selection, and option pricing.")
+
 
 def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
     """Calculate KPI metrics from funnel and council data."""
@@ -423,27 +425,6 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
 
 kpis = calc_funnel_kpis(funnel_df, council_df)
 
-k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
-k1.metric("📡 Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
-          help="% of actionable council signals that resulted in filled orders")
-k2.metric("⛽ Fill Rate", f"{kpis['fill_rate_pct']:.0f}%",
-          help="% of placed orders that filled (vs timed out/cancelled)")
-k3.metric("📉 Avg Slippage", f"{kpis['avg_slippage_pct']:.1f}%",
-          help="Average slippage as % of credit/debit (fill vs initial limit)")
-k4.metric("🛡️ Conviction Blocks", f"{kpis['conviction_block_pct']:.0f}%",
-          help="% of directional signals blocked by conviction gate")
-k5.metric("👣 Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
-          help="Average adaptive walk steps per placed order (est.)")
-k6.metric("🎯 P&L Win Rate", f"{kpis['signal_win_rate']:.0f}%",
-          help=f"% of resolved trades with positive P&L (n={kpis['n_resolved']}). "
-               f"See Signal Quality below for pure directional accuracy.")
-k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
-          delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
-          delta_color="inverse",
-          help="Orders that passed all gates but failed to fill — potential alpha lost to adaptive walk timeout")
-
-# Signal Quality row — directional accuracy separate from P&L win rate
-st.caption("**Signal Quality** — independent of execution, strike selection, and option pricing")
 sq1, sq2, sq3 = st.columns(3)
 _dir_label = (f"{kpis['dir_accuracy_n']}/{kpis['dir_denominator']} resolved"
               if kpis['dir_denominator'] > 0 else "no resolved signals")
@@ -470,6 +451,26 @@ sq3.metric(
          f"positive P&L. Gap vs Directional Accuracy = option structure leakage "
          f"(theta, strikes, timing). ({_bridge_label})",
 )
+
+with st.expander("📈 Execution KPIs", expanded=False):
+    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
+    k1.metric("📡 Signal-to-Trade", f"{kpis['signal_to_trade_pct']:.0f}%",
+              help="% of actionable council signals that resulted in filled orders")
+    k2.metric("⛽ Fill Rate", f"{kpis['fill_rate_pct']:.0f}%",
+              help="% of placed orders that filled (vs timed out/cancelled)")
+    k3.metric("📉 Avg Slippage", f"{kpis['avg_slippage_pct']:.1f}%",
+              help="Average slippage as % of credit/debit (fill vs initial limit)")
+    k4.metric("🛡️ Conviction Blocks", f"{kpis['conviction_block_pct']:.0f}%",
+              help="% of directional signals blocked by conviction gate")
+    k5.metric("👣 Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
+              help="Average adaptive walk steps per placed order (est.)")
+    k6.metric("🎯 P&L Win Rate", f"{kpis['signal_win_rate']:.0f}%",
+              help=f"% of resolved trades with positive P&L (n={kpis['n_resolved']}). "
+                   f"See Signal Quality above for pure directional accuracy.")
+    k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
+              delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
+              delta_color="inverse",
+              help="Orders that passed all gates but failed to fill — potential alpha lost to adaptive walk timeout")
 
 
 # ============================================================
@@ -578,10 +579,9 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     n_strat = int(strat_row['survivors'].values[0]) if not strat_row.empty else 0
     win_rate_funnel = n_profitable_funnel / max(n_pnl_funnel, 1) * 100
 
-    cap_col1, cap_col2, cap_col3 = st.columns(3)
+    cap_col1, cap_col2 = st.columns(2)
     cap_col1.caption(f"End-to-end survival: **{filled_count}/{first_count} ({surv_pct:.0f}%)**")
     cap_col2.caption(f"P&L resolved: **{n_pnl_funnel}** of **{n_strat}** strategy-selected trades")
-    cap_col3.caption(f"Win rate (among resolved): **{win_rate_funnel:.0f}%**")
 
     # Source boundary indicator
     has_realtime = False
@@ -666,6 +666,73 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
                 showlegend=False,
             )
             st.plotly_chart(fig_pnl, use_container_width=True)
+
+        # --- Direction → P&L 2×2 Bridge (merged into outcome section) ---
+        if (
+            'actual_trend_direction' in council_df.columns and
+            'master_decision' in council_df.columns
+        ):
+            _bridge_df = council_df[
+                council_df['master_decision'].isin(['BULLISH', 'BEARISH']) &
+                council_df['actual_trend_direction'].isin(['UP', 'DOWN'])
+            ].copy()
+            _bridge_df['pnl'] = pd.to_numeric(_bridge_df['pnl_realized'], errors='coerce')
+            _bridge_df = _bridge_df[_bridge_df['pnl'].notna()]
+
+            if len(_bridge_df) >= 4:
+                st.markdown("**Direction → P&L** — did correct direction translate to profit?")
+                _actual_b = _bridge_df['actual_trend_direction'].str.upper()
+                _predicted_b = _bridge_df['master_decision'].str.upper().map({'BULLISH': 'UP', 'BEARISH': 'DOWN'})
+                _bridge_df['dir_correct'] = (_actual_b == _predicted_b)
+                _bridge_df['profitable'] = (_bridge_df['pnl'] > 0)
+
+                _cells = {
+                    ('Correct', 'Profitable'):   int((_bridge_df['dir_correct'] & _bridge_df['profitable']).sum()),
+                    ('Correct', 'Loss'):         int((_bridge_df['dir_correct'] & ~_bridge_df['profitable']).sum()),
+                    ('Wrong', 'Profitable'):     int((~_bridge_df['dir_correct'] & _bridge_df['profitable']).sum()),
+                    ('Wrong', 'Loss'):           int((~_bridge_df['dir_correct'] & ~_bridge_df['profitable']).sum()),
+                }
+                _n_total_b = sum(_cells.values())
+
+                bc1, bc2, bc3, bc4 = st.columns(4)
+                bc1.metric(
+                    "🎯 Correct + Profitable",
+                    f"{_cells[('Correct', 'Profitable')]}",
+                    delta=f"{_cells[('Correct', 'Profitable')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+                    delta_color="normal",
+                    help="Got direction right AND made money. Pure skill.",
+                )
+                bc2.metric(
+                    "⚠️ Correct + Loss",
+                    f"{_cells[('Correct', 'Loss')]}",
+                    delta=f"{_cells[('Correct', 'Loss')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+                    delta_color="inverse",
+                    help="Got direction right but still lost money. "
+                         "Indicates option structure problems: theta decay eating gains, "
+                         "strikes too far OTM, or move magnitude too small to overcome premium.",
+                )
+                bc3.metric(
+                    "🍀 Wrong + Profitable",
+                    f"{_cells[('Wrong', 'Profitable')]}",
+                    delta=f"{_cells[('Wrong', 'Profitable')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+                    delta_color="off",
+                    help="Got direction wrong but still made money. Lucky — unsustainable.",
+                )
+                bc4.metric(
+                    "❌ Wrong + Loss",
+                    f"{_cells[('Wrong', 'Loss')]}",
+                    delta=f"{_cells[('Wrong', 'Loss')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+                    delta_color="inverse",
+                    help="Got direction wrong and lost money. Bad call.",
+                )
+
+                _correct_loss_pct = _cells[('Correct', 'Loss')] / max(_cells[('Correct', 'Profitable')] + _cells[('Correct', 'Loss')], 1) * 100
+                if _correct_loss_pct > 30:
+                    st.warning(
+                        f"⚠️ **Option structure leakage detected**: {_correct_loss_pct:.0f}% of directionally "
+                        f"correct calls still lost money. This suggests theta decay, OTM strikes, or premium "
+                        f"costs are eroding edge even when direction is right."
+                    )
     else:
         st.info("No P&L data available yet. Will populate after trades are resolved.")
 
@@ -751,353 +818,53 @@ else:
 
 
 # ============================================================
-# DIRECTION → P&L BRIDGE
-# Answers: "We were right about direction — why didn't we make money?"
+# ROW 3: SIGNAL vs OUTCOME MATRIX (in expander — detail view)
 # ============================================================
-st.subheader("🔀 Direction → P&L Bridge — Where Does the Edge Leak?")
-st.caption(
-    "Of directional signals with known outcomes: did correct direction translate to profit? "
-    "The gap between 'correct direction' and 'profitable' is option structure leakage "
-    "(theta decay, OTM strikes, sizing, timing)."
-)
+with st.expander("🎯 Signal vs Outcome — Skill or Luck?", expanded=False):
+    st.caption("Process quality (confidence × |weighted score|) vs P&L outcome.")
+    if not council_df.empty and 'pnl_realized' in council_df.columns and 'weighted_score' in council_df.columns:
+        resolved = council_df[council_df['pnl_realized'].notna()].copy()
+        if not resolved.empty:
+            resolved['process_score'] = resolved['master_confidence'].fillna(0.5) * resolved['weighted_score'].abs().fillna(0)
+            resolved['pnl'] = resolved['pnl_realized'].astype(float)
 
-if (
-    not council_df.empty and
-    'actual_trend_direction' in council_df.columns and
-    'master_decision' in council_df.columns and
-    'pnl_realized' in council_df.columns
-):
-    _bridge_df = council_df[
-        council_df['master_decision'].isin(['BULLISH', 'BEARISH']) &
-        council_df['actual_trend_direction'].isin(['UP', 'DOWN'])
-    ].copy()
-    _bridge_df['pnl'] = pd.to_numeric(_bridge_df['pnl_realized'], errors='coerce')
-    _bridge_df = _bridge_df[_bridge_df['pnl'].notna()]
+            process_median = resolved['process_score'].median()
+            conditions = [
+                (resolved['process_score'] >= process_median) & (resolved['pnl'] > 0),
+                (resolved['process_score'] < process_median) & (resolved['pnl'] > 0),
+                (resolved['process_score'] >= process_median) & (resolved['pnl'] <= 0),
+                (resolved['process_score'] < process_median) & (resolved['pnl'] <= 0),
+            ]
+            labels = ['Skill', 'Lucky', 'Market Risk', 'Bad Call']
+            resolved['quadrant'] = np.select(conditions, labels, default='Unknown')
 
-    if len(_bridge_df) >= 4:
-        _actual_b = _bridge_df['actual_trend_direction'].str.upper()
-        _predicted_b = _bridge_df['master_decision'].str.upper().map({'BULLISH': 'UP', 'BEARISH': 'DOWN'})
-        _bridge_df['dir_correct'] = (_actual_b == _predicted_b)
-        _bridge_df['profitable'] = (_bridge_df['pnl'] > 0)
-
-        # 2×2 confusion matrix
-        _cells = {
-            ('Correct', 'Profitable'):   int((_bridge_df['dir_correct'] & _bridge_df['profitable']).sum()),
-            ('Correct', 'Loss'):         int((_bridge_df['dir_correct'] & ~_bridge_df['profitable']).sum()),
-            ('Wrong', 'Profitable'):     int((~_bridge_df['dir_correct'] & _bridge_df['profitable']).sum()),
-            ('Wrong', 'Loss'):           int((~_bridge_df['dir_correct'] & ~_bridge_df['profitable']).sum()),
-        }
-        _n_total_b = sum(_cells.values())
-
-        bc1, bc2, bc3, bc4 = st.columns(4)
-        bc1.metric(
-            "🎯 Correct + Profitable",
-            f"{_cells[('Correct', 'Profitable')]}",
-            delta=f"{_cells[('Correct', 'Profitable')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
-            delta_color="normal",
-            help="Got direction right AND made money. Pure skill.",
-        )
-        bc2.metric(
-            "⚠️ Correct + Loss",
-            f"{_cells[('Correct', 'Loss')]}",
-            delta=f"{_cells[('Correct', 'Loss')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
-            delta_color="inverse",
-            help="Got direction right but still lost money. "
-                 "Indicates option structure problems: theta decay eating gains, "
-                 "strikes too far OTM, or move magnitude too small to overcome premium.",
-        )
-        bc3.metric(
-            "🍀 Wrong + Profitable",
-            f"{_cells[('Wrong', 'Profitable')]}",
-            delta=f"{_cells[('Wrong', 'Profitable')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
-            delta_color="off",
-            help="Got direction wrong but still made money. Lucky — unsustainable.",
-        )
-        bc4.metric(
-            "❌ Wrong + Loss",
-            f"{_cells[('Wrong', 'Loss')]}",
-            delta=f"{_cells[('Wrong', 'Loss')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
-            delta_color="inverse",
-            help="Got direction wrong and lost money. Bad call.",
-        )
-
-        # Mini bar chart showing P&L distribution by direction correctness
-        _bridge_df['direction_label'] = _bridge_df['dir_correct'].map(
-            {True: 'Correct Direction', False: 'Wrong Direction'}
-        )
-        if not _bridge_df.empty:
-            fig_bridge = px.box(
-                _bridge_df,
-                x='direction_label',
+            fig_matrix = px.scatter(
+                resolved,
+                x='process_score',
                 y='pnl',
-                color='direction_label',
-                points='all',
+                color='quadrant',
+                size=resolved['pnl'].abs().clip(lower=0.1),
+                hover_data=['cycle_id', 'contract', 'strategy_type', 'master_decision'],
                 color_discrete_map={
-                    'Correct Direction': '#2ecc71',
-                    'Wrong Direction': '#e74c3c',
+                    'Skill': '#2ecc71', 'Lucky': '#f39c12',
+                    'Market Risk': '#e74c3c', 'Bad Call': '#95a5a6',
                 },
-                labels={'pnl': 'P&L', 'direction_label': ''},
-                title='P&L Distribution by Directional Accuracy',
+                labels={'process_score': 'Process Score (confidence x |weighted_score|)', 'pnl': 'P&L (cents)'},
             )
-            fig_bridge.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-            fig_bridge.update_layout(
-                height=300, margin=dict(t=40, b=20), showlegend=False,
-            )
-            st.plotly_chart(fig_bridge, use_container_width=True)
+            fig_matrix.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+            fig_matrix.add_vline(x=process_median, line_dash="dash", line_color="gray", opacity=0.5)
+            fig_matrix.update_layout(height=450, margin=dict(t=20))
+            st.plotly_chart(fig_matrix, use_container_width=True)
 
-        # Interpretation
-        _correct_loss_pct = _cells[('Correct', 'Loss')] / max(_cells[('Correct', 'Profitable')] + _cells[('Correct', 'Loss')], 1) * 100
-        if _correct_loss_pct > 30:
-            st.warning(
-                f"⚠️ **Option structure leakage detected**: {_correct_loss_pct:.0f}% of directionally "
-                f"correct calls still lost money. This suggests theta decay, OTM strikes, or premium "
-                f"costs are eroding edge even when direction is right."
-            )
+            quad_counts = resolved['quadrant'].value_counts()
+            qc1, qc2, qc3, qc4 = st.columns(4)
+            qc1.metric("✅ Skill", quad_counts.get('Skill', 0), help="Good process + positive P&L")
+            qc2.metric("🍀 Lucky", quad_counts.get('Lucky', 0), help="Weak process + positive P&L")
+            qc3.metric("📉 Market Risk", quad_counts.get('Market Risk', 0),
+                        help="Good process, adverse market move — irreducible market risk")
+            qc4.metric("❌ Bad Call", quad_counts.get('Bad Call', 0), help="Weak process + negative P&L")
     else:
-        st.info("Need at least 4 resolved directional signals to display the direction → P&L bridge.")
-else:
-    st.info("Missing required fields (actual_trend_direction, master_decision, pnl_realized) for bridge analysis.")
-
-
-# ============================================================
-# CORRECT SIGNAL LEAKAGE FUNNEL
-# Starts from correct signals only and traces WHY they didn't become profitable.
-# Answers a different question than the main funnel: not "where do signals die?"
-# but "given we were right, what prevented us from capturing that edge?"
-# ============================================================
-st.subheader("🔍 Correct Signal Leakage — Given We Were Right, Why Didn't We Profit?")
-st.caption(
-    "Starts from signals where direction was correct and traces execution leakage downstream. "
-    "Each step has a specific fix. Steps marked ⚙️ need additional instrumentation."
-)
-
-if (
-    not council_df.empty and
-    'actual_trend_direction' in council_df.columns and
-    'master_decision' in council_df.columns and
-    'pnl_realized' in council_df.columns
-):
-    _csf = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
-    _csf['pnl'] = pd.to_numeric(_csf['pnl_realized'], errors='coerce')
-    _csf_dir_resolved = _csf[_csf['actual_trend_direction'].isin(['UP', 'DOWN'])].copy()
-
-    if len(_csf_dir_resolved) >= 3:
-        _actual_csf = _csf_dir_resolved['actual_trend_direction'].str.upper()
-        _predicted_csf = _csf_dir_resolved['master_decision'].str.upper().map(
-            {'BULLISH': 'UP', 'BEARISH': 'DOWN'}
-        )
-        _csf_correct = _csf_dir_resolved[_actual_csf == _predicted_csf].copy()
-        n_correct = len(_csf_correct)
-
-        # Step 2: Got Executed (proxy: pnl_realized is set = filled AND resolved)
-        # Undercounts still-open positions. Precise count needs cycle_id join between
-        # council_history and execution_funnel ORDER_FILLED events.
-        n_resolved = int(_csf_correct['pnl'].notna().sum())
-
-        # Step 3: Profitable
-        n_profitable_csf = int((_csf_correct['pnl'] > 0).sum())
-
-        # Build leakage steps — mix of data-backed and aspirational
-        _csf_steps = [
-            {
-                'label': 'Correct Direction',
-                'n': n_correct,
-                'status': 'exact',
-                'fix': 'Baseline — direction was confirmed correct by actual_trend_direction.',
-                'color': '#2ecc71',
-            },
-            {
-                'label': 'Got Executed & Resolved',
-                'n': n_resolved,
-                'status': 'proxy',
-                'fix': 'Gap = signals blocked by gates, cancelled by adaptive walk timeout, '
-                       'or still open (not yet reconciled). Fix: review conviction threshold '
-                       'and liquidity gate — are we blocking correct signals?',
-                'color': '#27ae60',
-            },
-            {
-                'label': 'Good Entry Price',
-                'n': None,  # Needs cycle_id join
-                'status': 'needs_data',
-                'fix': 'Entry slippage > 1 tick eats into edge before trade starts. '
-                       'Fix: tune adaptive walk parameters. '
-                       'Needs: cycle_id join between council_history and execution_funnel.',
-                'color': '#95a5a6',
-            },
-            {
-                'label': 'Held to Plan',
-                'n': None,  # Needs stop-out event tracking
-                'status': 'needs_data',
-                'fix': 'Stopped out before target — correct direction but wrong timing/sizing. '
-                       'Fix: widen stops or reduce position size on high-vol signals. '
-                       'Needs: stop_out_event flag in execution_funnel.',
-                'color': '#95a5a6',
-            },
-            {
-                'label': 'Captured ≥50% of Move',
-                'n': None,  # Needs max favorable excursion data
-                'status': 'needs_data',
-                'fix': 'Exited before capturing the move — premature exit or exit signal too early. '
-                       'Fix: improve exit signal timing. '
-                       'Needs: max favorable excursion tracking during hold period.',
-                'color': '#95a5a6',
-            },
-            {
-                'label': 'Profitable After Costs',
-                'n': n_profitable_csf,
-                'status': 'exact',
-                'fix': 'Gap from previous step = spread/commissions/theta ate remaining edge. '
-                       'Fix: only enter when directional edge > estimated spread + time decay.',
-                'color': '#f39c12',
-            },
-        ]
-
-        # Build horizontal leakage bar chart
-        _csf_fig_data = []
-        _prev_n = n_correct
-        for step in _csf_steps:
-            if step['n'] is not None:
-                _drop = max(_prev_n - step['n'], 0) if _prev_n is not None else 0
-                _pct = step['n'] / max(n_correct, 1) * 100
-                _drop_pct = _drop / max(_prev_n, 1) * 100 if _prev_n else 0
-                _csf_fig_data.append({
-                    'Step': step['label'],
-                    'Count': step['n'],
-                    'Pct of Correct': _pct,
-                    'Drop': _drop,
-                    'Drop %': _drop_pct,
-                    'color': step['color'],
-                    'status': step['status'],
-                })
-                _prev_n = step['n']
-
-        if _csf_fig_data:
-            _csf_plot_df = pd.DataFrame(_csf_fig_data)
-            fig_csf = go.Figure()
-            fig_csf.add_trace(go.Bar(
-                x=_csf_plot_df['Count'],
-                y=_csf_plot_df['Step'],
-                orientation='h',
-                marker_color=_csf_plot_df['color'].tolist(),
-                text=[
-                    f"{int(r['Count'])}  ({r['Pct of Correct']:.0f}%)"
-                    for _, r in _csf_plot_df.iterrows()
-                ],
-                textposition='inside',
-                insidetextanchor='start',
-            ))
-            fig_csf.update_layout(
-                height=max(220, 55 * len(_csf_fig_data)),
-                xaxis_title='Signals',
-                margin=dict(t=10, b=30, l=10, r=20),
-                xaxis=dict(range=[0, n_correct * 1.1]),
-                yaxis=dict(autorange='reversed'),
-                showlegend=False,
-            )
-            st.plotly_chart(fig_csf, use_container_width=True)
-
-        # Show all steps (including aspirational) as a table
-        _proxy_note = "(proxy — precise count needs cycle_id join)" if n_resolved < n_correct else ""
-        _table_rows = []
-        _display_prev = n_correct
-        for step in _csf_steps:
-            if step['n'] is not None:
-                _drop_n = max(_display_prev - step['n'], 0)
-                _drop_p = _drop_n / max(_display_prev, 1) * 100
-                _row_count = f"{step['n']}  ({step['n'] / max(n_correct, 1) * 100:.0f}% of correct)"
-                if step['status'] == 'proxy':
-                    _row_count += " ⚠️ proxy"
-                _table_rows.append({
-                    'Step': step['label'],
-                    'Count': _row_count,
-                    f'Drop from prev': f"-{_drop_n} ({_drop_p:.0f}%)" if _drop_n > 0 else "—",
-                    'Fix': step['fix'],
-                })
-                _display_prev = step['n']
-            else:
-                _table_rows.append({
-                    'Step': f"⚙️ {step['label']}",
-                    'Count': "needs instrumentation",
-                    'Drop from prev': "—",
-                    'Fix': step['fix'],
-                })
-
-        with st.expander("Leakage steps detail + fixes", expanded=False):
-            st.dataframe(
-                pd.DataFrame(_table_rows),
-                hide_index=True,
-                use_container_width=True,
-                column_config={
-                    'Step': st.column_config.TextColumn('Step', width='medium'),
-                    'Count': st.column_config.TextColumn('Count', width='medium'),
-                    'Drop from prev': st.column_config.TextColumn('Drop', width='small'),
-                    'Fix': st.column_config.TextColumn('Actionable Fix', width='large'),
-                },
-            )
-            st.caption(
-                "⚠️ = data is a proxy (proxy note: pnl_realized.notna() as fill proxy). "
-                "⚙️ = step needs new instrumentation before it can be populated. "
-                "Instrumentation roadmap: (1) cycle_id join between council_history and "
-                "execution_funnel unlocks 'Good Entry' and 'Got Executed' precision; "
-                "(2) stop_out_event flag in execution_funnel unlocks 'Held to Plan'; "
-                "(3) max favorable excursion tracking during hold period unlocks 'Captured Move'."
-            )
-    else:
-        st.info("Need at least 3 resolved directional signals to display the correct signal leakage funnel.")
-else:
-    st.info("Missing required fields for correct signal leakage analysis.")
-
-
-# ============================================================
-# ROW 3: SIGNAL vs OUTCOME MATRIX
-# ============================================================
-st.subheader("🎯 Signal vs Outcome — Skill or Luck?")
-
-if not council_df.empty and 'pnl_realized' in council_df.columns and 'weighted_score' in council_df.columns:
-    resolved = council_df[council_df['pnl_realized'].notna()].copy()
-    if not resolved.empty:
-        resolved['process_score'] = resolved['master_confidence'].fillna(0.5) * resolved['weighted_score'].abs().fillna(0)
-        resolved['pnl'] = resolved['pnl_realized'].astype(float)
-
-        # Classify quadrants
-        process_median = resolved['process_score'].median()
-        conditions = [
-            (resolved['process_score'] >= process_median) & (resolved['pnl'] > 0),
-            (resolved['process_score'] < process_median) & (resolved['pnl'] > 0),
-            (resolved['process_score'] >= process_median) & (resolved['pnl'] <= 0),
-            (resolved['process_score'] < process_median) & (resolved['pnl'] <= 0),
-        ]
-        labels = ['Skill', 'Lucky', 'Market Risk', 'Bad Call']
-        resolved['quadrant'] = np.select(conditions, labels, default='Unknown')
-
-        fig_matrix = px.scatter(
-            resolved,
-            x='process_score',
-            y='pnl',
-            color='quadrant',
-            size=resolved['pnl'].abs().clip(lower=0.1),
-            hover_data=['cycle_id', 'contract', 'strategy_type', 'master_decision'],
-            color_discrete_map={
-                'Skill': '#2ecc71', 'Lucky': '#f39c12',
-                'Market Risk': '#e74c3c', 'Bad Call': '#95a5a6',
-            },
-            labels={'process_score': 'Process Score (confidence x |weighted_score|)', 'pnl': 'P&L (cents)'},
-        )
-        fig_matrix.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
-        fig_matrix.add_vline(x=process_median, line_dash="dash", line_color="gray", opacity=0.5)
-        fig_matrix.update_layout(height=450, margin=dict(t=20))
-        st.plotly_chart(fig_matrix, use_container_width=True)
-
-        # Quadrant summary
-        quad_counts = resolved['quadrant'].value_counts()
-        qc1, qc2, qc3, qc4 = st.columns(4)
-        qc1.metric("✅ Skill", quad_counts.get('Skill', 0), help="Good process + positive P&L")
-        qc2.metric("🍀 Lucky", quad_counts.get('Lucky', 0), help="Weak process + positive P&L")
-        qc3.metric("📉 Market Risk", quad_counts.get('Market Risk', 0),
-                    help="Good process, adverse market move — irreducible market risk")
-        qc4.metric("❌ Bad Call", quad_counts.get('Bad Call', 0), help="Weak process + negative P&L")
-else:
-    st.info("Insufficient council history data for matrix analysis.")
+        st.info("Insufficient council history data for matrix analysis.")
 
 
 # ============================================================
