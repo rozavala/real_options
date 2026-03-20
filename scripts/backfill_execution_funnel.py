@@ -100,9 +100,13 @@ def backfill_commodity(ticker: str, data_root: str) -> int:
                 })
 
             # STRATEGY_SELECTION (from council_history strategy_type)
+            # EMERGENCY excluded: it's a trigger_type stored in strategy_type by legacy
+            # code from early 2026-02; these rows never resulted in real strategy selection.
             strategy = r.get('strategy_type', 'NONE')
             pred_type = r.get('prediction_type', 'DIRECTIONAL')
-            if pd.notna(strategy) and strategy not in ('NONE', '', 'N/A'):
+            _NON_STRATEGIES = ('NONE', '', 'N/A', 'EMERGENCY')
+            _is_real_strategy = pd.notna(strategy) and strategy not in _NON_STRATEGIES
+            if _is_real_strategy:
                 rows.append({
                     'timestamp': ts,
                     'cycle_id': cycle_id,
@@ -116,8 +120,11 @@ def backfill_commodity(ticker: str, data_root: str) -> int:
                 })
 
             # PNL_RECONCILED (from exit data in council_history)
+            # Only create for rows with a real executed strategy — NEUTRAL+no-strategy
+            # rows (master_decision=NEUTRAL, strategy_type=NONE/EMERGENCY) are non-trades
+            # with pnl_realized=0.0 which must not count as "resolved" in the dashboard.
             pnl = _safe_float(r.get('pnl_realized'))
-            if pnl is not None:
+            if pnl is not None and _is_real_strategy:
                 rows.append({
                     'timestamp': r.get('exit_timestamp', ts),
                     'cycle_id': cycle_id,
