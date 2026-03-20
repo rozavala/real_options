@@ -3987,3 +3987,66 @@
 2026-03-20 18:00:00,444 - trading_bot.brier_scoring - INFO - Loaded time-weighted Brier scores for 1 agents: {master_decision: 0.50}
 2026-03-20 18:00:00,510 - trading_bot.system_digest - INFO - System Health Digest generated: 2026-03-20_2b0350125a28 (3 commodities, 5 improvement opportunities)
 2026-03-20 18:00:00,529 - Engine.KC - INFO - Next task 'start_monitoring' (Start Position Monitoring) scheduled for 2026-03-23 07:30:00 UTC. Waiting for 61.50 hours.
+2026-03-20 18:02:16,712 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1365, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:05:00,014 - Engine.NG - INFO - --- Running scheduled task: close_stale_primary [close_stale_positions] ---
+2026-03-20 18:05:00,023 - OrderManager - INFO - [OFF] close_stale_positions skipped — no positions exist in OFF mode
+2026-03-20 18:05:00,036 - Engine.NG - INFO - Next task 'close_stale_fallback' (Close Stale: Fallback) scheduled for 2026-03-20 18:15:00 UTC. Waiting for 0.17 hours.
+2026-03-20 18:07:19,675 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1370, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:12:22,613 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1375, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:15:00,008 - Engine.NG - INFO - --- Running scheduled task: close_stale_fallback [close_stale_positions_fallback] ---
+2026-03-20 18:15:00,014 - Orchestrator - INFO - [OFF] close_stale_positions_fallback skipped — no positions exist in OFF mode
+2026-03-20 18:15:00,028 - Engine.NG - INFO - Next task 'emergency_hard_close' (Emergency Hard Close) scheduled for 2026-03-20 18:25:00 UTC. Waiting for 0.17 hours.
+2026-03-20 18:17:25,570 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1380, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:20:24,668 - trading_bot.master_orchestrator - INFO - === Running post-close reconciliation ===
+2026-03-20 18:20:24,669 - EquityLogger - INFO - --- Starting Equity Synchronization from Flex Query ---
+2026-03-20 18:20:24,937 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-20 18:20:34,938 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-20 18:20:35,067 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-20 18:20:35,077 - EquityLogger - INFO - Preserving 31 local equity records not present in Flex Query.
+2026-03-20 18:20:35,083 - EquityLogger - INFO - Successfully synced 34 equity records to data/KC/daily_equity.csv.
+2026-03-20 18:20:35,083 - EquityLogger - INFO - --- Starting Equity Snapshot Logging ---
+2026-03-20 18:20:35,084 - EquityLogger - INFO - Connecting to IB at 127.0.0.1:4001 with clientId 3093...
+2026-03-20 18:20:35,498 - trading_bot.utils - INFO - 🛠️ Configuring Market Data: Requesting LIVE (Type 1) Data.
+2026-03-20 18:20:35,599 - EquityLogger - INFO - Fetched NetLiquidation: $32,334.49
+2026-03-20 18:20:35,613 - EquityLogger - INFO - Updated data/KC/daily_equity.csv with value $32,334.49
+2026-03-20 18:20:38,617 - EquityLogger - INFO - Disconnected from IB.
+2026-03-20 18:20:38,619 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-20 18:20:38,619 - TradeReconciler - INFO - Fetching report for Query ID: 1370939
+2026-03-20 18:20:38,862 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-20 18:20:48,865 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-20 18:20:49,000 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-20 18:20:49,004 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-03-20 18:20:49,004 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-03-20 18:20:49,005 - TradeReconciler - INFO - Fetching report for Query ID: 1370908
+2026-03-20 18:20:49,245 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-20 18:20:59,251 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-20 18:20:59,386 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-20 18:20:59,390 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-03-20 18:20:59,390 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-03-20 18:20:59,391 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
+2026-03-20 18:20:59,394 - TradeReconciler - INFO - Starting trade reconciliation using Flex Queries.
+2026-03-20 18:20:59,394 - TradeReconciler - INFO - Fetching report for Query ID: 1370939
+2026-03-20 18:20:59,739 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-20 18:21:09,745 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-20 18:21:09,908 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-20 18:21:09,912 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-03-20 18:21:09,912 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-03-20 18:21:09,912 - TradeReconciler - INFO - Fetching report for Query ID: 1370908
+2026-03-20 18:21:10,149 - TradeReconciler - INFO - Flex Query SendRequest succeeded (attempt 1)
+2026-03-20 18:21:20,151 - TradeReconciler - INFO - Polling for report (Attempt 1/10)...
+2026-03-20 18:21:20,333 - TradeReconciler - INFO - Successfully downloaded Flex Query report.
+2026-03-20 18:21:20,337 - TradeReconciler - INFO - Parsed 0 executions from the Flex Query report.
+2026-03-20 18:21:20,338 - TradeReconciler - WARNING - Flex Query report contained no data.
+2026-03-20 18:21:20,339 - TradeReconciler - WARNING - No trade data was fetched from any IB Flex Query. Exiting.
+2026-03-20 18:21:20,340 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/KC
+2026-03-20 18:21:20,538 - trading_bot.brier_reconciliation - INFO - No pending predictions to resolve
+2026-03-20 18:21:20,540 - trading_bot.master_orchestrator - INFO - Brier reconciliation [KC]: 0 resolved
+2026-03-20 18:21:20,541 - trading_bot.data_dir_context - INFO - Engine data_dir set to: data/NG
+2026-03-20 18:21:20,541 - trading_bot.brier_reconciliation - INFO - agent_accuracy_structured.csv removed; resolution handled by enhanced Brier system
+2026-03-20 18:21:20,542 - trading_bot.master_orchestrator - INFO - Brier reconciliation [NG]: 0 resolved
+2026-03-20 18:21:20,543 - trading_bot.master_orchestrator - INFO - === Post-close reconciliation complete ===
+2026-03-20 18:22:28,671 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1385, market_state=ACTIVE, market_open=True, trading_day=True
+2026-03-20 18:25:00,011 - Engine.NG - INFO - --- Running scheduled task: emergency_hard_close [emergency_hard_close] ---
+2026-03-20 18:25:00,024 - Orchestrator - INFO - [OFF] emergency_hard_close skipped — no positions exist in OFF mode
+2026-03-20 18:25:00,036 - Engine.NG - INFO - Next task 'log_equity_snapshot' (Log Equity Snapshot) scheduled for 2026-03-20 18:35:00 UTC. Waiting for 0.17 hours.
+2026-03-20 18:27:31,708 - Orchestrator - INFO - Sentinel loop heartbeat: iteration=1390, market_state=ACTIVE, market_open=True, trading_day=True
