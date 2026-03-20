@@ -110,7 +110,7 @@ if _has_trading_mode:
     selected_trading_mode = st.sidebar.selectbox(
         "Trading Mode",
         _tm_options,
-        index=0,
+        index=1,  # Default: LIVE ONLY — observation data in default view is misleading
         help="LIVE ONLY excludes decisions made when trading_mode=OFF",
     )
     if selected_trading_mode == 'LIVE ONLY':
@@ -162,15 +162,19 @@ def build_dynamic_stage_order(df: pd.DataFrame) -> list:
 
 
 # --- Cascading Funnel Builder ---
-def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config: dict) -> pd.DataFrame:
+def build_true_funnel(
+    council_df: pd.DataFrame,
+    funnel_df: pd.DataFrame,
+    config: dict,
+    observation_only: bool = False,
+) -> pd.DataFrame:
     """
     Build a monotonically-decreasing cascading funnel from two data sources.
 
     Top half (Intelligence + Gates): derived from council_history columns.
     Bottom half (Execution): derived from execution_funnel.csv aggregate stage counts.
-
-    Ends at Orders Filled — P&L is an outcome metric, not a pipeline gate,
-    and is shown separately in the Post-Funnel Outcome section.
+    When observation_only=True, execution and P&L stages are omitted — trading was OFF
+    so Orders Placed/Filled are zero by design; showing them looks broken.
 
     Returns DataFrame with columns: stage, survivors, drop, drop_pct, source_label
     """
@@ -234,73 +238,48 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
     stages.append({'stage': 'Strategy Selected', 'survivors': n_strategy,
                    'source_label': 'council_history'})
 
-    # 5.5 Directionally Correct — counterfactual signal quality metric.
-    # Of strategy-selected signals that have been resolved (actual_trend_direction known),
-    # how many matched the predicted direction? This measures signal intelligence quality
-    # independent of execution, strike selection, or option pricing.
-    # NOTE: uses only *resolved* signals as denominator — unresolved are excluded.
-    _dir_denominator = 0
-    _dir_correct = 0
-    if (
-        'actual_trend_direction' in strategized.columns and
-        'master_decision' in strategized.columns
-    ):
-        _resolved_mask = strategized['actual_trend_direction'].isin(['UP', 'DOWN'])
-        _resolved = strategized[_resolved_mask]
-        _dir_denominator = len(_resolved)
-        if _dir_denominator > 0:
-            _actual = _resolved['actual_trend_direction'].str.upper()
-            _predicted = _resolved['master_decision'].str.upper().map({
-                'BULLISH': 'UP', 'LONG': 'UP', 'UP': 'UP',
-                'BEARISH': 'DOWN', 'SHORT': 'DOWN', 'DOWN': 'DOWN',
-            })
-            _dir_correct = int((_actual == _predicted).sum())
+    # Execution stages are irrelevant in observation-only mode (trading was OFF).
+    # Showing zeros mid-funnel looks broken — omit them entirely.
+    if not observation_only:
+        # 6. Orders Placed (from execution_funnel.csv)
+        n_placed = 0
+        if not funnel_df.empty and 'stage' in funnel_df.columns:
+            n_placed = len(funnel_df[funnel_df['stage'] == 'ORDER_PLACED'])
+        stages.append({'stage': 'Orders Placed', 'survivors': n_placed,
+                       'source_label': 'execution_funnel'})
 
-    if _dir_denominator > 0:
-        stages.append({
-            'stage': 'Directionally Correct',
-            'survivors': _dir_correct,
-            'source_label': 'council_history',
-            'is_counterfactual': True,
-            'cf_denominator': _dir_denominator,
-        })
+        # 7. Orders Filled
+        n_filled = 0
+        if not funnel_df.empty and 'stage' in funnel_df.columns:
+            n_filled = len(funnel_df[funnel_df['stage'] == 'ORDER_FILLED'])
+        stages.append({'stage': 'Orders Filled', 'survivors': n_filled,
+                       'source_label': 'execution_funnel'})
 
-    # 6. Orders Placed (from execution_funnel.csv)
-    n_placed = 0
-    if not funnel_df.empty and 'stage' in funnel_df.columns:
-        n_placed = len(funnel_df[funnel_df['stage'] == 'ORDER_PLACED'])
-    stages.append({'stage': 'Orders Placed', 'survivors': n_placed,
-                   'source_label': 'execution_funnel'})
+        # ── OUTCOME: P&L from council cascade (scoped to strategized subset) ──
+        # TODO: Replace capping with a cycle_id join between council_history and
+        # execution_funnel to guarantee monotonicity by construction. The cap here
+        # is a temporary workaround for the two-CSV aggregate count mismatch.
+        # Capped at n_filled to enforce funnel monotonicity: P&L-resolved trades
+        # can never exceed filled orders, regardless of data-source divergence
+        # between council_history and execution_funnel.csv.
 
-    # 7. Orders Filled
-    n_filled = 0
-    if not funnel_df.empty and 'stage' in funnel_df.columns:
-        n_filled = len(funnel_df[funnel_df['stage'] == 'ORDER_FILLED'])
-    stages.append({'stage': 'Orders Filled', 'survivors': n_filled,
-                   'source_label': 'execution_funnel'})
+        # 8. P&L Resolved (trades from the strategy-selected subset that have outcomes)
+        n_pnl = 0
+        n_pnl_raw = 0
+        n_profitable = 0
+        n_profitable_raw = 0
+        if 'pnl_realized' in strategized.columns:
+            pnl_series = pd.to_numeric(strategized['pnl_realized'], errors='coerce')
+            n_pnl_raw = int(pnl_series.notna().sum())
+            n_profitable_raw = int((pnl_series > 0).sum())
+            n_pnl = min(n_pnl_raw, n_filled)
+            n_profitable = min(n_profitable_raw, n_pnl)
+        stages.append({'stage': 'P&L Resolved', 'survivors': n_pnl, 'survivors_raw': n_pnl_raw,
+                       'source_label': 'council_history'})
 
-    # ── OUTCOME: P&L from council cascade (scoped to strategized subset) ──
-    # Capped at n_filled to enforce funnel monotonicity: P&L-resolved trades
-    # can never exceed filled orders, regardless of data-source divergence
-    # between council_history and execution_funnel.csv.
-
-    # 8. P&L Resolved (trades from the strategy-selected subset that have outcomes)
-    n_pnl = 0
-    n_pnl_raw = 0
-    n_profitable = 0
-    n_profitable_raw = 0
-    if 'pnl_realized' in strategized.columns:
-        pnl_series = pd.to_numeric(strategized['pnl_realized'], errors='coerce')
-        n_pnl_raw = int(pnl_series.notna().sum())
-        n_profitable_raw = int((pnl_series > 0).sum())
-        n_pnl = min(n_pnl_raw, n_filled)
-        n_profitable = min(n_profitable_raw, n_pnl)
-    stages.append({'stage': 'P&L Resolved', 'survivors': n_pnl, 'survivors_raw': n_pnl_raw,
-                   'source_label': 'council_history'})
-
-    # 9. Profitable
-    stages.append({'stage': 'Profitable', 'survivors': n_profitable, 'survivors_raw': n_profitable_raw,
-                   'source_label': 'council_history'})
+        # 9. Profitable
+        stages.append({'stage': 'Profitable', 'survivors': n_profitable, 'survivors_raw': n_profitable_raw,
+                       'source_label': 'council_history'})
 
     # Build DataFrame with drop calculations
     result = pd.DataFrame(stages)
@@ -323,7 +302,8 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
 # Compute funnel cascade once — reused by waterfall + leak table
 # ============================================================
 config = get_config()
-funnel_cascade = build_true_funnel(council_df, funnel_df, config)
+_observation_only = (selected_trading_mode == 'OBSERVATION ONLY')
+funnel_cascade = build_true_funnel(council_df, funnel_df, config, observation_only=_observation_only)
 
 
 # ============================================================
@@ -386,7 +366,7 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
         kpis['alpha_left_count'] = 0
         kpis['alpha_left_pct'] = 0
 
-    # Signal win rate from council_history
+    # P&L win rate from council_history
     if not ch.empty and 'pnl_realized' in ch.columns:
         resolved = ch[ch['pnl_realized'].notna()]
         kpis['signal_win_rate'] = (resolved['pnl_realized'] > 0).mean() * 100 if not resolved.empty else 0
@@ -394,6 +374,49 @@ def calc_funnel_kpis(df: pd.DataFrame, ch: pd.DataFrame) -> dict:
     else:
         kpis['signal_win_rate'] = 0
         kpis['n_resolved'] = 0
+
+    # Directional accuracy — only directional signals (BULLISH/BEARISH), not vol plays.
+    # Vol plays (NEUTRAL + VOLATILITY) don't predict direction so excluding them keeps
+    # this metric honest. They get their own metric below.
+    kpis['dir_accuracy_pct'] = 0.0
+    kpis['dir_accuracy_n'] = 0
+    kpis['dir_denominator'] = 0
+    kpis['dir_correct_and_profitable_pct'] = 0.0
+    kpis['dir_correct_and_profitable_n'] = 0
+    if not ch.empty and 'actual_trend_direction' in ch.columns and 'master_decision' in ch.columns:
+        _directional = ch[ch['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+        _dir_resolved = _directional[_directional['actual_trend_direction'].isin(['UP', 'DOWN'])].copy()
+        _n_dir_resolved = len(_dir_resolved)
+        if _n_dir_resolved > 0:
+            _actual = _dir_resolved['actual_trend_direction'].str.upper()
+            _predicted = _dir_resolved['master_decision'].str.upper().map(
+                {'BULLISH': 'UP', 'BEARISH': 'DOWN'}
+            )
+            _correct_mask = (_actual == _predicted)
+            _n_correct = int(_correct_mask.sum())
+            kpis['dir_accuracy_pct'] = _n_correct / _n_dir_resolved * 100
+            kpis['dir_accuracy_n'] = _n_correct
+            kpis['dir_denominator'] = _n_dir_resolved
+            # Bridge: correct direction AND profitable (requires pnl_realized)
+            if 'pnl_realized' in _dir_resolved.columns:
+                _pnl = pd.to_numeric(_dir_resolved['pnl_realized'], errors='coerce')
+                _both = int((_correct_mask & (_pnl > 0)).sum())
+                kpis['dir_correct_and_profitable_n'] = _both
+                kpis['dir_correct_and_profitable_pct'] = _both / _n_dir_resolved * 100
+
+    # Vol play hit rate — straddles/condors: correct if pnl_realized > 0
+    kpis['vol_hit_rate_pct'] = 0.0
+    kpis['vol_hit_n'] = 0
+    kpis['vol_denominator'] = 0
+    if not ch.empty and 'prediction_type' in ch.columns and 'pnl_realized' in ch.columns:
+        _vol = ch[ch['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY'].copy()
+        _vol_resolved = _vol[pd.to_numeric(_vol['pnl_realized'], errors='coerce').notna()]
+        _n_vol = len(_vol_resolved)
+        if _n_vol > 0:
+            _vol_pnl = pd.to_numeric(_vol_resolved['pnl_realized'], errors='coerce')
+            kpis['vol_hit_rate_pct'] = (_vol_pnl > 0).sum() / _n_vol * 100
+            kpis['vol_hit_n'] = int((_vol_pnl > 0).sum())
+            kpis['vol_denominator'] = _n_vol
 
     return kpis
 
@@ -413,11 +436,40 @@ k5.metric("👣 Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
           help="Average adaptive walk steps per placed order (est.)")
 k6.metric("🎯 P&L Win Rate", f"{kpis['signal_win_rate']:.0f}%",
           help=f"% of resolved trades with positive P&L (n={kpis['n_resolved']}). "
-               f"See 'Directionally Correct' in the waterfall for pure signal accuracy.")
+               f"See Signal Quality below for pure directional accuracy.")
 k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
           delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
           delta_color="inverse",
           help="Orders that passed all gates but failed to fill — potential alpha lost to adaptive walk timeout")
+
+# Signal Quality row — directional accuracy separate from P&L win rate
+st.caption("**Signal Quality** — independent of execution, strike selection, and option pricing")
+sq1, sq2, sq3 = st.columns(3)
+_dir_label = (f"{kpis['dir_accuracy_n']}/{kpis['dir_denominator']} resolved"
+              if kpis['dir_denominator'] > 0 else "no resolved signals")
+sq1.metric(
+    "🧭 Directional Accuracy",
+    f"{kpis['dir_accuracy_pct']:.0f}%" if kpis['dir_denominator'] > 0 else "—",
+    help=f"Of directional signals (BULLISH/BEARISH) with a known outcome, % that matched actual "
+         f"price direction. Excludes vol plays. ({_dir_label})",
+)
+_vol_label = (f"{kpis['vol_hit_n']}/{kpis['vol_denominator']} resolved"
+              if kpis['vol_denominator'] > 0 else "no vol plays")
+sq2.metric(
+    "⚡ Vol Play Hit Rate",
+    f"{kpis['vol_hit_rate_pct']:.0f}%" if kpis['vol_denominator'] > 0 else "—",
+    help=f"% of resolved volatility plays (straddles/condors) with positive P&L. "
+         f"({_vol_label})",
+)
+_bridge_label = (f"{kpis['dir_correct_and_profitable_n']}/{kpis['dir_denominator']} resolved"
+                 if kpis['dir_denominator'] > 0 else "no data")
+sq3.metric(
+    "✅ Correct Direction & Profitable",
+    f"{kpis['dir_correct_and_profitable_pct']:.0f}%" if kpis['dir_denominator'] > 0 else "—",
+    help=f"Of resolved directional signals: % that were both directionally correct AND had "
+         f"positive P&L. Gap vs Directional Accuracy = option structure leakage "
+         f"(theta, strikes, timing). ({_bridge_label})",
+)
 
 
 # ============================================================
@@ -428,12 +480,10 @@ st.subheader("🌊 Funnel Waterfall — Where Do Signals Die?")
 if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     # Build custom text labels: "N (XX% of initial)"
     first_count = int(funnel_cascade.iloc[0]['survivors'])
-    # Build per-stage colors and labels dynamically so adding stages never breaks color mapping.
-    # Color scheme: green gradient = intelligence/gates, purple = counterfactual quality,
-    # blue = execution, gold/orange = P&L outcomes.
+    # Build per-stage colors dynamically so adding stages never breaks color mapping.
+    # Color scheme: green gradient = intelligence/gates, blue = execution, gold/orange = P&L outcomes.
     _COLOR_BY_SOURCE = {
         'council_history_gate': ['#2ecc71', '#27ae60', '#1abc9c', '#16a085', '#2980b9'],
-        'counterfactual':       '#AB63FA',   # purple — evaluation metric, not a filter
         'execution':            ['#3498db', '#5dade2'],
         'pnl':                  ['#f39c12', '#e67e22'],
     }
@@ -443,10 +493,7 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     _stage_colors = []
     for _, _sr in funnel_cascade.iterrows():
         _src = _sr.get('source_label', 'council_history')
-        _is_cf = bool(_sr.get('is_counterfactual', False))
-        if _is_cf:
-            _stage_colors.append(_COLOR_BY_SOURCE['counterfactual'])
-        elif _src == 'execution_funnel':
+        if _src == 'execution_funnel':
             _stage_colors.append(_COLOR_BY_SOURCE['execution'][_exec_color_idx % 2])
             _exec_color_idx += 1
         elif _sr['stage'] in ('P&L Resolved', 'Profitable'):
@@ -463,14 +510,8 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
         row = funnel_cascade.iloc[idx]
         val = int(row['survivors'])
         pct_initial = val / max(first_count, 1) * 100
-        is_cf = bool(row.get('is_counterfactual', False))
         if idx == 0:
             custom_text.append(f"<b>{val}</b>")
-        elif is_cf:
-            # Counterfactual: show as fraction of resolved signals, not % of initial
-            cf_denom = int(row.get('cf_denominator', val))
-            cf_pct = val / max(cf_denom, 1) * 100
-            custom_text.append(f"<b>{val}/{cf_denom}</b>  ({cf_pct:.0f}% of resolved)")
         else:
             prev_val = int(funnel_cascade.iloc[idx - 1]['survivors'])
             pct_prev = val / max(prev_val, 1) * 100
@@ -493,20 +534,12 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     )
     st.plotly_chart(fig_funnel, use_container_width=True)
 
-    # Counterfactual stage legend note
-    if 'is_counterfactual' in funnel_cascade.columns and funnel_cascade['is_counterfactual'].any():
-        st.caption(
-            "🟣 **Directionally Correct** is a counterfactual quality metric — not a gate. "
-            "It shows what fraction of *resolved* strategy-selected signals had correct direction "
-            "(signal intelligence, independent of execution or option pricing)."
-        )
-
-    # Observation mode banner — when filtering to observation-only, execution stages are zero by design
-    if selected_trading_mode == 'OBSERVATION ONLY':
+    # Observation mode banner — execution stages hidden since trading was OFF
+    if _observation_only:
         st.info(
-            "📊 **Observation Mode view**: trading was OFF during this period. "
-            "Orders Placed/Filled are expected to be zero. "
-            "Use Directionally Correct and Signal Win Rate to assess signal quality before going live."
+            "📊 **Observation Mode** — trading was OFF during this period. "
+            "Execution stages are hidden (Orders Placed/Filled would be zero by design). "
+            "Use Signal Quality metrics above to assess signal quality before going live."
         )
 
     # --- Capping Warning (improved: explain root cause) ---
@@ -715,6 +748,115 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
                             )
 else:
     st.info("Insufficient data to build funnel. Need council history or funnel events.")
+
+
+# ============================================================
+# DIRECTION → P&L BRIDGE
+# Answers: "We were right about direction — why didn't we make money?"
+# ============================================================
+st.subheader("🔀 Direction → P&L Bridge — Where Does the Edge Leak?")
+st.caption(
+    "Of directional signals with known outcomes: did correct direction translate to profit? "
+    "The gap between 'correct direction' and 'profitable' is option structure leakage "
+    "(theta decay, OTM strikes, sizing, timing)."
+)
+
+if (
+    not council_df.empty and
+    'actual_trend_direction' in council_df.columns and
+    'master_decision' in council_df.columns and
+    'pnl_realized' in council_df.columns
+):
+    _bridge_df = council_df[
+        council_df['master_decision'].isin(['BULLISH', 'BEARISH']) &
+        council_df['actual_trend_direction'].isin(['UP', 'DOWN'])
+    ].copy()
+    _bridge_df['pnl'] = pd.to_numeric(_bridge_df['pnl_realized'], errors='coerce')
+    _bridge_df = _bridge_df[_bridge_df['pnl'].notna()]
+
+    if len(_bridge_df) >= 4:
+        _actual_b = _bridge_df['actual_trend_direction'].str.upper()
+        _predicted_b = _bridge_df['master_decision'].str.upper().map({'BULLISH': 'UP', 'BEARISH': 'DOWN'})
+        _bridge_df['dir_correct'] = (_actual_b == _predicted_b)
+        _bridge_df['profitable'] = (_bridge_df['pnl'] > 0)
+
+        # 2×2 confusion matrix
+        _cells = {
+            ('Correct', 'Profitable'):   int((_bridge_df['dir_correct'] & _bridge_df['profitable']).sum()),
+            ('Correct', 'Loss'):         int((_bridge_df['dir_correct'] & ~_bridge_df['profitable']).sum()),
+            ('Wrong', 'Profitable'):     int((~_bridge_df['dir_correct'] & _bridge_df['profitable']).sum()),
+            ('Wrong', 'Loss'):           int((~_bridge_df['dir_correct'] & ~_bridge_df['profitable']).sum()),
+        }
+        _n_total_b = sum(_cells.values())
+
+        bc1, bc2, bc3, bc4 = st.columns(4)
+        bc1.metric(
+            "🎯 Correct + Profitable",
+            f"{_cells[('Correct', 'Profitable')]}",
+            delta=f"{_cells[('Correct', 'Profitable')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+            delta_color="normal",
+            help="Got direction right AND made money. Pure skill.",
+        )
+        bc2.metric(
+            "⚠️ Correct + Loss",
+            f"{_cells[('Correct', 'Loss')]}",
+            delta=f"{_cells[('Correct', 'Loss')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+            delta_color="inverse",
+            help="Got direction right but still lost money. "
+                 "Indicates option structure problems: theta decay eating gains, "
+                 "strikes too far OTM, or move magnitude too small to overcome premium.",
+        )
+        bc3.metric(
+            "🍀 Wrong + Profitable",
+            f"{_cells[('Wrong', 'Profitable')]}",
+            delta=f"{_cells[('Wrong', 'Profitable')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+            delta_color="off",
+            help="Got direction wrong but still made money. Lucky — unsustainable.",
+        )
+        bc4.metric(
+            "❌ Wrong + Loss",
+            f"{_cells[('Wrong', 'Loss')]}",
+            delta=f"{_cells[('Wrong', 'Loss')] / max(_n_total_b, 1) * 100:.0f}% of resolved",
+            delta_color="inverse",
+            help="Got direction wrong and lost money. Bad call.",
+        )
+
+        # Mini bar chart showing P&L distribution by direction correctness
+        _bridge_df['direction_label'] = _bridge_df['dir_correct'].map(
+            {True: 'Correct Direction', False: 'Wrong Direction'}
+        )
+        if not _bridge_df.empty:
+            fig_bridge = px.box(
+                _bridge_df,
+                x='direction_label',
+                y='pnl',
+                color='direction_label',
+                points='all',
+                color_discrete_map={
+                    'Correct Direction': '#2ecc71',
+                    'Wrong Direction': '#e74c3c',
+                },
+                labels={'pnl': 'P&L', 'direction_label': ''},
+                title='P&L Distribution by Directional Accuracy',
+            )
+            fig_bridge.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+            fig_bridge.update_layout(
+                height=300, margin=dict(t=40, b=20), showlegend=False,
+            )
+            st.plotly_chart(fig_bridge, use_container_width=True)
+
+        # Interpretation
+        _correct_loss_pct = _cells[('Correct', 'Loss')] / max(_cells[('Correct', 'Profitable')] + _cells[('Correct', 'Loss')], 1) * 100
+        if _correct_loss_pct > 30:
+            st.warning(
+                f"⚠️ **Option structure leakage detected**: {_correct_loss_pct:.0f}% of directionally "
+                f"correct calls still lost money. This suggests theta decay, OTM strikes, or premium "
+                f"costs are eroding edge even when direction is right."
+            )
+    else:
+        st.info("Need at least 4 resolved directional signals to display the direction → P&L bridge.")
+else:
+    st.info("Missing required fields (actual_trend_direction, master_decision, pnl_realized) for bridge analysis.")
 
 
 # ============================================================
