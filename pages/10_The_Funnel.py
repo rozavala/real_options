@@ -242,16 +242,27 @@ def build_true_funnel(
     # Showing zeros mid-funnel looks broken — omit them entirely.
     if not observation_only:
         # 6. Orders Placed (from execution_funnel.csv)
+        # Backfill note: ORDER_PLACED count is often lower than PNL_RECONCILED because
+        # the backfill script creates PNL_RECONCILED from trade_ledger for all historical
+        # trades but only creates ORDER_PLACED for a subset. Use PNL_RECONCILED as a
+        # lower-bound fallback so the funnel doesn't artificially collapse at this stage.
         n_placed = 0
+        n_reconciled = 0
         if not funnel_df.empty and 'stage' in funnel_df.columns:
             n_placed = len(funnel_df[funnel_df['stage'] == 'ORDER_PLACED'])
+            n_reconciled = len(funnel_df[funnel_df['stage'] == 'PNL_RECONCILED'])
+        n_placed = max(n_placed, n_reconciled)
         stages.append({'stage': 'Orders Placed', 'survivors': n_placed,
                        'source_label': 'execution_funnel'})
 
         # 7. Orders Filled
+        # Same backfill issue: PNL_RECONCILED is the most reliable fill proxy for
+        # historical data. ORDER_FILLED events are only created for real-time cycles
+        # and a small backfill subset. Use max to avoid capping downstream P&L stages.
         n_filled = 0
         if not funnel_df.empty and 'stage' in funnel_df.columns:
             n_filled = len(funnel_df[funnel_df['stage'] == 'ORDER_FILLED'])
+        n_filled = max(n_filled, n_reconciled)
         stages.append({'stage': 'Orders Filled', 'survivors': n_filled,
                        'source_label': 'execution_funnel'})
 
