@@ -225,7 +225,7 @@ class TestFunnelUX(unittest.TestCase):
             "📉 Avg Slippage",
             "🛡️ Conviction Blocks",
             "👣 Avg Walk Steps",
-            "🎯 Signal Win Rate",
+            "🎯 P&L Win Rate",
             "💸 Alpha Left on Table",
             "✅ Skill",
             "🍀 Lucky",

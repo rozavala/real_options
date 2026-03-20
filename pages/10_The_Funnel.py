@@ -99,6 +99,33 @@ if not funnel_df.empty and 'regime' in funnel_df.columns:
     if selected_regime != 'ALL':
         funnel_df = funnel_df[funnel_df['regime'] == selected_regime]
 
+# Trading Mode filter (v6 — requires trading_mode_active column in council_history)
+_has_trading_mode = (
+    not council_df.empty and
+    'trading_mode_active' in council_df.columns and
+    council_df['trading_mode_active'].astype(str).str.lower().isin(['true', 'false']).any()
+)
+if _has_trading_mode:
+    _tm_options = ['ALL', 'LIVE ONLY', 'OBSERVATION ONLY']
+    selected_trading_mode = st.sidebar.selectbox(
+        "Trading Mode",
+        _tm_options,
+        index=0,
+        help="LIVE ONLY excludes decisions made when trading_mode=OFF",
+    )
+    if selected_trading_mode == 'LIVE ONLY':
+        council_df = council_df[
+            council_df['trading_mode_active'].astype(str).str.lower() == 'true'
+        ]
+    elif selected_trading_mode == 'OBSERVATION ONLY':
+        council_df = council_df[
+            council_df['trading_mode_active'].astype(str).str.lower() == 'false'
+        ]
+else:
+    selected_trading_mode = 'ALL'
+    if not council_df.empty:
+        st.sidebar.caption("⚠️ Trading mode filter unavailable (pre-v6 data)")
+
 
 # --- Canonical stage ordering for dynamic sections ---
 STAGE_SORT_ORDER = {
@@ -206,6 +233,37 @@ def build_true_funnel(council_df: pd.DataFrame, funnel_df: pd.DataFrame, config:
     n_strategy = len(strategized)
     stages.append({'stage': 'Strategy Selected', 'survivors': n_strategy,
                    'source_label': 'council_history'})
+
+    # 5.5 Directionally Correct — counterfactual signal quality metric.
+    # Of strategy-selected signals that have been resolved (actual_trend_direction known),
+    # how many matched the predicted direction? This measures signal intelligence quality
+    # independent of execution, strike selection, or option pricing.
+    # NOTE: uses only *resolved* signals as denominator — unresolved are excluded.
+    _dir_denominator = 0
+    _dir_correct = 0
+    if (
+        'actual_trend_direction' in strategized.columns and
+        'master_decision' in strategized.columns
+    ):
+        _resolved_mask = strategized['actual_trend_direction'].isin(['UP', 'DOWN'])
+        _resolved = strategized[_resolved_mask]
+        _dir_denominator = len(_resolved)
+        if _dir_denominator > 0:
+            _actual = _resolved['actual_trend_direction'].str.upper()
+            _predicted = _resolved['master_decision'].str.upper().map({
+                'BULLISH': 'UP', 'LONG': 'UP', 'UP': 'UP',
+                'BEARISH': 'DOWN', 'SHORT': 'DOWN', 'DOWN': 'DOWN',
+            })
+            _dir_correct = int((_actual == _predicted).sum())
+
+    if _dir_denominator > 0:
+        stages.append({
+            'stage': 'Directionally Correct',
+            'survivors': _dir_correct,
+            'source_label': 'council_history',
+            'is_counterfactual': True,
+            'cf_denominator': _dir_denominator,
+        })
 
     # 6. Orders Placed (from execution_funnel.csv)
     n_placed = 0
@@ -353,8 +411,9 @@ k4.metric("🛡️ Conviction Blocks", f"{kpis['conviction_block_pct']:.0f}%",
           help="% of directional signals blocked by conviction gate")
 k5.metric("👣 Avg Walk Steps", f"{kpis['avg_walk_steps']:.0f}",
           help="Average adaptive walk steps per placed order (est.)")
-k6.metric("🎯 Signal Win Rate", f"{kpis['signal_win_rate']:.0f}%",
-          help=f"Directional accuracy of resolved signals (n={kpis['n_resolved']})")
+k6.metric("🎯 P&L Win Rate", f"{kpis['signal_win_rate']:.0f}%",
+          help=f"% of resolved trades with positive P&L (n={kpis['n_resolved']}). "
+               f"See 'Directionally Correct' in the waterfall for pure signal accuracy.")
 k7.metric("💸 Alpha Left on Table", f"{kpis['alpha_left_count']}",
           delta=f"-{kpis['alpha_left_pct']:.0f}% of placed" if kpis['alpha_left_count'] > 0 else None,
           delta_color="inverse",
@@ -369,13 +428,49 @@ st.subheader("🌊 Funnel Waterfall — Where Do Signals Die?")
 if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     # Build custom text labels: "N (XX% of initial)"
     first_count = int(funnel_cascade.iloc[0]['survivors'])
+    # Build per-stage colors and labels dynamically so adding stages never breaks color mapping.
+    # Color scheme: green gradient = intelligence/gates, purple = counterfactual quality,
+    # blue = execution, gold/orange = P&L outcomes.
+    _COLOR_BY_SOURCE = {
+        'council_history_gate': ['#2ecc71', '#27ae60', '#1abc9c', '#16a085', '#2980b9'],
+        'counterfactual':       '#AB63FA',   # purple — evaluation metric, not a filter
+        'execution':            ['#3498db', '#5dade2'],
+        'pnl':                  ['#f39c12', '#e67e22'],
+    }
+    _gate_color_idx = 0
+    _exec_color_idx = 0
+    _pnl_color_idx = 0
+    _stage_colors = []
+    for _, _sr in funnel_cascade.iterrows():
+        _src = _sr.get('source_label', 'council_history')
+        _is_cf = bool(_sr.get('is_counterfactual', False))
+        if _is_cf:
+            _stage_colors.append(_COLOR_BY_SOURCE['counterfactual'])
+        elif _src == 'execution_funnel':
+            _stage_colors.append(_COLOR_BY_SOURCE['execution'][_exec_color_idx % 2])
+            _exec_color_idx += 1
+        elif _sr['stage'] in ('P&L Resolved', 'Profitable'):
+            _stage_colors.append(_COLOR_BY_SOURCE['pnl'][_pnl_color_idx % 2])
+            _pnl_color_idx += 1
+        else:
+            _stage_colors.append(_COLOR_BY_SOURCE['council_history_gate'][
+                _gate_color_idx % len(_COLOR_BY_SOURCE['council_history_gate'])
+            ])
+            _gate_color_idx += 1
+
     custom_text = []
     for idx in range(len(funnel_cascade)):
         row = funnel_cascade.iloc[idx]
         val = int(row['survivors'])
         pct_initial = val / max(first_count, 1) * 100
+        is_cf = bool(row.get('is_counterfactual', False))
         if idx == 0:
             custom_text.append(f"<b>{val}</b>")
+        elif is_cf:
+            # Counterfactual: show as fraction of resolved signals, not % of initial
+            cf_denom = int(row.get('cf_denominator', val))
+            cf_pct = val / max(cf_denom, 1) * 100
+            custom_text.append(f"<b>{val}/{cf_denom}</b>  ({cf_pct:.0f}% of resolved)")
         else:
             prev_val = int(funnel_cascade.iloc[idx - 1]['survivors'])
             pct_prev = val / max(prev_val, 1) * 100
@@ -387,42 +482,53 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
         text=custom_text,
         textinfo="text",
         textfont=dict(size=14),
-        marker=dict(
-            color=[
-                '#2ecc71', '#27ae60', '#1abc9c', '#16a085',  # Green: intelligence gates
-                '#2980b9',                                     # Blue: strategy
-                '#3498db', '#5dade2',                          # Light blue: execution
-                '#f39c12', '#e67e22',                          # Gold/orange: P&L outcome
-            ][:len(funnel_cascade)],
-        ),
+        marker=dict(color=_stage_colors),
         connector=dict(line=dict(color="gray", dash="dot", width=1)),
     ))
     fig_funnel.update_layout(
-        height=500,
+        height=max(500, 60 * len(funnel_cascade)),
         margin=dict(t=20, b=20, l=10, r=10),
         funnelmode="stack",
         font=dict(size=13),
     )
     st.plotly_chart(fig_funnel, use_container_width=True)
 
-    # --- Capping Warning ---
-    # Show when P&L outcome counts were capped to preserve funnel monotonicity
+    # Counterfactual stage legend note
+    if 'is_counterfactual' in funnel_cascade.columns and funnel_cascade['is_counterfactual'].any():
+        st.caption(
+            "🟣 **Directionally Correct** is a counterfactual quality metric — not a gate. "
+            "It shows what fraction of *resolved* strategy-selected signals had correct direction "
+            "(signal intelligence, independent of execution or option pricing)."
+        )
+
+    # Observation mode banner — when filtering to observation-only, execution stages are zero by design
+    if selected_trading_mode == 'OBSERVATION ONLY':
+        st.info(
+            "📊 **Observation Mode view**: trading was OFF during this period. "
+            "Orders Placed/Filled are expected to be zero. "
+            "Use Directionally Correct and Signal Win Rate to assess signal quality before going live."
+        )
+
+    # --- Capping Warning (improved: explain root cause) ---
     capped_rows = funnel_cascade[
         funnel_cascade.get('survivors_raw', funnel_cascade['survivors']) > funnel_cascade['survivors']
     ] if 'survivors_raw' in funnel_cascade.columns else pd.DataFrame()
     if not capped_rows.empty:
         cap_msgs = []
-        # ⚡ Bolt: Vectorized conversion to dicts is much faster than iterrows()
         for row in capped_rows.to_dict('records'):
             cap_msgs.append(
                 f"**{row['stage']}**: showing {int(row['survivors'])} "
-                f"(capped from {int(row['survivors_raw'])} in council_history)"
+                f"(raw council_history count: {int(row['survivors_raw'])})"
             )
-        st.info(
-            "⚠️ Some outcome stages were capped to maintain funnel order. "
-            "council_history has more P&L records than execution_funnel.csv has ORDER_FILLED "
-            "events in this date range — typically due to backfill gaps.\n\n"
-            + "\n\n".join(cap_msgs),
+        st.warning(
+            "⚠️ **Data source mismatch** — some outcome stages were capped to maintain funnel order.\n\n"
+            + "\n\n".join(cap_msgs) + "\n\n"
+            "**Root cause**: `council_history.csv` and `execution_funnel.csv` cover different "
+            "record sets for this date range. Common causes: (1) trading mode was OFF during "
+            "part of the period — use the Trading Mode filter to isolate live periods; "
+            "(2) backfill was run on a narrower date range than the current display window; "
+            "(3) some cycles completed before funnel instrumentation was deployed.\n\n"
+            "**Fix**: re-run backfill with `--all` flag, or narrow the date range to the live period.",
             icon=None,
         )
 

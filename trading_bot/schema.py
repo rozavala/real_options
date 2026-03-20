@@ -37,6 +37,8 @@ COUNCIL_HISTORY_FIELDNAMES = [
     "compliance_reason", "var_utilization", "var_dampener", "risk_briefing_injected",
     # v5 — Regime tracking (enables dashboard regime display from council_history)
     "entry_regime",
+    # v6 — Trading mode observability (was trading ON when this decision was logged?)
+    "trading_mode_active",
 ]
 
 # Semantically honest defaults for backfilling old rows on schema migration.
@@ -61,6 +63,8 @@ COUNCIL_HISTORY_BACKFILL_DEFAULTS = {
     "risk_briefing_injected": "False",
     # v5 columns
     "entry_regime": "",
+    # v6 columns — empty = unknown (pre-feature data)
+    "trading_mode_active": "",
 }
 
 
