@@ -362,10 +362,12 @@ class CommodityEngine:
 
                 try:
                     if next_task.func_name == 'guarded_generate_orders':
-                        await next_task.function(self.config, schedule_id=next_task.id)
+                        result = await next_task.function(self.config, schedule_id=next_task.id)
+                        if result is not False:
+                            record_task_completion(next_task.id)
                     else:
                         await next_task.function(self.config)
-                    record_task_completion(next_task.id)
+                        record_task_completion(next_task.id)
                 finally:
                     _get_deduplicator().clear_cooldown("GLOBAL")
 

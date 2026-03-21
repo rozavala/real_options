@@ -241,59 +241,31 @@ def build_true_funnel(
     # Execution stages are irrelevant in observation-only mode (trading was OFF).
     # Showing zeros mid-funnel looks broken — omit them entirely.
     if not observation_only:
-        # 6. Orders Placed (from execution_funnel.csv)
-        # Backfill note: ORDER_PLACED count is often lower than PNL_RECONCILED because
-        # the backfill script creates PNL_RECONCILED from trade_ledger for all historical
-        # trades but only creates ORDER_PLACED for a subset. Use PNL_RECONCILED as a
-        # lower-bound fallback so the funnel doesn't artificially collapse at this stage.
+        # 6. Orders Placed — raw count from execution_funnel.csv ORDER_PLACED events.
+        # NOTE: Backfill coverage is partial (order_events.csv only goes back to ~mid-Feb).
+        # The PNL_RECONCILED fallback was removed (it inflated placed/filled to 100%
+        # efficiency using non-trade NEUTRAL rows). Raw counts are honest about coverage.
         n_placed = 0
-        n_reconciled = 0
         if not funnel_df.empty and 'stage' in funnel_df.columns:
             n_placed = len(funnel_df[funnel_df['stage'] == 'ORDER_PLACED'])
-            n_reconciled = len(funnel_df[funnel_df['stage'] == 'PNL_RECONCILED'])
-        # Cap at n_strategy so funnel never widens across the council→execution boundary.
-        # PNL_RECONCILED from funnel_df may span a wider date range than the filtered
-        # council_df, so the lift must be bounded by the upstream stage count.
-        n_placed = min(max(n_placed, n_reconciled), n_strategy)
+        # Cap at n_strategy so the waterfall can't widen across the council→execution boundary.
+        n_placed = min(n_placed, n_strategy)
         stages.append({'stage': 'Orders Placed', 'survivors': n_placed,
                        'source_label': 'execution_funnel'})
 
-        # 7. Orders Filled
-        # Same backfill issue: PNL_RECONCILED is the most reliable fill proxy for
-        # historical data. ORDER_FILLED events are only created for real-time cycles
-        # and a small backfill subset. Use max to avoid capping downstream P&L stages.
+        # 7. Orders Filled — raw count from ORDER_FILLED events.
         n_filled = 0
         if not funnel_df.empty and 'stage' in funnel_df.columns:
             n_filled = len(funnel_df[funnel_df['stage'] == 'ORDER_FILLED'])
-        n_filled = min(max(n_filled, n_reconciled), n_placed)
+        n_filled = min(n_filled, n_placed)
         stages.append({'stage': 'Orders Filled', 'survivors': n_filled,
                        'source_label': 'execution_funnel'})
 
-        # ── OUTCOME: P&L from council cascade (scoped to strategized subset) ──
-        # TODO: Replace capping with a cycle_id join between council_history and
-        # execution_funnel to guarantee monotonicity by construction. The cap here
-        # is a temporary workaround for the two-CSV aggregate count mismatch.
-        # Capped at n_filled to enforce funnel monotonicity: P&L-resolved trades
-        # can never exceed filled orders, regardless of data-source divergence
-        # between council_history and execution_funnel.csv.
-
-        # 8. P&L Resolved (trades from the strategy-selected subset that have outcomes)
-        n_pnl = 0
-        n_pnl_raw = 0
-        n_profitable = 0
-        n_profitable_raw = 0
-        if 'pnl_realized' in strategized.columns:
-            pnl_series = pd.to_numeric(strategized['pnl_realized'], errors='coerce')
-            n_pnl_raw = int(pnl_series.notna().sum())
-            n_profitable_raw = int((pnl_series > 0).sum())
-            n_pnl = min(n_pnl_raw, n_filled)
-            n_profitable = min(n_profitable_raw, n_pnl)
-        stages.append({'stage': 'P&L Resolved', 'survivors': n_pnl, 'survivors_raw': n_pnl_raw,
-                       'source_label': 'council_history'})
-
-        # 9. Profitable
-        stages.append({'stage': 'Profitable', 'survivors': n_profitable, 'survivors_raw': n_profitable_raw,
-                       'source_label': 'council_history'})
+        # P&L outcome stages are intentionally omitted from the waterfall.
+        # They come from council_history which covers a different record set than
+        # execution_funnel ORDER_FILLED — forcing them into the cascade produces
+        # misleading 100% win rates when capped. P&L outcomes are shown below
+        # in the "Post-Funnel Outcome" section, sourced directly from council_history.
 
     # Build DataFrame with drop calculations
     result = pd.DataFrame(stages)
@@ -516,6 +488,26 @@ with st.expander("📈 Execution KPIs", expanded=False):
 # ============================================================
 st.subheader("🌊 Funnel Waterfall — Where Do Signals Die?")
 
+# Conviction-gate disclaimer — the gate threshold is applied retroactively to all
+# historical data, but many pre-gate decisions were actually executed. Show a
+# banner when there are below-conviction rows with non-zero P&L so users understand
+# the waterfall is applying current standards to historical trades.
+if not council_df.empty and 'weighted_score' in council_df.columns and 'pnl_realized' in council_df.columns:
+    from trading_bot.config_loader import get_config as _gc2  # noqa: F811
+    _min_ws = config.get('strategy', {}).get('min_weighted_score_magnitude', 0.20)
+    _ws_all = pd.to_numeric(council_df['weighted_score'], errors='coerce').fillna(0)
+    _pnl_all = pd.to_numeric(council_df['pnl_realized'], errors='coerce')
+    _below_with_pnl = int(
+        ((_ws_all.abs() < _min_ws) & _pnl_all.notna() & (_pnl_all != 0)).sum()
+    )
+    if _below_with_pnl > 0:
+        st.info(
+            f"ℹ️ **Historical threshold note**: {_below_with_pnl} decisions below the current "
+            f"conviction gate (|weighted_score| < {_min_ws}) have realized P&L — they were "
+            f"executed before this gate existed or with a different threshold. The waterfall "
+            f"shows them as blocked retroactively."
+        )
+
 if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     # Build custom text labels: "N (XX% of initial)"
     first_count = int(funnel_cascade.iloc[0]['survivors'])
@@ -609,18 +601,11 @@ if not funnel_cascade.empty and funnel_cascade['survivors'].sum() > 0:
     filled_count = int(filled_row['survivors'].values[0]) if not filled_row.empty else 0
     surv_pct = filled_count / max(first_count, 1) * 100
 
-    profit_row = funnel_cascade[funnel_cascade['stage'] == 'Profitable']
-    n_profitable_funnel = int(profit_row['survivors'].values[0]) if not profit_row.empty else 0
-    pnl_row = funnel_cascade[funnel_cascade['stage'] == 'P&L Resolved']
-    n_pnl_funnel = int(pnl_row['survivors'].values[0]) if not pnl_row.empty else 0
-    strat_row = funnel_cascade[funnel_cascade['stage'] == 'Strategy Selected']
-    n_strat = int(strat_row['survivors'].values[0]) if not strat_row.empty else 0
-    win_rate_funnel = n_profitable_funnel / max(n_pnl_funnel, 1) * 100
-
     if not _observation_only:
-        cap_col1, cap_col2 = st.columns(2)
-        cap_col1.caption(f"End-to-end survival: **{filled_count}/{first_count} ({surv_pct:.0f}%)**")
-        cap_col2.caption(f"P&L resolved: **{n_pnl_funnel}** of **{n_strat}** strategy-selected trades")
+        st.caption(
+            f"Signal-to-fill survival: **{filled_count}/{first_count} ({surv_pct:.0f}%)**  "
+            f"·  P&L outcomes shown below (independent data source)"
+        )
 
     # Source boundary indicator
     has_realtime = False
