@@ -1405,7 +1405,12 @@ if price_df is not None and not price_df.empty:
             st.dataframe(
                 strat_stats,
                 column_config={
-                    "Win Rate%": st.column_config.ProgressColumn("Win Rate%", min_value=0, max_value=100, format="%.1f%%"),
+                    "Strategy": st.column_config.TextColumn("Strategy", help="The options strategy type."),
+                    "Signals": st.column_config.NumberColumn("Signals", help="Total signals generated for this strategy."),
+                    "Wins": st.column_config.NumberColumn("Wins", help="Signals that resulted in a win."),
+                    "Losses": st.column_config.NumberColumn("Losses", help="Signals that resulted in a loss."),
+                    "Win Rate%": st.column_config.ProgressColumn("Win Rate%", min_value=0, max_value=100, format="%.1f%%",
+                                                                  help="Percentage of signals that resulted in a win."),
                 },
                 hide_index=True,
                 width="stretch"
@@ -1448,13 +1453,25 @@ if price_df is not None and not price_df.empty:
                 display_cols.insert(1, 'signal_contract')
             
             display_cols = [c for c in display_cols if c in plot_df.columns]
-            
+
+            # Scale confidence 0→1 to 0→100 so ProgressColumn format="%.0f%%" renders correctly
+            log_display_df = plot_df[display_cols].sort_values('timestamp', ascending=False).copy()
+            if 'plot_confidence' in log_display_df.columns:
+                log_display_df['plot_confidence'] = log_display_df['plot_confidence'] * 100
+
             st.dataframe(
-                plot_df[display_cols].sort_values('timestamp', ascending=False),
+                log_display_df,
                 column_config={
-                    "timestamp": st.column_config.DatetimeColumn("Time (ET)", format="D MMM HH:mm"),
-                    "plot_confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=1),
+                    "timestamp": st.column_config.DatetimeColumn("Time (ET)", format="D MMM HH:mm", help="Time of signal generation."),
+                    "signal_contract": st.column_config.TextColumn("Contract", help="Futures contract targeted by the signal."),
+                    "plot_label": st.column_config.TextColumn("Decision", help="Final directional or volatility decision."),
+                    "plot_confidence": st.column_config.ProgressColumn("Confidence", min_value=0, max_value=100, format="%.0f%%",
+                                                                        help="Confidence level of the decision (0–100%)."),
+                    "strategy_type": st.column_config.TextColumn("Strategy", help="Options strategy recommended."),
+                    "outcome": st.column_config.TextColumn("Outcome", help="Reconciled market outcome (WIN/LOSS)."),
+                    "pnl_realized": st.column_config.NumberColumn("P&L", format="$%.2f", help="Realized P&L if the signal was executed."),
                 },
+                hide_index=True,
                 width='stretch'
             )
         else:
