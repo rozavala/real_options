@@ -270,7 +270,11 @@ def build_true_funnel(
     # Build DataFrame with drop calculations
     result = pd.DataFrame(stages)
     # Backfill survivors_raw for stages that don't need capping (raw == capped)
-    result['survivors_raw'] = result['survivors_raw'].fillna(result['survivors']).astype(int)
+    if 'survivors_raw' not in result.columns:
+        result['survivors_raw'] = result['survivors']
+    else:
+        result['survivors_raw'] = result['survivors_raw'].fillna(result['survivors'])
+    result['survivors_raw'] = result['survivors_raw'].astype(int)
     result['drop'] = -result['survivors'].diff().fillna(0).astype(int).clip(upper=0)
     result.loc[0, 'drop'] = 0
     result['drop_pct'] = 0.0
