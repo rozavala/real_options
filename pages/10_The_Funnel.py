@@ -497,7 +497,6 @@ st.subheader("🌊 Funnel Waterfall — Where Do Signals Die?")
 # banner when there are below-conviction rows with non-zero P&L so users understand
 # the waterfall is applying current standards to historical trades.
 if not council_df.empty and 'weighted_score' in council_df.columns and 'pnl_realized' in council_df.columns:
-    from trading_bot.config_loader import get_config as _gc2  # noqa: F811
     _min_ws = config.get('strategy', {}).get('min_weighted_score_magnitude', 0.20)
     _ws_all = pd.to_numeric(council_df['weighted_score'], errors='coerce').fillna(0)
     _pnl_all = pd.to_numeric(council_df['pnl_realized'], errors='coerce')
