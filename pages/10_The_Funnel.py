@@ -88,14 +88,14 @@ if _funnel_dates:
 # Source filter
 if not funnel_df.empty and 'source' in funnel_df.columns:
     sources = ['ALL'] + sorted(funnel_df['source'].dropna().unique().tolist())
-    selected_source = st.sidebar.selectbox("Data Source", sources, index=0)
+    selected_source = st.sidebar.selectbox("Data Source", sources, index=0, help="Filter the execution funnel by data source (e.g., REALTIME or backfill).")
     if selected_source != 'ALL':
         funnel_df = funnel_df[funnel_df['source'] == selected_source]
 
 # Regime filter
 if not funnel_df.empty and 'regime' in funnel_df.columns:
     regimes = ['ALL'] + sorted(funnel_df['regime'].dropna().unique().tolist())
-    selected_regime = st.sidebar.selectbox("Regime Filter", regimes, index=0)
+    selected_regime = st.sidebar.selectbox("Regime Filter", regimes, index=0, help="Filter the execution funnel by specific market regimes.")
     if selected_regime != 'ALL':
         funnel_df = funnel_df[funnel_df['regime'] == selected_regime]
 
@@ -1190,7 +1190,7 @@ with st.expander("Raw Funnel Data", expanded=False):
         with filter_col1:
             _dynamic_stages = build_dynamic_stage_order(funnel_df)
             stages = ['ALL'] + _dynamic_stages
-            sel_stage = st.selectbox("Filter by Stage", stages)
+            sel_stage = st.selectbox("Filter by Stage", stages, help="Filter the raw funnel data to show only events from a specific execution stage.")
         with filter_col2:
             cycle_ids = funnel_df['cycle_id'].dropna().unique().tolist() if 'cycle_id' in funnel_df.columns else []
             cycle_options = ['ALL'] + sorted(set(cycle_ids), reverse=True)[:50]
