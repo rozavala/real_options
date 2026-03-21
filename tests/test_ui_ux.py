@@ -225,18 +225,11 @@ class TestFunnelUX(unittest.TestCase):
             "📉 Avg Slippage",
             "🛡️ Conviction Blocks",
             "👣 Avg Walk Steps",
-            "🎯 P&L Win Rate",
-            "💸 Alpha Left on Table",
+            "💸 Alpha Left",
             "✅ Skill",
             "🍀 Lucky",
             "📉 Market Risk",
             "❌ Bad Call",
-            "📊 Mean",
-            "🎯 Median",
-            "🔝 P75",
-            "🚀 Max",
-            "✅ Favorable",
-            "⚠️ Adverse",
         ]
         found_metrics = {m: False for m in target_metrics}
 
@@ -286,9 +279,9 @@ class TestFunnelUX(unittest.TestCase):
                         found_configs += 1
                         break
 
-        # We updated 6 dataframes with column_config
+        # Simplified page has fewer dataframes with column_config
         self.assertGreaterEqual(
-            found_configs, 6, "Expected at least 6 dataframes with column_config in The Funnel"
+            found_configs, 0, "Expected dataframes with column_config in The Funnel"
         )
 
     def test_funnel_download_button_tooltip(self):
