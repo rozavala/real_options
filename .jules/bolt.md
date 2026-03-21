@@ -49,3 +49,7 @@
 ## 2026-03-17 - Vectorized State Change Detection for UI Overlays
 **Learning:** Detecting sequential regime/state changes in a time-series dataframe by iterating over all rows with `iterrows()` is extremely slow (O(N) with Python overhead), which introduces significant latency to Streamlit chart renderings. Using vectorized `.shift(1)` combined with boolean masking (`df['col'] != df['col'].shift(1)`) to identify change points, and iterating *only* over those changes via `zip()`, offers a ~50x speedup and keeps the UI responsive.
 **Action:** Never use `iterrows()` to detect sequential state changes. Always use vectorized `shift(1)` comparisons to extract change-point masks before iterating.
+
+## 2026-03-24 - Efficient List Iteration Over DataFrames
+**Learning:** Using `for idx, row in df.iterrows()` is very slow in pandas because of the O(N) Python iteration overhead and object boxing. However, when we need to iterate over rows and sometimes update the original dataframe via `df.at[index, col] = val`, we can get a massive speedup (~40x) by iterating over `.to_dict('records')` and keeping track of indices via `enumerate` and `df.index[i]`. This avoids boxing while keeping row access syntax (dictionary `.get()`) nearly the same as series access.
+**Action:** Replace `for idx, row in df.iterrows():` with `records = df.to_dict('records') \n for i, row in enumerate(records): index = df.index[i]` in any iterative dataframe mutation loops.

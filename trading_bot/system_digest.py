@@ -420,7 +420,9 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
         df = ch_df.sort_values('timestamp', ascending=False).head(max_traces)
 
         traces = []
-        for _, row in df.iterrows():
+        # ⚡ Bolt: Vectorized to_dict('records') is much faster than .iterrows() iteration
+        records = df.to_dict('records')
+        for i, row in enumerate(records):
             # Parse vote_breakdown JSON
             top_contributors = []
             try:
@@ -449,10 +451,10 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
                             summary_col = f"{agent}_summary"
                             # Check legacy mapping
                             for legacy, canonical in _LEGACY_COLUMN_MAP.items():
-                                if canonical == agent and legacy in row.index:
+                                if canonical == agent and legacy in row:
                                     summary_col = legacy
                                     break
-                            argument = str(row.get(summary_col, ''))[:150] if summary_col in row.index else ''
+                            argument = str(row.get(summary_col, ''))[:150] if summary_col in row else ''
                             top_contributors.append({
                                 'agent': agent,
                                 'weight': _safe_float(weight),
@@ -462,10 +464,10 @@ def _build_decision_traces(ch_df: pd.DataFrame, max_traces: int = 5) -> list:
                 pass
 
             # Contrarian views from dissent_acknowledged
-            dissent = str(row.get('dissent_acknowledged', ''))[:200] if 'dissent_acknowledged' in row.index else ''
+            dissent = str(row.get('dissent_acknowledged', ''))[:200] if 'dissent_acknowledged' in row else ''
 
-            direction_col = 'master_decision' if 'master_decision' in row.index else 'master_direction'
-            strategy_col = 'strategy_type' if 'strategy_type' in row.index else 'strategy'
+            direction_col = 'master_decision' if 'master_decision' in row else 'master_direction'
+            strategy_col = 'strategy_type' if 'strategy_type' in row else 'strategy'
             traces.append({
                 'timestamp': str(row.get('timestamp', '')),
                 'direction': row.get(direction_col, ''),
