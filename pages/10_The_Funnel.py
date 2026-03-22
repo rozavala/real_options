@@ -320,7 +320,7 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
             d['avg_loss'] = float(losses.mean()) if len(losses) > 0 else 0.0
             gross_wins = float(wins.sum()) if len(wins) > 0 else 0.0
             gross_losses = abs(float(losses.sum())) if len(losses) > 0 else 0.0
-            d['profit_factor'] = gross_wins / max(gross_losses, 0.01)
+            d['profit_factor'] = (gross_wins / gross_losses) if gross_losses > 0 else float('inf')
 
             # Tail risk
             d['worst_trade_pnl'] = float(pnl_all.min())
@@ -483,32 +483,24 @@ with q2_col:
         delta=f"{diag['n_wins']}W / {diag['n_losses']}L" if diag['n_resolved'] > 0 else None,
         delta_color="off",
     )
-    # Convert price-unit P&L to dollars using contract multiplier
+    # P&L is in underlying price units (cents/lb for KC, $/mmBtu for NG).
+    # This measures signal quality (how much did price move in our direction),
+    # NOT actual dollar P&L — spreads capture only a fraction of the move.
     try:
         from config.commodity_profiles import get_commodity_profile
         _profile = get_commodity_profile(ticker)
-        _dollar_mult = _profile.contract.tick_value / _profile.contract.tick_size
+        _pnl_unit = _profile.contract.unit
     except Exception:
-        _dollar_mult = None
+        _pnl_unit = "pts"
 
     _pnl_color = "normal" if diag['total_pnl'] >= 0 else "inverse"
-    if diag['n_resolved'] > 0 and _dollar_mult is not None:
-        _total_dollars = diag['total_pnl'] * _dollar_mult
-        _avg_dollars = diag['avg_pnl'] * _dollar_mult
-        _q2b.metric(
-            "💰 Total P&L",
-            f"${_total_dollars:+,.0f}",
-            delta=f"${_avg_dollars:+,.0f}/trade ({diag['n_resolved']} trades)",
-            delta_color=_pnl_color,
-            help=f"Raw P&L: {diag['total_pnl']:+.2f} {_profile.contract.unit} x {_dollar_mult:,.0f} $/point",
-        )
-    else:
-        _q2b.metric(
-            "💰 Total P&L",
-            f"{diag['total_pnl']:+.1f}" if diag['n_resolved'] > 0 else "—",
-            delta=f"{diag['avg_pnl']:+.2f}/trade" if diag['n_resolved'] > 0 else None,
-            delta_color=_pnl_color,
-        )
+    _q2b.metric(
+        "💰 Signal P&L",
+        f"{diag['total_pnl']:+.2f} {_pnl_unit}" if diag['n_resolved'] > 0 else "—",
+        delta=f"{diag['avg_pnl']:+.3f}/trade ({diag['n_resolved']} trades)" if diag['n_resolved'] > 0 else None,
+        delta_color=_pnl_color,
+        help="Underlying price movement in our predicted direction. Measures signal quality, not actual dollar P&L (spreads capture only a fraction of the move).",
+    )
 
 st.markdown("---")
 
@@ -686,11 +678,13 @@ with st.expander("📈 Execution KPIs", expanded=False):
 with st.expander("💵 P&L Details", expanded=False):
     if diag['n_resolved'] > 0:
         _p1, _p2, _p3, _p4 = st.columns(4)
-        _p1.metric("Avg Win", f"{diag['avg_win']:+.2f}" if diag['n_wins'] > 0 else "—")
-        _p2.metric("Avg Loss", f"{diag['avg_loss']:+.2f}" if diag['n_losses'] > 0 else "—")
-        _p3.metric("Profit Factor", f"{diag['profit_factor']:.2f}x",
+        _p1.metric("Avg Win", f"+{diag['avg_win']:.2f} {_pnl_unit}" if diag['n_wins'] > 0 else "—")
+        _p2.metric("Avg Loss", f"{diag['avg_loss']:.2f} {_pnl_unit}" if diag['n_losses'] > 0 else "—")
+        _pf = diag['profit_factor']
+        _p3.metric("Profit Factor",
+                    f"{_pf:.2f}x" if _pf != float('inf') else "No losses",
                     help=">1.0 = profitable. >1.5 = good. >2.0 = excellent.")
-        _p4.metric("Worst Trade", f"{diag['worst_trade_pnl']:+.2f}")
+        _p4.metric("Worst Trade", f"{diag['worst_trade_pnl']:+.2f} {_pnl_unit}")
 
         # P&L histogram
         if diag['n_resolved'] >= 5 and 'pnl_realized' in council_df.columns:
@@ -702,7 +696,7 @@ with st.expander("💵 P&L Details", expanded=False):
                 fig_pnl.add_vline(x=diag['avg_pnl'], line_dash="dot", line_color="#f39c12",
                                   annotation_text=f"Mean: {diag['avg_pnl']:+.2f}")
                 fig_pnl.update_layout(height=250, margin=dict(t=30, b=30, l=40, r=20),
-                                      xaxis_title="P&L", yaxis_title="Count", showlegend=False)
+                                      xaxis_title=f"P&L ({_pnl_unit})", yaxis_title="Count", showlegend=False)
                 st.plotly_chart(fig_pnl, use_container_width=True)
     else:
         st.info("No resolved trades yet.")
