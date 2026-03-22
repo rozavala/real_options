@@ -222,7 +222,6 @@ class TestFunnelUX(unittest.TestCase):
         target_metrics = [
             "📡 Signal-to-Trade",
             "⛽ Fill Rate",
-            "📉 Avg Slippage",
             "🛡️ Conviction Blocks",
             "👣 Avg Walk Steps",
             "💸 Alpha Left",
