@@ -486,6 +486,20 @@ with q1_col:
         delta=f"{diag['vol_wins']}/{diag['vol_resolved']} profitable" if diag['vol_resolved'] > 0 else None,
         delta_color="off",
     )
+    # Show trade breakdown so the denominator is transparent
+    _n_traded = len(traded_df)
+    _n_dir = len(traded_df[traded_df['master_decision'].isin(['BULLISH', 'BEARISH'])]) if 'master_decision' in traded_df.columns else 0
+    _n_vol = len(traded_df[traded_df['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY']) if 'prediction_type' in traded_df.columns else 0
+    _n_unresolved = _n_dir - diag['dir_resolved']
+    _parts = []
+    if diag['dir_resolved'] > 0:
+        _parts.append(f"{diag['dir_resolved']} directional resolved")
+    if _n_unresolved > 0:
+        _parts.append(f"{_n_unresolved} unresolved (market flat)")
+    if _n_vol > 0:
+        _parts.append(f"{_n_vol} vol plays")
+    if _parts:
+        st.caption(f"Based on **{_n_traded} filled trades**: {', '.join(_parts)}")
 
 with q2_col:
     st.subheader("Q2: Are we making money?")
