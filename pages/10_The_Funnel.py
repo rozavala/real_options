@@ -252,6 +252,7 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
         # Q3: Bottleneck components
         'correct_profitable': 0, 'correct_loss': 0,
         'wrong_profitable': 0, 'wrong_loss': 0,
+        'unresolved_count': 0, 'unresolved_wins': 0, 'unresolved_losses': 0,
         'alpha_capture_pct': 0.0,
         'worst_trade_pnl': 0.0, 'worst_3_pct_of_loss': 0.0,
         'tail_gate_met': False,
@@ -276,6 +277,9 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
         dir_resolved = directional[
             directional['actual_trend_direction'].str.upper().isin(DIR_NORM)
         ].copy()
+        dir_unresolved = directional[
+            ~directional['actual_trend_direction'].str.upper().isin(DIR_NORM)
+        ].copy()
         n_dir = len(dir_resolved)
         if n_dir > 0:
             actual = dir_resolved['actual_trend_direction'].str.upper().map(DIR_NORM)
@@ -285,7 +289,7 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
             d['dir_resolved'] = n_dir
             d['dir_accuracy_pct'] = d['dir_correct'] / n_dir * 100
 
-            # 2x2 matrix (directional only)
+            # 2x2 matrix (directional only — resolved trades)
             if 'pnl_realized' in dir_resolved.columns:
                 pnl = pd.to_numeric(dir_resolved['pnl_realized'], errors='coerce')
                 has_pnl = pnl.notna()
@@ -297,6 +301,13 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
                 n_correct_with_pnl = d['correct_profitable'] + d['correct_loss']
                 if n_correct_with_pnl > 0:
                     d['alpha_capture_pct'] = d['correct_profitable'] / n_correct_with_pnl * 100
+
+        # Unresolved directional trades (market flat — actual_trend = NEUTRAL/NaN)
+        if 'pnl_realized' in dir_unresolved.columns:
+            unr_pnl = pd.to_numeric(dir_unresolved['pnl_realized'], errors='coerce').dropna()
+            d['unresolved_count'] = len(unr_pnl)
+            d['unresolved_wins'] = int((unr_pnl > 0).sum())
+            d['unresolved_losses'] = int((unr_pnl <= 0).sum())
 
     # --- Q1: Vol play hit rate (filled trades only) ---
     if 'prediction_type' in traded_df.columns and 'pnl_realized' in traded_df.columns:
@@ -586,35 +597,39 @@ with _b3:
 st.markdown("---")
 st.subheader("📋 Outcome Breakdown")
 
-_matrix_total = diag['correct_profitable'] + diag['correct_loss'] + diag['wrong_profitable'] + diag['wrong_loss']
+_matrix_resolved = diag['correct_profitable'] + diag['correct_loss'] + diag['wrong_profitable'] + diag['wrong_loss']
+_matrix_total = _matrix_resolved + diag['unresolved_count'] + diag['vol_resolved']
 
 if _matrix_total >= 1:
     st.caption(
-        "Direction × P&L for **filled trades only** (excludes vol plays and unexecuted signals). "
-        "`actual_trend_direction` is derived from exit-price, "
-        "so Correct+Loss and Wrong+Profitable may be structurally constrained."
+        "Filled trades breakdown. **Resolved**: market moved clearly up/down. "
+        "**Flat market**: direction inconclusive. **Vol plays**: non-directional strategies."
     )
-    _m1, _m2, _m3, _m4 = st.columns(4)
+    _m1, _m2, _m3, _m4, _m5 = st.columns(5)
     _m1.metric("🎯 Correct + Profit", diag['correct_profitable'],
                delta=f"{diag['correct_profitable'] / max(_matrix_total, 1) * 100:.0f}%",
-               delta_color="normal", help="Pure skill.")
+               delta_color="normal", help="Correct direction, profitable trade.")
     _m2.metric("⚠️ Correct + Loss", diag['correct_loss'],
                delta=f"{diag['correct_loss'] / max(_matrix_total, 1) * 100:.0f}%",
-               delta_color="inverse", help="Option structure leak: theta, strikes, timing.")
-    _m3.metric("🍀 Wrong + Profit", diag['wrong_profitable'],
-               delta=f"{diag['wrong_profitable'] / max(_matrix_total, 1) * 100:.0f}%",
-               delta_color="off", help="Lucky — unsustainable.")
-    _m4.metric("❌ Wrong + Loss", diag['wrong_loss'],
+               delta_color="inverse", help="Right direction but lost money (theta, strikes, timing).")
+    _m3.metric("❌ Wrong + Loss", diag['wrong_loss'],
                delta=f"{diag['wrong_loss'] / max(_matrix_total, 1) * 100:.0f}%",
-               delta_color="inverse", help="Expected outcome of bad call.")
-
+               delta_color="inverse", help="Wrong direction, expected loss.")
+    _m4.metric("🔲 Flat Market", diag['unresolved_count'],
+               delta=f"{diag['unresolved_wins']}W / {diag['unresolved_losses']}L" if diag['unresolved_count'] > 0 else None,
+               delta_color="off",
+               help="Market didn't move clearly — direction accuracy can't be assessed.")
+    _m5_parts = []
     if diag['vol_resolved'] > 0:
-        st.caption(
-            f"Vol plays (excluded above): {diag['vol_wins']}/{diag['vol_resolved']} profitable "
-            f"({diag['vol_hit_pct']:.0f}%)"
-        )
+        _m5_parts.append(f"{diag['vol_wins']}/{diag['vol_resolved']} profitable")
+    if diag['wrong_profitable'] > 0:
+        _m5_parts.append(f"{diag['wrong_profitable']} lucky (wrong+profit)")
+    _m5.metric("⚡ Vol / Other", diag['vol_resolved'] + diag['wrong_profitable'],
+               delta=", ".join(_m5_parts) if _m5_parts else None,
+               delta_color="off",
+               help="Vol plays + wrong-direction-but-profitable trades.")
 elif diag['n_resolved'] > 0:
-    st.info(f"Need 4+ resolved directional signals for outcome matrix (currently {_matrix_total})")
+    st.info(f"No resolved directional trades yet (only {diag['n_resolved']} total trades)")
 else:
     st.info("No resolved trades yet.")
 
