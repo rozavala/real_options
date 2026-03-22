@@ -267,9 +267,12 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
     if council_df.empty:
         return d
 
-    # --- Q1: Directional accuracy (excludes vol plays) ---
-    if 'actual_trend_direction' in council_df.columns and 'master_decision' in council_df.columns:
-        directional = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+    # council_df is pre-filtered to filled trades only (traded_df) by the caller.
+    traded_df = council_df
+
+    # --- Q1: Directional accuracy (filled trades only) ---
+    if 'actual_trend_direction' in traded_df.columns and 'master_decision' in traded_df.columns:
+        directional = traded_df[traded_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
         dir_resolved = directional[
             directional['actual_trend_direction'].str.upper().isin(DIR_NORM)
         ].copy()
@@ -295,18 +298,18 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
                 if n_correct_with_pnl > 0:
                     d['alpha_capture_pct'] = d['correct_profitable'] / n_correct_with_pnl * 100
 
-    # --- Q1: Vol play hit rate ---
-    if 'prediction_type' in council_df.columns and 'pnl_realized' in council_df.columns:
-        vol = council_df[council_df['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY']
+    # --- Q1: Vol play hit rate (filled trades only) ---
+    if 'prediction_type' in traded_df.columns and 'pnl_realized' in traded_df.columns:
+        vol = traded_df[traded_df['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY']
         vol_pnl = pd.to_numeric(vol['pnl_realized'], errors='coerce').dropna()
         if len(vol_pnl) > 0:
             d['vol_wins'] = int((vol_pnl > 0).sum())
             d['vol_resolved'] = len(vol_pnl)
             d['vol_hit_pct'] = d['vol_wins'] / d['vol_resolved'] * 100
 
-    # --- Q2: P&L metrics (ALL resolved trades, including vol plays) ---
-    if 'pnl_realized' in council_df.columns:
-        pnl_all = pd.to_numeric(council_df['pnl_realized'], errors='coerce').dropna()
+    # --- Q2: P&L metrics (filled trades only, including vol plays) ---
+    if 'pnl_realized' in traded_df.columns:
+        pnl_all = pd.to_numeric(traded_df['pnl_realized'], errors='coerce').dropna()
         if len(pnl_all) > 0:
             wins = pnl_all[pnl_all > 0]
             losses = pnl_all[pnl_all <= 0]
@@ -429,7 +432,17 @@ def _determine_bottleneck(d: dict) -> dict:
 config = get_config()
 _observation_only = (selected_trading_mode == 'OBSERVATION ONLY')
 funnel_cascade = build_true_funnel(council_df, funnel_df, config, observation_only=_observation_only)
-diag = compute_diagnosis(council_df, funnel_df)
+
+# Build traded_df: council decisions that resulted in actual fills.
+# Used by Q1/Q2 metrics, Outcome Breakdown, P&L histogram, and Skill/Luck scatter.
+if (not funnel_df.empty and 'stage' in funnel_df.columns
+        and 'cycle_id' in funnel_df.columns and 'cycle_id' in council_df.columns):
+    _filled_cycles = set(funnel_df[funnel_df['stage'] == 'ORDER_FILLED']['cycle_id'].dropna())
+    traded_df = council_df[council_df['cycle_id'].isin(_filled_cycles)] if _filled_cycles else council_df.iloc[0:0]
+else:
+    traded_df = council_df  # fallback when no funnel data
+
+diag = compute_diagnosis(traded_df, funnel_df)
 
 
 # ============================================================
@@ -561,10 +574,10 @@ st.subheader("📋 Outcome Breakdown")
 
 _matrix_total = diag['correct_profitable'] + diag['correct_loss'] + diag['wrong_profitable'] + diag['wrong_loss']
 
-if _matrix_total >= 4:
+if _matrix_total >= 1:
     st.caption(
-        "Direction × P&L for directional signals only (excludes vol plays). "
-        "Under current instrumentation, `actual_trend_direction` is derived from exit-price, "
+        "Direction × P&L for **filled trades only** (excludes vol plays and unexecuted signals). "
+        "`actual_trend_direction` is derived from exit-price, "
         "so Correct+Loss and Wrong+Profitable may be structurally constrained."
     )
     _m1, _m2, _m3, _m4 = st.columns(4)
@@ -663,8 +676,8 @@ with st.expander("📈 Execution KPIs", expanded=False):
                help="% of actionable signals → filled orders")
     _e2.metric("⛽ Fill Rate", f"{diag['fill_rate_pct']:.0f}%",
                help="% of placed orders that filled")
-    _e3.metric("📉 Avg Slippage", f"{diag['avg_slippage_pct']:.1f}%",
-               help="Avg slippage as % of credit/debit")
+    _e3.metric("📉 Avg Walk Cost", f"{diag['avg_slippage_pct']:.1f}%",
+               help="Avg fill price vs initial limit (adaptive walk distance). Higher = more price concession to get filled.")
     _e4.metric("🛡️ Conviction Blocks", f"{diag['conviction_block_pct']:.0f}%",
                help="% of signals blocked by conviction gate")
     _e5.metric("👣 Avg Walk Steps", f"{diag['avg_walk_steps']:.0f}",
@@ -686,9 +699,9 @@ with st.expander("💵 P&L Details", expanded=False):
                     help=">1.0 = profitable. >1.5 = good. >2.0 = excellent.")
         _p4.metric("Worst Trade", f"{diag['worst_trade_pnl']:+.2f} {_pnl_unit}")
 
-        # P&L histogram
-        if diag['n_resolved'] >= 5 and 'pnl_realized' in council_df.columns:
-            pnl_data = pd.to_numeric(council_df['pnl_realized'], errors='coerce').dropna()
+        # P&L histogram (filled trades only)
+        if diag['n_resolved'] >= 5 and 'pnl_realized' in traded_df.columns:
+            pnl_data = pd.to_numeric(traded_df['pnl_realized'], errors='coerce').dropna()
             if not pnl_data.empty:
                 fig_pnl = go.Figure()
                 fig_pnl.add_trace(go.Histogram(x=pnl_data, nbinsx=25, marker_color='#3498db'))
@@ -702,12 +715,12 @@ with st.expander("💵 P&L Details", expanded=False):
         st.info("No resolved trades yet.")
 
 # --- Correct+Loss Drill-Down ---
-if diag['correct_loss'] >= 2 and 'actual_trend_direction' in council_df.columns:
+if diag['correct_loss'] >= 2 and 'actual_trend_direction' in traded_df.columns:
     with st.expander(
         f"🔍 Correct Direction but Lost ({diag['correct_loss']} trades)",
         expanded=(diag['correct_loss'] >= 3 and _bn == 'execution'),
     ):
-        directional = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+        directional = traded_df[traded_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
         dir_resolved = directional[directional['actual_trend_direction'].str.upper().isin(DIR_NORM)].copy()
         if not dir_resolved.empty and 'pnl_realized' in dir_resolved.columns:
             actual = dir_resolved['actual_trend_direction'].str.upper().map(DIR_NORM)
@@ -743,8 +756,8 @@ if diag['correct_loss'] >= 2 and 'actual_trend_direction' in council_df.columns:
 
 # --- Signal vs Outcome Scatter ---
 with st.expander("🎯 Signal vs Outcome — Skill or Luck?", expanded=False):
-    if not council_df.empty and 'pnl_realized' in council_df.columns and 'weighted_score' in council_df.columns:
-        resolved = council_df[council_df['pnl_realized'].notna()].copy()
+    if not traded_df.empty and 'pnl_realized' in traded_df.columns and 'weighted_score' in traded_df.columns:
+        resolved = traded_df[traded_df['pnl_realized'].notna()].copy()
         if not resolved.empty:
             resolved['process_score'] = resolved['master_confidence'].fillna(0.5) * resolved['weighted_score'].abs().fillna(0)
             resolved['pnl'] = resolved['pnl_realized'].astype(float)
@@ -784,11 +797,26 @@ if not funnel_df.empty and 'regime' in funnel_df.columns:
     regime_values = [r for r in funnel_df['regime'].dropna().unique() if r and str(r).upper() != 'UNKNOWN']
     if len(regime_values) >= 2:
         with st.expander("🎭 Regime Comparison", expanded=False):
+            # Build cycle_id → regime mapping from COUNCIL_DECISION rows
+            # (ORDER_FILLED rows have regime=UNKNOWN, so we resolve via cycle_id)
+            _cycle_regime = {}
+            if 'cycle_id' in funnel_df.columns:
+                for _, row in funnel_df[funnel_df['stage'] == 'COUNCIL_DECISION'].iterrows():
+                    cid = row.get('cycle_id')
+                    reg = row.get('regime')
+                    if cid and reg and str(reg).upper() != 'UNKNOWN':
+                        _cycle_regime[cid] = reg
+
             regime_survival = []
             for regime in sorted(regime_values):
                 rdf = funnel_df[funnel_df['regime'] == regime]
                 n_dec = len(rdf[(rdf['stage'] == 'COUNCIL_DECISION') & rdf['outcome'].isin(['PASS', 'BLOCK', 'INFO'])])
-                n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
+                # Count fills whose cycle_id maps to this regime
+                fills = funnel_df[funnel_df['stage'] == 'ORDER_FILLED']
+                if 'cycle_id' in fills.columns and _cycle_regime:
+                    n_filled = int(fills['cycle_id'].map(_cycle_regime).eq(regime).sum())
+                else:
+                    n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
                 regime_survival.append({
                     'Regime': str(regime).title(),
                     'Decisions': n_dec, 'Filled': n_filled,
