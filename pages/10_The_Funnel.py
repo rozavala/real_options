@@ -483,13 +483,32 @@ with q2_col:
         delta=f"{diag['n_wins']}W / {diag['n_losses']}L" if diag['n_resolved'] > 0 else None,
         delta_color="off",
     )
+    # Convert price-unit P&L to dollars using contract multiplier
+    try:
+        from config.commodity_profiles import get_commodity_profile
+        _profile = get_commodity_profile(ticker)
+        _dollar_mult = _profile.contract.tick_value / _profile.contract.tick_size
+    except Exception:
+        _dollar_mult = None
+
     _pnl_color = "normal" if diag['total_pnl'] >= 0 else "inverse"
-    _q2b.metric(
-        "💰 Total P&L",
-        f"{diag['total_pnl']:+.1f}" if diag['n_resolved'] > 0 else "—",
-        delta=f"{diag['avg_pnl']:+.2f}/trade" if diag['n_resolved'] > 0 else None,
-        delta_color=_pnl_color,
-    )
+    if diag['n_resolved'] > 0 and _dollar_mult is not None:
+        _total_dollars = diag['total_pnl'] * _dollar_mult
+        _avg_dollars = diag['avg_pnl'] * _dollar_mult
+        _q2b.metric(
+            "💰 Total P&L",
+            f"${_total_dollars:+,.0f}",
+            delta=f"${_avg_dollars:+,.0f}/trade ({diag['n_resolved']} trades)",
+            delta_color=_pnl_color,
+            help=f"Raw P&L: {diag['total_pnl']:+.2f} {_profile.contract.unit} x {_dollar_mult:,.0f} $/point",
+        )
+    else:
+        _q2b.metric(
+            "💰 Total P&L",
+            f"{diag['total_pnl']:+.1f}" if diag['n_resolved'] > 0 else "—",
+            delta=f"{diag['avg_pnl']:+.2f}/trade" if diag['n_resolved'] > 0 else None,
+            delta_color=_pnl_color,
+        )
 
 st.markdown("---")
 
