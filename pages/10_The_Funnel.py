@@ -663,8 +663,8 @@ with st.expander("📈 Execution KPIs", expanded=False):
                help="% of actionable signals → filled orders")
     _e2.metric("⛽ Fill Rate", f"{diag['fill_rate_pct']:.0f}%",
                help="% of placed orders that filled")
-    _e3.metric("📉 Avg Slippage", f"{diag['avg_slippage_pct']:.1f}%",
-               help="Avg slippage as % of credit/debit")
+    _e3.metric("📉 Avg Walk Cost", f"{diag['avg_slippage_pct']:.1f}%",
+               help="Avg fill price vs initial limit (adaptive walk distance). Higher = more price concession to get filled.")
     _e4.metric("🛡️ Conviction Blocks", f"{diag['conviction_block_pct']:.0f}%",
                help="% of signals blocked by conviction gate")
     _e5.metric("👣 Avg Walk Steps", f"{diag['avg_walk_steps']:.0f}",
@@ -784,11 +784,26 @@ if not funnel_df.empty and 'regime' in funnel_df.columns:
     regime_values = [r for r in funnel_df['regime'].dropna().unique() if r and str(r).upper() != 'UNKNOWN']
     if len(regime_values) >= 2:
         with st.expander("🎭 Regime Comparison", expanded=False):
+            # Build cycle_id → regime mapping from COUNCIL_DECISION rows
+            # (ORDER_FILLED rows have regime=UNKNOWN, so we resolve via cycle_id)
+            _cycle_regime = {}
+            if 'cycle_id' in funnel_df.columns:
+                for _, row in funnel_df[funnel_df['stage'] == 'COUNCIL_DECISION'].iterrows():
+                    cid = row.get('cycle_id')
+                    reg = row.get('regime')
+                    if cid and reg and str(reg).upper() != 'UNKNOWN':
+                        _cycle_regime[cid] = reg
+
             regime_survival = []
             for regime in sorted(regime_values):
                 rdf = funnel_df[funnel_df['regime'] == regime]
                 n_dec = len(rdf[(rdf['stage'] == 'COUNCIL_DECISION') & rdf['outcome'].isin(['PASS', 'BLOCK', 'INFO'])])
-                n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
+                # Count fills whose cycle_id maps to this regime
+                fills = funnel_df[funnel_df['stage'] == 'ORDER_FILLED']
+                if 'cycle_id' in fills.columns and _cycle_regime:
+                    n_filled = int(fills['cycle_id'].map(_cycle_regime).eq(regime).sum())
+                else:
+                    n_filled = len(rdf[rdf['stage'] == 'ORDER_FILLED'])
                 regime_survival.append({
                     'Regime': str(regime).title(),
                     'Decisions': n_dec, 'Filled': n_filled,
