@@ -41,21 +41,11 @@ from dashboard_utils import (
     fetch_benchmark_data,
     get_starting_capital,
     _relative_time,
+    _get_commodity_meta,
 )
 from _date_filter import date_range_picker, apply_date_filter
 
 config = get_config()
-
-def _get_commodity_meta(ticker: str) -> dict:
-    """Build display metadata from CommodityProfile — no hardcoded dict."""
-    from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
-    try:
-        from config.commodity_profiles import get_commodity_profile
-        profile = get_commodity_profile(ticker)
-        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "\U0001f4ca"))
-        return {"name": profile.name, "emoji": emoji}
-    except Exception:
-        return {"name": ticker, "emoji": "\U0001f4ca"}
 
 st.title("\U0001f4ca Real Options Portfolio")
 

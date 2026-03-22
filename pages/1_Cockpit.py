@@ -35,6 +35,7 @@ from dashboard_utils import (
     _relative_time,
     build_position_pnl_map,
     find_untracked_ibkr_positions,
+    _get_commodity_meta,
 )
 from trading_bot.calendars import is_trading_day
 from config.commodity_profiles import get_commodity_profile as get_profile_dataclass, parse_trading_hours
@@ -81,7 +82,7 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
                 entry_ts_str = str(entry_ts)
 
             st.metric(
-                "Entry",
+                "🚪 Entry",
                 f"${entry_price:.2f}" if entry_price else "N/A",
                 help=f"Executed at: {entry_ts_str}"
             )
@@ -89,18 +90,18 @@ def render_thesis_card_enhanced(thesis: dict, live_data: dict, config: dict = No
         with cols[1]:
             if unrealized_pnl is not None:
                 st.metric(
-                    "Unrealized P&L",
+                    "💰 Unrealized P&L",
                     f"${unrealized_pnl:+,.2f}",
                     delta=f"${unrealized_pnl:+,.2f}",
                     delta_color="normal",
                     help="Current open profit/loss on active positions"
                 )
             else:
-                st.metric("Unrealized P&L", "N/A", help="Current open profit/loss on active positions")
+                st.metric("💰 Unrealized P&L", "N/A", help="Current open profit/loss on active positions")
 
         with cols[2]:
             st.metric(
-                "Strategy",
+                "🛡️ Strategy",
                 strategy.replace('_', ' ').title(),
                 help="Trading strategy used for this position"
             )
@@ -555,7 +556,7 @@ with hb_cols[2]:
         errors = [s.get('display_name', 'Unknown Sentinel') for s in sentinels.values() if s.get('status') == 'ERROR']
         sentinel_help += "\n\n🚨 **Errors:**\n" + "\n".join([f"- {name}" for name in errors])
 
-    st.metric("Sentinel Array", f"{sentinel_icon} {ok_count}/{len(sentinels)}",
+    st.metric("📡 Sentinel Array", f"{sentinel_icon} {ok_count}/{len(sentinels)}",
               help=sentinel_help)
     if error_count > 0:
         st.caption(f"⚠️ {error_count} sentinel(s) in error state")
@@ -890,13 +891,13 @@ if config:
             st.caption(f"Portfolio VaR (:{stale_color}[{stale_label}])")
             var_cols = st.columns(4)
             with var_cols[0]:
-                st.metric("VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}", help="Value at Risk (95% confidence): Estimated maximum loss over 1 day in normal market conditions.")
+                st.metric("⚖️ VaR(95%)", f"{var_95_pct:.1%}", f"${var_95_usd:,.0f}", help="Value at Risk (95% confidence): Estimated maximum loss over 1 day in normal market conditions.")
             with var_cols[1]:
-                st.metric("VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}", help="Value at Risk (99% confidence): Estimated maximum loss over 1 day in extreme market conditions.")
+                st.metric("⚖️ VaR(99%)", f"{var_99_pct:.1%}", f"${var_99_usd:,.0f}", help="Value at Risk (99% confidence): Estimated maximum loss over 1 day in extreme market conditions.")
             with var_cols[2]:
-                st.metric("Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
+                st.metric("🔌 Utilization", f":{util_color}[{util:.0%}]", help="Percentage of the VaR limit currently being used.")
             with var_cols[3]:
-                st.metric("Legs", f"{pos_count} ({', '.join(commodities)})", help="Individual option contract legs held in IB across all active commodities.")
+                st.metric("🦵 Legs", f"{pos_count} ({', '.join(commodities)})", help="Individual option contract legs held in IB across all active commodities.")
 
             # Failure indicator
             if status == "FAILED":
@@ -943,14 +944,16 @@ if config:
     st.caption("Market Benchmarks")
     bench_cols = st.columns(min(1 + len(_all_commodities), 6))
     with bench_cols[0]:
-        st.metric("S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%", help="Year-to-date performance of the S&P 500 index.")
+        st.metric("🇺🇸 S&P 500", f"{benchmarks.get('SPY', 0):+.2f}%", help="Year-to-date performance of the S&P 500 index.")
     for _bi, _bt in enumerate(_all_commodities):
         if _bi + 1 >= len(bench_cols):
             break
         with bench_cols[_bi + 1]:
             _pct = benchmarks.get(_bt, 0)
+            _meta = _get_commodity_meta(_bt)
+            _emoji = _meta['emoji']
             # Highlight selected commodity
-            _label = f"**{_bt}**" if _bt == ticker else _bt
+            _label = f"**{_emoji} {_bt}**" if _bt == ticker else f"{_emoji} {_bt}"
             st.metric(_label, f"{_pct:+.2f}%", help=f"Year-to-date performance of the {_bt} commodity.")
 
     # Rolling Win Rate Sparkline
@@ -1241,7 +1244,7 @@ try:
 
         with router_cols[0]:
             st.metric(
-                "Total Requests",
+                "🔢 Total Requests",
                 metrics.get('total_requests', 0),
                 help="Total LLM API requests routed"
             )
@@ -1249,7 +1252,7 @@ try:
         with router_cols[1]:
             success_rate = metrics.get('overall_success_rate', 1.0) * 100
             st.metric(
-                "Success Rate",
+                "✅ Success Rate",
                 f"{success_rate:.1f}%",
                 delta_color="normal" if success_rate > 95 else "inverse",
                 help="Percentage of requests handled by primary provider without fallback"
@@ -1258,7 +1261,7 @@ try:
         with router_cols[2]:
             fallback_count = metrics.get('fallback_count', 0)
             st.metric(
-                "Fallback Count",
+                "🔀 Fallback Count",
                 fallback_count,
                 delta=fallback_count if fallback_count > 0 else None,
                 delta_color="inverse",  # Lower is better
@@ -1267,7 +1270,7 @@ try:
 
         with router_cols[3]:
             st.metric(
-                "Since Reset",
+                "📅 Since Reset",
                 metrics.get('last_reset', 'N/A')[:10] if metrics.get('last_reset') else 'N/A',
                 help="Date when the router metrics were last reset"
             )

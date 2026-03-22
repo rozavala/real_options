@@ -85,7 +85,11 @@ if mode == "Calendar":
         contract_str = daily_decisions['contract'].fillna('Unknown').astype(str) if 'contract' in daily_decisions else 'Unknown'
         decision_str = daily_decisions['master_decision'].fillna('N/A').astype(str) if 'master_decision' in daily_decisions else 'N/A'
 
-        daily_decisions['display'] = ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
+        # Prepend semantic emoji for scannability
+        icon_map = {'BULLISH': '🟢', 'BEARISH': '🔴', 'NEUTRAL': '⚪'}
+        icon_str = daily_decisions['master_decision'].fillna('NEUTRAL').astype(str).str.upper().map(icon_map).fillna('⚪')
+
+        daily_decisions['display'] = icon_str + " " + ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
 
         selected = st.selectbox(
             f"Decisions on {selected_date} ({len(daily_decisions)} total):",
@@ -101,7 +105,11 @@ else:
     contract_str = council_df['contract'].fillna('Unknown').astype(str) if 'contract' in council_df else 'Unknown'
     decision_str = council_df['master_decision'].fillna('N/A').astype(str) if 'master_decision' in council_df else 'N/A'
 
-    council_df['display'] = ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
+    # Prepend semantic emoji for scannability
+    icon_map = {'BULLISH': '🟢', 'BEARISH': '🔴', 'NEUTRAL': '⚪'}
+    icon_str = council_df['master_decision'].fillna('NEUTRAL').astype(str).str.upper().map(icon_map).fillna('⚪')
+
+    council_df['display'] = icon_str + " " + ts_str + " (" + rel_time_str + ") | " + contract_str + " | " + decision_str
 
     selected = st.selectbox(
         "Choose a decision:",
