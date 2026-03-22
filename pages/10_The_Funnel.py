@@ -267,9 +267,24 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
     if council_df.empty:
         return d
 
-    # --- Q1: Directional accuracy (excludes vol plays) ---
-    if 'actual_trend_direction' in council_df.columns and 'master_decision' in council_df.columns:
-        directional = council_df[council_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
+    # Restrict to decisions that resulted in actual fills (end-to-end view).
+    # council_history contains pnl_realized for ALL directional decisions (signal
+    # quality backfill), but this page shows real trading results. Filter to
+    # cycle_ids that appear in ORDER_FILLED events in execution_funnel.
+    if (not funnel_df.empty and 'stage' in funnel_df.columns
+            and 'cycle_id' in funnel_df.columns and 'cycle_id' in council_df.columns):
+        filled_cycles = set(funnel_df[funnel_df['stage'] == 'ORDER_FILLED']['cycle_id'].dropna())
+        if filled_cycles:
+            traded_df = council_df[council_df['cycle_id'].isin(filled_cycles)]
+        else:
+            traded_df = council_df.iloc[0:0]  # empty with same columns
+    else:
+        # No funnel data available — fall back to all decisions with pnl
+        traded_df = council_df
+
+    # --- Q1: Directional accuracy (filled trades only) ---
+    if 'actual_trend_direction' in traded_df.columns and 'master_decision' in traded_df.columns:
+        directional = traded_df[traded_df['master_decision'].isin(['BULLISH', 'BEARISH'])].copy()
         dir_resolved = directional[
             directional['actual_trend_direction'].str.upper().isin(DIR_NORM)
         ].copy()
@@ -295,18 +310,18 @@ def compute_diagnosis(council_df: pd.DataFrame, funnel_df: pd.DataFrame) -> dict
                 if n_correct_with_pnl > 0:
                     d['alpha_capture_pct'] = d['correct_profitable'] / n_correct_with_pnl * 100
 
-    # --- Q1: Vol play hit rate ---
-    if 'prediction_type' in council_df.columns and 'pnl_realized' in council_df.columns:
-        vol = council_df[council_df['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY']
+    # --- Q1: Vol play hit rate (filled trades only) ---
+    if 'prediction_type' in traded_df.columns and 'pnl_realized' in traded_df.columns:
+        vol = traded_df[traded_df['prediction_type'].fillna('DIRECTIONAL') == 'VOLATILITY']
         vol_pnl = pd.to_numeric(vol['pnl_realized'], errors='coerce').dropna()
         if len(vol_pnl) > 0:
             d['vol_wins'] = int((vol_pnl > 0).sum())
             d['vol_resolved'] = len(vol_pnl)
             d['vol_hit_pct'] = d['vol_wins'] / d['vol_resolved'] * 100
 
-    # --- Q2: P&L metrics (ALL resolved trades, including vol plays) ---
-    if 'pnl_realized' in council_df.columns:
-        pnl_all = pd.to_numeric(council_df['pnl_realized'], errors='coerce').dropna()
+    # --- Q2: P&L metrics (filled trades only, including vol plays) ---
+    if 'pnl_realized' in traded_df.columns:
+        pnl_all = pd.to_numeric(traded_df['pnl_realized'], errors='coerce').dropna()
         if len(pnl_all) > 0:
             wins = pnl_all[pnl_all > 0]
             losses = pnl_all[pnl_all <= 0]
