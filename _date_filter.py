@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import timedelta
 
 
-def date_range_picker(df, timestamp_col='timestamp', key='page'):
+def date_range_picker(df, timestamp_col='timestamp', key='page', default_days=10):
     """Render ONE sidebar date range picker derived from a DataFrame's timestamps.
 
     Returns (start_date, end_date) or None if the df is empty / single-day.
@@ -21,7 +21,7 @@ def date_range_picker(df, timestamp_col='timestamp', key='page'):
     max_date = valid.max().date()
     if min_date == max_date:
         return None
-    default_start = max(min_date, max_date - timedelta(days=30))
+    default_start = max(min_date, max_date - timedelta(days=default_days))
     date_val = st.sidebar.date_input(
         "Date range", value=(default_start, max_date),
         min_value=min_date, max_value=max_date,
