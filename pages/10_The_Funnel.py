@@ -90,7 +90,7 @@ if not funnel_df.empty and 'source' in funnel_df.columns:
 # Regime filter
 if not funnel_df.empty and 'regime' in funnel_df.columns:
     regimes = ['ALL'] + sorted(funnel_df['regime'].dropna().unique().tolist())
-    selected_regime = st.sidebar.selectbox("Regime Filter", regimes, index=0, help="Filter to see how execution performs under different market regimes (e.g. Trend, Range).")
+    selected_regime = st.sidebar.selectbox("Regime Filter", regimes, index=0, help="Filter to see how execution performs under different market regimes (e.g., bullish, bearish, neutral, range_bound).")
     if selected_regime != 'ALL':
         funnel_df = funnel_df[funnel_df['regime'] == selected_regime]
 
@@ -705,7 +705,7 @@ with st.expander("📈 Execution KPIs", expanded=False):
                help="% of actionable signals → filled orders")
     _e2.metric("⛽ Fill Rate", f"{diag['fill_rate_pct']:.0f}%",
                help="% of placed orders that filled")
-    _e3.metric("📉 Avg Slippage", f"{diag['avg_slippage_pct']:.1f}%",
+    _e3.metric("📉 Avg Walk Cost", f"{diag['avg_slippage_pct']:.1f}%",
                help="Avg fill price vs initial limit (adaptive walk distance). Higher = more price concession to get filled.")
     _e4.metric("🛡️ Conviction Blocks", f"{diag['conviction_block_pct']:.0f}%",
                help="% of signals blocked by conviction gate")
