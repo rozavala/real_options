@@ -88,6 +88,18 @@ def _resolve_data_path_for(filename: str, ticker: str) -> str:
     return commodity_path
 
 
+def _get_commodity_meta(ticker: str) -> dict:
+    """Build display metadata from CommodityProfile — no hardcoded dict."""
+    from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
+    try:
+        from config.commodity_profiles import get_commodity_profile
+        profile = get_commodity_profile(ticker)
+        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "📊"))
+        return {"name": profile.name, "emoji": emoji}
+    except Exception:
+        return {"name": ticker, "emoji": "📊"}
+
+
 def _relative_time(ts) -> str:
     """Format a timestamp as a human-readable relative time string."""
     try:

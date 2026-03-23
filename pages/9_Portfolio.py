@@ -12,7 +12,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dashboard_utils import _relative_time, discover_active_commodities, get_active_theses
+from dashboard_utils import _relative_time, discover_active_commodities, get_active_theses, _get_commodity_meta
 
 st.set_page_config(layout="wide", page_title="Portfolio | Real Options")
 st.title("💼 Portfolio Overview")
@@ -120,17 +120,6 @@ else:
 # === SECTION 3: Engine Health ===
 st.markdown("---")
 st.subheader("⚙️ Engine Health")
-
-def _get_commodity_meta(ticker: str) -> dict:
-    """Build display metadata from CommodityProfile."""
-    from _commodity_selector import _TICKER_EMOJI, _TYPE_EMOJI
-    try:
-        from config.commodity_profiles import get_commodity_profile
-        profile = get_commodity_profile(ticker)
-        emoji = _TICKER_EMOJI.get(ticker, _TYPE_EMOJI.get(profile.commodity_type, "\U0001f4ca"))
-        return {"name": profile.name, "emoji": emoji}
-    except Exception:
-        return {"name": ticker, "emoji": "\U0001f4ca"}
 
 if active_tickers:
     cols = st.columns(min(len(active_tickers), 4))
