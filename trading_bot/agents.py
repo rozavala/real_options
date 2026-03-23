@@ -801,20 +801,18 @@ class TradingCouncil:
         """Phase 1 via Perplexity Sonar — deterministic search cost."""
         logger.info(f"[{persona_key}] Phase 1: Gathering grounded data via Perplexity Sonar...")
 
-        async with self._grounded_data_semaphore:
-            import time as _time
-            elapsed = _time.monotonic() - self._last_grounded_call_time
-            if elapsed < self._grounded_data_min_interval:
-                await asyncio.sleep(self._grounded_data_min_interval - elapsed)
-            self._last_grounded_call_time = _time.monotonic()
+        from trading_bot.rate_limiter import acquire_api_slot
+        acquired = await acquire_api_slot('perplexity', timeout=60.0)
+        if not acquired:
+            raise RuntimeError("Perplexity rate limit timeout — all slots busy")
 
-            data = await perplexity_grounded_search(
-                search_instruction=search_instruction,
-                api_key=self._perplexity_api_key,
-                model=self._perplexity_model,
-                search_context_size=self._perplexity_search_context,
-                timeout_seconds=30,
-            )
+        data = await perplexity_grounded_search(
+            search_instruction=search_instruction,
+            api_key=self._perplexity_api_key,
+            model=self._perplexity_model,
+            search_context_size=self._perplexity_search_context,
+            timeout_seconds=30,
+        )
 
         # Budget tracking
         usage = data.pop("_usage", {})

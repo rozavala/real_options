@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 class TokenBucketLimiter:
     """Token bucket rate limiter for API calls."""
 
-    def __init__(self, rate: int, burst: int = None):
+    def __init__(self, rate: int, burst: int = None, min_interval: float = 0.0):
         self.rate = rate
         self.burst = burst if burst is not None else max(1, rate // 10)
         self.tokens = float(self.burst)
         self.last_update = time.monotonic()
+        self.min_interval = min_interval  # minimum seconds between requests (e.g. 1.0 for 1 QPS)
+        self._last_acquire_time = 0.0
         self._lock = asyncio.Lock()
         self._request_times: deque = deque(maxlen=100)
         self._waiters = 0
@@ -34,15 +36,32 @@ class TokenBucketLimiter:
                     self._refill()
 
                     if self.tokens >= 1:
-                        self.tokens -= 1
-                        self._request_times.append(time.monotonic())
-                        logger.debug(
-                            f"Rate limiter: Token acquired. "
-                            f"Remaining: {self.tokens:.1f}, Queued: {self._waiters - 1}"
-                        )
-                        return True
+                        # Enforce min_interval between requests
+                        if self.min_interval > 0:
+                            since_last = time.monotonic() - self._last_acquire_time
+                            if since_last < self.min_interval:
+                                wait_for = self.min_interval - since_last
+                                # Release lock while waiting, then re-check
+                                break_to_wait = wait_for
+                            else:
+                                break_to_wait = 0
+                        else:
+                            break_to_wait = 0
+
+                        if break_to_wait == 0:
+                            self.tokens -= 1
+                            self._last_acquire_time = time.monotonic()
+                            self._request_times.append(time.monotonic())
+                            logger.debug(
+                                f"Rate limiter: Token acquired. "
+                                f"Remaining: {self.tokens:.1f}, Queued: {self._waiters - 1}"
+                            )
+                            return True
 
                 wait_time = 60.0 / self.rate
+                if self.min_interval > 0:
+                    since_last = time.monotonic() - self._last_acquire_time
+                    wait_time = max(wait_time, self.min_interval - since_last)
                 remaining = deadline - time.monotonic()
 
                 if self._waiters > 5:
@@ -95,6 +114,7 @@ class GlobalRateLimiter:
         'openai': 400,
         'anthropic': 80,
         'xai': 25,
+        'perplexity': 50,  # Sonar: 50 RPM (Tier 0), also 1 QPS hard limit
     }
 
     def __new__(cls):
@@ -102,11 +122,19 @@ class GlobalRateLimiter:
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    # Per-provider minimum interval between requests (QPS limits).
+    PROVIDER_MIN_INTERVALS: Dict[str, float] = {
+        'perplexity': 1.05,  # 1 QPS hard limit + margin
+    }
+
     @classmethod
     def _ensure_initialized(cls):
         if not cls._initialized:
             for provider, rpm in cls.PROVIDER_LIMITS.items():
-                cls._limiters[provider] = TokenBucketLimiter(rate=rpm, burst=3)
+                min_interval = cls.PROVIDER_MIN_INTERVALS.get(provider, 0.0)
+                cls._limiters[provider] = TokenBucketLimiter(
+                    rate=rpm, burst=3, min_interval=min_interval,
+                )
             cls._initialized = True
             logger.info(f"GlobalRateLimiter initialized: {list(cls.PROVIDER_LIMITS.keys())}")
 
