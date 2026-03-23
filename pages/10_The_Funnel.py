@@ -83,14 +83,14 @@ if _funnel_dates:
 # Source filter
 if not funnel_df.empty and 'source' in funnel_df.columns:
     sources = ['ALL'] + sorted(funnel_df['source'].dropna().unique().tolist())
-    selected_source = st.sidebar.selectbox("Data Source", sources, index=0)
+    selected_source = st.sidebar.selectbox("Data Source", sources, index=0, help="Filter the execution data by its original source system.")
     if selected_source != 'ALL':
         funnel_df = funnel_df[funnel_df['source'] == selected_source]
 
 # Regime filter
 if not funnel_df.empty and 'regime' in funnel_df.columns:
     regimes = ['ALL'] + sorted(funnel_df['regime'].dropna().unique().tolist())
-    selected_regime = st.sidebar.selectbox("Regime Filter", regimes, index=0)
+    selected_regime = st.sidebar.selectbox("Regime Filter", regimes, index=0, help="Filter to see how execution performs under different market regimes (e.g., bullish, bearish, neutral, range_bound).")
     if selected_regime != 'ALL':
         funnel_df = funnel_df[funnel_df['regime'] == selected_regime]
 

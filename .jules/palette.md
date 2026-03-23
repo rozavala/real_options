@@ -72,3 +72,7 @@ This journal records CRITICAL UX/accessibility learnings.
 ## 2024-05-23 - Add Tooltips to `st.download_button`
 **Learning:** Streamlit UI components like `st.download_button` can lack sufficient context, reducing accessibility and clarity. Adding the built-in `help` parameter provides native, descriptive tooltips that explain button functionality.
 **Action:** Consistently enforce `help` tooltips on `st.download_button` components (and others like `st.metric` or `st.checkbox`) across the dashboard to improve micro-UX and accessibility. Use `ast` unit tests to statically verify their presence.
+
+## 2024-05-24 - [Micro-UX: Tooltips for Sidebar Filters]
+**Learning:** Adding descriptive `help` tooltips to input components like `st.selectbox` provides valuable context for users to understand the purpose of the filters without cluttering the UI, enhancing accessibility.
+**Action:** Always include a `help` parameter with clear, concise descriptions for all `st.selectbox`, `st.checkbox`, and similar input components in Streamlit dashboards.
